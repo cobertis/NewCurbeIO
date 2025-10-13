@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Users, Settings, HelpCircle, LogOut } from "lucide-react";
+import { LayoutDashboard, BarChart3, Users, Building2, Settings, HelpCircle, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -27,6 +27,12 @@ const menuItems = [
     title: "Users",
     url: "/users",
     icon: Users,
+  },
+  {
+    title: "Organizations",
+    url: "/organizations",
+    icon: Building2,
+    superAdminOnly: true,
   },
   {
     title: "Settings",

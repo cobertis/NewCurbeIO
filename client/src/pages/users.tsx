@@ -15,7 +15,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
 const userFormSchema = insertUserSchema.extend({
-  role: z.enum(["admin", "moderator", "viewer"]),
+  role: z.enum(["superadmin", "org_admin", "org_user"]),
 });
 
 import { updateUserSchema } from "@shared/schema";
@@ -204,9 +204,9 @@ export default function Users() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="moderator">Moderator</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="superadmin">Super Admin</SelectItem>
+                          <SelectItem value="org_admin">Org Admin</SelectItem>
+                          <SelectItem value="org_user">Usuario</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -260,9 +260,9 @@ export default function Users() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="moderator">Moderator</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="superadmin">Super Admin</SelectItem>
+                        <SelectItem value="org_admin">Org Admin</SelectItem>
+                        <SelectItem value="org_user">Usuario</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
