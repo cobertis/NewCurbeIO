@@ -107,7 +107,7 @@ export default function Users() {
     defaultValues: {
       email: "",
       password: "",
-      role: "viewer",
+      role: "org_user",
     },
   });
 
@@ -115,7 +115,7 @@ export default function Users() {
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
       email: "",
-      role: "viewer",
+      role: "org_user",
     },
   });
 
@@ -133,7 +133,7 @@ export default function Users() {
     setEditingUser(user);
     editForm.reset({
       email: user.email,
-      role: user.role as "admin" | "moderator" | "viewer",
+      role: user.role as "superadmin" | "org_admin" | "org_user",
     });
     setEditOpen(true);
   };
@@ -336,13 +336,13 @@ export default function Users() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.role === "admin" 
+                          user.role === "superadmin" 
+                            ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                            : user.role === "org_admin"
                             ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                            : user.role === "moderator"
-                            ? "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
                             : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
-                        }`}>
-                          {user.role}
+                        }`} data-testid={`badge-role-${user.id}`}>
+                          {user.role === "superadmin" ? "Super Admin" : user.role === "org_admin" ? "Org Admin" : "Usuario"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">

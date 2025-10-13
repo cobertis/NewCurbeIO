@@ -1,5 +1,6 @@
 import { LayoutDashboard, BarChart3, Users, Building2, Settings, HelpCircle, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import type { User } from "@shared/schema";
 
 const menuItems = [
   {
@@ -48,6 +50,10 @@ const menuItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
+  
+  const { data: userData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
 
   const handleLogout = async () => {
     try {
@@ -63,13 +69,23 @@ export function AppSidebar() {
     }
   };
 
+  const user = userData?.user;
+  const isSuperAdmin = user?.role === "superadmin";
+
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (item.superAdminOnly) {
+      return isSuperAdmin;
+    }
+    return true;
+  });
+
   return (
     <Sidebar className="border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
       <SidebarContent className="py-4">
         <SidebarGroup>
           <SidebarGroupContent className="px-3">
             <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
