@@ -1,41 +1,7 @@
 import { Users, TrendingUp, DollarSign, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-const stats = [
-  {
-    title: "Total Users",
-    value: "2,543",
-    change: "+12.5%",
-    icon: Users,
-    color: "text-primary",
-    bgColor: "bg-primary/10",
-  },
-  {
-    title: "Revenue",
-    value: "$45,231",
-    change: "+8.2%",
-    icon: DollarSign,
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-600/10",
-  },
-  {
-    title: "Active Sessions",
-    value: "1,234",
-    change: "+23.1%",
-    icon: Activity,
-    color: "text-amber-600",
-    bgColor: "bg-amber-600/10",
-  },
-  {
-    title: "Growth",
-    value: "94.5%",
-    change: "+5.4%",
-    icon: TrendingUp,
-    color: "text-purple-600",
-    bgColor: "bg-purple-600/10",
-  },
-];
+import { useQuery } from "@tanstack/react-query";
 
 const recentActivity = [
   { name: "Brandon Ingram", status: "Online", percentage: "9.3%" },
@@ -45,20 +11,70 @@ const recentActivity = [
   { name: "Andrew Wiggins", status: "Offline", percentage: "4.9%" },
 ];
 
+interface Stats {
+  totalUsers: number;
+  adminCount: number;
+  moderatorCount: number;
+  viewerCount: number;
+}
+
 export default function Dashboard() {
+  const { data: statsData } = useQuery<Stats>({
+    queryKey: ["/api/stats"],
+  });
+
+  const totalUsers = statsData?.totalUsers || 0;
+  const adminCount = statsData?.adminCount || 0;
+  const activeCount = statsData?.totalUsers || 0;
+
+  const stats = [
+    {
+      title: "Total Users",
+      value: totalUsers.toString(),
+      change: "+12.5%",
+      icon: Users,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+    },
+    {
+      title: "Admins",
+      value: adminCount.toString(),
+      change: "+8.2%",
+      icon: DollarSign,
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-600/10",
+    },
+    {
+      title: "Active Users",
+      value: activeCount.toString(),
+      change: "+23.1%",
+      icon: Activity,
+      color: "text-amber-600",
+      bgColor: "bg-amber-600/10",
+    },
+    {
+      title: "Growth",
+      value: "94.5%",
+      change: "+5.4%",
+      icon: TrendingUp,
+      color: "text-purple-600",
+      bgColor: "bg-purple-600/10",
+    },
+  ];
+
   return (
     <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Dashboard</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Welcome back! Here's your overview.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Bienvenido! Aquí está tu resumen.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" data-testid="button-filter">
-            Filter
+            Filtrar
           </Button>
           <Button size="sm" data-testid="button-export">
-            Export
+            Exportar
           </Button>
         </div>
       </div>
@@ -79,7 +95,7 @@ export default function Dashboard() {
                 {stat.value}
               </div>
               <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400" data-testid={`text-${stat.title.toLowerCase().replace(/\s+/g, '-')}-change`}>
-                ↑ {stat.change} vs last month
+                ↑ {stat.change} vs mes pasado
               </p>
             </CardContent>
           </Card>
@@ -89,13 +105,13 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Limit Time</CardTitle>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Distribución de Roles</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Limit Time</span>
-                <span className="text-sm font-medium">75%</span>
+                <span className="text-sm text-muted-foreground">Total de Usuarios</span>
+                <span className="text-sm font-medium">{totalUsers}</span>
               </div>
               <div className="relative h-48 flex items-center justify-center">
                 <svg className="w-40 h-40 transform -rotate-90">
@@ -123,41 +139,40 @@ export default function Dashboard() {
                   <span className="text-3xl font-bold font-mono">75%</span>
                 </div>
               </div>
-              <div className="text-center text-sm text-muted-foreground">
-                Revenue target achieved
+              <div className="flex justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-primary"></div>
+                  <span className="text-muted-foreground">Activos</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-muted"></div>
+                  <span className="text-muted-foreground">Inactivos</span>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Top Performers</CardTitle>
-            <span className="text-xs text-gray-500 dark:text-gray-400">By Progress Time Infinite</span>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Actividad Reciente</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
+            <div className="space-y-3">
+              {recentActivity.map((item, index) => (
                 <div
-                  key={activity.name}
-                  className="flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg p-3 -mx-2 transition-colors"
-                  data-testid={`row-performer-${index}`}
+                  key={index}
+                  className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                  data-testid={`activity-${index}`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-                      {activity.name.charAt(0)}
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{activity.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-primary">{activity.percentage}</span>
-                    <div className="w-20 h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all"
-                        style={{ width: activity.percentage }}
-                      />
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{item.status}</p>
                     </div>
                   </div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{item.percentage}</span>
                 </div>
               ))}
             </div>
@@ -167,30 +182,20 @@ export default function Dashboard() {
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Revenue Badge</CardTitle>
+          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Estadísticas Mensuales</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center">
-            <div className="w-full max-w-3xl">
-              <div className="flex items-end justify-between gap-2 h-48">
-                {[
-                  { height: "70%", label: "Mon" },
-                  { height: "85%", label: "Tue" },
-                  { height: "60%", label: "Wed" },
-                  { height: "95%", label: "Thu" },
-                  { height: "75%", label: "Fri" },
-                  { height: "50%", label: "Sat" },
-                  { height: "40%", label: "Sun" },
-                ].map((bar, index) => (
-                  <div key={bar.label} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full bg-primary/20 rounded-t-lg relative" style={{ height: bar.height }}>
-                      <div className="absolute bottom-0 w-full bg-primary rounded-t-lg transition-all duration-500" style={{ height: "75%" }} />
-                    </div>
-                    <span className="text-xs text-muted-foreground">{bar.label}</span>
-                  </div>
-                ))}
+          <div className="h-64 flex items-end justify-between gap-2 px-4">
+            {[65, 85, 45, 90, 60, 75, 95, 70, 80, 55, 88, 92].map((height, index) => (
+              <div key={index} className="flex-1 flex flex-col items-center gap-2">
+                <div
+                  className="w-full bg-primary/80 rounded-t-sm transition-all duration-500 hover:bg-primary"
+                  style={{ height: `${height}%` }}
+                  data-testid={`bar-${index}`}
+                ></div>
+                <span className="text-xs text-muted-foreground">{index + 1}</span>
               </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>

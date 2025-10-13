@@ -38,12 +38,17 @@ Preferred communication style: Simple, everyday language.
 - Custom hover and active state elevations using CSS variables
 
 **Key Pages & Features:**
-- Dashboard: Overview with stats cards and recent activity
-- Analytics: Metrics visualization and performance tracking
-- Users: User management with search and role-based filtering
-- Settings: Profile management and preferences
-- Support: Help resources and contact options
-- Login: Session-based authentication
+- **Dashboard**: Real-time statistics from database (total users, admins, active users), charts with monthly data
+- **Analytics**: Metrics visualization and performance tracking (placeholder)
+- **Users** (Admin-only): Full user management with:
+  - Real-time user list from PostgreSQL
+  - Search/filter by email
+  - Create new users (email, password, role selection)
+  - Delete users
+  - Role badges (admin, moderator, viewer)
+- **Settings**: Profile management and preferences (placeholder)
+- **Support**: Help resources and contact options (placeholder)
+- **Login**: Session-based authentication with role-based access
 
 ### Backend Architecture
 
@@ -58,6 +63,11 @@ Preferred communication style: Simple, everyday language.
 - Session-based authentication flow (login, logout, session verification)
 - Protected routes requiring authenticated sessions
 - Credential-based requests using `credentials: "include"`
+- **User Management Endpoints** (admin-only):
+  - GET /api/users - List all users
+  - POST /api/users - Create new user
+  - PATCH /api/users/:id - Update user
+  - DELETE /api/users/:id - Delete user
 
 **Authentication & Authorization:**
 - Session-based authentication (no JWT)
@@ -67,23 +77,36 @@ Preferred communication style: Simple, everyday language.
 - Protected routes validated through session middleware
 
 **Storage Layer:**
-- In-memory storage implementation (MemStorage class) for development
-- Interface-based storage pattern (IStorage) for future database integration
-- Pre-initialized admin user (hello@curbe.io / Cuba2010)
-- User CRUD operations: getUser, getUserByEmail, createUser
+- **PostgreSQL database** with Drizzle ORM (migrated from in-memory)
+- Database connection via Neon serverless driver
+- Interface-based storage pattern (DbStorage implements IStorage)
+- Full CRUD operations: getUser, getUserByEmail, createUser, getAllUsers, updateUser, deleteUser
+- Admin user seeded: hello@curbe.io / Cuba2010 (role: admin)
 
 **Data Models:**
-- User schema with id (UUID), email, and password fields
-- Drizzle ORM schema definitions prepared for PostgreSQL migration
-- Zod schema validation for request data
+- **User schema** (shared/schema.ts):
+  - id: varchar (UUID, auto-generated)
+  - email: text (unique, required)
+  - password: text (required, plain text - TODO: implement hashing)
+  - role: text (admin|moderator|viewer, default: viewer)
+  - createdAt: timestamp (auto-generated)
+- Zod schemas for validation (insertUserSchema)
+- Type-safe with TypeScript inference
+
+**Role-Based Access Control:**
+- **Admin**: Full access to user management (CRUD operations)
+- **Moderator**: Limited access (read-only for now)
+- **Viewer**: Basic dashboard access
+- Authorization middleware validates user role on protected endpoints
 
 ### External Dependencies
 
-**Database (Prepared for Migration):**
-- Drizzle ORM configured for PostgreSQL via @neondatabase/serverless
-- Schema defined in `/shared/schema.ts` with pgTable definitions
-- Migration setup in place but currently using in-memory storage
-- Connection string expected via DATABASE_URL environment variable
+**Database (Active - PostgreSQL):**
+- **Neon PostgreSQL** connected via DATABASE_URL
+- Drizzle ORM for type-safe database queries
+- Schema defined in `/shared/schema.ts` with pgTable
+- Migrations managed with `npm run db:push`
+- Seed scripts: server/seed-admin.ts, server/seed-test-users.ts
 
 **UI Component Libraries:**
 - Radix UI suite for accessible, unstyled primitives (20+ components)
@@ -113,4 +136,43 @@ Preferred communication style: Simple, everyday language.
 - nanoid for generating unique identifiers
 - Zod for runtime type validation
 
-**Note:** The application is currently using in-memory storage for user data but has Drizzle ORM and PostgreSQL infrastructure prepared for production database migration. The session storage is also configured to support PostgreSQL session stores when needed.
+## Recent Changes (October 2025)
+
+### Completed Features
+
+**✅ PostgreSQL Migration**
+- Migrated from in-memory storage to Neon PostgreSQL
+- Updated schema with role and createdAt fields
+- Implemented DbStorage class with full CRUD operations
+- Created seed scripts for admin and test users
+- All data now persists in database
+
+**✅ Role-Based Access Control**
+- Added role field (admin, moderator, viewer) to user schema
+- Implemented authorization middleware for admin-only endpoints
+- Dashboard and user management restricted to appropriate roles
+
+**✅ User Management (Functional)**
+- Real-time user listing from PostgreSQL
+- Create users with email, password, role selection
+- Delete users functionality
+- Search/filter users by email
+- Spanish language interface
+
+**✅ Dashboard with Real Data**
+- Statistics now pull from actual database
+- Dynamic user counts (total, by role)
+- Charts and visualizations with real metrics
+
+### Known Limitations
+
+**Security:**
+- ⚠️ Passwords stored in plain text (hashing not yet implemented)
+- TODO: Implement bcrypt/argon2 password hashing
+- TODO: Implement password strength validation
+
+**Future Enhancements:**
+- Add edit user functionality
+- Implement moderator-specific permissions
+- Add audit log for user actions
+- Implement session storage in PostgreSQL (currently in-memory)
