@@ -29,23 +29,23 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1">
-          <header className="h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between px-6 sticky top-0 z-10">
+          <header className="h-14 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between px-6 sticky top-0 z-10">
             <div className="flex items-center gap-4">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <SidebarTrigger data-testid="button-sidebar-toggle" className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg" />
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
                   <span className="text-sm font-bold text-white">C</span>
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Curbe Admin</h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">Curbe Admin</h2>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" data-testid="button-notifications">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" data-testid="button-notifications" className="rounded-lg">
                 <Bell className="h-5 w-5" />
               </Button>
               <ThemeToggle />
-              <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-white">A</span>
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-2">
+                <span className="text-sm font-semibold text-white">A</span>
               </div>
             </div>
           </header>

@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, loginSchema } from "@shared/schema";
+import { insertUserSchema, loginSchema, updateUserSchema } from "@shared/schema";
 import "./types";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -126,8 +126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const updateSchema = insertUserSchema.partial();
-      const validatedData = updateSchema.parse(req.body);
+      const validatedData = updateUserSchema.parse(req.body);
       
       const updatedUser = await storage.updateUser(req.params.id, validatedData);
       if (!updatedUser) {

@@ -23,5 +23,12 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const updateUserSchema = z.object({
+  email: z.string().email().optional(),
+  role: z.enum(["admin", "moderator", "viewer"]).optional(),
+}).refine(data => data.email !== undefined || data.role !== undefined, {
+  message: "At least one field (email or role) must be provided",
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

@@ -58,24 +58,28 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <SidebarContent>
+    <Sidebar className="border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <SidebarContent className="py-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-base font-semibold px-4 py-6 text-gray-900 dark:text-white">
-            Navigation
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
+          <SidebarGroupContent className="px-3">
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
                     isActive={location === item.url}
                     data-testid={`link-${item.title.toLowerCase()}`}
+                    className={`
+                      h-10 rounded-lg transition-all
+                      ${location === item.url 
+                        ? 'bg-primary text-white hover:bg-primary/90' 
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }
+                    `}
                   >
-                    <Link href={item.url}>
+                    <Link href={item.url} className="flex items-center gap-3 px-3">
                       <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
+                      <span className="font-medium">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -84,16 +88,16 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="p-3 border-t border-gray-200 dark:border-gray-700">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
-              className="text-destructive hover:text-destructive"
+              className="h-10 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"
               data-testid="button-logout"
             >
               <LogOut className="h-5 w-5" />
-              <span>Logout</span>
+              <span className="font-medium">Cerrar Sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

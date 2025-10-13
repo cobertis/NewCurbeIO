@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, UserPlus, Trash2 } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -18,10 +18,15 @@ const userFormSchema = insertUserSchema.extend({
   role: z.enum(["admin", "moderator", "viewer"]),
 });
 
+import { updateUserSchema } from "@shared/schema";
+
 type UserForm = z.infer<typeof userFormSchema>;
+type EditUserForm = z.infer<typeof updateUserSchema>;
 
 export default function Users() {
-  const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
@@ -35,8 +40,9 @@ export default function Users() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      setOpen(false);
-      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setCreateOpen(false);
+      createForm.reset();
       toast({
         title: "Usuario creado",
         description: "El usuario se ha creado correctamente.",
@@ -51,12 +57,37 @@ export default function Users() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string, data: EditUserForm }) => {
+      return apiRequest("PATCH", `/api/users/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setEditOpen(false);
+      setEditingUser(null);
+      editForm.reset();
+      toast({
+        title: "Usuario actualizado",
+        description: "El usuario se ha actualizado correctamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el usuario.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       return apiRequest("DELETE", `/api/users/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
         title: "Usuario eliminado",
         description: "El usuario se ha eliminado correctamente.",
@@ -71,7 +102,7 @@ export default function Users() {
     },
   });
 
-  const form = useForm<UserForm>({
+  const createForm = useForm<UserForm>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
       email: "",
@@ -80,8 +111,31 @@ export default function Users() {
     },
   });
 
-  const onSubmit = (data: UserForm) => {
+  const editForm = useForm<EditUserForm>({
+    resolver: zodResolver(updateUserSchema),
+    defaultValues: {
+      email: "",
+      role: "viewer",
+    },
+  });
+
+  const onCreateSubmit = (data: UserForm) => {
     createMutation.mutate(data);
+  };
+
+  const onEditSubmit = (data: EditUserForm) => {
+    if (editingUser?.id) {
+      updateMutation.mutate({ id: editingUser.id, data });
+    }
+  };
+
+  const handleEdit = (user: Partial<User>) => {
+    setEditingUser(user);
+    editForm.reset({
+      email: user.email,
+      role: user.role as "admin" | "moderator" | "viewer",
+    });
+    setEditOpen(true);
   };
 
   const filteredUsers = data?.users.filter(user => 
@@ -95,7 +149,7 @@ export default function Users() {
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Usuarios</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">Gestiona los usuarios y sus permisos.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-user">
               <UserPlus className="h-4 w-4 mr-2" />
@@ -109,10 +163,10 @@ export default function Users() {
                 Añade un nuevo usuario al sistema.
               </DialogDescription>
             </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <Form {...createForm}>
+              <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
                 <FormField
-                  control={form.control}
+                  control={createForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
@@ -125,7 +179,7 @@ export default function Users() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={createForm.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
@@ -138,7 +192,7 @@ export default function Users() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={createForm.control}
                   name="role"
                   render={({ field }) => (
                     <FormItem>
@@ -169,6 +223,61 @@ export default function Users() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogDescription>
+              Modifica el email y rol del usuario.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" data-testid="input-edit-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rol</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-role">
+                          <SelectValue placeholder="Selecciona un rol" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="moderator">Moderator</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" disabled={updateMutation.isPending} data-testid="button-edit-user-submit">
+                  {updateMutation.isPending ? "Actualizando..." : "Actualizar Usuario"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
         <CardHeader className="pb-3">
@@ -240,15 +349,25 @@ export default function Users() {
                         {new Date(user.createdAt).toLocaleDateString('es-ES')}
                       </td>
                       <td className="px-6 py-4">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => deleteMutation.mutate(user.id)}
-                          disabled={deleteMutation.isPending}
-                          data-testid={`button-delete-user-${user.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEdit(user)}
+                            data-testid={`button-edit-user-${user.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => deleteMutation.mutate(user.id)}
+                            disabled={deleteMutation.isPending}
+                            data-testid={`button-delete-user-${user.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
