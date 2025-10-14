@@ -32,7 +32,9 @@ import {
   type OtpCode,
   type InsertOtpCode,
   type SelectActivationToken,
-  type InsertActivationToken
+  type InsertActivationToken,
+  type SelectTrustedDevice,
+  type InsertTrustedDevice
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -52,7 +54,8 @@ import {
   features,
   companyFeatures,
   otpCodes,
-  activationTokens
+  activationTokens,
+  trustedDevices
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -169,6 +172,12 @@ export interface IStorage {
   markActivationTokenUsed(token: string): Promise<boolean>;
   validateAndUseToken(token: string): Promise<string | null>;
   deleteExpiredActivationTokens(): Promise<boolean>;
+  
+  // Trusted Devices
+  saveTrustedDevice(device: InsertTrustedDevice): Promise<SelectTrustedDevice>;
+  validateTrustedDevice(deviceToken: string): Promise<string | null>;
+  removeTrustedDevice(deviceToken: string): Promise<boolean>;
+  removeExpiredTrustedDevices(): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -766,6 +775,53 @@ export class DbStorage implements IStorage {
     await db.delete(activationTokens).where(and(
       eq(activationTokens.used, false)
     ));
+    return true;
+  }
+  
+  // ==================== TRUSTED DEVICES ====================
+  
+  async saveTrustedDevice(device: InsertTrustedDevice): Promise<SelectTrustedDevice> {
+    const result = await db.insert(trustedDevices).values(device).returning();
+    return result[0];
+  }
+  
+  async validateTrustedDevice(deviceToken: string): Promise<string | null> {
+    const result = await db
+      .select()
+      .from(trustedDevices)
+      .where(eq(trustedDevices.deviceToken, deviceToken))
+      .limit(1);
+    
+    if (result.length === 0) {
+      return null;
+    }
+    
+    const device = result[0];
+    const now = new Date();
+    
+    // Check if expired
+    if (device.expiresAt < now) {
+      // Delete expired device
+      await db.delete(trustedDevices).where(eq(trustedDevices.id, device.id));
+      return null;
+    }
+    
+    return device.userId;
+  }
+  
+  async removeTrustedDevice(deviceToken: string): Promise<boolean> {
+    const result = await db
+      .delete(trustedDevices)
+      .where(eq(trustedDevices.deviceToken, deviceToken))
+      .returning();
+    return result.length > 0;
+  }
+  
+  async removeExpiredTrustedDevices(): Promise<boolean> {
+    const now = new Date();
+    await db.delete(trustedDevices).where(
+      eq(trustedDevices.expiresAt, now)
+    );
     return true;
   }
 }
