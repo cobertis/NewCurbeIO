@@ -15,7 +15,7 @@ import { createCompanyWithAdminSchema, updateCompanySchema, type Company, type F
 import { useState, useRef } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { formatPhoneNumber } from "@/lib/phoneFormat";
+import { formatPhoneInput } from "@/lib/phone-formatter";
 
 // Function to generate slug from company name
 function generateSlug(name: string): string {
@@ -520,10 +520,10 @@ export default function Companies() {
                       <FormLabel>Phone</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="(555) 123-4567" 
+                          placeholder="+1 (415) 555-2671" 
                           {...field}
                           onChange={(e) => {
-                            const formatted = formatPhoneNumber(e.target.value);
+                            const formatted = formatPhoneInput(e.target.value);
                             field.onChange(formatted);
                           }}
                           data-testid="input-create-company-phone" 
@@ -597,11 +597,11 @@ export default function Companies() {
                       <FormLabel>Admin Phone (required for OTP)</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="(555) 123-4567" 
+                          placeholder="+1 (415) 555-2671" 
                           {...field} 
                           value={field.value ?? ""}
                           onChange={(e) => {
-                            const formatted = formatPhoneNumber(e.target.value);
+                            const formatted = formatPhoneInput(e.target.value);
                             field.onChange(formatted);
                           }}
                           data-testid="input-create-admin-phone" 
@@ -688,11 +688,11 @@ export default function Companies() {
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="(555) 123-4567" 
+                        placeholder="+1 (415) 555-2671" 
                         {...field} 
                         value={field.value ?? ""}
                         onChange={(e) => {
-                          const formatted = formatPhoneNumber(e.target.value);
+                          const formatted = formatPhoneInput(e.target.value);
                           field.onChange(formatted);
                         }}
                         data-testid="input-edit-company-phone" 

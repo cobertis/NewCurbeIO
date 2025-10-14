@@ -125,6 +125,15 @@ A flexible feature management system allows superadmins to define system-wide ca
 -   `features` table: Stores system features with id, name, key (unique identifier), description, category, icon, isActive status, and timestamps.
 -   `company_features` table: Junction table linking companies to features, tracking which user enabled each feature and when.
 
+### Phone Number Formatting
+
+**Standardized Format:** All phone number inputs across the system use a consistent format: `+1 (415) 555-2671`
+- Uses `formatPhoneInput` from `@/lib/phone-formatter.ts` for real-time formatting
+- Includes country code (+1) for international compatibility
+- Automatically formats as user types
+- Consistent placeholders and validation across all forms (Users, Companies, Settings)
+- Backend stores numbers in E.164 format when needed for SMS/Twilio integration
+
 ### Audit Logging System
 
 Tracks critical actions with a centralized `LoggingService`. Automatically captures metadata (IP, user agent, timestamps, request context) and provides role-based access control for viewing logs. Key logged actions include authentication, user management, company management, and email template changes.
