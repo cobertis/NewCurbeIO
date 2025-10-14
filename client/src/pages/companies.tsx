@@ -9,10 +9,21 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createCompanyWithAdminSchema, updateCompanySchema, type Company } from "@shared/schema";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { formatPhoneNumber } from "@/lib/phoneFormat";
+
+// Function to generate slug from company name
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+}
 
 type CreateCompanyForm = z.infer<typeof createCompanyWithAdminSchema>;
 type UpdateCompanyForm = z.infer<typeof updateCompanySchema>;
@@ -22,6 +33,7 @@ export default function Companies() {
   const [editOpen, setEditOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const { toast } = useToast();
 
   const { data, isLoading } = useQuery<{ companies: Company[] }>({
@@ -46,6 +58,7 @@ export default function Companies() {
       queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       setCreateOpen(false);
       createForm.reset();
+      setSlugManuallyEdited(false);
       toast({
         title: "Company Created",
         description: "The company and admin user have been created successfully",
@@ -296,7 +309,15 @@ export default function Companies() {
       </Card>
 
       {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog 
+        open={createOpen} 
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setSlugManuallyEdited(false);
+          }
+        }}
+      >
         <DialogContent data-testid="dialog-create-company">
           <DialogHeader>
             <DialogTitle>New Company</DialogTitle>
@@ -312,7 +333,19 @@ export default function Companies() {
                     <FormItem>
                       <FormLabel>Company Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Acme Inc." {...field} data-testid="input-create-company-name" />
+                        <Input 
+                          placeholder="Acme Inc." 
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            // Auto-generate slug if not manually edited
+                            if (!slugManuallyEdited) {
+                              const generatedSlug = generateSlug(e.target.value);
+                              createForm.setValue('company.slug', generatedSlug);
+                            }
+                          }}
+                          data-testid="input-create-company-name" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -323,9 +356,17 @@ export default function Companies() {
                   name="company.slug"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Slug</FormLabel>
+                      <FormLabel>Slug (auto-generated, editable)</FormLabel>
                       <FormControl>
-                        <Input placeholder="acme-inc" {...field} data-testid="input-create-company-slug" />
+                        <Input 
+                          placeholder="acme-inc" 
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            setSlugManuallyEdited(true);
+                          }}
+                          data-testid="input-create-company-slug" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -416,19 +457,6 @@ export default function Companies() {
                       <FormLabel>Admin Email</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="john@acme.com" {...field} data-testid="input-create-admin-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="admin.password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} data-testid="input-create-admin-password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -434,8 +434,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create company first
       const newCompany = await storage.createCompany(companyData);
       
+      // If no password provided, generate a temporary random one
+      // This will be replaced when the user activates their account via email
+      const passwordToUse = adminData.password || Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+      
       // Hash password before creating admin user
-      const hashedPassword = await hashPassword(adminData.password);
+      const hashedPassword = await hashPassword(passwordToUse);
       
       // Create admin user for the company
       const adminUser = await storage.createUser({
