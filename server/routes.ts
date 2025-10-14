@@ -109,6 +109,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(stats);
   });
 
+  // Get dashboard stats with billing and company info
+  app.get("/api/dashboard-stats", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    try {
+      // Determine which company to get stats for
+      const companyId = currentUser.role === "superadmin" 
+        ? req.query.companyId as string
+        : currentUser.companyId;
+
+      // For non-superadmin, companyId is required
+      if (currentUser.role !== "superadmin" && !companyId) {
+        return res.status(400).json({ message: "Company ID required" });
+      }
+
+      // Get users (filtered by company if companyId is provided)
+      let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
+      if (companyId) {
+        // Get users for specific company
+        users = await storage.getUsersByCompany(companyId);
+      } else if (currentUser.role === "superadmin") {
+        // Superadmin without companyId gets global stats
+        users = await storage.getAllUsers();
+      } else {
+        users = [];
+      }
+
+      // Get company count (superadmin only, when viewing global stats)
+      let companyCount = 0;
+      if (currentUser.role === "superadmin" && !companyId) {
+        const companies = await storage.getAllCompanies();
+        companyCount = companies.length;
+      }
+
+      // Get billing stats
+      let revenue = 0;
+      let growthRate = 0;
+      let invoiceCount = 0;
+      let paidInvoices = 0;
+
+      if (companyId) {
+        const invoices = await storage.getInvoicesByCompany(companyId);
+        invoiceCount = invoices.length;
+        
+        // Calculate revenue from paid invoices (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        paidInvoices = invoices.filter(inv => 
+          inv.status === "paid" && 
+          inv.paidAt && 
+          new Date(inv.paidAt) >= thirtyDaysAgo
+        ).length;
+
+        revenue = invoices
+          .filter(inv => inv.status === "paid" && inv.paidAt && new Date(inv.paidAt) >= thirtyDaysAgo)
+          .reduce((sum, inv) => sum + inv.total, 0);
+
+        // Calculate growth rate (compare last 30 days vs previous 30 days)
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+        
+        const previousRevenue = invoices
+          .filter(inv => {
+            if (inv.status !== "paid" || !inv.paidAt) return false;
+            const paidDate = new Date(inv.paidAt);
+            return paidDate >= sixtyDaysAgo && paidDate < thirtyDaysAgo;
+          })
+          .reduce((sum, inv) => sum + inv.total, 0);
+
+        if (previousRevenue > 0) {
+          growthRate = ((revenue - previousRevenue) / previousRevenue) * 100;
+        }
+      } else if (currentUser.role === "superadmin") {
+        // Calculate global revenue for superadmin without companyId
+        const allCompanies = await storage.getAllCompanies();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+        let totalPreviousRevenue = 0;
+
+        for (const company of allCompanies) {
+          const invoices = await storage.getInvoicesByCompany(company.id);
+          invoiceCount += invoices.length;
+          
+          paidInvoices += invoices.filter(inv => 
+            inv.status === "paid" && 
+            inv.paidAt && 
+            new Date(inv.paidAt) >= thirtyDaysAgo
+          ).length;
+
+          // Calculate current period revenue for this company
+          const companyRevenue = invoices
+            .filter(inv => inv.status === "paid" && inv.paidAt && new Date(inv.paidAt) >= thirtyDaysAgo)
+            .reduce((sum, inv) => sum + inv.total, 0);
+          
+          revenue += companyRevenue;
+
+          // Calculate previous period revenue for this company
+          const companyPreviousRevenue = invoices
+            .filter(inv => {
+              if (inv.status !== "paid" || !inv.paidAt) return false;
+              const paidDate = new Date(inv.paidAt);
+              return paidDate >= sixtyDaysAgo && paidDate < thirtyDaysAgo;
+            })
+            .reduce((sum, inv) => sum + inv.total, 0);
+
+          totalPreviousRevenue += companyPreviousRevenue;
+        }
+
+        // Calculate overall growth rate
+        if (totalPreviousRevenue > 0) {
+          growthRate = ((revenue - totalPreviousRevenue) / totalPreviousRevenue) * 100;
+        }
+      }
+
+      const stats = {
+        totalUsers: users.length,
+        adminCount: users.filter((u) => u.role === "superadmin" || u.role === "admin").length,
+        memberCount: users.filter((u) => u.role === "member").length,
+        viewerCount: users.filter((u) => u.role === "viewer").length,
+        companyCount, // Only for superadmin without companyId
+        revenue: revenue / 100, // Convert from cents to dollars
+        growthRate: Math.round(growthRate * 10) / 10, // Round to 1 decimal
+        invoiceCount,
+        paidInvoices,
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Dashboard stats error:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
   // ==================== USER ENDPOINTS ====================
 
   // Get all users (superadmin or admin)

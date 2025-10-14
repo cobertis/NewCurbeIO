@@ -11,22 +11,30 @@ const recentActivity = [
   { name: "API Call", code: "GET /api/users", amount: "$5.50", count: "IP 195", change: "+6.9%", status: "warning" },
 ];
 
-interface Stats {
+interface DashboardStats {
   totalUsers: number;
   adminCount: number;
-  moderatorCount: number;
+  memberCount: number;
   viewerCount: number;
+  companyCount: number;
+  revenue: number;
+  growthRate: number;
+  invoiceCount: number;
+  paidInvoices: number;
 }
 
 export default function Dashboard() {
-  const { data: statsData } = useQuery<Stats>({
-    queryKey: ["/api/stats"],
+  const { data: statsData } = useQuery<DashboardStats>({
+    queryKey: ["/api/dashboard-stats"],
   });
 
   const totalUsers = statsData?.totalUsers || 0;
   const adminCount = statsData?.adminCount || 0;
-  const moderatorCount = statsData?.moderatorCount || 0;
+  const memberCount = statsData?.memberCount || 0;
   const viewerCount = statsData?.viewerCount || 0;
+  const companyCount = statsData?.companyCount || 0;
+  const revenue = statsData?.revenue || 0;
+  const growthRate = statsData?.growthRate || 0;
 
   const quickStats = [
     {
@@ -43,25 +51,25 @@ export default function Dashboard() {
     },
     {
       title: "Revenue",
-      subtitle: "$124,530 this month",
+      subtitle: `$${revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} this month`,
       icon: TrendingUp,
       color: "bg-blue-600",
     },
     {
       title: "Growth",
-      subtitle: "+12.5% vs last month",
+      subtitle: `${growthRate > 0 ? '+' : ''}${growthRate}% vs last month`,
       icon: PieChart,
       color: "bg-gray-400",
     },
-    {
+    ...(companyCount > 0 ? [{
       title: "Companies",
-      subtitle: "15 active companies",
+      subtitle: `${companyCount} active companies`,
       icon: Building2,
       color: "bg-blue-400",
-    },
+    }] : []),
     {
       title: "Members",
-      subtitle: `${viewerCount} members`,
+      subtitle: `${memberCount + viewerCount} members`,
       icon: Users,
       color: "bg-blue-500",
     },

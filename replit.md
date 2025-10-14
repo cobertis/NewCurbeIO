@@ -44,8 +44,10 @@ API Endpoints:
 - `/api/users`: Manages users, scoped by company for admins.
 - `/api/companies`: Manages companies (superadmin only).
 - `/api/stats`: Provides user statistics based on access level.
+- `/api/dashboard-stats`: Comprehensive dashboard statistics including user counts, billing info, revenue, and growth rate (filtered by company).
 - `/api/plans`: Manages subscription plans (superadmin only).
-- `/api/invoices`: Lists and downloads invoices (role-based access).
+- `/api/invoices`: Lists and downloads invoices (role-based access, filtered by company).
+- `/api/payments`: Lists payments (filtered by company).
 - `/api/subscriptions`: Creates and manages company subscriptions.
 - `/api/stripe/webhooks`: Handles Stripe webhook events.
 - `/api/settings/profile`: Update own profile information (any authenticated user).
@@ -84,10 +86,30 @@ The application uses PostgreSQL with Drizzle ORM and features a multi-tenant sch
 - **Notifications:** User-specific notifications.
 
 Multi-Tenant Role-Based Access Control:
-- **Superadmin:** Global system access.
+- **Superadmin:** Global system access across all companies.
 - **Admin:** Manages users within their assigned company.
 - **Member:** Standard user access within their company.
 - **Viewer:** Read-only access within their company.
+
+**Multi-Tenancy Implementation:**
+
+The application implements strict data isolation between companies:
+
+1. **User Association:** Every user (except superadmin) is associated with a company via `companyId` field
+2. **Automatic Filtering:** All data endpoints automatically filter results by the authenticated user's company
+3. **Endpoint Behavior:**
+   - **Superadmin:** Can access data across all companies (may require `companyId` query parameter)
+   - **Admin/Member/Viewer:** Automatically restricted to their own company's data
+4. **Filtered Endpoints:**
+   - `/api/stats` - User statistics scoped to company
+   - `/api/dashboard-stats` - Dashboard metrics (users, revenue, growth) scoped to company
+   - `/api/users` - User list filtered by company for admins
+   - `/api/invoices` - Invoices filtered by company
+   - `/api/payments` - Payments filtered by company
+   - `/api/subscription` - Subscription for specific company
+   - `/api/notifications` - Notifications for specific user
+
+This ensures complete data isolation: users can only see and manage data belonging to their organization.
 
 ### System Design Choices
 
