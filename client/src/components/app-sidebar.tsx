@@ -27,15 +27,15 @@ const menuItems = [
     icon: BarChart3,
   },
   {
-    title: "Users",
-    url: "/users",
-    icon: Users,
-  },
-  {
     title: "Companies",
     url: "/companies",
     icon: Building2,
     superAdminOnly: true,
+  },
+  {
+    title: "Users",
+    url: "/users",
+    icon: Users,
   },
   {
     title: "Plans",
