@@ -9,17 +9,27 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, updateUserSchema, type User } from "@shared/schema";
+import { insertUserSchema, updateUserSchema, type User, type Company } from "@shared/schema";
 import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
 const userFormSchema = insertUserSchema.extend({
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  companyId: z.string().optional(),
 });
 
 type UserForm = z.infer<typeof userFormSchema>;
-type EditUserForm = z.infer<typeof updateUserSchema>;
+
+const editUserFormSchema = updateUserSchema.extend({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  companyId: z.string().optional(),
+});
+
+type EditUserForm = z.infer<typeof editUserFormSchema>;
 
 export default function Users() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -28,9 +38,22 @@ export default function Users() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
+  const { data: sessionData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+
   const { data, isLoading } = useQuery<{ users: User[] }>({
     queryKey: ["/api/users"],
   });
+
+  const { data: companiesData } = useQuery<{ companies: Company[] }>({
+    queryKey: ["/api/companies"],
+    enabled: sessionData?.user?.role === "superadmin",
+  });
+
+  const currentUser = sessionData?.user;
+  const isSuperAdmin = currentUser?.role === "superadmin";
+  const companies = companiesData?.companies || [];
 
   const createMutation = useMutation({
     mutationFn: async (data: UserForm) => {
@@ -105,15 +128,21 @@ export default function Users() {
     defaultValues: {
       email: "",
       password: "",
+      firstName: "",
+      lastName: "",
       role: "member",
+      companyId: "",
     },
   });
 
   const editForm = useForm<EditUserForm>({
-    resolver: zodResolver(updateUserSchema),
+    resolver: zodResolver(editUserFormSchema),
     defaultValues: {
       email: "",
+      firstName: "",
+      lastName: "",
       role: "member",
+      companyId: "",
     },
   });
 
@@ -131,7 +160,10 @@ export default function Users() {
     setEditingUser(user);
     editForm.reset({
       email: user.email,
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
       role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
+      companyId: user.companyId || "",
     });
     setEditOpen(true);
   };
@@ -187,6 +219,34 @@ export default function Users() {
             </DialogHeader>
             <Form {...createForm}>
               <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-create-firstname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-create-lastname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={createForm.control}
                   name="email"
@@ -213,6 +273,33 @@ export default function Users() {
                     </FormItem>
                   )}
                 />
+                {isSuperAdmin && (
+                  <FormField
+                    control={createForm.control}
+                    name="companyId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-create-company">
+                              <SelectValue placeholder="Select a company" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">No Company</SelectItem>
+                            {companies.map((company) => (
+                              <SelectItem key={company.id} value={company.id}>
+                                {company.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={createForm.control}
                   name="role"
@@ -257,6 +344,34 @@ export default function Users() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-edit-firstname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-edit-lastname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={editForm.control}
                 name="email"
@@ -270,6 +385,33 @@ export default function Users() {
                   </FormItem>
                 )}
               />
+              {isSuperAdmin && (
+                <FormField
+                  control={editForm.control}
+                  name="companyId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-edit-company">
+                            <SelectValue placeholder="Select a company" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">No Company</SelectItem>
+                          {companies.map((company) => (
+                            <SelectItem key={company.id} value={company.id}>
+                              {company.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={editForm.control}
                 name="role"
@@ -330,8 +472,13 @@ export default function Users() {
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
-                      Email
+                      User
                     </th>
+                    {isSuperAdmin && (
+                      <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
+                        Company
+                      </th>
+                    )}
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
                       Role
                     </th>
@@ -355,11 +502,33 @@ export default function Users() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-                              {user.email.charAt(0).toUpperCase()}
+                              {(user.firstName?.[0] || user.email.charAt(0)).toUpperCase()}
                             </div>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</span>
+                            <div className="flex flex-col">
+                              {(user.firstName || user.lastName) ? (
+                                <>
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {user.firstName} {user.lastName}
+                                  </span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {user.email}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</span>
+                              )}
+                            </div>
                           </div>
                         </td>
+                        {isSuperAdmin && (
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                            {user.companyId ? (
+                              companies.find(c => c.id === user.companyId)?.name || "Unknown"
+                            ) : (
+                              <span className="text-gray-400 italic">No company</span>
+                            )}
+                          </td>
+                        )}
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadge.className}`} data-testid={`badge-role-${user.id}`}>
                             {roleBadge.label}
