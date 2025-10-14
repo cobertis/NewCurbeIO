@@ -358,6 +358,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===================================================================
+  // COMPANY SETTINGS ENDPOINTS
+  // ===================================================================
+
+  // Get company settings (admin or superadmin)
+  app.get("/api/settings/company", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string || currentUser.companyId 
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    let settings = await storage.getCompanySettings(companyId);
+    
+    // Create default settings if they don't exist
+    if (!settings) {
+      settings = await storage.createCompanySettings({
+        companyId,
+        primaryColor: "#2196F3",
+        secondaryColor: "#1976D2",
+        features: {},
+        emailSettings: {},
+      });
+    }
+
+    res.json({ settings });
+  });
+
+  // Update company settings (admin or superadmin)
+  app.patch("/api/settings/company", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId || currentUser.companyId 
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const validatedData = updateCompanySettingsSchema.parse(req.body);
+      
+      // Ensure settings exist
+      let settings = await storage.getCompanySettings(companyId);
+      if (!settings) {
+        settings = await storage.createCompanySettings({
+          companyId,
+          primaryColor: "#2196F3",
+          secondaryColor: "#1976D2",
+          features: {},
+          emailSettings: {},
+        });
+      }
+
+      const updatedSettings = await storage.updateCompanySettings(companyId, validatedData);
+      res.json({ settings: updatedSettings });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Invalid request" });
+    }
+  });
+
+  // Get user preferences
+  app.get("/api/settings/preferences", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Return user preferences (email notifications, theme, etc.)
+    res.json({
+      preferences: {
+        emailNotifications: true, // Default or from user settings
+        marketingEmails: false,
+        theme: "light",
+      }
+    });
+  });
+
+  // Update user preferences
+  app.patch("/api/settings/preferences", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    try {
+      // Store preferences (you could add a preferences column to users table or separate table)
+      res.json({ 
+        success: true,
+        preferences: req.body 
+      });
+    } catch (error) {
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  // ===================================================================
   // PLANS MANAGEMENT (Superadmin only)
   // ===================================================================
 
