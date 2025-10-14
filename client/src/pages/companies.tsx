@@ -220,7 +220,6 @@ export default function Companies() {
         firstName: "",
         lastName: "",
         email: "",
-        password: "",
       },
     },
   });
