@@ -458,7 +458,7 @@ export const createCompanyWithAdminSchema = z.object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Valid email is required"),
-    phone: z.string().optional(), // Optional phone number for 2FA
+    phone: z.string().min(1, "Phone number is required for 2FA"), // Required for OTP/2FA
   }),
 });
 

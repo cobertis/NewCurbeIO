@@ -581,7 +581,7 @@ export default function Companies() {
                   name="admin.email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Admin Email</FormLabel>
+                      <FormLabel>Admin Email (required for OTP)</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="john@acme.com" {...field} data-testid="input-create-admin-email" />
                       </FormControl>
@@ -594,7 +594,7 @@ export default function Companies() {
                   name="admin.phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Admin Phone (optional)</FormLabel>
+                      <FormLabel>Admin Phone (required for OTP)</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="(555) 123-4567" 
