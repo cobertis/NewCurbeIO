@@ -161,6 +161,7 @@ export interface IStorage {
   hasFeature(companyId: string, featureKey: string): Promise<boolean>;
   
   // OTP Codes
+  invalidatePreviousOtpCodes(userId: string, method: string): Promise<void>;
   createOtpCode(otp: InsertOtpCode): Promise<OtpCode>;
   getLatestOtpCode(userId: string, method: string): Promise<OtpCode | undefined>;
   verifyAndMarkUsed(userId: string, code: string): Promise<boolean>;
@@ -636,6 +637,18 @@ export class DbStorage implements IStorage {
 
   // ==================== OTP CODES ====================
   
+  async invalidatePreviousOtpCodes(userId: string, method: string): Promise<void> {
+    // Mark all previous unused codes as used to invalidate them
+    await db
+      .update(otpCodes)
+      .set({ used: true, usedAt: new Date() })
+      .where(and(
+        eq(otpCodes.userId, userId),
+        eq(otpCodes.method, method),
+        eq(otpCodes.used, false)
+      ));
+  }
+
   async createOtpCode(otp: InsertOtpCode): Promise<OtpCode> {
     const result = await db.insert(otpCodes).values(otp).returning();
     return result[0];

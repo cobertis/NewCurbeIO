@@ -220,6 +220,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No phone number associated with this account" });
       }
 
+      // SECURITY: Invalidate all previous unused OTP codes for this method
+      await storage.invalidatePreviousOtpCodes(user.id, method);
+
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
@@ -416,6 +419,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (method === "sms" && !user.phone) {
         return res.status(400).json({ message: "No phone number associated with this account" });
       }
+
+      // SECURITY: Invalidate all previous unused OTP codes for this method
+      await storage.invalidatePreviousOtpCodes(user.id, method);
 
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);

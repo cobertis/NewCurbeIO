@@ -15,7 +15,7 @@ import { createCompanyWithAdminSchema, updateCompanySchema, type Company, type F
 import { useState, useRef } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { formatPhoneInput } from "@/lib/phone-formatter";
+import { formatPhoneInput, formatPhoneDisplay } from "@/lib/phone-formatter";
 
 // Function to generate slug from company name
 function generateSlug(name: string): string {
@@ -377,7 +377,7 @@ export default function Companies() {
                             {company.email}
                           </p>
                           <p className="text-gray-500 dark:text-gray-400" data-testid={`text-company-phone-${company.id}`}>
-                            {company.phone}
+                            {company.phone ? formatPhoneDisplay(company.phone) : '-'}
                           </p>
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-company-address-${company.id}`}>
