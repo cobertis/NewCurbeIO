@@ -9,7 +9,8 @@ import {
   insertCompanySchema, 
   updateCompanySchema,
   createCompanyWithAdminSchema,
-  insertPlanSchema
+  insertPlanSchema,
+  updateCompanySettingsSchema
 } from "@shared/schema";
 import "./types";
 
