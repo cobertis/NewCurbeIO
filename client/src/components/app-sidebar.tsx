@@ -112,7 +112,9 @@ export function AppSidebar() {
             alt="Curbe.io" 
             className="h-10 w-auto object-contain"
           />
-          <span className="text-xs text-muted-foreground">Admin Portal</span>
+          <span className="text-xs text-muted-foreground" data-testid="text-company-name">
+            {displayName}
+          </span>
         </Link>
       </SidebarHeader>
 

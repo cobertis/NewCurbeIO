@@ -3,7 +3,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building2, Plus, Pencil, Trash2, Search, Package } from "lucide-react";
+import { Building2, Plus, Pencil, Trash2, Search, Package, Power } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -131,6 +131,35 @@ export default function Companies() {
       toast({
         title: "Error",
         description: "Failed to delete company",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/companies/${id}/toggle-status`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to toggle company status");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      const status = data.company.isActive ? "enabled" : "disabled";
+      toast({
+        title: `Company ${status}`,
+        description: `The company has been ${status} successfully`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to toggle company status",
         variant: "destructive",
       });
     },
@@ -365,9 +394,18 @@ export default function Companies() {
                       </div>
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-company-name-${company.id}`}>
-                            {company.name}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-company-name-${company.id}`}>
+                              {company.name}
+                            </h3>
+                            <Badge 
+                              variant={company.isActive ? "default" : "secondary"}
+                              className="text-xs"
+                              data-testid={`badge-company-status-${company.id}`}
+                            >
+                              {company.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400" data-testid={`text-company-slug-${company.id}`}>
                             {company.slug}
                           </p>
@@ -386,6 +424,16 @@ export default function Companies() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => toggleStatusMutation.mutate(company.id)}
+                        disabled={toggleStatusMutation.isPending}
+                        data-testid={`button-toggle-status-${company.id}`}
+                        title={company.isActive ? "Disable Company" : "Enable Company"}
+                      >
+                        <Power className={`h-4 w-4 ${company.isActive ? 'text-green-600' : 'text-gray-400'}`} />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

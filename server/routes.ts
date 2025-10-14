@@ -55,6 +55,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Please activate your account first. Check your email for the activation link." });
       }
 
+      // Check if user's company is active (for non-superadmin users)
+      if (user.companyId && user.role !== "superadmin") {
+        const company = await storage.getCompany(user.companyId);
+        if (!company || !company.isActive) {
+          await logger.logAuth({
+            req,
+            action: "login_failed",
+            userId: user.id,
+            email,
+            metadata: { reason: "Company deactivated", companyId: user.companyId },
+          });
+          return res.status(401).json({ 
+            message: "Your account has been deactivated. Please contact support for assistance." 
+          });
+        }
+      }
+
       const isValidPassword = await verifyPassword(password, user.password);
       if (!isValidPassword) {
         await logger.logAuth({
@@ -1172,6 +1189,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     res.json({ success: true });
+  });
+
+  // Toggle company active status (enable/disable)
+  app.patch("/api/companies/:id/toggle-status", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const company = await storage.getCompany(req.params.id);
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    const newStatus = !company.isActive;
+    const updatedCompany = await storage.updateCompany(req.params.id, {
+      isActive: newStatus,
+    });
+
+    if (!updatedCompany) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    await logger.logCrud({
+      req,
+      operation: "update",
+      entity: "company",
+      entityId: updatedCompany.id,
+      companyId: updatedCompany.id,
+      metadata: {
+        name: updatedCompany.name,
+        action: newStatus ? "enabled" : "disabled",
+        updatedBy: currentUser.email,
+      },
+    });
+
+    res.json({ company: updatedCompany });
   });
 
   // ===================================================================
