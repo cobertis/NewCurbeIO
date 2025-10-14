@@ -22,14 +22,7 @@ const userFormSchema = insertUserSchema.extend({
 });
 
 type UserForm = z.infer<typeof userFormSchema>;
-
-const editUserFormSchema = updateUserSchema.extend({
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  companyId: z.string().optional(),
-});
-
-type EditUserForm = z.infer<typeof editUserFormSchema>;
+type EditUserForm = z.infer<typeof updateUserSchema>;
 
 export default function Users() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -136,7 +129,7 @@ export default function Users() {
   });
 
   const editForm = useForm<EditUserForm>({
-    resolver: zodResolver(editUserFormSchema),
+    resolver: zodResolver(updateUserSchema),
     defaultValues: {
       email: "",
       firstName: "",
