@@ -54,11 +54,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      req.session.userId = user.id;
+      // Set pending user ID - full authentication only after OTP verification
+      req.session.pendingUserId = user.id;
 
       await logger.logAuth({
         req,
-        action: "login",
+        action: "login_credentials_verified",
         userId: user.id,
         email,
       });
@@ -121,37 +122,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/send-otp", async (req: Request, res: Response) => {
     try {
-      const { email, password, method } = req.body;
+      const { method } = req.body;
 
-      if (!email || !password || !method) {
-        return res.status(400).json({ message: "Email, password, and method are required" });
+      // Check if user has pending authentication
+      if (!req.session.pendingUserId) {
+        return res.status(401).json({ message: "Please login first" });
+      }
+
+      if (!method) {
+        return res.status(400).json({ message: "Method is required" });
       }
 
       if (method !== "email" && method !== "sms") {
         return res.status(400).json({ message: "Method must be 'email' or 'sms'" });
       }
 
-      const user = await storage.getUserByEmail(email);
+      const user = await storage.getUser(req.session.pendingUserId);
       if (!user) {
         await logger.logAuth({
           req,
           action: "otp_send_failed",
-          email,
+          email: "unknown",
           metadata: { reason: "User not found" },
         });
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      const isValidPassword = await verifyPassword(password, user.password);
-      if (!isValidPassword) {
-        await logger.logAuth({
-          req,
-          action: "otp_send_failed",
-          userId: user.id,
-          email,
-          metadata: { reason: "Invalid password" },
-        });
-        return res.status(401).json({ message: "Invalid credentials" });
+        return res.status(401).json({ message: "Session expired" });
       }
 
       if (method === "sms" && !user.phone) {
@@ -178,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req,
         action: "otp_sent",
         userId: user.id,
-        email,
+        email: user.email,
         metadata: { method },
       });
 
@@ -201,6 +195,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User ID and code are required" });
       }
 
+      // Verify this matches the pending user
+      if (req.session.pendingUserId !== userId) {
+        return res.status(401).json({ message: "Invalid session" });
+      }
+
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(401).json({ message: "Invalid verification code" });
@@ -218,6 +217,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid or expired verification code" });
       }
 
+      // Clear pending user and set authenticated user
+      delete req.session.pendingUserId;
       req.session.userId = user.id;
 
       if (rememberDevice) {
@@ -253,6 +254,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!userId || !method) {
         return res.status(400).json({ message: "User ID and method are required" });
+      }
+
+      // Verify this matches the pending user
+      if (req.session.pendingUserId !== userId) {
+        return res.status(401).json({ message: "Invalid session" });
       }
 
       const user = await storage.getUser(userId);
@@ -552,8 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await logger.logCrud({
         req,
-        action: "user_created",
-        userId: currentUser.id,
+        operation: "create",
         entity: "user",
         entityId: newUser.id,
         companyId: newUser.companyId || undefined,
@@ -611,8 +616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await logger.logCrud({
         req,
-        action: "user_updated",
-        userId: currentUser.id,
+        operation: "update",
         entity: "user",
         entityId: updatedUser.id,
         companyId: updatedUser.companyId || undefined,
@@ -676,8 +680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await logger.logCrud({
         req,
-        action: "user_deleted",
-        userId: currentUser.id,
+        operation: "delete",
         entity: "user",
         entityId: targetUser.id,
         companyId: targetUser.companyId || undefined,
@@ -738,7 +741,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create company first
-      const newCompany = await storage.createCompany(companyData);
+      const newCompany = await storage.createCompany({
+        ...companyData,
+        email: companyData.email!, // Already ensured it has a value above
+      });
       
       // If no password provided, generate a temporary random one
       // This will be replaced when the user activates their account via email
@@ -763,8 +769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await logger.logCrud({
         req,
-        action: "company_created",
-        userId: currentUser.id,
+        operation: "create",
         entity: "company",
         entityId: newCompany.id,
         companyId: newCompany.id,
@@ -804,8 +809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await logger.logCrud({
         req,
-        action: "company_updated",
-        userId: currentUser.id,
+        operation: "update",
         entity: "company",
         entityId: updatedCompany.id,
         companyId: updatedCompany.id,
@@ -846,8 +850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     await logger.logCrud({
       req,
-      action: "company_deleted",
-      userId: currentUser.id,
+      operation: "delete",
       entity: "company",
       entityId: company.id,
       companyId: company.id,

@@ -58,11 +58,7 @@ export default function VerifyOTP() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ 
-          email: userEmail,
-          password: sessionStorage.getItem("tempPassword") || "",
-          method 
-        }),
+        body: JSON.stringify({ method }),
       });
 
       if (response.ok) {
@@ -72,6 +68,13 @@ export default function VerifyOTP() {
         toast({
           title: "Code sent",
           description: `Verification code sent via ${method === "email" ? "email" : "SMS"}`,
+        });
+      } else {
+        const data = await response.json();
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data.message || "Failed to send verification code",
         });
       }
     } catch (error) {
@@ -148,7 +151,6 @@ export default function VerifyOTP() {
       const data = await response.json();
 
       if (response.ok) {
-        sessionStorage.removeItem("tempPassword");
         toast({
           title: "Success!",
           description: "You have been logged in successfully",

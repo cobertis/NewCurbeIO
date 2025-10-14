@@ -49,11 +49,20 @@ export class LoggingService {
   }
 
   /**
-   * Log authentication events (login, logout)
+   * Log authentication events (login, logout, OTP)
    */
   async logAuth(params: {
     req: Request;
-    action: "login" | "logout" | "login_failed";
+    action: 
+      | "login" 
+      | "logout" 
+      | "login_failed" 
+      | "login_credentials_verified"
+      | "otp_sent" 
+      | "otp_send_failed" 
+      | "otp_verify_failed" 
+      | "login_with_otp"
+      | "otp_resent";
     userId?: string;
     email: string;
     metadata?: Record<string, any>;

@@ -29,9 +29,7 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // Store password temporarily for OTP sending
-        sessionStorage.setItem("tempPassword", password);
-        // Redirect to OTP verification page instead of dashboard
+        // Redirect to OTP verification page
         setLocation(`/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(email)}`);
       } else {
         toast({
