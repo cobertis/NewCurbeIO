@@ -24,6 +24,7 @@ import Companies from "@/pages/companies";
 import Plans from "@/pages/plans";
 import Invoices from "@/pages/invoices";
 import Settings from "@/pages/settings";
+import AuditLogs from "@/pages/audit-logs";
 import Support from "@/pages/support";
 import NotFound from "@/pages/not-found";
 
@@ -233,6 +234,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/audit-logs">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <AuditLogs />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

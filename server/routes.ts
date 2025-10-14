@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
+import { LoggingService } from "./logging-service";
 import { 
   insertUserSchema, 
   loginSchema, 
@@ -16,6 +17,9 @@ import {
 import "./types";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize logging service
+  const logger = new LoggingService(storage);
+
   // ==================== AUTH ENDPOINTS ====================
   
   app.post("/api/login", async (req: Request, res: Response) => {
@@ -25,15 +29,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByEmail(email);
 
       if (!user) {
+        await logger.logAuth({
+          req,
+          action: "login_failed",
+          email,
+          metadata: { reason: "User not found" },
+        });
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       const isValidPassword = await verifyPassword(password, user.password);
       if (!isValidPassword) {
+        await logger.logAuth({
+          req,
+          action: "login_failed",
+          userId: user.id,
+          email,
+          metadata: { reason: "Invalid password" },
+        });
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       req.session.userId = user.id;
+
+      await logger.logAuth({
+        req,
+        action: "login",
+        userId: user.id,
+        email,
+      });
 
       res.json({
         success: true,
@@ -49,7 +73,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/logout", (req: Request, res: Response) => {
+  app.post("/api/logout", async (req: Request, res: Response) => {
+    const userId = req.session.userId;
+    const user = userId ? await storage.getUser(userId) : null;
+    
+    await logger.logAuth({
+      req,
+      action: "logout",
+      userId: userId,
+      email: user?.email || "unknown",
+    });
+
     req.session.destroy((err) => {
       if (err) {
         return res.status(500).json({ message: "Failed to logout" });
@@ -1320,6 +1354,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  // ==================== AUDIT LOGS ENDPOINTS ====================
+
+  // Get audit logs (role-based access)
+  app.get("/api/audit-logs", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const companyId = req.query.companyId as string;
+
+      let logs;
+
+      if (currentUser.role === "superadmin") {
+        // Superadmin can see all logs or filter by company
+        if (companyId) {
+          logs = await storage.getActivityLogsByCompany(companyId, limit);
+        } else {
+          // Get all logs (we need to add this method to storage)
+          logs = await storage.getAllActivityLogs(limit);
+        }
+      } else {
+        // Regular users can only see their company's logs
+        if (!currentUser.companyId) {
+          return res.status(403).json({ message: "No company associated" });
+        }
+        logs = await storage.getActivityLogsByCompany(currentUser.companyId, limit);
+      }
+
+      res.json({ logs });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
 

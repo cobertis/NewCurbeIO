@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Receipt, Settings, HelpCircle, LogOut } from "lucide-react";
+import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Receipt, Settings, FileText, HelpCircle, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -52,6 +52,11 @@ const menuItems = [
     title: "Settings",
     url: "/settings",
     icon: Settings,
+  },
+  {
+    title: "Audit Logs",
+    url: "/audit-logs",
+    icon: FileText,
   },
   {
     title: "Support",

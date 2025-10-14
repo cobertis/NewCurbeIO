@@ -105,6 +105,7 @@ export interface IStorage {
   // Activity Logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
   getActivityLogsByCompany(companyId: string, limit?: number): Promise<ActivityLog[]>;
+  getAllActivityLogs(limit?: number): Promise<ActivityLog[]>;
   
   // Invitations
   createInvitation(invitation: InsertInvitation): Promise<Invitation>;
@@ -359,6 +360,13 @@ export class DbStorage implements IStorage {
     return db.select()
       .from(activityLogs)
       .where(eq(activityLogs.companyId, companyId))
+      .orderBy(desc(activityLogs.createdAt))
+      .limit(limit);
+  }
+
+  async getAllActivityLogs(limit: number = 100): Promise<ActivityLog[]> {
+    return db.select()
+      .from(activityLogs)
       .orderBy(desc(activityLogs.createdAt))
       .limit(limit);
   }
