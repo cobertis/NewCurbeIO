@@ -159,7 +159,7 @@ export default function Settings() {
           {isSuperAdmin && (
             <TabsTrigger value="system" className="gap-2" data-testid="tab-system">
               <Mail className="h-4 w-4" />
-              System
+              Email Settings
             </TabsTrigger>
           )}
           <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
