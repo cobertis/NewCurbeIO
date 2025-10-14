@@ -105,7 +105,7 @@ export const companyFeatures = pgTable("company_features", {
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
+  password: text("password"), // Nullable - set during account activation
   firstName: text("first_name"),
   lastName: text("last_name"),
   avatar: text("avatar"),
@@ -145,6 +145,28 @@ export const otpCodes = pgTable("otp_codes", {
   usedAt: timestamp("used_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// =====================================================
+// ACTIVATION TOKENS (Account Activation)
+// =====================================================
+
+export const activationTokens = pgTable("activation_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(), // Secure random token
+  expiresAt: timestamp("expires_at").notNull(), // Expires in 7 days
+  used: boolean("used").notNull().default(false),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertActivationTokenSchema = createInsertSchema(activationTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertActivationToken = z.infer<typeof insertActivationTokenSchema>;
+export type SelectActivationToken = typeof activationTokens.$inferSelect;
 
 // =====================================================
 // BILLING PLANS
@@ -474,6 +496,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   passwordChangedAt: true,
   emailVerifiedAt: true,
 }).extend({
+  password: z.string().min(6).optional(), // Optional - set during activation
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
   companyId: z.string().optional(),
   phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
