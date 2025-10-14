@@ -114,6 +114,7 @@ export default function Companies() {
     resolver: zodResolver(companyFormSchema),
     defaultValues: {
       name: "",
+      slug: "",
       domain: "",
     },
   });
@@ -122,6 +123,7 @@ export default function Companies() {
     resolver: zodResolver(companyFormSchema.partial()),
     defaultValues: {
       name: "",
+      slug: "",
       domain: "",
     },
   });
@@ -140,6 +142,7 @@ export default function Companies() {
     setSelectedCompany(company);
     editForm.reset({
       name: company.name,
+      slug: company.slug,
       domain: company.domain ?? "",
     });
     setEditOpen(true);
@@ -276,6 +279,19 @@ export default function Companies() {
               />
               <FormField
                 control={createForm.control}
+                name="slug"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Slug</FormLabel>
+                    <FormControl>
+                      <Input placeholder="company-slug" {...field} data-testid="input-create-company-slug" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createForm.control}
                 name="domain"
                 render={({ field }) => (
                   <FormItem>
@@ -316,6 +332,19 @@ export default function Companies() {
                     <FormLabel>Name</FormLabel>
                     <FormControl>
                       <Input placeholder="Company name" {...field} data-testid="input-edit-company-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="slug"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Slug</FormLabel>
+                    <FormControl>
+                      <Input placeholder="company-slug" {...field} value={field.value ?? ""} data-testid="input-edit-company-slug" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

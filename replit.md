@@ -287,6 +287,13 @@ The application prioritizes clean design, data visualization, and efficient mult
    - Add rate limiting for API endpoints
    - Create company-specific rate limits
 
+## Bug Fixes & Recent Changes
+
+### October 14, 2025 - Companies Form Bug Fix
+**Issue:** Companies create/edit forms were missing the required `slug` field, causing form submission failures.
+**Resolution:** Added slug input field (data-testid: `input-create-company-slug` and `input-edit-company-slug`) to both create and edit company dialogs.
+**Impact:** Companies CRUD now works correctly with all required fields.
+
 ## Recent Changes & Implementation Status
 
 ### ✅ Completed (October 2025)
@@ -298,7 +305,9 @@ The application prioritizes clean design, data visualization, and efficient mult
 - PostgreSQL migration from in-memory storage
 - Dashboard with real-time statistics
 - Session-based authentication
-- Comprehensive documentation
+- Comprehensive documentation (README.md with setup, architecture, deployment guides)
+- Environment variable documentation (.env.example with current and future integrations)
+- **Bug Fix**: Added missing slug field to Companies create/edit forms (required in schema)
 
 ### 🚧 In Progress
 - Multi-tenant architecture refinement

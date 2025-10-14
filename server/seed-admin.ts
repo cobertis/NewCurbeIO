@@ -11,11 +11,11 @@ async function seedAdmin() {
     await db.insert(users).values({
       email: adminEmail,
       password: "Cuba2010",
-      role: "admin"
+      role: "superadmin"
     });
-    console.log("Admin user created:", adminEmail);
+    console.log("Superadmin user created:", adminEmail);
   } else {
-    console.log("Admin user already exists:", adminEmail);
+    console.log("Superadmin user already exists:", adminEmail);
   }
   
   process.exit(0);

@@ -98,7 +98,7 @@ npm run db:push --force
 Seed the superadmin user:
 
 ```bash
-npm run seed:admin
+tsx server/seed-admin.ts
 ```
 
 This creates a superadmin user:
@@ -258,8 +258,8 @@ The application will be available at:
 | `npm run start` | Start production server |
 | `npm run db:push` | Push database schema changes |
 | `npm run db:push -- --force` | Force push schema changes |
-| `npm run seed:admin` | Seed superadmin user |
-| `npm run seed:test` | Seed test users |
+| `tsx server/seed-admin.ts` | Seed superadmin user |
+| `tsx server/seed-test-users.ts` | Seed test users |
 
 ## 🏗 Architecture
 
