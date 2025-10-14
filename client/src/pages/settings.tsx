@@ -89,7 +89,7 @@ export default function Settings() {
   // Send test email mutation
   const sendTestEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      return apiRequest("POST", "/api/email/send-test", { email });
+      return apiRequest("POST", "/api/email/send-test", { to: email });
     },
     onSuccess: () => {
       toast({
