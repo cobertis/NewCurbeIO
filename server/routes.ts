@@ -243,8 +243,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete req.session.pendingUserId;
       req.session.userId = user.id;
 
-      if (rememberDevice) {
+      // Set cookie maxAge BEFORE saving
+      if (rememberDevice === true || rememberDevice === "true") {
         req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+        console.log("Setting session maxAge to 30 days for user:", user.email);
+      } else {
+        // Explicitly set default maxAge if not remembering
+        req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+        console.log("Setting session maxAge to 7 days for user:", user.email);
       }
 
       await logger.logAuth({
@@ -252,7 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "login_with_otp",
         userId: user.id,
         email: user.email,
-        metadata: { rememberDevice: !!rememberDevice },
+        metadata: { rememberDevice: !!rememberDevice, cookieMaxAge: req.session.cookie.maxAge },
       });
 
       // Force save session with new cookie settings
@@ -261,6 +267,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("Error saving session:", err);
           return res.status(500).json({ message: "Failed to save session" });
         }
+
+        const maxAgeDays = req.session.cookie.maxAge ? req.session.cookie.maxAge / (24 * 60 * 60 * 1000) : 0;
+        console.log("Session saved successfully. Cookie expires in:", maxAgeDays, "days");
 
         res.json({
           success: true,
