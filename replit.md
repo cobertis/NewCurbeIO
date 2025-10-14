@@ -2,9 +2,7 @@
 
 ## Overview
 
-This is a modern admin dashboard application built for Curbe with **multi-tenant organization management**. The application features a superadmin who manages multiple organizations, with each organization having its own users (org_admin and org_user). 
-
-The application follows a full-stack architecture with a React-based frontend and Express.js backend, emphasizing clean design, data visualization, and efficient user management. The dashboard is inspired by modern SaaS platforms like Linear, Vercel, and Stripe, prioritizing information density, clarity, and functional efficiency.
+This is a modern multi-tenant admin dashboard application designed for Curbe. It features a superadmin role managing multiple companies, with each company supporting users with various roles (admin, member, viewer). The application aims to provide a clean, efficient, and data-rich experience inspired by leading SaaS platforms, focusing on multi-tenant management, data visualization, and a robust full-stack architecture.
 
 ## User Preferences
 
@@ -14,209 +12,307 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**Framework & Build System:**
-- React 18 with TypeScript for type-safe component development
-- Vite as the build tool and development server for fast HMR (Hot Module Replacement)
-- Wouter for lightweight client-side routing instead of React Router
+The frontend is built with React 18 and TypeScript, using Vite for fast development. It utilizes Wouter for routing and Shadcn/ui (New York style) with Radix UI primitives for its component system, styled with Tailwind CSS. State management is handled by TanStack Query for server state and React hooks for local state. A custom theming system supports light and dark modes with a design aesthetic inspired by Linear and Vercel.
 
-**UI Component System:**
-- Shadcn/ui component library (New York style variant) with Radix UI primitives
-- Tailwind CSS for utility-first styling with custom design tokens
-- Component architecture follows composition patterns with extensive use of Radix UI for accessibility
-- Custom theming system supporting both light and dark modes with CSS variables
-
-**State Management:**
-- TanStack Query (React Query) for server state management and data fetching
-- Session-based authentication state managed through protected routes
-- Local state using React hooks (useState, useEffect)
-
-**Design System:**
-- Custom color palette defined in CSS variables with HSL values
-- Light mode primary (default) with dark mode secondary
-- Design inspired by Linear/Vercel with emphasis on scannable information
-- Consistent border radius, spacing, and elevation patterns
-- Custom hover and active state elevations using CSS variables
-
-**Key Pages & Features:**
-- **Dashboard**: Real-time statistics from database with modern visualizations:
-  - Stat cards with circular icons
-  - Bar charts for monthly data
-  - Highlighted feature card in vibrant blue
-  - Dual donut charts for role distribution
-  - Activity list with recent user actions
-- **Analytics**: Metrics visualization and performance tracking (placeholder)
-- **Users**: Full user management with role-based access:
-  - Real-time user list from PostgreSQL
-  - Search/filter by email
-  - Create new users (email, password, role selection)
-  - Edit users (email and role)
-  - Delete users functionality
-  - Role badges (Super Admin, Org Admin, Usuario)
-- **Organizations** (Superadmin-only): Organization management:
-  - Create/edit/delete organizations
-  - Assign domain to organizations
-  - Visual organization cards with icons
-- **Settings**: Profile management and preferences (placeholder)
-- **Support**: Help resources and contact options (placeholder)
-- **Login**: Session-based authentication with role-based access
+Key features include:
+- **Dashboard**: Displays real-time statistics, various charts (bar, donut), and a recent activity list.
+- **Users**: Comprehensive user management with CRUD operations, role-based access, and search/filter functionality.
+- **Companies** (Superadmin-only): Full CRUD operations for companies, including detailed profiles and visual cards.
+- **Login**: Session-based authentication with role-based access.
 
 ### Backend Architecture
 
-**Server Framework:**
-- Express.js with TypeScript for type-safe API development
-- Session-based authentication using express-session
-- Custom middleware for request logging and JSON response capture
-- Vite middleware integration for development with HMR support
+The backend is built with Express.js and TypeScript, providing a RESTful API. It uses session-based authentication with `express-session` and implements role-based access control (RBAC) across all protected endpoints.
 
-**API Design:**
-- RESTful API endpoints under `/api` prefix
-- Session-based authentication flow (login, logout, session verification)
-- Protected routes requiring authenticated sessions
-- Credential-based requests using `credentials: "include"`
-- **User Management Endpoints**:
-  - GET /api/users - List all users
-  - POST /api/users - Create new user
-  - PATCH /api/users/:id - Update user
-  - DELETE /api/users/:id - Delete user
-- **Organization Management Endpoints** (superadmin-only):
-  - GET /api/organizations - List all organizations
-  - POST /api/organizations - Create organization
-  - PATCH /api/organizations/:id - Update organization
-  - DELETE /api/organizations/:id - Delete organization
+API Endpoints:
+- `/api/users`: CRUD for user management, scoped by company for admins.
+- `/api/companies`: CRUD for company management (superadmin only).
+- `/api/stats`: Provides user statistics based on access level.
 
-**Authentication & Authorization:**
-- Session-based authentication (no JWT)
-- Express-session with configurable secrets and cookie settings
-- Secure cookies in production (httpOnly, secure flags)
-- Session persistence with 7-day expiration
-- Protected routes validated through session middleware
+### Data Models & Multi-Tenant Schema
 
-**Storage Layer:**
-- **PostgreSQL database** with Drizzle ORM (migrated from in-memory)
-- Database connection via Neon serverless driver
-- Interface-based storage pattern (DbStorage implements IStorage)
-- Full CRUD operations for users and organizations
-- Superadmin user seeded: hello@curbe.io / Cuba2010 (role: superadmin)
+The application uses PostgreSQL with Drizzle ORM and features a multi-tenant schema that includes:
+- **Companies**: Core multi-tenant organizations with detailed profiles.
+- **Company Settings**: Per-company configuration for branding, features, and security.
+- **Users**: Multi-tenant users with roles (superadmin, admin, member, viewer) and company association.
+- **Subscriptions**: Manages billing and plans, including Stripe integration fields.
+- **Invitations**: System for inviting users to companies.
+- **Activity Logs**: Audit trail for significant actions.
+- **API Keys**: Manages programmatic access per company.
+- **Notifications**: User-specific notifications.
 
-**Data Models:**
-- **Organizations schema** (shared/schema.ts):
-  - id: varchar (UUID, auto-generated)
-  - name: text (required)
-  - domain: text (optional)
-  - createdAt: timestamp (auto-generated)
-- **Users schema** (shared/schema.ts):
-  - id: varchar (UUID, auto-generated)
-  - email: text (unique, required)
-  - password: text (required, plain text - TODO: implement hashing)
-  - role: enum (superadmin|org_admin|org_user, default: org_user)
-  - organizationId: varchar (foreign key to organizations, optional for superadmin)
-  - createdAt: timestamp (auto-generated)
-- Zod schemas for validation (insertUserSchema, insertOrganizationSchema)
-- Type-safe with TypeScript inference
+Multi-Tenant Role-Based Access Control:
+- **Superadmin**: Global system access.
+- **Admin**: Manages users within their assigned company.
+- **Member**: Standard user access within their company.
+- **Viewer**: Read-only access within their company.
 
-**Multi-Tenant Role-Based Access Control:**
-- **Superadmin**: Full system access, manages all organizations and users
-- **Org Admin**: Manages users within their organization
-- **Org User**: Basic dashboard access within their organization
-- Authorization middleware validates user role and organization on protected endpoints
+### System Design Choices
 
-### External Dependencies
+The application prioritizes clean design, data visualization, and efficient multi-tenant management. It incorporates modern UI/UX principles with a consistent design system, including custom color palettes, spacing, and elevation patterns. Technical implementations focus on type safety (TypeScript), performance (Vite), and accessibility (Radix UI).
 
-**Database (Active - PostgreSQL):**
-- **Neon PostgreSQL** connected via DATABASE_URL
-- Drizzle ORM for type-safe database queries
-- Schema defined in `/shared/schema.ts` with pgTable
-- Migrations managed with `npm run db:push`
-- Seed scripts: server/seed-admin.ts, server/seed-test-users.ts
+## External Dependencies
 
-**UI Component Libraries:**
-- Radix UI suite for accessible, unstyled primitives (20+ components)
-- Lucide React for consistent iconography
-- CMDK for command palette functionality
-- Embla Carousel for carousel components
-- React Hook Form with Zod resolvers for form validation
+- **Database**: Neon PostgreSQL via `@neondatabase/serverless` driver and Drizzle ORM.
+- **UI Components**: Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
+- **Form Management & Validation**: React Hook Form with Zod resolvers.
+- **Styling**: Tailwind CSS, PostCSS, Autoprefixer, Class Variance Authority (CVA), `clsx`, `tailwind-merge`.
+- **Session Management**: `express-session` (using MemoryStore for development).
+- **Utilities**: `date-fns`, `nanoid`, Zod.
+- **Development Tools**: TypeScript, ESBuild, TSX.
 
-**Development Tools:**
-- TypeScript with strict mode enabled
-- ESBuild for production server bundling
-- TSX for development server execution
-- Replit-specific plugins for enhanced development experience
+## Multi-Tenant Architecture - CRUD Coverage & Implementation Status
 
-**Styling Dependencies:**
-- Tailwind CSS with PostCSS and Autoprefixer
-- Class Variance Authority (CVA) for variant-based component styling
-- clsx and tailwind-merge for conditional class composition
-- Custom CSS variables for theming
+### ✅ Fully Implemented Tables (with API Endpoints)
 
-**Session Management:**
-- express-session for server-side session handling
-- connect-pg-simple prepared for PostgreSQL session storage (when migrating from in-memory)
+#### 1. Companies Table
+**Schema Fields:**
+- id (varchar UUID), name, slug (unique), domain, logo, website, industry, companySize, timezone, isActive, createdAt, updatedAt
 
-**Utility Libraries:**
-- date-fns for date manipulation and formatting
-- nanoid for generating unique identifiers
-- Zod for runtime type validation
+**Storage Layer (DbStorage):**
+- ✅ getCompany(id)
+- ✅ getCompanyBySlug(slug)
+- ✅ getAllCompanies()
+- ✅ createCompany(company)
+- ✅ updateCompany(id, data)
+- ✅ deleteCompany(id)
 
-## Recent Changes (October 2025)
+**API Endpoints (Superadmin Only):**
+- ✅ GET /api/companies - List all companies
+- ✅ POST /api/companies - Create company (with insertCompanySchema validation)
+- ✅ PATCH /api/companies/:id - Update company (with updateCompanySchema validation)
+- ✅ DELETE /api/companies/:id - Delete company
 
-### Completed Features
+**Frontend UI:**
+- ✅ Companies page with full CRUD
+- ✅ Company cards with visual icons
+- ✅ Create/Edit dialogs with form validation
+- ✅ Delete confirmation
 
-**✅ Multi-Tenant Architecture (Latest)**
-- Implemented organizations table with full CRUD operations
-- Updated users table with organizationId foreign key
-- Migrated role system from admin/moderator/viewer to superadmin/org_admin/org_user
-- Created organization management page (superadmin-only access)
-- Updated sidebar to show Organizations link only to superadmin
-- Role badges updated with correct colors and labels:
-  - Superadmin: Red badge "Super Admin"
-  - Org Admin: Blue badge "Org Admin"
-  - Org User: Gray badge "Usuario"
+#### 2. Users Table
+**Schema Fields:**
+- id (varchar UUID), email, password, firstName, lastName, avatar, phone, role (superadmin|admin|member|viewer), companyId (FK), isActive, emailVerified, emailVerifiedAt, lastLoginAt, passwordChangedAt, createdAt, updatedAt
 
-**✅ Modern Dashboard Design**
-- Rich data visualizations with stat cards and circular icons
-- Improved bar charts for monthly metrics
-- Highlighted feature card in vibrant blue (#2196F3)
-- Dual donut charts for role distribution
-- Activity list with recent user actions
-- Real-time statistics from PostgreSQL database
+**Storage Layer (DbStorage):**
+- ✅ getUser(id)
+- ✅ getUserByEmail(email)
+- ✅ createUser(user)
+- ✅ getAllUsers()
+- ✅ getUsersByCompany(companyId)
+- ✅ updateUser(id, data)
+- ✅ deleteUser(id)
 
-**✅ PostgreSQL Migration**
-- Migrated from in-memory storage to Neon PostgreSQL
-- Updated schema with role and createdAt fields
-- Implemented DbStorage class with full CRUD operations
-- Created seed scripts for admin and test users
-- All data now persists in database
+**API Endpoints (Superadmin & Admin):**
+- ✅ GET /api/users - List users (superadmin sees all, admin sees company users)
+- ✅ POST /api/users - Create user (admin scoped to their company, validates insertUserSchema)
+- ✅ PATCH /api/users/:id - Update user (admin scoped to their company, validates updateUserSchema)
+- ✅ DELETE /api/users/:id - Delete user (admin scoped to their company)
 
-**✅ User Management (Complete CRUD)**
-- Real-time user listing from PostgreSQL
-- Create users with email, password, role selection
-- Edit users (email and role) with updateUserSchema validation
-- Delete users functionality
-- Search/filter users by email
-- Spanish language interface
-- All API responses sanitized (passwords excluded)
+**Frontend UI:**
+- ✅ Users page with full CRUD
+- ✅ Search/filter by email
+- ✅ Role badges (Super Admin, Admin, Member, Viewer)
+- ✅ Create/Edit dialogs with email, password, role selection
+- ✅ Delete confirmation
 
-**✅ Modern UI Design**
-- Clean sidebar with active state highlighting (vibrant blue #2196F3)
-- Rounded buttons and borders following reference design
-- Compact header with logo and user avatar
-- Smooth hover states and transitions
-- Consistent spacing and visual hierarchy
-- Role-based menu items (Organizations visible only to superadmin)
+### ⚠️ Partially Implemented Tables (Storage Only - No API/UI)
 
-### Known Limitations
+#### 3. Company Settings Table
+**Schema Fields:**
+- id, companyId (FK cascade), primaryColor, secondaryColor, features (JSONB), emailSettings (JSONB), notificationSettings (JSONB), securitySettings (JSONB), createdAt, updatedAt
 
-**Security:**
-- ⚠️ Passwords stored in plain text (hashing not yet implemented)
-- TODO: Implement bcrypt/argon2 password hashing
-- TODO: Implement password strength validation
+**Storage Layer (DbStorage):**
+- ✅ getCompanySettings(companyId)
+- ✅ createCompanySettings(settings)
+- ✅ updateCompanySettings(companyId, data)
 
-**Future Enhancements:**
-- Organization-scoped data filtering (users see only their org's data)
-- Org admin permissions for managing organization users
-- Add audit log for user and organization actions
-- Implement session storage in PostgreSQL (currently in-memory)
-- Build out Analytics, Settings, and Support pages with real functionality
-- Add real-time notifications with WebSocket support
-- Implement password hashing with bcrypt/argon2
-- Add password strength validation
+**API Endpoints:**
+- ❌ No endpoints implemented
+
+**Frontend UI:**
+- ❌ No UI implemented
+
+**TODO:**
+- Create GET/POST/PATCH endpoints for /api/companies/:id/settings
+- Build settings UI for branding, features, email, notifications, security
+- Implement real-time color preview for branding changes
+
+#### 4. Subscriptions Table
+**Schema Fields:**
+- id, companyId (FK cascade), planName, planPrice, billingCycle, status, trialEndsAt, currentPeriodStart, currentPeriodEnd, stripeCustomerId, stripeSubscriptionId, createdAt, updatedAt, cancelledAt
+
+**Storage Layer (DbStorage):**
+- ✅ getSubscription(id)
+- ✅ getSubscriptionByCompany(companyId)
+- ✅ createSubscription(subscription)
+- ✅ updateSubscription(id, data)
+
+**API Endpoints:**
+- ❌ No endpoints implemented
+
+**Frontend UI:**
+- ❌ No UI implemented
+
+**TODO:**
+- Create GET/POST/PATCH endpoints for /api/companies/:id/subscription
+- Build billing/subscription management UI
+- Integrate with Stripe for payment processing
+- Implement plan upgrade/downgrade flows
+- Add trial period management
+
+#### 5. Invitations Table
+**Schema Fields:**
+- id, companyId (FK cascade), email, role, token (unique), invitedBy (FK users, set null), expiresAt, acceptedAt, createdAt
+
+**Storage Layer (DbStorage):**
+- ✅ createInvitation(invitation)
+- ✅ getInvitationByToken(token)
+- ✅ acceptInvitation(token)
+
+**API Endpoints:**
+- ❌ No endpoints implemented
+
+**Frontend UI:**
+- ❌ No UI implemented
+
+**TODO:**
+- Create POST /api/invitations endpoint (admin can invite users to their company)
+- Create GET /api/invitations/accept/:token endpoint for invitation acceptance
+- Build invitation UI with email input and role selection
+- Implement email sending for invitation links
+- Add invitation expiration handling
+- Create invitation acceptance flow with password setup
+
+#### 6. Activity Logs Table (Audit Trail)
+**Schema Fields:**
+- id, companyId (FK cascade), userId (FK users, set null), action, entity, entityId, metadata (JSONB), ipAddress, userAgent, createdAt
+
+**Storage Layer (DbStorage):**
+- ✅ createActivityLog(log)
+- ✅ getActivityLogsByCompany(companyId, limit)
+
+**API Endpoints:**
+- ❌ No endpoints implemented
+
+**Frontend UI:**
+- ❌ No UI implemented
+
+**TODO:**
+- Create GET /api/companies/:id/activity-logs endpoint
+- Build activity log viewer UI with filtering (action, entity, date range)
+- Implement automatic logging for user actions (create, update, delete)
+- Add real-time activity feed
+- Create detailed log entry view with metadata expansion
+
+#### 7. API Keys Table
+**Schema Fields:**
+- id, companyId (FK cascade), name, key (unique), lastUsedAt, expiresAt, isActive, createdAt
+
+**Storage Layer (DbStorage):**
+- ✅ createApiKey(apiKey)
+- ✅ getApiKeysByCompany(companyId)
+- ✅ deleteApiKey(id)
+
+**API Endpoints:**
+- ❌ No endpoints implemented
+
+**Frontend UI:**
+- ❌ No UI implemented
+
+**TODO:**
+- Create GET/POST/DELETE endpoints for /api/companies/:id/api-keys
+- Build API keys management UI
+- Implement API key generation with cryptographic security
+- Add API key usage tracking
+- Create API key-based authentication middleware
+- Implement rate limiting per API key
+
+#### 8. Notifications Table
+**Schema Fields:**
+- id, userId (FK cascade), type (info|success|warning|error), title, message, link, isRead, readAt, createdAt
+
+**Storage Layer (DbStorage):**
+- ✅ createNotification(notification)
+- ✅ getNotificationsByUser(userId, limit)
+- ✅ markNotificationAsRead(id)
+
+**API Endpoints:**
+- ❌ No endpoints implemented
+
+**Frontend UI:**
+- ❌ No UI implemented
+
+**TODO:**
+- Create GET/PATCH endpoints for /api/notifications
+- Build notification bell UI with unread count badge
+- Implement notification list with mark as read functionality
+- Add real-time notifications with WebSocket
+- Create notification preferences UI
+- Implement email notifications integration
+
+## Security & Data Integrity TODO
+
+### Critical Security Issues
+1. **⚠️ Password Security (HIGH PRIORITY)**
+   - Passwords currently stored in **plain text**
+   - MUST implement bcrypt or argon2 password hashing
+   - Add password strength validation
+   - Implement secure password reset flow
+
+2. **Two-Factor Authentication**
+   - Implement TOTP-based 2FA
+   - Add backup codes generation
+   - Create 2FA setup flow in Settings
+
+3. **Session Security**
+   - Implement session rotation
+   - Add device tracking
+   - Create active sessions management UI
+   - Implement force logout from all devices
+
+### Data Integrity & Validation
+1. **Email Verification**
+   - Implement email verification flow
+   - Add verification token generation
+   - Create email verification UI
+   - Integrate with email service
+
+2. **Input Sanitization**
+   - Add XSS protection for all text inputs
+   - Implement SQL injection prevention (already using Drizzle ORM)
+   - Add file upload validation for logos/avatars
+
+3. **Rate Limiting**
+   - Implement rate limiting on login endpoint
+   - Add rate limiting for API endpoints
+   - Create company-specific rate limits
+
+## Recent Changes & Implementation Status
+
+### ✅ Completed (October 2025)
+- Multi-tenant schema with 8 comprehensive tables
+- Full CRUD for Companies (API + UI)
+- Full CRUD for Users (API + UI)
+- English translation of entire UI
+- Role-based access control (superadmin, admin, member, viewer)
+- PostgreSQL migration from in-memory storage
+- Dashboard with real-time statistics
+- Session-based authentication
+- Comprehensive documentation
+
+### 🚧 In Progress
+- Multi-tenant architecture refinement
+- Security improvements (password hashing)
+- Additional API endpoints for remaining tables
+
+### 📋 Planned Next Steps
+1. Implement password hashing (bcrypt/argon2)
+2. Build Company Settings UI and API
+3. Create Subscription management UI and Stripe integration
+4. Implement Invitations system with email sending
+5. Build Activity Logs viewer
+6. Create API Keys management UI
+7. Implement Notifications system with real-time updates
+8. Add email verification flow
+9. Implement 2FA
+10. Create comprehensive deployment documentation

@@ -146,7 +146,7 @@ export const invitations = pgTable("invitations", {
   email: text("email").notNull(),
   role: text("role").notNull().default("member"),
   token: text("token").notNull().unique(),
-  invitedBy: varchar("invited_by").notNull().references(() => users.id),
+  invitedBy: varchar("invited_by").references(() => users.id, { onDelete: "set null" }),
   expiresAt: timestamp("expires_at").notNull(),
   acceptedAt: timestamp("accepted_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
