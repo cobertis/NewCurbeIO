@@ -12,7 +12,9 @@ import {
   createCompanyWithAdminSchema,
   insertPlanSchema,
   updateCompanySettingsSchema,
-  insertEmailTemplateSchema
+  insertEmailTemplateSchema,
+  insertFeatureSchema,
+  updateFeatureSchema
 } from "@shared/schema";
 import "./types";
 
@@ -1450,6 +1452,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  // ==================== FEATURES ENDPOINTS ====================
+
+  // Get all features (superadmin only)
+  app.get("/api/features", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const allFeatures = await storage.getAllFeatures();
+      res.json({ features: allFeatures });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch features" });
+    }
+  });
+
+  // Create feature (superadmin only)
+  app.post("/api/features", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const validatedData = insertFeatureSchema.parse(req.body);
+      const feature = await storage.createFeature(validatedData);
+      res.status(201).json(feature);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid feature data" });
+    }
+  });
+
+  // Update feature (superadmin only)
+  app.patch("/api/features/:id", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const validatedData = updateFeatureSchema.parse(req.body);
+      const feature = await storage.updateFeature(req.params.id, validatedData);
+      if (!feature) {
+        return res.status(404).json({ message: "Feature not found" });
+      }
+      res.json(feature);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid feature data" });
+    }
+  });
+
+  // Delete feature (superadmin only)
+  app.delete("/api/features/:id", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const success = await storage.deleteFeature(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Feature not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete feature" });
+    }
+  });
+
+  // ==================== COMPANY FEATURES ENDPOINTS ====================
+
+  // Get features for a company
+  app.get("/api/companies/:companyId/features", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Superadmin can access any company, others only their own
+    if (currentUser.role !== "superadmin" && currentUser.companyId !== req.params.companyId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const companyFeatures = await storage.getCompanyFeatures(req.params.companyId);
+      res.json({ features: companyFeatures });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch company features" });
+    }
+  });
+
+  // Add feature to company (superadmin only)
+  app.post("/api/companies/:companyId/features", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { featureId } = req.body;
+      if (!featureId) {
+        return res.status(400).json({ message: "Feature ID is required" });
+      }
+
+      const companyFeature = await storage.addFeatureToCompany(
+        req.params.companyId,
+        featureId,
+        currentUser.id
+      );
+      res.status(201).json(companyFeature);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to add feature to company" });
+    }
+  });
+
+  // Remove feature from company (superadmin only)
+  app.delete("/api/companies/:companyId/features/:featureId", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const success = await storage.removeFeatureFromCompany(
+        req.params.companyId,
+        req.params.featureId
+      );
+      if (!success) {
+        return res.status(404).json({ message: "Feature not found for this company" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to remove feature from company" });
     }
   });
 

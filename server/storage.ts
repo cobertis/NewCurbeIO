@@ -24,7 +24,11 @@ import {
   type Notification,
   type InsertNotification,
   type EmailTemplate,
-  type InsertEmailTemplate
+  type InsertEmailTemplate,
+  type Feature,
+  type InsertFeature,
+  type CompanyFeature,
+  type InsertCompanyFeature
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -40,7 +44,9 @@ import {
   invitations, 
   apiKeys, 
   notifications,
-  emailTemplates
+  emailTemplates,
+  features,
+  companyFeatures
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -130,6 +136,19 @@ export interface IStorage {
   createEmailTemplate(template: InsertEmailTemplate): Promise<EmailTemplate>;
   updateEmailTemplate(id: string, data: Partial<InsertEmailTemplate>): Promise<EmailTemplate | undefined>;
   deleteEmailTemplate(id: string): Promise<boolean>;
+  
+  // Features
+  getAllFeatures(): Promise<Feature[]>;
+  getFeature(id: string): Promise<Feature | undefined>;
+  createFeature(feature: InsertFeature): Promise<Feature>;
+  updateFeature(id: string, data: Partial<InsertFeature>): Promise<Feature | undefined>;
+  deleteFeature(id: string): Promise<boolean>;
+  
+  // Company Features
+  getCompanyFeatures(companyId: string): Promise<Feature[]>;
+  addFeatureToCompany(companyId: string, featureId: string, enabledBy?: string): Promise<CompanyFeature>;
+  removeFeatureFromCompany(companyId: string, featureId: string): Promise<boolean>;
+  hasFeature(companyId: string, featureKey: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -494,6 +513,87 @@ export class DbStorage implements IStorage {
     const result = await db.delete(emailTemplates)
       .where(eq(emailTemplates.id, id))
       .returning();
+    return result.length > 0;
+  }
+
+  // ==================== FEATURES ====================
+  
+  async getAllFeatures(): Promise<Feature[]> {
+    return db.select().from(features).orderBy(desc(features.createdAt));
+  }
+
+  async getFeature(id: string): Promise<Feature | undefined> {
+    const result = await db.select().from(features).where(eq(features.id, id));
+    return result[0];
+  }
+
+  async createFeature(feature: InsertFeature): Promise<Feature> {
+    const result = await db.insert(features).values(feature).returning();
+    return result[0];
+  }
+
+  async updateFeature(id: string, data: Partial<InsertFeature>): Promise<Feature | undefined> {
+    const result = await db.update(features)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(features.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteFeature(id: string): Promise<boolean> {
+    const result = await db.delete(features).where(eq(features.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // ==================== COMPANY FEATURES ====================
+  
+  async getCompanyFeatures(companyId: string): Promise<Feature[]> {
+    const result = await db
+      .select({
+        id: features.id,
+        name: features.name,
+        key: features.key,
+        description: features.description,
+        category: features.category,
+        icon: features.icon,
+        isActive: features.isActive,
+        createdAt: features.createdAt,
+        updatedAt: features.updatedAt,
+      })
+      .from(companyFeatures)
+      .innerJoin(features, eq(companyFeatures.featureId, features.id))
+      .where(eq(companyFeatures.companyId, companyId));
+    return result;
+  }
+
+  async addFeatureToCompany(companyId: string, featureId: string, enabledBy?: string): Promise<CompanyFeature> {
+    const result = await db.insert(companyFeatures)
+      .values({ companyId, featureId, enabledBy })
+      .returning();
+    return result[0];
+  }
+
+  async removeFeatureFromCompany(companyId: string, featureId: string): Promise<boolean> {
+    const result = await db.delete(companyFeatures)
+      .where(and(
+        eq(companyFeatures.companyId, companyId),
+        eq(companyFeatures.featureId, featureId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async hasFeature(companyId: string, featureKey: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(companyFeatures)
+      .innerJoin(features, eq(companyFeatures.featureId, features.id))
+      .where(and(
+        eq(companyFeatures.companyId, companyId),
+        eq(features.key, featureKey),
+        eq(features.isActive, true)
+      ))
+      .limit(1);
     return result.length > 0;
   }
 }
