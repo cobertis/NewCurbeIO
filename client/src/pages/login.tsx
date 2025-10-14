@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import logo from "@assets/logo no fondo_1760457183587.png";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -55,12 +56,11 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
       {/* Logo in top left */}
       <div className="absolute top-6 left-6">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">C</span>
-          </div>
-          <span className="text-xl font-semibold text-gray-800 dark:text-white">urbe.io</span>
-        </div>
+        <img 
+          src={logo} 
+          alt="Curbe.io" 
+          className="h-10 w-auto object-contain"
+        />
       </div>
 
       {/* Login Card */}
@@ -93,7 +93,7 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="javierace2004@gmail.com"
+                placeholder="your-email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 h-12 bg-blue-50/50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg"
