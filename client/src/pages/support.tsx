@@ -34,7 +34,7 @@ const supportOptions = [
 
 export default function Support() {
   return (
-    <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
+    <div className="flex flex-col gap-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Support</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400">Get help and contact our support team.</p>
