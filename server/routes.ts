@@ -448,22 +448,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    // Get target user before deletion
-    const targetUser = await storage.getUser(req.params.id);
-    if (!targetUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // admin can only delete users in their company
-    if (currentUser.role === "admin") {
-      if (targetUser.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden" });
+    try {
+      console.log("Delete user request - User ID:", req.params.id);
+      console.log("Delete user request - Current user:", currentUser.email, "Role:", currentUser.role);
+      
+      // Get target user before deletion
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) {
+        console.log("Target user not found:", req.params.id);
+        return res.status(404).json({ message: "User not found" });
       }
-    }
 
-    const success = await storage.deleteUser(req.params.id);
-    if (!success) {
-      return res.status(404).json({ message: "User not found" });
+      console.log("Target user found:", targetUser.email, "Company:", targetUser.companyId);
+
+      // admin can only delete users in their company
+      if (currentUser.role === "admin") {
+        if (targetUser.companyId !== currentUser.companyId) {
+          console.log("Admin trying to delete user from different company");
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+
+      console.log("Attempting to delete user from storage...");
+      const success = await storage.deleteUser(req.params.id);
+      console.log("Delete result:", success);
+      
+      if (!success) {
+        return res.status(404).json({ message: "User not found" });
+      }
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      return res.status(500).json({ message: "Failed to delete user", error: error.message });
     }
 
     await logger.logCrud({
