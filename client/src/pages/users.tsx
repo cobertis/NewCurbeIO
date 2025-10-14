@@ -140,12 +140,20 @@ export default function Users() {
   });
 
   const onCreateSubmit = (data: UserForm) => {
-    createMutation.mutate(data);
+    const normalizedData = {
+      ...data,
+      companyId: data.companyId || undefined,
+    };
+    createMutation.mutate(normalizedData);
   };
 
   const onEditSubmit = (data: EditUserForm) => {
     if (editingUser?.id) {
-      updateMutation.mutate({ id: editingUser.id, data });
+      const normalizedData = {
+        ...data,
+        companyId: data.companyId || undefined,
+      };
+      updateMutation.mutate({ id: editingUser.id, data: normalizedData });
     }
   };
 
