@@ -147,65 +147,63 @@ export function EmailTemplatesManager() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map((template) => (
-            <Card key={template.id} className="flex flex-col">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{template.name}</CardTitle>
-                    <CardDescription className="mt-1">
-                      <Badge variant="secondary" className="text-xs">
-                        {template.slug}
-                      </Badge>
-                    </CardDescription>
+        <Card>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {templates.map((template) => (
+                <div key={template.id} className="p-4 hover-elevate">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-sm">{template.name}</h3>
+                        <Badge variant="secondary" className="text-xs">
+                          {template.slug}
+                        </Badge>
+                        {template.isActive && (
+                          <Badge variant="default" className="text-xs">Active</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {template.subject}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(template)}
+                        data-testid={`button-edit-template-${template.id}`}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePreview(template.htmlContent)}
+                        data-testid={`button-preview-template-${template.id}`}
+                      >
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this template?")) {
+                            deleteTemplateMutation.mutate(template.id);
+                          }
+                        }}
+                        data-testid={`button-delete-template-${template.id}`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                  {template.isActive && (
-                    <Badge variant="default" className="text-xs">Active</Badge>
-                  )}
                 </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-between">
-                <div className="space-y-2 mb-4">
-                  <p className="text-sm font-medium">Subject:</p>
-                  <p className="text-sm text-muted-foreground">{template.subject}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleEdit(template)}
-                    data-testid={`button-edit-template-${template.id}`}
-                  >
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePreview(template.htmlContent)}
-                    data-testid={`button-preview-template-${template.id}`}
-                  >
-                    <Eye className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm("Are you sure you want to delete this template?")) {
-                        deleteTemplateMutation.mutate(template.id);
-                      }
-                    }}
-                    data-testid={`button-delete-template-${template.id}`}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Edit Dialog */}

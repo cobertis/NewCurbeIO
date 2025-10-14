@@ -361,106 +361,108 @@ export default function Settings() {
         {/* System Settings Tab (Superadmin only) */}
         {isSuperAdmin && (
           <TabsContent value="system" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Email & SMTP Configuration</CardTitle>
-                <CardDescription>
-                  Configure system-wide email notification settings.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="p-4 border border-border rounded-md bg-muted/50">
-                    <h4 className="text-sm font-medium mb-2">SMTP Status</h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      SMTP credentials are configured via environment variables.
-                    </p>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">SMTP Host:</span>
-                        <span className="font-mono">Configured</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">SMTP Port:</span>
-                        <span className="font-mono">Configured</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">From Email:</span>
-                        <span className="font-mono">Configured</span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Email & SMTP Configuration</CardTitle>
+                  <CardDescription>
+                    Configure system-wide email notification settings.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="p-4 border border-border rounded-md bg-muted/50">
+                      <h4 className="text-sm font-medium mb-2">SMTP Status</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        SMTP credentials are configured via environment variables.
+                      </p>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">SMTP Host:</span>
+                          <span className="font-mono">Configured</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">SMTP Port:</span>
+                          <span className="font-mono">Configured</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">From Email:</span>
+                          <span className="font-mono">Configured</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="testEmail">Test Email Configuration</Label>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Send a test email to verify your SMTP configuration is working.
-                    </p>
-                    <form onSubmit={handleSendTestEmail} className="flex gap-2">
-                      <Input
-                        id="testEmail"
-                        type="email"
-                        placeholder="test@example.com"
-                        value={emailTestAddress}
-                        onChange={(e) => setEmailTestAddress(e.target.value)}
-                        data-testid="input-test-email"
-                        required
-                      />
-                      <Button
-                        type="submit"
-                        disabled={sendTestEmailMutation.isPending}
-                        data-testid="button-send-test-email"
-                      >
-                        {sendTestEmailMutation.isPending ? "Sending..." : "Send Test"}
-                      </Button>
-                    </form>
+                    <div className="space-y-2">
+                      <Label htmlFor="testEmail">Test Email Configuration</Label>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Send a test email to verify your SMTP configuration is working.
+                      </p>
+                      <form onSubmit={handleSendTestEmail} className="flex gap-2">
+                        <Input
+                          id="testEmail"
+                          type="email"
+                          placeholder="test@example.com"
+                          value={emailTestAddress}
+                          onChange={(e) => setEmailTestAddress(e.target.value)}
+                          data-testid="input-test-email"
+                          required
+                        />
+                        <Button
+                          type="submit"
+                          disabled={sendTestEmailMutation.isPending}
+                          data-testid="button-send-test-email"
+                        >
+                          {sendTestEmailMutation.isPending ? "Sending..." : "Send Test"}
+                        </Button>
+                      </form>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>System Notifications</CardTitle>
+                  <CardDescription>
+                    Configure system-wide notification behavior.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="systemNotifications" className="text-base">
+                        Enable System Notifications
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Send automated notifications for system events.
+                      </p>
+                    </div>
+                    <Switch
+                      id="systemNotifications"
+                      defaultChecked={true}
+                      data-testid="switch-system-notifications"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="batchNotifications" className="text-base">
+                        Batch Notifications
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Group multiple notifications into digest emails.
+                      </p>
+                    </div>
+                    <Switch
+                      id="batchNotifications"
+                      defaultChecked={false}
+                      data-testid="switch-batch-notifications"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <EmailTemplatesManager />
-
-            <Card>
-              <CardHeader>
-                <CardTitle>System Notifications</CardTitle>
-                <CardDescription>
-                  Configure system-wide notification behavior.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="systemNotifications" className="text-base">
-                      Enable System Notifications
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Send automated notifications for system events.
-                    </p>
-                  </div>
-                  <Switch
-                    id="systemNotifications"
-                    defaultChecked={true}
-                    data-testid="switch-system-notifications"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="batchNotifications" className="text-base">
-                      Batch Notifications
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Group multiple notifications into digest emails.
-                    </p>
-                  </div>
-                  <Switch
-                    id="batchNotifications"
-                    defaultChecked={false}
-                    data-testid="switch-batch-notifications"
-                  />
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         )}
 

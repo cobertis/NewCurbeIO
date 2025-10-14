@@ -63,8 +63,7 @@ Key UI features:
   - Profile: Update personal information (name, email, role display)
   - Preferences: Email notification preferences and alert settings
   - Company Settings: Branding configuration (admin/superadmin only)
-  - System: SMTP/Email configuration and testing (superadmin only)
-  - Email Templates: Full CRUD management of email templates with HTML editor and live preview (superadmin only)
+  - System: SMTP/Email configuration, testing, and full email templates management with HTML editor and live preview (superadmin only)
   - Security: Password management and session control
 - **Login:** Session-based authentication with role-based access.
 
