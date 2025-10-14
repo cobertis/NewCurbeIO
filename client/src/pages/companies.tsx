@@ -477,19 +477,6 @@ export default function Companies() {
                 />
                 <FormField
                   control={createForm.control}
-                  name="company.email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Company Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="contact@acme.com" {...field} data-testid="input-create-company-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
                   name="company.phone"
                   render={({ field }) => (
                     <FormItem>
