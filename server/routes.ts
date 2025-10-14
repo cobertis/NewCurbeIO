@@ -389,6 +389,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== ACCOUNT ACTIVATION ENDPOINTS ====================
+
+  // Validate activation token (check if it's valid and not expired)
+  app.get("/api/auth/validate-activation-token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ message: "Token is required" });
+      }
+
+      const activationToken = await storage.getActivationToken(token);
+
+      if (!activationToken) {
+        return res.status(404).json({ message: "Invalid activation token" });
+      }
+
+      // Check if token has expired (24 hours)
+      const now = new Date();
+      if (activationToken.expiresAt < now) {
+        return res.status(400).json({ message: "Activation link has expired" });
+      }
+
+      // Check if token has already been used
+      if (activationToken.usedAt) {
+        return res.status(400).json({ message: "This activation link has already been used" });
+      }
+
+      res.json({ 
+        success: true,
+        message: "Token is valid"
+      });
+    } catch (error) {
+      console.error("Error validating activation token:", error);
+      res.status(500).json({ message: "Failed to validate activation token" });
+    }
+  });
+
+  // Activate account by setting password
+  app.post("/api/auth/activate-account", async (req: Request, res: Response) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        return res.status(400).json({ message: "Token and password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      // Validate and use the token (marks it as used)
+      const userId = await storage.validateAndUseToken(token);
+
+      if (!userId) {
+        return res.status(400).json({ message: "Invalid or expired activation token" });
+      }
+
+      // Get user to verify they exist
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Hash the password
+      const hashedPassword = await hashPassword(password);
+
+      // Update user with new password and mark email as verified
+      await storage.updateUser(userId, {
+        password: hashedPassword,
+        emailVerified: true,
+      });
+
+      await logger.logAuth({
+        req,
+        action: "account_activated",
+        userId: user.id,
+        email: user.email,
+        metadata: { method: "activation_token" },
+      });
+
+      res.json({ 
+        success: true,
+        message: "Account activated successfully"
+      });
+    } catch (error) {
+      console.error("Error activating account:", error);
+      res.status(500).json({ message: "Failed to activate account" });
+    }
+  });
+
   // ==================== STATS ENDPOINTS ====================
 
   app.get("/api/stats", async (req: Request, res: Response) => {
