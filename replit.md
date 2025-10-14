@@ -127,12 +127,21 @@ A flexible feature management system allows superadmins to define system-wide ca
 
 ### Phone Number Formatting
 
-**Standardized Format:** All phone number inputs across the system use a consistent format: `+1 (415) 555-2671`
-- Uses `formatPhoneInput` from `@/lib/phone-formatter.ts` for real-time formatting
-- Includes country code (+1) for international compatibility
-- Automatically formats as user types
+**Standardized Format:** All phone number inputs and displays across the system use a consistent format: `+1 (415) 555-2671`
+
+**Formatting Functions** (`@/lib/phone-formatter.ts`):
+- **`formatPhoneInput`**: Real-time formatting for input fields as user types
+- **`formatPhoneDisplay`**: Display formatting with intelligent US/NANP number detection
+  - Handles numbers with or without `+` prefix: `(877) 771-6130` → `+1 (877) 771-6130`
+  - Supports 10-digit US numbers: `8777716130` → `+1 (877) 771-6130`
+  - Supports 11-digit with country code: `18777716130` → `+1 (877) 771-6130`
+  - Returns international numbers unchanged if they don't match US format
+- **`formatPhoneE164`**: Converts to E.164 format for backend/Twilio: `+1 (415) 555-2671` → `+14155552671`
+
+**Implementation:**
 - Consistent placeholders and validation across all forms (Users, Companies, Settings)
-- Backend stores numbers in E.164 format when needed for SMS/Twilio integration
+- Backend stores numbers in E.164 format for SMS/Twilio integration
+- Primary support for US/Canada (NANP) numbers with graceful international fallback
 
 ### Audit Logging System
 
