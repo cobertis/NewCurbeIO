@@ -93,16 +93,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="h-16 border-b border-border px-6 flex items-center">
-        <Link href="/dashboard" className="flex items-center gap-3">
+      <SidebarHeader className="border-b border-border px-6 py-4">
+        <Link href="/dashboard" className="flex flex-col items-center gap-2">
           <img 
             src={logo} 
             alt="Curbe.io" 
-            className="h-8 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Admin Portal</span>
-          </div>
+          <span className="text-xs text-muted-foreground">Admin Portal</span>
         </Link>
       </SidebarHeader>
 
