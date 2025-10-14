@@ -11,6 +11,7 @@ import { User as UserIcon, Building2, Bell, Shield, Mail, FileText } from "lucid
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
+import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -49,7 +50,7 @@ export default function Settings() {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
-        phone: user.phone || "",
+        phone: user.phone ? formatPhoneDisplay(user.phone) : "",
       });
     }
   }, [user]);
@@ -57,7 +58,12 @@ export default function Settings() {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string; email: string; phone?: string }) => {
-      return apiRequest("PATCH", "/api/settings/profile", data);
+      // Convert phone to E.164 format before sending
+      const dataToSend = {
+        ...data,
+        phone: data.phone ? formatPhoneE164(data.phone) : undefined,
+      };
+      return apiRequest("PATCH", "/api/settings/profile", dataToSend);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
@@ -212,12 +218,15 @@ export default function Settings() {
                     id="phone"
                     name="phone"
                     type="tel"
-                    placeholder="+14155552671"
+                    placeholder="+1 (415) 555-2671"
                     value={profileForm.phone || ""}
-                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    onChange={(e) => {
+                      const formatted = formatPhoneInput(e.target.value);
+                      setProfileForm({ ...profileForm, phone: formatted });
+                    }}
                     data-testid="input-phone-settings"
                   />
-                  <p className="text-xs text-muted-foreground">E.164 format required (e.g., +14155552671). Required for SMS two-factor authentication</p>
+                  <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671. Required for SMS two-factor authentication</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Role</Label>

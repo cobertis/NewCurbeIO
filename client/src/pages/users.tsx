@@ -13,6 +13,7 @@ import { insertUserSchema, updateUserSchema, type User, type Company } from "@sh
 import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
 
 const userFormSchema = insertUserSchema.extend({
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
@@ -50,7 +51,12 @@ export default function Users() {
 
   const createMutation = useMutation({
     mutationFn: async (data: UserForm) => {
-      return apiRequest("POST", "/api/users", data);
+      // Convert phone to E.164 format before sending
+      const dataToSend = {
+        ...data,
+        phone: data.phone ? formatPhoneE164(data.phone) : undefined,
+      };
+      return apiRequest("POST", "/api/users", dataToSend);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -73,7 +79,12 @@ export default function Users() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: EditUserForm }) => {
-      return apiRequest("PATCH", `/api/users/${id}`, data);
+      // Convert phone to E.164 format before sending
+      const dataToSend = {
+        ...data,
+        phone: data.phone ? formatPhoneE164(data.phone) : undefined,
+      };
+      return apiRequest("PATCH", `/api/users/${id}`, dataToSend);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -165,7 +176,7 @@ export default function Users() {
       email: user.email,
       firstName: user.firstName || "",
       lastName: user.lastName || "",
-      phone: user.phone || "",
+      phone: user.phone ? formatPhoneDisplay(user.phone) : "",
       role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
       companyId: user.companyId || "__none__",
     });
@@ -271,9 +282,19 @@ export default function Users() {
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value || ""} type="tel" placeholder="+14155552671" data-testid="input-create-phone" />
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          type="tel" 
+                          placeholder="+1 (415) 555-2671" 
+                          data-testid="input-create-phone"
+                          onChange={(e) => {
+                            const formatted = formatPhoneInput(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                        />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground">E.164 format required (e.g., +14155552671)</p>
+                      <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -410,9 +431,19 @@ export default function Users() {
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value || ""} type="tel" placeholder="+14155552671" data-testid="input-edit-phone" />
+                      <Input 
+                        {...field} 
+                        value={field.value || ""} 
+                        type="tel" 
+                        placeholder="+1 (415) 555-2671" 
+                        data-testid="input-edit-phone"
+                        onChange={(e) => {
+                          const formatted = formatPhoneInput(e.target.value);
+                          field.onChange(formatted);
+                        }}
+                      />
                     </FormControl>
-                    <p className="text-xs text-muted-foreground">E.164 format required (e.g., +14155552671)</p>
+                    <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671</p>
                     <FormMessage />
                   </FormItem>
                 )}
