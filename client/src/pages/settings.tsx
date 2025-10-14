@@ -36,8 +36,7 @@ export default function Settings() {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string; email: string }) => {
-      if (!user?.id) throw new Error("User not found");
-      return apiRequest("PATCH", `/api/users/${user.id}`, data);
+      return apiRequest("PATCH", "/api/settings/profile", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });

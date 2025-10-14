@@ -445,6 +445,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update own profile (any authenticated user)
+  app.patch("/api/settings/profile", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    try {
+      // Only allow updating own profile fields (not role, companyId, password, etc.)
+      const allowedFields = {
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+      };
+
+      // Validate email is not already taken by another user
+      if (allowedFields.email && allowedFields.email !== user.email) {
+        const existingUser = await storage.getUserByEmail(allowedFields.email);
+        if (existingUser && existingUser.id !== user.id) {
+          return res.status(400).json({ message: "Email already in use" });
+        }
+      }
+
+      const updatedUser = await storage.updateUser(req.session.userId, allowedFields);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...sanitizedUser } = updatedUser;
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Invalid request" });
+    }
+  });
+
   // Get user preferences
   app.get("/api/settings/preferences", async (req: Request, res: Response) => {
     if (!req.session.userId) {

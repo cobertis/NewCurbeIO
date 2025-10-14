@@ -20,6 +20,12 @@ Key UI features:
 - **Companies (Superadmin-only):** Full CRUD operations for companies, including detailed profiles and visual cards.
 - **Plans (Superadmin-only):** Full CRUD operations for subscription plans with pricing and features.
 - **Invoices:** View and download invoices with role-based access.
+- **Settings:** Comprehensive settings management with tabs for:
+  - Profile: Update personal information (name, email, role display)
+  - Preferences: Email notification preferences and alert settings
+  - Company Settings: Branding configuration (admin/superadmin only)
+  - System: SMTP/Email configuration and testing (superadmin only)
+  - Security: Password management and session control
 - **Login:** Session-based authentication with role-based access.
 
 ### Design System
@@ -42,6 +48,9 @@ API Endpoints:
 - `/api/invoices`: Lists and downloads invoices (role-based access).
 - `/api/subscriptions`: Creates and manages company subscriptions.
 - `/api/stripe/webhooks`: Handles Stripe webhook events.
+- `/api/settings/profile`: Update own profile information (any authenticated user).
+- `/api/settings/company`: Get and update company settings (admin/superadmin).
+- `/api/settings/preferences`: Manage user notification preferences.
 
 ### Security
 
