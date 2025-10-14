@@ -130,7 +130,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">
           <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
             <UserIcon className="h-4 w-4" />
             Profile
@@ -149,12 +149,6 @@ export default function Settings() {
             <TabsTrigger value="system" className="gap-2" data-testid="tab-system">
               <Mail className="h-4 w-4" />
               System
-            </TabsTrigger>
-          )}
-          {isSuperAdmin && (
-            <TabsTrigger value="email-templates" className="gap-2" data-testid="tab-email-templates">
-              <FileText className="h-4 w-4" />
-              Email Templates
             </TabsTrigger>
           )}
           <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
@@ -422,30 +416,10 @@ export default function Settings() {
                     </form>
                   </div>
                 </div>
-
-                <div className="border-t border-border pt-6">
-                  <h4 className="text-sm font-medium mb-4">Email Templates</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      <span>Welcome Email</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      <span>Password Reset</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      <span>Invoice Notification</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      <span>Custom Notifications</span>
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
+
+            <EmailTemplatesManager />
 
             <Card>
               <CardHeader>
@@ -558,13 +532,6 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Email Templates Tab */}
-        {isSuperAdmin && (
-          <TabsContent value="email-templates" className="space-y-4">
-            <EmailTemplatesManager />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );

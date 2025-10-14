@@ -12,6 +12,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**October 14, 2025 - Email Templates Management System**
+- Implemented comprehensive email templates management system
+- Added emailTemplates table with schema: name, slug, subject, htmlContent, textContent, variables, isActive
+- Created 4 base templates: Welcome Email, Password Reset, Invoice Notification, Custom Notifications
+- Built complete CRUD backend endpoints (superadmin-only access)
+- Developed Email Templates Manager UI with HTML editor and live preview
+- Added Email Templates tab in Settings (superadmin-only visibility)
+- Full support for template variables and active/inactive status
+
 **October 14, 2025 - Login UI Redesign**
 - Completely redesigned login page to match user's custom design
 - Clean gradient background (sky-100 to indigo-100)
@@ -55,6 +64,7 @@ Key UI features:
   - Preferences: Email notification preferences and alert settings
   - Company Settings: Branding configuration (admin/superadmin only)
   - System: SMTP/Email configuration and testing (superadmin only)
+  - Email Templates: Full CRUD management of email templates with HTML editor and live preview (superadmin only)
   - Security: Password management and session control
 - **Login:** Session-based authentication with role-based access.
 
@@ -83,6 +93,7 @@ API Endpoints:
 - `/api/settings/profile`: Update own profile information (any authenticated user).
 - `/api/settings/company`: Get and update company settings (admin/superadmin).
 - `/api/settings/preferences`: Manage user notification preferences.
+- `/api/email-templates`: Full CRUD operations for email templates (superadmin only).
 
 ### Security
 
@@ -114,6 +125,7 @@ The application uses PostgreSQL with Drizzle ORM and features a multi-tenant sch
 - **Activity Logs:** Audit trail.
 - **API Keys:** Manages programmatic access per company.
 - **Notifications:** User-specific notifications.
+- **Email Templates:** Reusable email templates with HTML/text content, variables, and active status.
 
 Multi-Tenant Role-Based Access Control:
 - **Superadmin:** Global system access across all companies.
