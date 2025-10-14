@@ -71,18 +71,22 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
     -   6-digit codes with 5-minute expiration
     -   User selects method (email or SMS) **before** code is sent - email always available, SMS requires phone number
     -   1-minute resend cooldown with countdown timer
-    -   **Remember this device for 30 days:** User can opt to extend session duration
-        -   When checked: Session persists for **30 days** (cookie maxAge: 2,592,000,000 ms)
-        -   When unchecked: Session persists for **7 days** (default, cookie maxAge: 604,800,000 ms)
-        -   Session duration set dynamically in `/api/auth/verify-otp` (no fixed maxAge in middleware)
-        -   Both `cookie.maxAge` and `cookie.expires` are set to ensure proper persistence
-    -   Two-stage session: `pendingUserId` → credential validation → `userId` after OTP verification
+    -   **Trusted Devices (Remember this device for 30 days):**
+        -   When user checks "Remember this device", a secure random token (32-byte hex) is generated
+        -   Token stored in `trusted_devices` table with 30-day expiration and device info (user agent)
+        -   Token saved as httpOnly cookie (`trusted_device`) for 30 days
+        -   On subsequent logins, `/api/login` checks for trusted device token
+        -   If valid token found for this user → **OTP is skipped**, user logged in directly
+        -   If no token or expired → Standard OTP flow required
+        -   Sessions always last 7 days; trusted device feature bypasses OTP, not session duration
+        -   Audit logs track trusted device logins with action `login_trusted_device`
+    -   Two-stage session: `pendingUserId` → credential validation → `userId` after OTP verification (or trusted device)
     -   All protected routes verify `userId` exists (not just session presence)
 -   **Authentication:** Session-based with `express-session` and RBAC for protected routes.
 
 ### Data Models & Multi-Tenant Schema
 
-Uses PostgreSQL with Drizzle ORM. Core multi-tenant entities include Companies, Company Settings, Users (with roles: superadmin, admin, member, viewer, phone number for 2FA), OTP Codes, Plans, Subscriptions, Invoices, Payments, Invitations, Activity Logs, API Keys, Notifications, Email Templates, Features, and Company Features (junction table).
+Uses PostgreSQL with Drizzle ORM. Core multi-tenant entities include Companies, Company Settings, Users (with roles: superadmin, admin, member, viewer, phone number for 2FA), OTP Codes, Trusted Devices, Activation Tokens, Plans, Subscriptions, Invoices, Payments, Invitations, Activity Logs, API Keys, Notifications, Email Templates, Features, and Company Features (junction table).
 
 **Multi-Tenancy Implementation:**
 Strict data isolation is enforced by associating every non-superadmin user with a `companyId`. All data endpoints automatically filter results by the authenticated user's company, ensuring users only access their organization's data. Superadmins can access data across all companies, potentially using a `companyId` query parameter.
