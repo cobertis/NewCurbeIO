@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Building2, Plus, Pencil, Trash2, Search, Package } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -37,6 +38,7 @@ export default function Companies() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data, isLoading } = useQuery<{ companies: Company[] }>({
@@ -262,8 +264,13 @@ export default function Companies() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this company?")) {
-      deleteMutation.mutate(id);
+    setDeleteCompanyId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteCompanyId) {
+      deleteMutation.mutate(deleteCompanyId);
+      setDeleteCompanyId(null);
     }
   };
 
@@ -801,6 +808,29 @@ export default function Companies() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteCompanyId} onOpenChange={(open) => !open && setDeleteCompanyId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Company</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this company? This action cannot be undone. 
+              All users, subscriptions, and data associated with this company will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
