@@ -28,6 +28,25 @@ API Endpoints:
 - `/api/users`: Manages users, scoped by company for admins.
 - `/api/companies`: Manages companies (superadmin only).
 - `/api/stats`: Provides user statistics based on access level.
+- `/api/plans`: Manages subscription plans (superadmin only).
+- `/api/invoices`: Lists and downloads invoices (role-based access).
+- `/api/subscriptions`: Creates and manages company subscriptions.
+- `/api/stripe/webhooks`: Handles Stripe webhook events.
+
+### Security
+
+**Password Security:**
+- All passwords are hashed using bcrypt before storage
+- Login authentication uses bcrypt.compare() for secure verification
+- Passwords are never exposed in API responses or logs
+- User update endpoints do not allow password changes (use dedicated password reset flow)
+- Migration script safely converts legacy plaintext passwords to hashed versions
+
+**Authentication:**
+- Session-based authentication with express-session
+- Protected routes verify user authentication and role-based permissions
+- Admin users can only manage users within their company
+- Superadmin has global access across all companies
 
 ### Data Models & Multi-Tenant Schema
 
@@ -35,7 +54,11 @@ The application uses PostgreSQL with Drizzle ORM and features a multi-tenant sch
 - **Companies:** Core multi-tenant organizations.
 - **Company Settings:** Per-company configurations.
 - **Users:** Multi-tenant users with roles (superadmin, admin, member, viewer) and company association.
-- **Subscriptions:** Manages billing and plans.
+- **Plans:** Subscription plans with pricing, features, trial periods, and setup fees.
+- **Subscriptions:** Company subscriptions with Stripe integration.
+- **Invoices:** Billing invoices with status tracking and downloadable PDFs.
+- **Invoice Items:** Line items for invoices (subscription charges, setup fees, usage-based billing).
+- **Payments:** Payment records linked to invoices with transaction details.
 - **Invitations:** System for inviting users to companies.
 - **Activity Logs:** Audit trail.
 - **API Keys:** Manages programmatic access per company.

@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { hashPassword, verifyPassword } from "./auth";
 import { 
   insertUserSchema, 
   loginSchema, 
@@ -21,7 +22,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUserByEmail(email);
 
-      if (!user || user.password !== password) {
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
@@ -161,7 +167,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const newUser = await storage.createUser(userData);
+      // Hash password before creating user
+      const hashedPassword = await hashPassword(userData.password);
+      const newUser = await storage.createUser({ ...userData, password: hashedPassword });
       const { password, ...sanitizedUser } = newUser;
       res.json({ user: sanitizedUser });
     } catch (error) {
@@ -281,10 +289,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create company first
       const newCompany = await storage.createCompany(companyData);
       
+      // Hash password before creating admin user
+      const hashedPassword = await hashPassword(adminData.password);
+      
       // Create admin user for the company
       const adminUser = await storage.createUser({
         email: adminData.email,
-        password: adminData.password,
+        password: hashedPassword,
         firstName: adminData.firstName,
         lastName: adminData.lastName,
         role: "admin",
