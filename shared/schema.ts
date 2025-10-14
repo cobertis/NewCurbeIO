@@ -556,3 +556,29 @@ export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// =====================================================
+// EMAIL TEMPLATES
+// =====================================================
+
+export const emailTemplates = pgTable("email_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Template name (e.g., "Welcome Email", "Password Reset")
+  slug: text("slug").notNull().unique(), // URL-friendly identifier (e.g., "welcome", "password-reset")
+  subject: text("subject").notNull(), // Email subject line
+  htmlContent: text("html_content").notNull(), // HTML email content
+  textContent: text("text_content"), // Plain text fallback
+  variables: jsonb("variables").default([]), // Available variables like {{name}}, {{link}}, etc.
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
