@@ -169,6 +169,27 @@ export type InsertActivationToken = z.infer<typeof insertActivationTokenSchema>;
 export type SelectActivationToken = typeof activationTokens.$inferSelect;
 
 // =====================================================
+// TRUSTED DEVICES (Remember this device)
+// =====================================================
+
+export const trustedDevices = pgTable("trusted_devices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  deviceToken: text("device_token").notNull().unique(), // Secure random token stored in cookie
+  deviceName: text("device_name"), // Browser/device info for user reference
+  expiresAt: timestamp("expires_at").notNull(), // 30 days from creation
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertTrustedDeviceSchema = createInsertSchema(trustedDevices).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrustedDevice = z.infer<typeof insertTrustedDeviceSchema>;
+export type SelectTrustedDevice = typeof trustedDevices.$inferSelect;
+
+// =====================================================
 // BILLING PLANS
 // =====================================================
 

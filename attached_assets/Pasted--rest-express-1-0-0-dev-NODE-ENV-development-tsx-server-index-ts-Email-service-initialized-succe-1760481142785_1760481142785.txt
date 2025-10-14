@@ -1,0 +1,47 @@
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+Email service initialized successfully
+Twilio service initialized successfully
+10:31:33 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 12 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+10:31:39 PM [express] GET /api/session 304 in 182ms :: {"user":{"id":"7494d718-e807-46c5-b42b-bb629d6…
+10:31:39 PM [express] GET /api/session 304 in 81ms :: {"user":{"id":"7494d718-e807-46c5-b42b-bb629d60…
+10:31:39 PM [express] GET /api/notifications 304 in 163ms :: {"notifications":[]}
+10:31:39 PM [express] GET /api/dashboard-stats 304 in 408ms :: {"totalUsers":3,"adminCount":3,"member…
+10:32:00 PM [express] GET /api/companies 304 in 274ms :: {"companies":[{"id":"c3c26426-73a6-4a50-bff0…
+file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1556
+let{status:W}=te;if(W===400){let H=await te.json(),Ae=new pe(H.message);for(let xe of Wc)
+                                                      ^
+
+NeonDbError: update or delete on table "companies" violates foreign key constraint "users_organization_id_organizations_id_fk" on table "users"
+    at execute (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonHttpPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-http/session.ts:68:18)
+    at async DbStorage.deleteCompany (/home/runner/workspace/server/storage.ts:250:20)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1048:21) {
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (id)=(31b3513e-2ce1-46e4-8854-f2e8339c461f) is still referenced from table "users".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'users',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'users_organization_id_organizations_id_fk',
+  file: 'ri_triggers.c',
+  line: '2621',
+  routine: 'ri_ReportViolation',
+  sourceError: undefined
+}
+
+Node.js v20.19.3
+
