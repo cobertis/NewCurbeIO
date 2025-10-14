@@ -69,8 +69,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check for trusted device token
       const trustedDeviceToken = req.cookies?.trusted_device;
+      console.log(`[LOGIN] Checking trusted device. Token exists: ${!!trustedDeviceToken}, User: ${user.email}`);
+      
       if (trustedDeviceToken) {
+        console.log(`[LOGIN] Validating trusted device token for user ${user.email}`);
         const trustedUserId = await storage.validateTrustedDevice(trustedDeviceToken);
+        console.log(`[LOGIN] Validation result - Trusted userId: ${trustedUserId}, Current userId: ${user.id}`);
         
         // If device is trusted for this user, skip OTP
         if (trustedUserId === user.id) {
