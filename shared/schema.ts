@@ -139,6 +139,7 @@ export const otpCodes = pgTable("otp_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   code: text("code").notNull(), // 6-digit code
+  method: text("method").notNull(), // "email" or "sms"
   expiresAt: timestamp("expires_at").notNull(), // Expires in 5 minutes
   used: boolean("used").notNull().default(false),
   usedAt: timestamp("used_at"),
