@@ -18,7 +18,17 @@ Key UI features:
 - **Dashboard:** Displays real-time statistics, various charts (bar, donut), and recent activity.
 - **Users:** Comprehensive CRUD operations for user management with role-based access and filtering.
 - **Companies (Superadmin-only):** Full CRUD operations for companies, including detailed profiles and visual cards.
+- **Plans (Superadmin-only):** Full CRUD operations for subscription plans with pricing and features.
+- **Invoices:** View and download invoices with role-based access.
 - **Login:** Session-based authentication with role-based access.
+
+### Design System
+
+The application features a clean, professional sidebar and header layout inspired by modern SaaS platforms:
+- **Sidebar:** Features the Curbe.io logo, organized navigation with role-based visibility, and consistent spacing
+- **Header:** Minimal design with sidebar toggle, notifications, theme switcher, and user avatar
+- **Colors:** Uses semantic tokens (background, foreground, primary, muted, accent, border) that adapt to light/dark modes
+- **Components:** Leverages Shadcn/ui components (Avatar, Button, Sidebar) for consistency
 
 ### Backend
 

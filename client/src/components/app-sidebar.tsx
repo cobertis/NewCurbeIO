@@ -13,6 +13,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import type { User } from "@shared/schema";
+import logo from "@assets/logo no fondo_1760450756816.png";
 
 const menuItems = [
   {
@@ -94,11 +95,12 @@ export function AppSidebar() {
     <Sidebar className="border-r border-border bg-background">
       <SidebarHeader className="h-16 border-b border-border px-6 flex items-center">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-lg font-bold text-primary-foreground">C</span>
-          </div>
+          <img 
+            src={logo} 
+            alt="Curbe.io" 
+            className="h-8 w-auto object-contain"
+          />
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-foreground">Curbe</span>
             <span className="text-xs text-muted-foreground">Admin Portal</span>
           </div>
         </Link>

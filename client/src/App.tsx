@@ -9,7 +9,10 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bell } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import type { User } from "@shared/schema";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
@@ -27,6 +30,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     "--sidebar-width-icon": "3rem",
   };
 
+  const { data: userData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+
+  const user = userData?.user;
+  const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
+
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
@@ -41,9 +51,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <Bell className="h-5 w-5" />
               </Button>
               <ThemeToggle />
-              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center ml-2">
-                <span className="text-sm font-semibold text-primary-foreground">A</span>
-              </div>
+              <Avatar className="ml-2 h-9 w-9">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                  {userInitial}
+                </AvatarFallback>
+              </Avatar>
             </div>
           </header>
           <main className="flex-1 overflow-auto bg-muted/30">
