@@ -167,6 +167,7 @@ export interface IStorage {
   createActivationToken(token: InsertActivationToken): Promise<SelectActivationToken>;
   getActivationToken(token: string): Promise<SelectActivationToken | undefined>;
   markActivationTokenUsed(token: string): Promise<boolean>;
+  validateAndUseToken(token: string): Promise<string | null>;
   deleteExpiredActivationTokens(): Promise<boolean>;
 }
 
@@ -729,6 +730,35 @@ export class DbStorage implements IStorage {
       .where(eq(activationTokens.id, activationToken.id));
     
     return true;
+  }
+  
+  async validateAndUseToken(token: string): Promise<string | null> {
+    const result = await db
+      .select()
+      .from(activationTokens)
+      .where(and(
+        eq(activationTokens.token, token),
+        eq(activationTokens.used, false)
+      ))
+      .limit(1);
+    
+    if (result.length === 0) {
+      return null;
+    }
+    
+    const activationToken = result[0];
+    const now = new Date();
+    
+    if (activationToken.expiresAt < now) {
+      return null;
+    }
+    
+    await db
+      .update(activationTokens)
+      .set({ used: true, usedAt: now })
+      .where(eq(activationTokens.id, activationToken.id));
+    
+    return activationToken.userId;
   }
   
   async deleteExpiredActivationTokens(): Promise<boolean> {

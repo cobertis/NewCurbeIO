@@ -212,7 +212,6 @@ export default function Companies() {
       company: {
         name: "",
         slug: "",
-        email: "",
         phone: "",
         address: "",
       },

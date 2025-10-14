@@ -17,14 +17,15 @@ Built with React 18, TypeScript, and Vite, the frontend uses Wouter for routing,
 **Key UI Features:**
 -   **Dashboard:** Real-time statistics, charts, and recent activity.
 -   **Users:** CRUD operations with role-based access. Includes firstName, lastName, phone fields. Phone number required for SMS-based 2FA. Superadmins can view and assign company associations. User table displays full names (when available) and company column (superadmin-only).
--   **Companies (Superadmin-only):** CRUD operations, visual cards, and feature management. Each company card includes a button to manage assigned features through a modal dialog with checkboxes.
+-   **Companies (Superadmin-only):** CRUD operations, visual cards, and feature management. Each company card includes a button to manage assigned features through a modal dialog with checkboxes. When creating a company, admin users are created without passwords and receive email-based activation links.
 -   **Plans (Superadmin-only):** CRUD operations for subscription plans.
 -   **Features (Superadmin-only):** Complete CRUD interface for system features with categorization, status management, and activation controls. Features can be created with unique keys and assigned to specific companies.
 -   **Invoices:** View and download invoices with role-based access.
 -   **Settings:** Comprehensive settings with tabs for Profile (includes phone number management), Preferences, Company Settings, System (SMTP, email templates), and Security.
--   **Login:** Two-factor authentication with user-selected delivery method (email or SMS) before code is sent.
+-   **Login:** Two-factor authentication with user-selected delivery method (email or SMS) before code is sent. Blocks login for accounts that haven't been activated via email.
 -   **OTP Verification:** Two-step verification flow: (1) User selects delivery method (email/SMS), (2) Enters 6-digit code with device trust option and countdown timers.
--   **Audit Logs:** Timeline view of system actions with role-based filtering, including 2FA events.
+-   **Account Activation:** Secure email-based activation where new admin users set their password via a unique token link.
+-   **Audit Logs:** Timeline view of system actions with role-based filtering, including 2FA and activation events.
 -   **Email Templates:** Management interface with HTML editor and live preview (superadmin-only).
 
 **Design System:**
@@ -35,12 +36,14 @@ Features a clean sidebar and header, with a Curbe.io logo, role-based navigation
 The backend uses Express.js and TypeScript, providing a RESTful API. It implements session-based authentication with `express-session` and enforces role-based access control (RBAC).
 
 **Key API Endpoints:**
--   `/api/login`: Validates credentials and initiates 2FA flow (sets pendingUserId).
+-   `/api/login`: Validates credentials and initiates 2FA flow (sets pendingUserId). Blocks login for non-activated accounts.
 -   `/api/auth/send-otp`: Sends OTP code via email or SMS (requires pendingUserId).
 -   `/api/auth/verify-otp`: Verifies OTP and grants full session (sets userId).
 -   `/api/auth/resend-otp`: Resends OTP with 1-minute cooldown.
+-   `/api/auth/validate-activation-token`: Validates activation token for expiry and usage.
+-   `/api/auth/activate-account`: Activates account by setting password via secure token.
 -   `/api/users`: User management with phone number support (company-scoped for admins).
--   `/api/companies`: Company management (superadmin only).
+-   `/api/companies`: Company management (superadmin only). Creates admin users without passwords and sends activation emails.
 -   `/api/stats` & `/api/dashboard-stats`: User and dashboard statistics (access level-based).
 -   `/api/plans`: Subscription plan management (superadmin only).
 -   `/api/features`: System feature management (superadmin only).
@@ -56,6 +59,14 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
 ### Security
 
 -   **Password Security:** Bcrypt hashing for all passwords.
+-   **Account Activation:** Email-based activation system for new admin users.
+    -   Admin users created without passwords during company creation
+    -   Secure activation tokens (32-byte random hex) with 24-hour expiration
+    -   Tokens stored in `activation_tokens` table with usage tracking
+    -   One-time use tokens prevent replay attacks
+    -   Users set password via `/activate-account?token=XXX` page
+    -   Login blocked for non-activated accounts (null password check)
+    -   Activation events logged in audit trail
 -   **Two-Factor Authentication (2FA):** OTP-based verification with user-selected delivery method.
     -   6-digit codes with 5-minute expiration
     -   User selects method (email or SMS) **before** code is sent - email always available, SMS requires phone number
