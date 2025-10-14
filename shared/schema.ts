@@ -392,7 +392,7 @@ export const createCompanyWithAdminSchema = z.object({
   company: z.object({
     name: z.string().min(1, "Company name is required"),
     slug: z.string().min(1, "Slug is required"),
-    email: z.string().email("Valid email is required"),
+    email: z.string().email("Valid email is required").optional(),
     phone: z.string().min(1, "Phone is required"),
     address: z.string().min(1, "Address is required"),
   }),

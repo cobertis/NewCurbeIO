@@ -535,6 +535,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Admin email already exists" });
       }
 
+      // Use admin email as company email if not provided
+      if (!companyData.email) {
+        companyData.email = adminData.email;
+      }
+
       // Create company first
       const newCompany = await storage.createCompany(companyData);
       
