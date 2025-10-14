@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
 import VerifyOTP from "@/pages/verify-otp";
+import ActivateAccount from "@/pages/activate-account";
 import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Users from "@/pages/users";
@@ -198,6 +199,7 @@ function Router() {
       </Route>
       <Route path="/login" component={Login} />
       <Route path="/verify-otp" component={VerifyOTP} />
+      <Route path="/activate-account" component={ActivateAccount} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <DashboardLayout>
