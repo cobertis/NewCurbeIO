@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
+import { emailService } from "./email";
+import { twilioService } from "./twilio";
 import { 
   insertUserSchema, 
   loginSchema, 
@@ -113,6 +115,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: user.companyId,
       },
     });
+  });
+
+  // ==================== 2FA/OTP ENDPOINTS ====================
+
+  app.post("/api/auth/send-otp", async (req: Request, res: Response) => {
+    try {
+      const { email, password, method } = req.body;
+
+      if (!email || !password || !method) {
+        return res.status(400).json({ message: "Email, password, and method are required" });
+      }
+
+      if (method !== "email" && method !== "sms") {
+        return res.status(400).json({ message: "Method must be 'email' or 'sms'" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        await logger.logAuth({
+          req,
+          action: "otp_send_failed",
+          email,
+          metadata: { reason: "User not found" },
+        });
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
+        await logger.logAuth({
+          req,
+          action: "otp_send_failed",
+          userId: user.id,
+          email,
+          metadata: { reason: "Invalid password" },
+        });
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      if (method === "sms" && !user.phone) {
+        return res.status(400).json({ message: "No phone number associated with this account" });
+      }
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+      await storage.createOtpCode({
+        userId: user.id,
+        code,
+        method,
+        expiresAt,
+      });
+
+      if (method === "email") {
+        await emailService.sendOTPEmail(user.email, code);
+      } else if (method === "sms") {
+        await twilioService.sendOTPSMS(user.phone!, code);
+      }
+
+      await logger.logAuth({
+        req,
+        action: "otp_sent",
+        userId: user.id,
+        email,
+        metadata: { method },
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Verification code sent via ${method}`,
+        userId: user.id
+      });
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      res.status(500).json({ message: "Failed to send verification code" });
+    }
+  });
+
+  app.post("/api/auth/verify-otp", async (req: Request, res: Response) => {
+    try {
+      const { userId, code, rememberDevice } = req.body;
+
+      if (!userId || !code) {
+        return res.status(400).json({ message: "User ID and code are required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid verification code" });
+      }
+
+      const isValid = await storage.verifyAndMarkUsed(userId, code);
+      if (!isValid) {
+        await logger.logAuth({
+          req,
+          action: "otp_verify_failed",
+          userId,
+          email: user.email,
+          metadata: { reason: "Invalid or expired code" },
+        });
+        return res.status(401).json({ message: "Invalid or expired verification code" });
+      }
+
+      req.session.userId = user.id;
+
+      if (rememberDevice) {
+        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+      }
+
+      await logger.logAuth({
+        req,
+        action: "login_with_otp",
+        userId: user.id,
+        email: user.email,
+        metadata: { rememberDevice: !!rememberDevice },
+      });
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          companyId: user.companyId,
+        },
+      });
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      res.status(500).json({ message: "Failed to verify code" });
+    }
+  });
+
+  app.post("/api/auth/resend-otp", async (req: Request, res: Response) => {
+    try {
+      const { userId, method } = req.body;
+
+      if (!userId || !method) {
+        return res.status(400).json({ message: "User ID and method are required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const lastOtp = await storage.getLatestOtpCode(userId, method);
+      if (lastOtp) {
+        const timeSinceLastOtp = Date.now() - lastOtp.createdAt.getTime();
+        const oneMinute = 60 * 1000;
+        
+        if (timeSinceLastOtp < oneMinute) {
+          const remainingSeconds = Math.ceil((oneMinute - timeSinceLastOtp) / 1000);
+          return res.status(429).json({ 
+            message: `Please wait ${remainingSeconds} seconds before requesting a new code`,
+            remainingSeconds
+          });
+        }
+      }
+
+      if (method === "sms" && !user.phone) {
+        return res.status(400).json({ message: "No phone number associated with this account" });
+      }
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      await storage.createOtpCode({
+        userId: user.id,
+        code,
+        method,
+        expiresAt,
+      });
+
+      if (method === "email") {
+        await emailService.sendOTPEmail(user.email, code);
+      } else if (method === "sms") {
+        await twilioService.sendOTPSMS(user.phone!, code);
+      }
+
+      await logger.logAuth({
+        req,
+        action: "otp_resent",
+        userId: user.id,
+        email: user.email,
+        metadata: { method },
+      });
+
+      res.json({ 
+        success: true, 
+        message: `New verification code sent via ${method}`
+      });
+    } catch (error) {
+      console.error("Error resending OTP:", error);
+      res.status(500).json({ message: "Failed to resend verification code" });
+    }
   });
 
   // ==================== STATS ENDPOINTS ====================

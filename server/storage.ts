@@ -28,7 +28,9 @@ import {
   type Feature,
   type InsertFeature,
   type CompanyFeature,
-  type InsertCompanyFeature
+  type InsertCompanyFeature,
+  type OtpCode,
+  type InsertOtpCode
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -46,7 +48,8 @@ import {
   notifications,
   emailTemplates,
   features,
-  companyFeatures
+  companyFeatures,
+  otpCodes
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -149,6 +152,12 @@ export interface IStorage {
   addFeatureToCompany(companyId: string, featureId: string, enabledBy?: string): Promise<CompanyFeature>;
   removeFeatureFromCompany(companyId: string, featureId: string): Promise<boolean>;
   hasFeature(companyId: string, featureKey: string): Promise<boolean>;
+  
+  // OTP Codes
+  createOtpCode(otp: InsertOtpCode): Promise<OtpCode>;
+  getLatestOtpCode(userId: string, method: string): Promise<OtpCode | undefined>;
+  verifyAndMarkUsed(userId: string, code: string): Promise<boolean>;
+  deleteExpiredOtpCodes(): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -595,6 +604,65 @@ export class DbStorage implements IStorage {
       ))
       .limit(1);
     return result.length > 0;
+  }
+
+  // ==================== OTP CODES ====================
+  
+  async createOtpCode(otp: InsertOtpCode): Promise<OtpCode> {
+    const result = await db.insert(otpCodes).values(otp).returning();
+    return result[0];
+  }
+
+  async getLatestOtpCode(userId: string, method: string): Promise<OtpCode | undefined> {
+    const result = await db
+      .select()
+      .from(otpCodes)
+      .where(and(
+        eq(otpCodes.userId, userId),
+        eq(otpCodes.method, method),
+        eq(otpCodes.used, false)
+      ))
+      .orderBy(desc(otpCodes.createdAt))
+      .limit(1);
+    return result[0];
+  }
+
+  async verifyAndMarkUsed(userId: string, code: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(otpCodes)
+      .where(and(
+        eq(otpCodes.userId, userId),
+        eq(otpCodes.code, code),
+        eq(otpCodes.used, false)
+      ))
+      .limit(1);
+
+    if (result.length === 0) {
+      return false;
+    }
+
+    const otpCode = result[0];
+    const now = new Date();
+
+    if (otpCode.expiresAt < now) {
+      return false;
+    }
+
+    await db
+      .update(otpCodes)
+      .set({ used: true, usedAt: now })
+      .where(eq(otpCodes.id, otpCode.id));
+
+    return true;
+  }
+
+  async deleteExpiredOtpCodes(): Promise<boolean> {
+    const now = new Date();
+    await db.delete(otpCodes).where(and(
+      eq(otpCodes.used, false)
+    ));
+    return true;
   }
 }
 
