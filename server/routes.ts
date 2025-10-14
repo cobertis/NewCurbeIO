@@ -1,10 +1,18 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, loginSchema, updateUserSchema, insertOrganizationSchema, updateOrganizationSchema } from "@shared/schema";
+import { 
+  insertUserSchema, 
+  loginSchema, 
+  updateUserSchema, 
+  insertCompanySchema, 
+  updateCompanySchema 
+} from "@shared/schema";
 import "./types";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ==================== AUTH ENDPOINTS ====================
+  
   app.post("/api/login", async (req: Request, res: Response) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
@@ -23,7 +31,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: user.id,
           email: user.email,
           role: user.role,
-          organizationId: user.organizationId,
+          companyId: user.companyId,
         },
       });
     } catch (error) {
@@ -56,12 +64,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: user.id,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId,
+        companyId: user.companyId,
       },
     });
   });
 
-  // Get stats (all authenticated users)
+  // ==================== STATS ENDPOINTS ====================
+
   app.get("/api/stats", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -72,26 +81,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "User not found" });
     }
 
-    let users;
+    let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
     if (currentUser.role === "superadmin") {
       users = await storage.getAllUsers();
-    } else if (currentUser.organizationId) {
-      users = await storage.getUsersByOrganization(currentUser.organizationId);
+    } else if (currentUser.companyId) {
+      users = await storage.getUsersByCompany(currentUser.companyId);
     } else {
       users = [];
     }
 
     const stats = {
       totalUsers: users.length,
-      adminCount: users.filter(u => u.role === "superadmin" || u.role === "org_admin").length,
+      adminCount: users.filter((u) => u.role === "superadmin" || u.role === "admin").length,
       moderatorCount: 0,
-      viewerCount: users.filter(u => u.role === "org_user").length,
+      viewerCount: users.filter((u) => u.role === "member" || u.role === "viewer").length,
     };
 
     res.json(stats);
   });
 
-  // Get all users (superadmin or org_admin)
+  // ==================== USER ENDPOINTS ====================
+
+  // Get all users (superadmin or admin)
   app.get("/api/users", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -102,15 +113,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "User not found" });
     }
 
-    if (currentUser.role !== "superadmin" && currentUser.role !== "org_admin") {
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    let users;
+    let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
     if (currentUser.role === "superadmin") {
       users = await storage.getAllUsers();
-    } else if (currentUser.organizationId) {
-      users = await storage.getUsersByOrganization(currentUser.organizationId);
+    } else if (currentUser.companyId) {
+      users = await storage.getUsersByCompany(currentUser.companyId);
     } else {
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -119,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ users: sanitizedUsers });
   });
 
-  // Create user (superadmin or org_admin)
+  // Create user (superadmin or admin)
   app.post("/api/users", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -130,19 +141,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "User not found" });
     }
 
-    if (currentUser.role !== "superadmin" && currentUser.role !== "org_admin") {
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
     try {
       const userData = insertUserSchema.parse(req.body);
       
-      // org_admin can only create users in their organization
-      if (currentUser.role === "org_admin") {
-        if (!currentUser.organizationId) {
+      // admin can only create users in their company
+      if (currentUser.role === "admin") {
+        if (!currentUser.companyId) {
           return res.status(403).json({ message: "Forbidden" });
         }
-        userData.organizationId = currentUser.organizationId;
+        userData.companyId = currentUser.companyId;
         if (userData.role === "superadmin") {
           return res.status(403).json({ message: "Cannot create superadmin" });
         }
@@ -156,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update user (superadmin or org_admin)
+  // Update user (superadmin or admin)
   app.patch("/api/users/:id", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -167,17 +178,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "User not found" });
     }
 
-    if (currentUser.role !== "superadmin" && currentUser.role !== "org_admin") {
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
     try {
       const validatedData = updateUserSchema.parse(req.body);
       
-      // org_admin can only update users in their organization
-      if (currentUser.role === "org_admin") {
+      // admin can only update users in their company
+      if (currentUser.role === "admin") {
         const targetUser = await storage.getUser(req.params.id);
-        if (!targetUser || targetUser.organizationId !== currentUser.organizationId) {
+        if (!targetUser || targetUser.companyId !== currentUser.companyId) {
           return res.status(403).json({ message: "Forbidden" });
         }
         if (validatedData.role === "superadmin") {
@@ -197,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete user (superadmin or org_admin)
+  // Delete user (superadmin or admin)
   app.delete("/api/users/:id", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -208,14 +219,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "User not found" });
     }
 
-    if (currentUser.role !== "superadmin" && currentUser.role !== "org_admin") {
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    // org_admin can only delete users in their organization
-    if (currentUser.role === "org_admin") {
+    // admin can only delete users in their company
+    if (currentUser.role === "admin") {
       const targetUser = await storage.getUser(req.params.id);
-      if (!targetUser || targetUser.organizationId !== currentUser.organizationId) {
+      if (!targetUser || targetUser.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
     }
@@ -228,10 +239,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
-  // ====== Organization Endpoints (superadmin only) ======
+  // ==================== COMPANY ENDPOINTS (superadmin only) ====================
 
-  // Get all organizations
-  app.get("/api/organizations", async (req: Request, res: Response) => {
+  // Get all companies
+  app.get("/api/companies", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -241,12 +252,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const organizations = await storage.getAllOrganizations();
-    res.json({ organizations });
+    const companies = await storage.getAllCompanies();
+    res.json({ companies });
   });
 
-  // Create organization
-  app.post("/api/organizations", async (req: Request, res: Response) => {
+  // Create company
+  app.post("/api/companies", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -257,16 +268,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const orgData = insertOrganizationSchema.parse(req.body);
-      const newOrg = await storage.createOrganization(orgData);
-      res.json({ organization: newOrg });
+      const companyData = insertCompanySchema.parse(req.body);
+      const newCompany = await storage.createCompany(companyData);
+      res.json({ company: newCompany });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
   });
 
-  // Update organization
-  app.patch("/api/organizations/:id", async (req: Request, res: Response) => {
+  // Update company
+  app.patch("/api/companies/:id", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -277,19 +288,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const validatedData = updateOrganizationSchema.parse(req.body);
-      const updatedOrg = await storage.updateOrganization(req.params.id, validatedData);
-      if (!updatedOrg) {
-        return res.status(404).json({ message: "Organization not found" });
+      const validatedData = updateCompanySchema.parse(req.body);
+      const updatedCompany = await storage.updateCompany(req.params.id, validatedData);
+      if (!updatedCompany) {
+        return res.status(404).json({ message: "Company not found" });
       }
-      res.json({ organization: updatedOrg });
+      res.json({ company: updatedCompany });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
   });
 
-  // Delete organization
-  app.delete("/api/organizations/:id", async (req: Request, res: Response) => {
+  // Delete company
+  app.delete("/api/companies/:id", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -299,9 +310,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const success = await storage.deleteOrganization(req.params.id);
+    const success = await storage.deleteCompany(req.params.id);
     if (!success) {
-      return res.status(404).json({ message: "Organization not found" });
+      return res.status(404).json({ message: "Company not found" });
     }
 
     res.json({ success: true });
