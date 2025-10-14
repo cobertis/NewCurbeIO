@@ -12,6 +12,7 @@ import { createCompanyWithAdminSchema, updateCompanySchema, type Company } from 
 import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { formatPhoneNumber } from "@/lib/phoneFormat";
 
 type CreateCompanyForm = z.infer<typeof createCompanyWithAdminSchema>;
 type UpdateCompanyForm = z.infer<typeof updateCompanySchema>;
@@ -350,7 +351,15 @@ export default function Companies() {
                     <FormItem>
                       <FormLabel>Phone</FormLabel>
                       <FormControl>
-                        <Input placeholder="+1 (555) 123-4567" {...field} data-testid="input-create-company-phone" />
+                        <Input 
+                          placeholder="(555) 123-4567" 
+                          {...field}
+                          onChange={(e) => {
+                            const formatted = formatPhoneNumber(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          data-testid="input-create-company-phone" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -494,7 +503,16 @@ export default function Companies() {
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input placeholder="+1 (555) 123-4567" {...field} value={field.value ?? ""} data-testid="input-edit-company-phone" />
+                      <Input 
+                        placeholder="(555) 123-4567" 
+                        {...field} 
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const formatted = formatPhoneNumber(e.target.value);
+                          field.onChange(formatted);
+                        }}
+                        data-testid="input-edit-company-phone" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
