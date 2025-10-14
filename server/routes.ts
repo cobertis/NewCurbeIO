@@ -1009,17 +1009,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: req.body.firstName,
         lastName: req.body.lastName,
         email: req.body.email,
+        phone: req.body.phone,
       };
 
+      // Validate using updateUserSchema (validates phone E.164 format, email, etc.)
+      const validatedData = updateUserSchema.parse(allowedFields);
+
       // Validate email is not already taken by another user
-      if (allowedFields.email && allowedFields.email !== user.email) {
-        const existingUser = await storage.getUserByEmail(allowedFields.email);
+      if (validatedData.email && validatedData.email !== user.email) {
+        const existingUser = await storage.getUserByEmail(validatedData.email);
         if (existingUser && existingUser.id !== user.id) {
           return res.status(400).json({ message: "Email already in use" });
         }
       }
 
-      const updatedUser = await storage.updateUser(req.session.userId, allowedFields);
+      const updatedUser = await storage.updateUser(req.session.userId, validatedData);
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }

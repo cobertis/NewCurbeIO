@@ -212,12 +212,12 @@ export default function Settings() {
                     id="phone"
                     name="phone"
                     type="tel"
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="+14155552671"
                     value={profileForm.phone || ""}
                     onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                     data-testid="input-phone-settings"
                   />
-                  <p className="text-xs text-muted-foreground">Required for SMS two-factor authentication</p>
+                  <p className="text-xs text-muted-foreground">E.164 format required (e.g., +14155552671). Required for SMS two-factor authentication</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Role</Label>

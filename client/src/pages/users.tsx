@@ -271,8 +271,9 @@ export default function Users() {
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value || ""} type="tel" placeholder="+1 (555) 123-4567" data-testid="input-create-phone" />
+                        <Input {...field} value={field.value || ""} type="tel" placeholder="+14155552671" data-testid="input-create-phone" />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">E.164 format required (e.g., +14155552671)</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -409,8 +410,9 @@ export default function Users() {
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value || ""} type="tel" placeholder="+1 (555) 123-4567" data-testid="input-edit-phone" />
+                      <Input {...field} value={field.value || ""} type="tel" placeholder="+14155552671" data-testid="input-edit-phone" />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">E.164 format required (e.g., +14155552671)</p>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -462,6 +462,9 @@ export const insertCompanyFeatureSchema = createInsertSchema(companyFeatures).om
   enabledAt: true,
 });
 
+// Phone number validation (E.164 format: +[country code][number])
+const phoneRegex = /^\+[1-9]\d{1,14}$/;
+
 // Users
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -473,6 +476,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 }).extend({
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
   companyId: z.string().optional(),
+  phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
 });
 
 export const updateUserSchema = z.object({
@@ -480,7 +484,7 @@ export const updateUserSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   avatar: z.string().url().optional(),
-  phone: z.string().optional(),
+  phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
   isActive: z.boolean().optional(),
