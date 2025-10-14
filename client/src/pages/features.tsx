@@ -174,22 +174,21 @@ export default function FeaturesPage() {
   }
 
   return (
-    <div className="h-full overflow-auto p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Features</h1>
-            <p className="text-muted-foreground">
-              Manage system features that can be assigned to companies
-            </p>
-          </div>
-          <Button onClick={openCreateDialog} data-testid="button-create-feature">
-            <Plus className="h-4 w-4" />
-            Create Feature
-          </Button>
+    <div className="flex flex-col gap-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Features</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Manage system features that can be assigned to companies
+          </p>
         </div>
+        <Button onClick={openCreateDialog} data-testid="button-create-feature">
+          <Plus className="h-4 w-4 mr-2" />
+          Create Feature
+        </Button>
+      </div>
 
-        {isLoading ? (
+      {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="animate-pulse">
@@ -272,7 +271,6 @@ export default function FeaturesPage() {
             ))}
           </div>
         )}
-      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-feature-form">
@@ -335,6 +333,7 @@ export default function FeaturesPage() {
                       <Textarea
                         placeholder="Describe what this feature does..."
                         {...field}
+                        value={field.value || ""}
                         data-testid="input-description"
                       />
                     </FormControl>
@@ -348,7 +347,7 @@ export default function FeaturesPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} data-testid="select-category">
+                    <Select onValueChange={field.onChange} value={field.value || undefined} data-testid="select-category">
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a category" />
@@ -376,7 +375,7 @@ export default function FeaturesPage() {
                   <FormItem>
                     <FormLabel>Icon</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., package" {...field} data-testid="input-icon" />
+                      <Input placeholder="e.g., package" {...field} value={field.value || ""} data-testid="input-icon" />
                     </FormControl>
                     <FormDescription>
                       Lucide icon name (optional)
