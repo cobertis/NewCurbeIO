@@ -173,6 +173,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "User not found" });
     }
 
+    // Get company name if user has a company
+    let companyName: string | undefined;
+    if (user.companyId) {
+      const company = await storage.getCompany(user.companyId);
+      companyName = company?.name;
+    }
+
     res.json({
       user: {
         id: user.id,
@@ -182,6 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: user.phone,
         role: user.role,
         companyId: user.companyId,
+        companyName: companyName,
       },
     });
   });

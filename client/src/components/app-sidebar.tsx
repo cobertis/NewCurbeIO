@@ -74,7 +74,7 @@ const menuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   
-  const { data: userData } = useQuery<{ user: User }>({
+  const { data: userData } = useQuery<{ user: User & { companyName?: string } }>({
     queryKey: ["/api/session"],
   });
 
@@ -94,6 +94,7 @@ export function AppSidebar() {
 
   const user = userData?.user;
   const isSuperAdmin = user?.role === "superadmin";
+  const displayName = user?.companyName || "Admin Portal";
 
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.superAdminOnly) {
