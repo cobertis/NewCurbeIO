@@ -166,7 +166,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (method === "email") {
-        await emailService.sendOTPEmail(user.email, code);
+        // Get OTP email template from database
+        const template = await storage.getEmailTemplateBySlug("otp-verification");
+        if (!template) {
+          throw new Error("OTP email template not found");
+        }
+        
+        // Replace variables in template
+        const htmlContent = template.htmlContent.replace(/\{\{otp_code\}\}/g, code);
+        const textContent = template.textContent?.replace(/\{\{otp_code\}\}/g, code);
+        
+        await emailService.sendEmail({
+          to: user.email,
+          subject: template.subject,
+          html: htmlContent,
+          text: textContent,
+        });
       } else if (method === "sms") {
         await twilioService.sendOTPSMS(user.phone!, code);
       }
@@ -306,7 +321,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (method === "email") {
-        await emailService.sendOTPEmail(user.email, code);
+        // Get OTP email template from database
+        const template = await storage.getEmailTemplateBySlug("otp-verification");
+        if (!template) {
+          throw new Error("OTP email template not found");
+        }
+        
+        // Replace variables in template
+        const htmlContent = template.htmlContent.replace(/\{\{otp_code\}\}/g, code);
+        const textContent = template.textContent?.replace(/\{\{otp_code\}\}/g, code);
+        
+        await emailService.sendEmail({
+          to: user.email,
+          subject: template.subject,
+          html: htmlContent,
+          text: textContent,
+        });
       } else if (method === "sms") {
         await twilioService.sendOTPSMS(user.phone!, code);
       }

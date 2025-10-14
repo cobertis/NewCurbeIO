@@ -277,69 +277,6 @@ class EmailService {
     });
   }
 
-  async sendOTPEmail(userEmail: string, otpCode: string): Promise<boolean> {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; text-align: center; }
-            .otp-code { 
-              background: white; 
-              padding: 30px; 
-              border-radius: 8px; 
-              margin: 30px 0; 
-              font-size: 48px; 
-              font-weight: bold; 
-              letter-spacing: 8px; 
-              color: #667eea;
-              font-family: 'Courier New', monospace;
-            }
-            .warning { 
-              background: #fff3cd; 
-              border-left: 4px solid #ffc107; 
-              padding: 15px; 
-              margin: 20px 0; 
-              text-align: left;
-            }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🔐 Código de Verificación</h1>
-            </div>
-            <div class="content">
-              <p>Hemos recibido una solicitud para iniciar sesión en tu cuenta.</p>
-              <p>Tu código de verificación es:</p>
-              <div class="otp-code">${otpCode}</div>
-              <div class="warning">
-                <strong>⚠️ Importante:</strong> Este código expirará en <strong>5 minutos</strong> por seguridad.
-              </div>
-              <p>Si no solicitaste este código, puedes ignorar este correo de forma segura.</p>
-              <p style="margin-top: 30px; font-size: 14px; color: #666;">
-                Por tu seguridad, nunca compartas este código con nadie.
-              </p>
-            </div>
-            <div class="footer">
-              <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-              <p>&copy; 2025 Curbe. Todos los derechos reservados.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-
-    return this.sendEmail({
-      to: userEmail,
-      subject: "Código de Verificación - Curbe Admin",
-      html,
-    });
-  }
 }
 
 export const emailService = new EmailService();
