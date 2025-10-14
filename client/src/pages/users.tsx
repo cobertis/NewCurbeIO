@@ -164,7 +164,7 @@ export default function Users() {
       firstName: user.firstName || "",
       lastName: user.lastName || "",
       role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
-      companyId: user.companyId || "",
+      companyId: user.companyId || "__none__",
     });
     setEditOpen(true);
   };
