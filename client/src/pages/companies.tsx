@@ -180,6 +180,10 @@ export default function Companies() {
   const companies = data?.companies || [];
   const filteredCompanies = companies.filter((company) =>
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
     company.domain?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -238,19 +242,30 @@ export default function Companies() {
                     className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     data-testid={`company-item-${company.id}`}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-1">
                       <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
                         <Building2 className="h-6 w-6 text-primary" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-company-name-${company.id}`}>
-                          {company.name}
-                        </h3>
-                        {company.domain && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-company-domain-${company.id}`}>
-                            {company.domain}
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div>
+                          <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-company-name-${company.id}`}>
+                            {company.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400" data-testid={`text-company-slug-${company.id}`}>
+                            {company.slug}
                           </p>
-                        )}
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-gray-600 dark:text-gray-300" data-testid={`text-company-email-${company.id}`}>
+                            {company.email}
+                          </p>
+                          <p className="text-gray-500 dark:text-gray-400" data-testid={`text-company-phone-${company.id}`}>
+                            {company.phone}
+                          </p>
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-company-address-${company.id}`}>
+                          {company.address}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
