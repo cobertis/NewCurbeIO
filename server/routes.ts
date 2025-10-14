@@ -1471,9 +1471,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allFeatures = await storage.getAllFeatures();
       res.json({ features: allFeatures });
-    } catch (error: any) {
-      console.error("Failed to fetch features:", error);
-      res.status(500).json({ message: "Failed to fetch features", error: error.message });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch features" });
     }
   });
 
@@ -1489,17 +1488,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      console.log("Received feature data:", req.body);
       const validatedData = insertFeatureSchema.parse(req.body);
-      console.log("Validated feature data:", validatedData);
       const feature = await storage.createFeature(validatedData);
       res.status(201).json(feature);
     } catch (error: any) {
-      console.error("Feature creation error:", error);
-      if (error.errors) {
-        console.error("Validation errors:", error.errors);
-      }
-      res.status(400).json({ message: "Invalid feature data", error: error.message });
+      res.status(400).json({ message: "Invalid feature data" });
     }
   });
 
