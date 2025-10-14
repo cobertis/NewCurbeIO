@@ -2,9 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
@@ -12,7 +10,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -35,7 +32,7 @@ export default function Login() {
           title: "Welcome back!",
           description: "You have successfully logged in.",
         });
-        setLocation("/dashboard");
+        setLocation("/");
       } else {
         toast({
           variant: "destructive",
@@ -55,93 +52,113 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
+      {/* Logo in top left */}
+      <div className="absolute top-6 left-6">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-lg">C</span>
+          </div>
+          <span className="text-xl font-semibold text-gray-800 dark:text-white">urbe.io</span>
+        </div>
+      </div>
+
+      {/* Login Card */}
       <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-xl">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl font-bold text-white">C</span>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
+          {/* Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              <LogIn className="w-6 h-6 text-gray-600 dark:text-gray-300" />
             </div>
-            <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Sign in to access your dashboard
+          </div>
+
+          {/* Title */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+              Sign in with email
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Take your business to the next level with
+              <br />
+              the power of our platform
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
-                Email
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="hello@curbe.io"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-gray-50 dark:bg-gray-900 border-gray-300 dark:border-gray-700 h-11"
-                  required
-                  data-testid="input-email"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">
-                Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-gray-50 dark:bg-gray-900 border-gray-300 dark:border-gray-700 h-11"
-                  required
-                  data-testid="input-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-toggle-password"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                data-testid="checkbox-remember"
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Input */}
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="javierace2004@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10 h-12 bg-blue-50/50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg"
+                required
+                data-testid="input-email"
               />
-              <label
-                htmlFor="remember"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Remember me
-              </label>
             </div>
 
+            {/* Password Input */}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-10 pr-10 h-12 bg-blue-50/50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg"
+                required
+                data-testid="input-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                data-testid="button-toggle-password"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+
+            {/* Forgot Password */}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            {/* Sign In Button */}
             <Button
               type="submit"
-              className="w-full h-11 text-base font-medium"
+              className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
               disabled={isLoading}
               data-testid="button-login"
             >
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
+
+            {/* Register Link */}
+            <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+              Don't have an account?{" "}
+              <button
+                type="button"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+              >
+                Register here
+              </button>
+            </div>
           </form>
         </div>
       </div>

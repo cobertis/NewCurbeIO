@@ -10,6 +10,25 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**October 14, 2025 - Login UI Redesign**
+- Completely redesigned login page to match user's custom design
+- Clean gradient background (sky-100 to indigo-100)
+- Curbe.io logo in top-left corner
+- Centered white card with modern styling
+- Login icon at the top
+- Professional copy: "Sign in with email" and tagline about platform power
+- Input fields with icons (email, password with visibility toggle)
+- "Forgot password?" link aligned right
+- Gray Sign In button with proper hover states
+- "Don't have an account? Register here" call-to-action
+
+**October 14, 2025 - Settings Profile Form Fix**
+- Fixed profile editing issue where changes weren't reflected after save
+- Converted form inputs from uncontrolled (defaultValue) to controlled (value with state)
+- Added useState for profileForm state management
+- Added useEffect to sync form state when user data changes
+- Form now properly updates after successful save
+
 **October 14, 2025 - Standardized Page Layouts**
 - Updated all pages to use consistent layout format: `flex flex-col gap-6 p-6`
 - Removed all max-width restrictions and side margins (`max-w-[1600px] mx-auto`)
