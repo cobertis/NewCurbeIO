@@ -66,7 +66,10 @@ export default function Settings() {
       return apiRequest("PATCH", "/api/settings/profile", dataToSend);
     },
     onSuccess: () => {
+      // Invalidate both session and users cache to keep data synced
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",

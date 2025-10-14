@@ -100,8 +100,10 @@ export default function Users() {
       return apiRequest("PATCH", `/api/users/${id}`, dataToSend);
     },
     onSuccess: () => {
+      // Invalidate all user-related caches to keep data synced
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       setEditOpen(false);
       setEditingUser(null);
       editForm.reset();
