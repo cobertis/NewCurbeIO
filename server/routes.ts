@@ -476,26 +476,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!success) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      await logger.logCrud({
+        req,
+        action: "user_deleted",
+        userId: currentUser.id,
+        entity: "user",
+        entityId: targetUser.id,
+        companyId: targetUser.companyId || undefined,
+        metadata: {
+          email: targetUser.email,
+          role: targetUser.role,
+          deletedBy: currentUser.email,
+        },
+      });
+
+      res.json({ success: true });
     } catch (error: any) {
       console.error("Error deleting user:", error);
       return res.status(500).json({ message: "Failed to delete user", error: error.message });
     }
-
-    await logger.logCrud({
-      req,
-      action: "user_deleted",
-      userId: currentUser.id,
-      entity: "user",
-      entityId: targetUser.id,
-      companyId: targetUser.companyId || undefined,
-      metadata: {
-        email: targetUser.email,
-        role: targetUser.role,
-        deletedBy: currentUser.email,
-      },
-    });
-
-    res.json({ success: true });
   });
 
   // ==================== COMPANY ENDPOINTS (superadmin only) ====================
