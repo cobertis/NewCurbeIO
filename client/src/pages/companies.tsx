@@ -238,7 +238,9 @@ export default function Companies() {
   });
 
   const onCreateSubmit = (data: CreateCompanyForm) => {
+    console.log("=== FORM SUBMITTED ===");
     console.log("Creating company with data:", data);
+    console.log("Form errors:", createForm.formState.errors);
     createMutation.mutate(data);
   };
 
@@ -563,12 +565,6 @@ export default function Companies() {
                   type="submit" 
                   disabled={createMutation.isPending} 
                   data-testid="button-submit-create-company"
-                  onClick={() => {
-                    const errors = createForm.formState.errors;
-                    if (Object.keys(errors).length > 0) {
-                      console.log("Form validation errors:", errors);
-                    }
-                  }}
                 >
                   {createMutation.isPending ? "Creating..." : "Create Company & Admin"}
                 </Button>
