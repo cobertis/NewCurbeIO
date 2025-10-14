@@ -390,7 +390,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      console.log("Update user request - User ID:", req.params.id);
+      console.log("Update user request - Body:", req.body);
+      
       const validatedData = updateUserSchema.parse(req.body);
+      console.log("Validated data:", validatedData);
       
       // admin can only update users in their company
       if (currentUser.role === "admin") {
