@@ -23,7 +23,7 @@ import NotFound from "@/pages/not-found";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const style = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "15rem",
     "--sidebar-width-icon": "3rem",
   };
 
@@ -31,28 +31,22 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <AppSidebar />
-        <div className="flex flex-col flex-1">
-          <header className="h-14 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between px-6 sticky top-0 z-10">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger data-testid="button-sidebar-toggle" className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg" />
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
-                  <span className="text-sm font-bold text-white">C</span>
-                </div>
-                <h2 className="text-base font-semibold text-gray-900 dark:text-white">Curbe Admin</h2>
-              </div>
+        <div className="flex flex-col flex-1 min-w-0">
+          <header className="h-16 border-b border-border bg-background flex items-center justify-between px-6 sticky top-0 z-10">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger data-testid="button-sidebar-toggle" className="hover-elevate active-elevate-2 rounded-md" />
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" data-testid="button-notifications" className="rounded-lg">
+              <Button variant="ghost" size="icon" data-testid="button-notifications" className="rounded-md">
                 <Bell className="h-5 w-5" />
               </Button>
               <ThemeToggle />
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-2">
-                <span className="text-sm font-semibold text-white">A</span>
+              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center ml-2">
+                <span className="text-sm font-semibold text-primary-foreground">A</span>
               </div>
             </div>
           </header>
-          <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+          <main className="flex-1 overflow-auto bg-muted/30">
             {children}
           </main>
         </div>

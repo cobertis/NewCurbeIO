@@ -6,11 +6,11 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarHeader,
 } from "@/components/ui/sidebar";
 import type { User } from "@shared/schema";
 
@@ -91,10 +91,22 @@ export function AppSidebar() {
   });
 
   return (
-    <Sidebar className="border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-      <SidebarContent className="py-4">
+    <Sidebar className="border-r border-border bg-background">
+      <SidebarHeader className="h-16 border-b border-border px-6 flex items-center">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-lg font-bold text-primary-foreground">C</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-foreground">Curbe</span>
+            <span className="text-xs text-muted-foreground">Admin Portal</span>
+          </div>
+        </Link>
+      </SidebarHeader>
+
+      <SidebarContent className="px-3 py-4">
         <SidebarGroup>
-          <SidebarGroupContent className="px-3">
+          <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
@@ -103,16 +115,16 @@ export function AppSidebar() {
                     isActive={location === item.url}
                     data-testid={`link-${item.title.toLowerCase()}`}
                     className={`
-                      h-10 rounded-lg transition-all
+                      h-11 rounded-md transition-colors
                       ${location === item.url 
-                        ? 'bg-primary text-white hover:bg-primary/90' 
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                       }
                     `}
                   >
                     <Link href={item.url} className="flex items-center gap-3 px-3">
-                      <item.icon className="h-5 w-5" />
-                      <span className="font-medium">{item.title}</span>
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -121,16 +133,17 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-3 border-t border-gray-200 dark:border-gray-700">
+
+      <SidebarFooter className="p-3 border-t border-border">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
-              className="h-10 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"
+              className="h-11 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
               data-testid="button-logout"
             >
-              <LogOut className="h-5 w-5" />
-              <span className="font-medium">Sign Out</span>
+              <LogOut className="h-5 w-5 shrink-0" />
+              <span>Sign Out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
