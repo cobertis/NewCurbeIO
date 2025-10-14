@@ -117,6 +117,8 @@ export interface IStorage {
   createNotification(notification: InsertNotification): Promise<Notification>;
   getNotificationsByUser(userId: string, limit?: number): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<boolean>;
+  markAllNotificationsAsRead(userId: string): Promise<boolean>;
+  markNotificationEmailSent(id: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {

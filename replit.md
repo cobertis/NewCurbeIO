@@ -84,12 +84,37 @@ Multi-Tenant Role-Based Access Control:
 
 The application emphasizes clean design, efficient multi-tenant management, and data visualization. It adheres to modern UI/UX principles with a consistent design system, including custom color palettes, spacing, and elevation. Technical decisions prioritize type safety (TypeScript), performance (Vite), and accessibility (Radix UI).
 
+## Email Notification System
+
+The application includes a comprehensive SMTP-based email notification system:
+
+**Features:**
+- Global SMTP configuration using custom server credentials
+- Pre-built email templates (welcome, password reset, invoice, general notifications)
+- Email tracking in database (sent status and timestamp)
+- Test email functionality for superadmins
+- Automated email sending on specific events
+
+**API Endpoints:**
+- `GET /api/email/test`: Verify SMTP connection (superadmin only)
+- `POST /api/email/send-test`: Send test email (superadmin only)
+- `GET /api/notifications`: Get user notifications
+- `POST /api/notifications`: Create notification with optional email
+- `PATCH /api/notifications/:id/read`: Mark notification as read
+- `POST /api/notifications/mark-all-read`: Mark all user notifications as read
+
+**Configuration:**
+SMTP credentials are stored securely as environment variables: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM_EMAIL, SMTP_FROM_NAME
+
 ## External Dependencies
 
 - **Database:** Neon PostgreSQL (via `@neondatabase/serverless`) and Drizzle ORM.
+- **Email:** Nodemailer for SMTP email delivery.
+- **Payments:** Stripe for subscription billing and invoicing.
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 - **Form Management & Validation:** React Hook Form with Zod resolvers.
 - **Styling:** Tailwind CSS, PostCSS, Autoprefixer, Class Variance Authority (CVA), `clsx`, `tailwind-merge`.
-- **Session Management:** `express-session`.
-- **Utilities:** `date-fns`, `nanoid`, Zod.
-- **Development Tools:** TypeScript, ESBuild, TSX.
+- **Session Management:** `express-session` with `connect-pg-simple`.
+- **Security:** Bcrypt for password hashing.
+- **Utilities:** `date-fns`, Zod.
+- **Development Tools:** TypeScript, ESBuild, TSX, Drizzle Kit.
