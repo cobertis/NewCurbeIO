@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, FileText } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { EmailTemplatesManager } from "@/components/email-templates-manager";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -129,7 +130,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 lg:w-auto">
           <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
             <UserIcon className="h-4 w-4" />
             Profile
@@ -148,6 +149,12 @@ export default function Settings() {
             <TabsTrigger value="system" className="gap-2" data-testid="tab-system">
               <Mail className="h-4 w-4" />
               System
+            </TabsTrigger>
+          )}
+          {isSuperAdmin && (
+            <TabsTrigger value="email-templates" className="gap-2" data-testid="tab-email-templates">
+              <FileText className="h-4 w-4" />
+              Email Templates
             </TabsTrigger>
           )}
           <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
@@ -551,6 +558,13 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Email Templates Tab */}
+        {isSuperAdmin && (
+          <TabsContent value="email-templates" className="space-y-4">
+            <EmailTemplatesManager />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
