@@ -107,36 +107,159 @@ export const users = pgTable("users", {
 });
 
 // =====================================================
+// BILLING PLANS
+// =====================================================
+
+export const plans = pgTable("plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Starter, Professional, Enterprise
+  description: text("description"),
+  stripePriceId: text("stripe_price_id").unique(), // Stripe Price ID
+  
+  // Pricing
+  price: integer("price").notNull(), // in cents
+  currency: text("currency").notNull().default("usd"),
+  billingCycle: text("billing_cycle").notNull().default("monthly"), // monthly, yearly
+  
+  // Setup fee (one-time charge)
+  setupFee: integer("setup_fee").notNull().default(0), // in cents
+  
+  // Trial period
+  trialDays: integer("trial_days").notNull().default(0), // 0 = no trial, 7, 14, 30, etc.
+  
+  // Features & limits
+  features: jsonb("features").default({
+    maxUsers: 10,
+    maxStorage: 10,
+    apiAccess: false,
+    customBranding: false,
+    prioritySupport: false,
+  }),
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
 // SUBSCRIPTIONS & BILLING
 // =====================================================
 
 export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  
-  // Plan details
-  planName: text("plan_name").notNull(), // free, starter, professional, enterprise
-  planPrice: integer("plan_price").notNull().default(0), // in cents
-  billingCycle: text("billing_cycle").notNull().default("monthly"), // monthly, yearly
+  planId: varchar("plan_id").references(() => plans.id, { onDelete: "set null" }),
   
   // Subscription status
-  status: text("status").notNull().default("active"), // active, cancelled, past_due, trial
+  status: text("status").notNull().default("active"), // active, trialing, past_due, cancelled, unpaid
   
   // Trial period
-  trialEndsAt: timestamp("trial_ends_at"),
+  trialStart: timestamp("trial_start"),
+  trialEnd: timestamp("trial_end"),
   
   // Subscription period
   currentPeriodStart: timestamp("current_period_start").notNull().defaultNow(),
   currentPeriodEnd: timestamp("current_period_end").notNull(),
   
-  // External billing integration (Stripe, etc.)
-  stripeCustomerId: text("stripe_customer_id"),
-  stripeSubscriptionId: text("stripe_subscription_id"),
+  // Stripe integration
+  stripeCustomerId: text("stripe_customer_id").unique(),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  stripeLatestInvoiceId: text("stripe_latest_invoice_id"),
   
   // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   cancelledAt: timestamp("cancelled_at"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+});
+
+// =====================================================
+// INVOICES
+// =====================================================
+
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  subscriptionId: varchar("subscription_id").references(() => subscriptions.id, { onDelete: "set null" }),
+  
+  // Invoice details
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  status: text("status").notNull().default("draft"), // draft, open, paid, void, uncollectible
+  
+  // Amounts (in cents)
+  subtotal: integer("subtotal").notNull().default(0),
+  tax: integer("tax").notNull().default(0),
+  total: integer("total").notNull(),
+  amountPaid: integer("amount_paid").notNull().default(0),
+  amountDue: integer("amount_due").notNull(),
+  currency: text("currency").notNull().default("usd"),
+  
+  // Dates
+  invoiceDate: timestamp("invoice_date").notNull().defaultNow(),
+  dueDate: timestamp("due_date"),
+  paidAt: timestamp("paid_at"),
+  
+  // Stripe integration
+  stripeInvoiceId: text("stripe_invoice_id").unique(),
+  stripeHostedInvoiceUrl: text("stripe_hosted_invoice_url"),
+  stripeInvoicePdf: text("stripe_invoice_pdf"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// INVOICE ITEMS
+// =====================================================
+
+export const invoiceItems = pgTable("invoice_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  
+  // Item details
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitPrice: integer("unit_price").notNull(), // in cents
+  amount: integer("amount").notNull(), // quantity * unitPrice (in cents)
+  
+  // Type of charge
+  type: text("type").notNull().default("subscription"), // subscription, setup_fee, usage, credit
+  
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// PAYMENTS
+// =====================================================
+
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+  
+  // Payment details
+  amount: integer("amount").notNull(), // in cents
+  currency: text("currency").notNull().default("usd"),
+  status: text("status").notNull(), // succeeded, pending, failed, refunded
+  paymentMethod: text("payment_method"), // card, bank_transfer, etc.
+  
+  // Stripe integration
+  stripePaymentIntentId: text("stripe_payment_intent_id").unique(),
+  stripeChargeId: text("stripe_charge_id"),
+  
+  // Payment metadata
+  metadata: jsonb("metadata").default({}),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  processedAt: timestamp("processed_at"),
+  failedAt: timestamp("failed_at"),
+  refundedAt: timestamp("refunded_at"),
 });
 
 // =====================================================
@@ -304,12 +427,64 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// Plans
+export const insertPlanSchema = createInsertSchema(plans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updatePlanSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  stripePriceId: z.string().optional(),
+  price: z.number().int().min(0).optional(),
+  currency: z.string().optional(),
+  billingCycle: z.enum(["monthly", "yearly"]).optional(),
+  setupFee: z.number().int().min(0).optional(),
+  trialDays: z.number().int().min(0).optional(),
+  features: z.record(z.any()).optional(),
+  isActive: z.boolean().optional(),
+}).refine(data => Object.values(data).some(v => v !== undefined), {
+  message: "At least one field must be provided",
+});
+
 // Subscriptions
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
   cancelledAt: true,
+});
+
+export const updateSubscriptionSchema = z.object({
+  planId: z.string().optional(),
+  status: z.enum(["active", "trialing", "past_due", "cancelled", "unpaid"]).optional(),
+  cancelAtPeriodEnd: z.boolean().optional(),
+}).refine(data => Object.values(data).some(v => v !== undefined), {
+  message: "At least one field must be provided",
+});
+
+// Invoices
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Invoice Items
+export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Payments
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  createdAt: true,
+  processedAt: true,
+  failedAt: true,
+  refundedAt: true,
 });
 
 // Invitations
@@ -352,8 +527,20 @@ export type InsertCompanySettings = z.infer<typeof insertCompanySettingsSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
+export type Plan = typeof plans.$inferSelect;
+export type InsertPlan = z.infer<typeof insertPlanSchema>;
+
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
 export type Invitation = typeof invitations.$inferSelect;
 export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
