@@ -428,6 +428,16 @@ export default function Companies() {
           <DialogHeader>
             <DialogTitle>New Company</DialogTitle>
           </DialogHeader>
+          {Object.keys(createForm.formState.errors).length > 0 && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-800 dark:text-red-200">
+              <p className="font-semibold mb-1">Please fix the following errors:</p>
+              <ul className="list-disc list-inside space-y-1">
+                {Object.entries(createForm.formState.errors).map(([key, error]) => (
+                  <li key={key}>{key}: {error?.message?.toString()}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <Form {...createForm}>
             <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
               <div className="space-y-3">
