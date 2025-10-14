@@ -132,6 +132,20 @@ export const users = pgTable("users", {
 });
 
 // =====================================================
+// OTP CODES (Two-Factor Authentication)
+// =====================================================
+
+export const otpCodes = pgTable("otp_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  code: text("code").notNull(), // 6-digit code
+  expiresAt: timestamp("expires_at").notNull(), // Expires in 5 minutes
+  used: boolean("used").notNull().default(false),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// =====================================================
 // BILLING PLANS
 // =====================================================
 
@@ -566,6 +580,14 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   emailSentAt: true,
 });
 
+// OTP Codes
+export const insertOtpCodeSchema = createInsertSchema(otpCodes).omit({
+  id: true,
+  createdAt: true,
+  used: true,
+  usedAt: true,
+});
+
 // =====================================================
 // TYPE EXPORTS
 // =====================================================
@@ -611,6 +633,9 @@ export type InsertFeature = z.infer<typeof insertFeatureSchema>;
 
 export type CompanyFeature = typeof companyFeatures.$inferSelect;
 export type InsertCompanyFeature = z.infer<typeof insertCompanyFeatureSchema>;
+
+export type OtpCode = typeof otpCodes.$inferSelect;
+export type InsertOtpCode = z.infer<typeof insertOtpCodeSchema>;
 
 // =====================================================
 // EMAIL TEMPLATES
