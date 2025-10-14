@@ -74,6 +74,31 @@ export const companySettings = pgTable("company_settings", {
 });
 
 // =====================================================
+// SYSTEM FEATURES (Modular functionality)
+// =====================================================
+
+export const features = pgTable("features", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(), // e.g., "Consentimientos", "Encuestas", "Reportes"
+  key: text("key").notNull().unique(), // e.g., "consents", "surveys", "reports"
+  description: text("description"),
+  category: text("category"), // e.g., "compliance", "engagement", "analytics"
+  icon: text("icon"), // Lucide icon name
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Many-to-many relationship: Companies <-> Features
+export const companyFeatures = pgTable("company_features", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  featureId: varchar("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }),
+  enabledAt: timestamp("enabled_at").notNull().defaultNow(),
+  enabledBy: varchar("enabled_by").references(() => users.id, { onDelete: "set null" }), // Who enabled it
+});
+
+// =====================================================
 // USERS
 // =====================================================
 
@@ -398,6 +423,30 @@ export const updateCompanySettingsSchema = z.object({
   message: "At least one field must be provided",
 });
 
+// Features
+export const insertFeatureSchema = createInsertSchema(features).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateFeatureSchema = z.object({
+  name: z.string().min(1).optional(),
+  key: z.string().min(1).optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  icon: z.string().optional(),
+  isActive: z.boolean().optional(),
+}).refine(data => Object.values(data).some(v => v !== undefined), {
+  message: "At least one field must be provided",
+});
+
+// Company Features
+export const insertCompanyFeatureSchema = createInsertSchema(companyFeatures).omit({
+  id: true,
+  enabledAt: true,
+});
+
 // Users
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -556,6 +605,12 @@ export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type Feature = typeof features.$inferSelect;
+export type InsertFeature = z.infer<typeof insertFeatureSchema>;
+
+export type CompanyFeature = typeof companyFeatures.$inferSelect;
+export type InsertCompanyFeature = z.infer<typeof insertCompanyFeatureSchema>;
 
 // =====================================================
 // EMAIL TEMPLATES
