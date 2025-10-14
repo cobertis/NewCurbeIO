@@ -123,6 +123,7 @@ export default function Users() {
       password: "",
       firstName: "",
       lastName: "",
+      phone: "",
       role: "member",
       companyId: "",
     },
@@ -134,6 +135,7 @@ export default function Users() {
       email: "",
       firstName: "",
       lastName: "",
+      phone: "",
       role: "member",
       companyId: "",
     },
@@ -163,6 +165,7 @@ export default function Users() {
       email: user.email,
       firstName: user.firstName || "",
       lastName: user.lastName || "",
+      phone: user.phone || "",
       role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
       companyId: user.companyId || "__none__",
     });
@@ -256,6 +259,19 @@ export default function Users() {
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <Input {...field} type="email" data-testid="input-create-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} type="tel" placeholder="+1 (555) 123-4567" data-testid="input-create-phone" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -381,6 +397,19 @@ export default function Users() {
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input {...field} type="email" data-testid="input-edit-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} type="tel" placeholder="+1 (555) 123-4567" data-testid="input-edit-phone" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

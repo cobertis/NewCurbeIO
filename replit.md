@@ -16,14 +16,15 @@ Built with React 18, TypeScript, and Vite, the frontend uses Wouter for routing,
 
 **Key UI Features:**
 -   **Dashboard:** Real-time statistics, charts, and recent activity.
--   **Users:** CRUD operations with role-based access. Includes firstName, lastName fields. Superadmins can view and assign company associations. User table displays full names (when available) and company column (superadmin-only).
+-   **Users:** CRUD operations with role-based access. Includes firstName, lastName, phone fields. Phone number required for SMS-based 2FA. Superadmins can view and assign company associations. User table displays full names (when available) and company column (superadmin-only).
 -   **Companies (Superadmin-only):** CRUD operations, visual cards, and feature management. Each company card includes a button to manage assigned features through a modal dialog with checkboxes.
 -   **Plans (Superadmin-only):** CRUD operations for subscription plans.
 -   **Features (Superadmin-only):** Complete CRUD interface for system features with categorization, status management, and activation controls. Features can be created with unique keys and assigned to specific companies.
 -   **Invoices:** View and download invoices with role-based access.
--   **Settings:** Comprehensive settings with tabs for Profile, Preferences, Company Settings, System (SMTP, email templates), and Security.
--   **Login:** Session-based authentication with role-based access.
--   **Audit Logs:** Timeline view of system actions with role-based filtering.
+-   **Settings:** Comprehensive settings with tabs for Profile (includes phone number management), Preferences, Company Settings, System (SMTP, email templates), and Security.
+-   **Login:** Two-factor authentication with OTP verification via email or SMS.
+-   **OTP Verification:** Dedicated verification page with 6-digit code input, method selection (email/SMS), device trust option, countdown timers.
+-   **Audit Logs:** Timeline view of system actions with role-based filtering, including 2FA events.
 -   **Email Templates:** Management interface with HTML editor and live preview (superadmin-only).
 
 **Design System:**
@@ -34,7 +35,11 @@ Features a clean sidebar and header, with a Curbe.io logo, role-based navigation
 The backend uses Express.js and TypeScript, providing a RESTful API. It implements session-based authentication with `express-session` and enforces role-based access control (RBAC).
 
 **Key API Endpoints:**
--   `/api/users`: User management (company-scoped for admins).
+-   `/api/login`: Validates credentials and initiates 2FA flow (sets pendingUserId).
+-   `/api/auth/send-otp`: Sends OTP code via email or SMS (requires pendingUserId).
+-   `/api/auth/verify-otp`: Verifies OTP and grants full session (sets userId).
+-   `/api/auth/resend-otp`: Resends OTP with 1-minute cooldown.
+-   `/api/users`: User management with phone number support (company-scoped for admins).
 -   `/api/companies`: Company management (superadmin only).
 -   `/api/stats` & `/api/dashboard-stats`: User and dashboard statistics (access level-based).
 -   `/api/plans`: Subscription plan management (superadmin only).
@@ -43,7 +48,7 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
 -   `/api/invoices` & `/api/payments`: Invoice and payment management (role-based, company-filtered).
 -   `/api/subscriptions`: Company subscription management.
 -   `/api/stripe/webhooks`: Stripe webhook handling.
--   `/api/settings/profile`, `/api/settings/company`, `/api/settings/preferences`: Settings management.
+-   `/api/settings/profile`, `/api/settings/company`, `/api/settings/preferences`: Settings management with phone number updates.
 -   `/api/email-templates`: CRUD for email templates (superadmin only).
 -   `/api/email/test` & `/api/email/send-test`: SMTP test functionality (superadmin only).
 -   `/api/audit-logs`: Access audit logs with role-based filtering.
@@ -51,11 +56,18 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
 ### Security
 
 -   **Password Security:** Bcrypt hashing for all passwords.
+-   **Two-Factor Authentication (2FA):** OTP-based verification with email and SMS delivery options.
+    -   6-digit codes with 5-minute expiration
+    -   Method selection during verification (email always available, SMS requires phone number)
+    -   1-minute resend cooldown with countdown timer
+    -   Optional device trust for 30 days (extends session duration)
+    -   Two-stage session: `pendingUserId` → credential validation → `userId` after OTP verification
+    -   All protected routes verify `userId` exists (not just session presence)
 -   **Authentication:** Session-based with `express-session` and RBAC for protected routes.
 
 ### Data Models & Multi-Tenant Schema
 
-Uses PostgreSQL with Drizzle ORM. Core multi-tenant entities include Companies, Company Settings, Users (with roles: superadmin, admin, member, viewer), Plans, Subscriptions, Invoices, Payments, Invitations, Activity Logs, API Keys, Notifications, Email Templates, Features, and Company Features (junction table).
+Uses PostgreSQL with Drizzle ORM. Core multi-tenant entities include Companies, Company Settings, Users (with roles: superadmin, admin, member, viewer, phone number for 2FA), OTP Codes, Plans, Subscriptions, Invoices, Payments, Invitations, Activity Logs, API Keys, Notifications, Email Templates, Features, and Company Features (junction table).
 
 **Multi-Tenancy Implementation:**
 Strict data isolation is enforced by associating every non-superadmin user with a `companyId`. All data endpoints automatically filter results by the authenticated user's company, ensuring users only access their organization's data. Superadmins can access data across all companies, potentially using a `companyId` query parameter.
@@ -85,7 +97,8 @@ Tracks critical actions with a centralized `LoggingService`. Automatically captu
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL (`@neondatabase/serverless`) and Drizzle ORM.
--   **Email:** Nodemailer for SMTP delivery.
+-   **Email:** Nodemailer for SMTP delivery (OTP codes, transactional emails).
+-   **SMS:** Twilio for SMS delivery (OTP codes via SMS).
 -   **Payments:** Stripe for subscription billing and invoicing.
 -   **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 -   **Form Management & Validation:** React Hook Form with Zod resolvers.

@@ -39,6 +39,7 @@ export default function Settings() {
     firstName: "",
     lastName: "",
     email: "",
+    phone: "",
   });
 
   // Update form when user data changes
@@ -48,13 +49,14 @@ export default function Settings() {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
+        phone: user.phone || "",
       });
     }
   }, [user]);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { firstName: string; lastName: string; email: string }) => {
+    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone?: string }) => {
       return apiRequest("PATCH", "/api/settings/profile", data);
     },
     onSuccess: () => {
@@ -203,6 +205,19 @@ export default function Settings() {
                     data-testid="input-email-settings"
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    value={profileForm.phone || ""}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    data-testid="input-phone-settings"
+                  />
+                  <p className="text-xs text-muted-foreground">Required for SMS two-factor authentication</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Role</Label>
