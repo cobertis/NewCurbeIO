@@ -1132,12 +1132,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Company not found" });
     }
 
+    // Log without companyId since the company itself is being deleted (would fail FK constraint)
     await logger.logCrud({
       req,
       operation: "delete",
       entity: "company",
       entityId: company.id,
-      companyId: company.id,
+      companyId: undefined, // Don't reference the deleted company
       metadata: {
         name: company.name,
         deletedBy: currentUser.email,
