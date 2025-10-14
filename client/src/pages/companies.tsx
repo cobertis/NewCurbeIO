@@ -425,6 +425,9 @@ export default function Companies() {
         <DialogContent data-testid="dialog-create-company">
           <DialogHeader>
             <DialogTitle>New Company</DialogTitle>
+            <DialogDescription>
+              Create a new company. An admin user will be created and sent an activation email.
+            </DialogDescription>
           </DialogHeader>
           {Object.keys(createForm.formState.errors).length > 0 && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-800 dark:text-red-200">
@@ -602,6 +605,9 @@ export default function Companies() {
         <DialogContent data-testid="dialog-edit-company">
           <DialogHeader>
             <DialogTitle>Edit Company</DialogTitle>
+            <DialogDescription>
+              Update the company information and settings.
+            </DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
