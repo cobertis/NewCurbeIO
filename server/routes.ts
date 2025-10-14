@@ -233,14 +233,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: { rememberDevice: !!rememberDevice },
       });
 
-      res.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          companyId: user.companyId,
-        },
+      // Force save session with new cookie settings
+      req.session.save((err) => {
+        if (err) {
+          console.error("Error saving session:", err);
+          return res.status(500).json({ message: "Failed to save session" });
+        }
+
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            companyId: user.companyId,
+          },
+        });
       });
     } catch (error) {
       console.error("Error verifying OTP:", error);
