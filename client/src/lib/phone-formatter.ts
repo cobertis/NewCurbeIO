@@ -1,19 +1,38 @@
 // Phone number formatting utilities
 
 /**
- * Formats a phone number from E.164 to display format
- * E.164: +14155552671 -> Display: +1 (415) 555-2671
+ * Formats a phone number to display format
+ * Primary support: US/Canada numbers (NANP)
+ * - E.164: +14155552671 -> Display: +1 (415) 555-2671
+ * - Without +: 4155552671 -> +1 (415) 555-2671
+ * - With parentheses: (415) 555-2671 -> +1 (415) 555-2671
+ * 
+ * International numbers: Returns as-is if they don't match US format
+ * 
+ * @param phone - Phone number in various formats
+ * @returns Formatted phone number or original if not US format
  */
 export function formatPhoneDisplay(phone: string): string {
   if (!phone) return "";
   
   // Remove all non-digit characters except the leading +
-  const cleaned = phone.replace(/[^\d+]/g, "");
+  let cleaned = phone.replace(/[^\d+]/g, "");
   
-  // If it doesn't start with +, return as is
-  if (!cleaned.startsWith("+")) return phone;
+  // Handle US/Canada numbers without + prefix
+  if (!cleaned.startsWith("+")) {
+    if (cleaned.length === 10) {
+      // 10 digits: assume US number, add +1
+      cleaned = "+1" + cleaned;
+    } else if (cleaned.length === 11 && cleaned.startsWith("1")) {
+      // 11 digits starting with 1: add +
+      cleaned = "+" + cleaned;
+    } else {
+      // Other lengths: return original (likely international)
+      return phone;
+    }
+  }
   
-  // Extract country code and number
+  // Format US/Canada numbers (NANP: +1 XXX XXX XXXX)
   const match = cleaned.match(/^\+(\d{1,3})(\d{3})(\d{3})(\d{4})$/);
   
   if (match) {
@@ -21,6 +40,7 @@ export function formatPhoneDisplay(phone: string): string {
     return `+${countryCode} (${area}) ${prefix}-${line}`;
   }
   
+  // Return original for non-matching formats (international, invalid, etc.)
   return phone;
 }
 
