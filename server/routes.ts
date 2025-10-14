@@ -350,6 +350,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password before creating user
       const hashedPassword = await hashPassword(userData.password);
       const newUser = await storage.createUser({ ...userData, password: hashedPassword });
+      
+      await logger.logCrud({
+        req,
+        action: "user_created",
+        userId: currentUser.id,
+        entity: "user",
+        entityId: newUser.id,
+        companyId: newUser.companyId || undefined,
+        metadata: {
+          email: newUser.email,
+          role: newUser.role,
+          createdBy: currentUser.email,
+        },
+      });
+      
       const { password, ...sanitizedUser } = newUser;
       res.json({ user: sanitizedUser });
     } catch (error) {
@@ -391,6 +406,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      await logger.logCrud({
+        req,
+        action: "user_updated",
+        userId: currentUser.id,
+        entity: "user",
+        entityId: updatedUser.id,
+        companyId: updatedUser.companyId || undefined,
+        metadata: {
+          email: updatedUser.email,
+          changes: validatedData,
+          updatedBy: currentUser.email,
+        },
+      });
+
       const { password, ...sanitizedUser } = updatedUser;
       res.json({ user: sanitizedUser });
     } catch (error) {
@@ -413,10 +442,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Forbidden" });
     }
 
+    // Get target user before deletion
+    const targetUser = await storage.getUser(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     // admin can only delete users in their company
     if (currentUser.role === "admin") {
-      const targetUser = await storage.getUser(req.params.id);
-      if (!targetUser || targetUser.companyId !== currentUser.companyId) {
+      if (targetUser.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
     }
@@ -425,6 +459,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!success) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    await logger.logCrud({
+      req,
+      action: "user_deleted",
+      userId: currentUser.id,
+      entity: "user",
+      entityId: targetUser.id,
+      companyId: targetUser.companyId || undefined,
+      metadata: {
+        email: targetUser.email,
+        role: targetUser.role,
+        deletedBy: currentUser.email,
+      },
+    });
 
     res.json({ success: true });
   });
@@ -490,6 +538,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { password, ...sanitizedAdmin } = adminUser;
       
+      await logger.logCrud({
+        req,
+        action: "company_created",
+        userId: currentUser.id,
+        entity: "company",
+        entityId: newCompany.id,
+        companyId: newCompany.id,
+        metadata: {
+          name: newCompany.name,
+          adminEmail: adminUser.email,
+          createdBy: currentUser.email,
+        },
+      });
+      
       res.json({ 
         company: newCompany,
         admin: sanitizedAdmin 
@@ -516,6 +578,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedCompany) {
         return res.status(404).json({ message: "Company not found" });
       }
+      
+      await logger.logCrud({
+        req,
+        action: "company_updated",
+        userId: currentUser.id,
+        entity: "company",
+        entityId: updatedCompany.id,
+        companyId: updatedCompany.id,
+        metadata: {
+          name: updatedCompany.name,
+          changes: validatedData,
+          updatedBy: currentUser.email,
+        },
+      });
+      
       res.json({ company: updatedCompany });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
@@ -533,10 +610,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Forbidden" });
     }
 
+    // Get company details before deletion for logging
+    const company = await storage.getCompany(req.params.id);
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
     const success = await storage.deleteCompany(req.params.id);
     if (!success) {
       return res.status(404).json({ message: "Company not found" });
     }
+
+    await logger.logCrud({
+      req,
+      action: "company_deleted",
+      userId: currentUser.id,
+      entity: "company",
+      entityId: company.id,
+      companyId: company.id,
+      metadata: {
+        name: company.name,
+        deletedBy: currentUser.email,
+      },
+    });
 
     res.json({ success: true });
   });
