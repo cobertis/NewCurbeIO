@@ -558,6 +558,9 @@ export default function Users() {
                       </th>
                     )}
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
+                      Phone
+                    </th>
+                    <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
                       Role
                     </th>
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
@@ -607,6 +610,9 @@ export default function Users() {
                             )}
                           </td>
                         )}
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" data-testid={`text-phone-${user.id}`}>
+                          {user.phone || <span className="text-gray-400 italic">No phone</span>}
+                        </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadge.className}`} data-testid={`badge-role-${user.id}`}>
                             {roleBadge.label}
