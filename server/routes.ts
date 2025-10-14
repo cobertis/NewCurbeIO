@@ -1014,26 +1014,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         used: false,
       });
 
-      // Send activation email
+      // Send activation email using template
       const activationLink = `${req.protocol}://${req.get('host')}/activate-account?token=${activationToken}`;
       
       try {
+        // Get activation email template from database
+        const template = await storage.getEmailTemplateBySlug("account-activation");
+        if (!template) {
+          throw new Error("Activation email template not found");
+        }
+        
+        // Replace variables in template
+        let htmlContent = template.htmlContent
+          .replace(/\{\{firstName\}\}/g, adminData.firstName || 'there')
+          .replace(/\{\{company_name\}\}/g, newCompany.name)
+          .replace(/\{\{activation_link\}\}/g, activationLink);
+        
+        let textContent = template.textContent
+          ?.replace(/\{\{firstName\}\}/g, adminData.firstName || 'there')
+          ?.replace(/\{\{company_name\}\}/g, newCompany.name)
+          ?.replace(/\{\{activation_link\}\}/g, activationLink);
+        
         await emailService.sendEmail({
           to: adminData.email,
-          subject: 'Activate Your Account - Curbe',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Welcome to ${newCompany.name}!</h2>
-              <p>Your administrator account has been created. Please click the button below to activate your account and set your password:</p>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${activationLink}" style="background-color: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Activate Account</a>
-              </div>
-              <p>Or copy and paste this link into your browser:</p>
-              <p style="color: #666; word-break: break-all;">${activationLink}</p>
-              <p style="color: #999; font-size: 12px;">This link will expire in 7 days.</p>
-            </div>
-          `
+          subject: template.subject,
+          html: htmlContent,
+          text: textContent,
         });
+        
+        console.log(`Email sent successfully to ${adminData.email}`);
       } catch (emailError) {
         console.error('Failed to send activation email:', emailError);
         // Continue anyway - user can request a new activation link later

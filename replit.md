@@ -93,7 +93,14 @@ Strict data isolation is enforced by associating every non-superadmin user with 
 
 ### Email Notification System
 
-Features global SMTP configuration, pre-built email templates, email tracking, test email functionality, and automated sending on events. SMTP credentials are securely stored as environment variables.
+Features global SMTP configuration, database-driven email templates, email tracking, test email functionality, and automated sending on events. SMTP credentials are securely stored as environment variables.
+
+**Email Templates:**
+-   All system emails use templates stored in the database (`email_templates` table)
+-   Templates support variable replacement (e.g., `{{firstName}}`, `{{otp_code}}`, `{{activation_link}}`)
+-   Available templates: OTP Verification, Account Activation, Password Reset, Invoice, Welcome, Custom
+-   Templates are editable via Settings > Email Settings (superadmin-only)
+-   Consistent professional design across all email types
 
 ### Modular Feature System
 
