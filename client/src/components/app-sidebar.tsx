@@ -94,7 +94,6 @@ export function AppSidebar() {
 
   const user = userData?.user;
   const isSuperAdmin = user?.role === "superadmin";
-  const displayName = user?.companyName || "Admin Portal";
 
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.superAdminOnly) {
@@ -105,16 +104,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="px-6 py-4">
-        <Link href="/dashboard" className="flex flex-col items-center gap-2">
+      <SidebarHeader className="px-6 py-3">
+        <Link href="/dashboard" className="flex items-center justify-center">
           <img 
             src={logo} 
             alt="Curbe.io" 
             className="h-10 w-auto object-contain"
           />
-          <span className="text-xs text-muted-foreground" data-testid="text-company-name">
-            {displayName}
-          </span>
         </Link>
       </SidebarHeader>
 
