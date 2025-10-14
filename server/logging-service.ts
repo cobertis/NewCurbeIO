@@ -58,11 +58,13 @@ export class LoggingService {
       | "logout" 
       | "login_failed" 
       | "login_credentials_verified"
+      | "login_trusted_device"
       | "otp_sent" 
       | "otp_send_failed" 
       | "otp_verify_failed" 
       | "login_with_otp"
-      | "otp_resent";
+      | "otp_resent"
+      | "account_activated";
     userId?: string;
     email: string;
     metadata?: Record<string, any>;

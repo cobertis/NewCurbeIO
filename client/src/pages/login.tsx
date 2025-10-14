@@ -49,9 +49,18 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // Redirect to OTP verification page with email and phone
-        const phoneParam = data.user.phone ? `&phone=${encodeURIComponent(data.user.phone)}` : '';
-        setLocation(`/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(email)}${phoneParam}`);
+        // If trusted device, skip OTP and go directly to dashboard
+        if (data.skipOTP) {
+          toast({
+            title: "Welcome back!",
+            description: "Logged in from trusted device",
+          });
+          setLocation("/");
+        } else {
+          // Redirect to OTP verification page with email and phone
+          const phoneParam = data.user.phone ? `&phone=${encodeURIComponent(data.user.phone)}` : '';
+          setLocation(`/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(email)}${phoneParam}`);
+        }
       } else {
         toast({
           variant: "destructive",
