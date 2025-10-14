@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { randomBytes } from "crypto";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
@@ -256,20 +257,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete req.session.pendingUserId;
       req.session.userId = user.id;
 
-      // Set cookie maxAge and expires BEFORE saving
-      const sessionDuration = (rememberDevice === true || rememberDevice === "true") 
-        ? 30 * 24 * 60 * 60 * 1000  // 30 days
-        : 7 * 24 * 60 * 60 * 1000;   // 7 days (default)
-      
+      // Set session duration - always 7 days since we use trusted device tokens
+      const sessionDuration = 7 * 24 * 60 * 60 * 1000; // 7 days
       req.session.cookie.maxAge = sessionDuration;
       req.session.cookie.expires = new Date(Date.now() + sessionDuration);
-      
-      console.log(`Setting session for user ${user.email}:`, {
-        rememberDevice: !!rememberDevice,
-        maxAge: sessionDuration,
-        expires: req.session.cookie.expires,
-        days: sessionDuration / (24 * 60 * 60 * 1000)
-      });
+
+      // If "Remember this device" is checked, create a trusted device token
+      let deviceToken: string | null = null;
+      if (rememberDevice === true || rememberDevice === "true") {
+        // Generate secure random token (32 bytes = 64 hex characters)
+        deviceToken = randomBytes(32).toString('hex');
+        
+        // Get device name from user agent
+        const userAgent = req.headers['user-agent'] || 'Unknown Device';
+        const deviceName = userAgent.substring(0, 200); // Limit length
+        
+        // Save to database with 30-day expiration
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        await storage.saveTrustedDevice({
+          userId: user.id,
+          deviceToken,
+          deviceName,
+          expiresAt,
+        });
+        
+        console.log(`✓ Created trusted device for user ${user.email} (expires: ${expiresAt.toISOString()})`);
+      }
 
       await logger.logAuth({
         req,
@@ -277,9 +290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.id,
         email: user.email,
         metadata: { 
-          rememberDevice: !!rememberDevice, 
-          cookieMaxAge: req.session.cookie.maxAge,
-          cookieExpires: req.session.cookie.expires 
+          rememberDevice: !!rememberDevice,
+          trustedDeviceCreated: !!deviceToken
         },
       });
 
@@ -290,8 +302,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: "Failed to save session" });
         }
 
-        const maxAgeDays = req.session.cookie.maxAge ? req.session.cookie.maxAge / (24 * 60 * 60 * 1000) : 0;
-        console.log(`✓ Session saved successfully for ${user.email}. Cookie expires in: ${maxAgeDays} days`);
+        // Set trusted device cookie if generated (httpOnly, secure, 30 days)
+        if (deviceToken) {
+          res.cookie('trusted_device', deviceToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+          });
+        }
+
+        console.log(`✓ Session saved successfully for ${user.email}. Trusted device: ${!!deviceToken}`);
 
         res.json({
           success: true,
