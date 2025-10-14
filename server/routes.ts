@@ -6,7 +6,8 @@ import {
   loginSchema, 
   updateUserSchema, 
   insertCompanySchema, 
-  updateCompanySchema 
+  updateCompanySchema,
+  createCompanyWithAdminSchema 
 } from "@shared/schema";
 import "./types";
 
@@ -256,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ companies });
   });
 
-  // Create company
+  // Create company with admin user
   app.post("/api/companies", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -268,11 +269,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const companyData = insertCompanySchema.parse(req.body);
+      const { company: companyData, admin: adminData } = createCompanyWithAdminSchema.parse(req.body);
+      
+      // Check if admin email already exists
+      const existingUser = await storage.getUserByEmail(adminData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Admin email already exists" });
+      }
+
+      // Create company first
       const newCompany = await storage.createCompany(companyData);
-      res.json({ company: newCompany });
-    } catch (error) {
-      res.status(400).json({ message: "Invalid request" });
+      
+      // Create admin user for the company
+      const adminUser = await storage.createUser({
+        email: adminData.email,
+        password: adminData.password,
+        firstName: adminData.firstName,
+        lastName: adminData.lastName,
+        role: "admin",
+        companyId: newCompany.id,
+        isActive: true,
+        emailVerified: false,
+      });
+
+      const { password, ...sanitizedAdmin } = adminUser;
+      
+      res.json({ 
+        company: newCompany,
+        admin: sanitizedAdmin 
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Invalid request" });
     }
   });
 

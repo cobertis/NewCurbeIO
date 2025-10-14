@@ -11,6 +11,9 @@ export const companies = pgTable("companies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(), // URL-friendly identifier
+  email: text("email").notNull(), // Company contact email
+  phone: text("phone").notNull(), // Company phone number
+  address: text("address").notNull(), // Company address
   domain: text("domain"), // Custom domain
   logo: text("logo"), // Logo URL
   website: text("website"),
@@ -219,6 +222,9 @@ export const insertCompanySchema = createInsertSchema(companies).omit({
 export const updateCompanySchema = z.object({
   name: z.string().min(1).optional(),
   slug: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().min(1).optional(),
+  address: z.string().min(1).optional(),
   domain: z.string().optional(),
   logo: z.string().url().optional(),
   website: z.string().url().optional(),
@@ -228,6 +234,25 @@ export const updateCompanySchema = z.object({
   isActive: z.boolean().optional(),
 }).refine(data => Object.values(data).some(v => v !== undefined), {
   message: "At least one field must be provided",
+});
+
+// Schema for creating a company with admin user
+export const createCompanyWithAdminSchema = z.object({
+  // Company data
+  company: z.object({
+    name: z.string().min(1, "Company name is required"),
+    slug: z.string().min(1, "Slug is required"),
+    email: z.string().email("Valid email is required"),
+    phone: z.string().min(1, "Phone is required"),
+    address: z.string().min(1, "Address is required"),
+  }),
+  // Admin user data
+  admin: z.object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Valid email is required"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+  }),
 });
 
 // Company Settings

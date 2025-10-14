@@ -8,14 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCompanySchema, type Company } from "@shared/schema";
+import { createCompanyWithAdminSchema, updateCompanySchema, type Company } from "@shared/schema";
 import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
-const companyFormSchema = insertCompanySchema;
-
-type CompanyForm = z.infer<typeof companyFormSchema>;
+type CreateCompanyForm = z.infer<typeof createCompanyWithAdminSchema>;
+type UpdateCompanyForm = z.infer<typeof updateCompanySchema>;
 
 export default function Companies() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -29,13 +28,17 @@ export default function Companies() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: CompanyForm) => {
+    mutationFn: async (data: CreateCompanyForm) => {
       const response = await fetch("/api/companies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(data),
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create company");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -44,20 +47,20 @@ export default function Companies() {
       createForm.reset();
       toast({
         title: "Company Created",
-        description: "The company has been created successfully",
+        description: "The company and admin user have been created successfully",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to create company",
+        description: error.message || "Failed to create company",
         variant: "destructive",
       });
     },
   });
 
   const editMutation = useMutation({
-    mutationFn: async (data: Partial<CompanyForm> & { id: string }) => {
+    mutationFn: async (data: UpdateCompanyForm & { id: string }) => {
       const { id, ...rest } = data;
       const response = await fetch(`/api/companies/${id}`, {
         method: "PATCH",
@@ -65,6 +68,10 @@ export default function Companies() {
         credentials: "include",
         body: JSON.stringify(rest),
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update company");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -77,10 +84,10 @@ export default function Companies() {
         description: "The company has been updated successfully",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to update company",
+        description: error.message || "Failed to update company",
         variant: "destructive",
       });
     },
@@ -110,29 +117,42 @@ export default function Companies() {
     },
   });
 
-  const createForm = useForm<CompanyForm>({
-    resolver: zodResolver(companyFormSchema),
+  const createForm = useForm<CreateCompanyForm>({
+    resolver: zodResolver(createCompanyWithAdminSchema),
+    defaultValues: {
+      company: {
+        name: "",
+        slug: "",
+        email: "",
+        phone: "",
+        address: "",
+      },
+      admin: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+      },
+    },
+  });
+
+  const editForm = useForm<UpdateCompanyForm>({
+    resolver: zodResolver(updateCompanySchema),
     defaultValues: {
       name: "",
       slug: "",
+      email: "",
+      phone: "",
+      address: "",
       domain: "",
     },
   });
 
-  const editForm = useForm<Partial<CompanyForm>>({
-    resolver: zodResolver(companyFormSchema.partial()),
-    defaultValues: {
-      name: "",
-      slug: "",
-      domain: "",
-    },
-  });
-
-  const onCreateSubmit = (data: CompanyForm) => {
+  const onCreateSubmit = (data: CreateCompanyForm) => {
     createMutation.mutate(data);
   };
 
-  const onEditSubmit = (data: Partial<CompanyForm>) => {
+  const onEditSubmit = (data: UpdateCompanyForm) => {
     if (selectedCompany) {
       editMutation.mutate({ ...data, id: selectedCompany.id });
     }
@@ -143,6 +163,9 @@ export default function Companies() {
     editForm.reset({
       name: company.name,
       slug: company.slug,
+      email: company.email,
+      phone: company.phone,
+      address: company.address,
       domain: company.domain ?? "",
     });
     setEditOpen(true);
@@ -263,52 +286,138 @@ export default function Companies() {
             <DialogTitle>New Company</DialogTitle>
           </DialogHeader>
           <Form {...createForm}>
-            <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
-              <FormField
-                control={createForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Company name" {...field} data-testid="input-create-company-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={createForm.control}
-                name="slug"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Slug</FormLabel>
-                    <FormControl>
-                      <Input placeholder="company-slug" {...field} data-testid="input-create-company-slug" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={createForm.control}
-                name="domain"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Domain (optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="example.com" {...field} value={field.value ?? ""} data-testid="input-create-company-domain" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Company Information</h3>
+                <FormField
+                  control={createForm.control}
+                  name="company.name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Acme Inc." {...field} data-testid="input-create-company-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="company.slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slug</FormLabel>
+                      <FormControl>
+                        <Input placeholder="acme-inc" {...field} data-testid="input-create-company-slug" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="company.email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="contact@acme.com" {...field} data-testid="input-create-company-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="company.phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+1 (555) 123-4567" {...field} data-testid="input-create-company-phone" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="company.address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="123 Main St, City, Country" {...field} data-testid="input-create-company-address" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-3 pt-4 border-t">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Admin User</h3>
+                <FormField
+                  control={createForm.control}
+                  name="admin.firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John" {...field} data-testid="input-create-admin-firstname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="admin.lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Doe" {...field} data-testid="input-create-admin-lastname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="admin.email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Admin Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="john@acme.com" {...field} data-testid="input-create-admin-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="admin.password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} data-testid="input-create-admin-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-create-company">
-                  {createMutation.isPending ? "Creating..." : "Create"}
+                  {createMutation.isPending ? "Creating..." : "Create Company & Admin"}
                 </Button>
               </DialogFooter>
             </form>
@@ -323,15 +432,15 @@ export default function Companies() {
             <DialogTitle>Edit Company</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
               <FormField
                 control={editForm.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Company Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Company name" {...field} data-testid="input-edit-company-name" />
+                      <Input placeholder="Company name" {...field} value={field.value ?? ""} data-testid="input-edit-company-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -345,6 +454,45 @@ export default function Companies() {
                     <FormLabel>Slug</FormLabel>
                     <FormControl>
                       <Input placeholder="company-slug" {...field} value={field.value ?? ""} data-testid="input-edit-company-slug" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="contact@company.com" {...field} value={field.value ?? ""} data-testid="input-edit-company-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1 (555) 123-4567" {...field} value={field.value ?? ""} data-testid="input-edit-company-phone" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123 Main St, City, Country" {...field} value={field.value ?? ""} data-testid="input-edit-company-address" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
