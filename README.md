@@ -117,29 +117,137 @@ The application will be available at:
 
 ## 🔐 Environment Variables
 
+### Core Variables (Required for Current Features)
+
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes | - |
-| `SESSION_SECRET` | Secret key for session encryption | Yes | - |
-| `NODE_ENV` | Environment (development/production) | No | development |
-| `PGDATABASE` | Database name (auto-set by DATABASE_URL) | No | - |
-| `PGHOST` | Database host (auto-set by DATABASE_URL) | No | - |
-| `PGPORT` | Database port (auto-set by DATABASE_URL) | No | - |
-| `PGUSER` | Database user (auto-set by DATABASE_URL) | No | - |
-| `PGPASSWORD` | Database password (auto-set by DATABASE_URL) | No | - |
+| `DATABASE_URL` | PostgreSQL connection string | **Yes** | - |
+| `SESSION_SECRET` | Secret key for session encryption (min 32 chars) | **Yes** | - |
+| `NODE_ENV` | Environment mode (development/production/test) | No | development |
 
-### Example .env File
+### Database Connection (Auto-configured from DATABASE_URL)
 
-```env
-# Database Configuration (Neon PostgreSQL)
-DATABASE_URL="postgresql://username:password@host.neon.tech/database?sslmode=require"
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `PGDATABASE` | Database name | No | - |
+| `PGHOST` | Database host | No | - |
+| `PGPORT` | Database port | No | 5432 |
+| `PGUSER` | Database user | No | - |
+| `PGPASSWORD` | Database password | No | - |
 
-# Session Secret (generate a random string)
-SESSION_SECRET="your-very-secure-random-secret-key-here"
+### Future Integration Variables (Optional, for Planned Features)
 
-# Environment
-NODE_ENV="development"
-```
+#### Stripe (Subscription Management)
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `STRIPE_SECRET_KEY` | Stripe API secret key (from Stripe dashboard) | No | - |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (from Stripe dashboard) | No | - |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (from webhook config) | No | - |
+
+#### Email Service (Notifications & Invitations)
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `SMTP_HOST` | SMTP server host | No | - |
+| `SMTP_PORT` | SMTP server port | No | 587 |
+| `SMTP_USER` | SMTP username | No | - |
+| `SMTP_PASSWORD` | SMTP password | No | - |
+| `SMTP_FROM_NAME` | Email sender name | No | Curbe Admin |
+| `SMTP_FROM_EMAIL` | Email sender address | No | noreply@curbe.io |
+
+#### Cloud Storage (File Uploads)
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `AWS_ACCESS_KEY_ID` | AWS access key for S3 | No | - |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key for S3 | No | - |
+| `AWS_REGION` | AWS region | No | us-east-1 |
+| `AWS_S3_BUCKET` | S3 bucket name | No | - |
+
+#### Production Infrastructure
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `REDIS_URL` | Redis connection for session store | No | - |
+
+#### Feature Flags
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `ENABLE_ANALYTICS` | Enable analytics features | No | false |
+| `ENABLE_API_ACCESS` | Enable API key access | No | false |
+| `ENABLE_SSO` | Enable single sign-on | No | false |
+| `ENABLE_2FA` | Enable two-factor authentication | No | false |
+
+### Setting Up Environment Variables
+
+1. **Copy the example file**:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Configure required variables** (DATABASE_URL, SESSION_SECRET):
+   ```env
+   DATABASE_URL="postgresql://user:pass@host.neon.tech/db?sslmode=require"
+   SESSION_SECRET="$(openssl rand -base64 32)"  # Generate strong secret
+   NODE_ENV="development"
+   ```
+
+3. **Handle optional variables**:
+   - **Comment out** unused optional variables with `#` to keep `.env` clean
+   - **Leave blank** if you plan to add them soon
+   - **Add values** only when implementing the feature:
+     ```env
+     # Uncomment when implementing subscriptions:
+     # STRIPE_SECRET_KEY=sk_test_...
+     # STRIPE_PUBLISHABLE_KEY=pk_test_...
+     ```
+
+4. **Verify environment setup**:
+   ```bash
+   # Check .gitignore contains .env
+   grep -q "^\.env$" .gitignore && echo "✓ .env is gitignored" || echo "⚠ Add .env to .gitignore!"
+   
+   # Validate required variables are set
+   node -e "if(!process.env.DATABASE_URL || !process.env.SESSION_SECRET) { console.error('Missing required env vars'); process.exit(1); } else { console.log('✓ Required variables set'); }"
+   ```
+
+5. **Run database migrations** after configuring DATABASE_URL:
+   ```bash
+   npm run db:push --force
+   ```
+
+### Security Best Practices for Environment Variables
+
+⚠️ **Critical Security Guidelines:**
+
+1. **Strong Secrets**
+   - Use cryptographically secure random strings for SESSION_SECRET
+   - Minimum 32 characters recommended
+   - Generate with: `openssl rand -base64 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+
+2. **Secret Management**
+   - **Never commit** `.env` file to version control
+   - **Verify .gitignore**: Run `grep -q "^\.env$" .gitignore` to confirm `.env` is excluded
+   - **Platform-specific stores** (recommended for production):
+     - Replit: Use Secrets tab (automatically injected as environment variables)
+     - Vercel: Environment Variables in project settings
+     - Railway/Render: Environment section in dashboard
+     - Heroku: Config Vars in settings
+   - **Separate environments**: Use different secrets for development, staging, and production
+   - **Role-based access**: Restrict who can view/edit production secrets
+
+3. **Secret Rotation**
+   - Rotate SESSION_SECRET every 90 days in production
+   - Rotate API keys (Stripe, AWS) according to provider recommendations
+   - Rotate database credentials periodically
+   - Implement secret rotation without downtime using dual-key systems
+
+4. **Access Control**
+   - Limit who can view production secrets
+   - Use role-based access for environment configuration
+   - Audit secret access logs regularly
+
+5. **Monitoring**
+   - Alert on failed authentication attempts
+   - Monitor for leaked credentials (GitHub secret scanning)
+   - Track unusual API usage patterns
 
 ## 📜 Available Scripts
 
