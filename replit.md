@@ -58,7 +58,16 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
 
 ### Security
 
--   **Password Security:** Bcrypt hashing for all passwords.
+-   **Password Security:** 
+    -   Bcrypt hashing for all passwords
+    -   Strong password requirements enforced:
+        -   Minimum 8 characters
+        -   At least one uppercase letter (A-Z)
+        -   At least one lowercase letter (a-z)
+        -   At least one number (0-9)
+        -   At least one special character (!@#$%^&*)
+    -   Real-time password strength indicator with visual feedback
+    -   Password complexity validation on both frontend and backend
 -   **Account Activation:** Email-based activation system for new admin users.
     -   Admin users created without passwords during company creation
     -   Secure activation tokens (32-byte random hex) with 24-hour expiration
