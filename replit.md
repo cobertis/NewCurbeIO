@@ -17,8 +17,9 @@ Built with React 18, TypeScript, and Vite, the frontend uses Wouter for routing,
 **Key UI Features:**
 -   **Dashboard:** Real-time statistics, charts, and recent activity.
 -   **Users:** CRUD operations with role-based access. Includes firstName, lastName fields. Superadmins can view and assign company associations. User table displays full names (when available) and company column (superadmin-only).
--   **Companies (Superadmin-only):** CRUD operations and visual cards.
+-   **Companies (Superadmin-only):** CRUD operations, visual cards, and feature management. Each company card includes a button to manage assigned features through a modal dialog with checkboxes.
 -   **Plans (Superadmin-only):** CRUD operations for subscription plans.
+-   **Features (Superadmin-only):** Complete CRUD interface for system features with categorization, status management, and activation controls. Features can be created with unique keys and assigned to specific companies.
 -   **Invoices:** View and download invoices with role-based access.
 -   **Settings:** Comprehensive settings with tabs for Profile, Preferences, Company Settings, System (SMTP, email templates), and Security.
 -   **Login:** Session-based authentication with role-based access.
@@ -37,6 +38,8 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
 -   `/api/companies`: Company management (superadmin only).
 -   `/api/stats` & `/api/dashboard-stats`: User and dashboard statistics (access level-based).
 -   `/api/plans`: Subscription plan management (superadmin only).
+-   `/api/features`: System feature management (superadmin only).
+-   `/api/companies/:companyId/features`: Get, assign, and remove features from companies.
 -   `/api/invoices` & `/api/payments`: Invoice and payment management (role-based, company-filtered).
 -   `/api/subscriptions`: Company subscription management.
 -   `/api/stripe/webhooks`: Stripe webhook handling.
@@ -52,7 +55,7 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
 
 ### Data Models & Multi-Tenant Schema
 
-Uses PostgreSQL with Drizzle ORM. Core multi-tenant entities include Companies, Company Settings, Users (with roles: superadmin, admin, member, viewer), Plans, Subscriptions, Invoices, Payments, Invitations, Activity Logs, API Keys, Notifications, and Email Templates.
+Uses PostgreSQL with Drizzle ORM. Core multi-tenant entities include Companies, Company Settings, Users (with roles: superadmin, admin, member, viewer), Plans, Subscriptions, Invoices, Payments, Invitations, Activity Logs, API Keys, Notifications, Email Templates, Features, and Company Features (junction table).
 
 **Multi-Tenancy Implementation:**
 Strict data isolation is enforced by associating every non-superadmin user with a `companyId`. All data endpoints automatically filter results by the authenticated user's company, ensuring users only access their organization's data. Superadmins can access data across all companies, potentially using a `companyId` query parameter.
@@ -60,6 +63,20 @@ Strict data isolation is enforced by associating every non-superadmin user with 
 ### Email Notification System
 
 Features global SMTP configuration, pre-built email templates, email tracking, test email functionality, and automated sending on events. SMTP credentials are securely stored as environment variables.
+
+### Modular Feature System
+
+A flexible feature management system allows superadmins to define system-wide capabilities and selectively assign them to companies based on their specific needs. This enables different organizations to have different functionalities enabled (e.g., health insurance companies can have "consents" feature while churches don't).
+
+**Feature Management:**
+-   **Feature Definition:** Superadmins can create features with unique keys, names, descriptions, categories (general, communication, compliance, analytics, integration), optional icons, and active/inactive status.
+-   **Company Assignment:** Features are assigned to companies through a many-to-many relationship using a junction table (`company_features`). Only active features can be assigned.
+-   **Feature Check:** Backend provides `hasFeature(companyId, featureKey)` method to verify if a company has access to a specific feature.
+-   **UI Management:** Companies page includes a "Manage Features" button for each company that opens a modal dialog with checkboxes for easy feature assignment/removal.
+
+**Database Schema:**
+-   `features` table: Stores system features with id, name, key (unique identifier), description, category, icon, isActive status, and timestamps.
+-   `company_features` table: Junction table linking companies to features, tracking which user enabled each feature and when.
 
 ### Audit Logging System
 
