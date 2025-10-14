@@ -425,11 +425,10 @@ export const updateCompanySchema = z.object({
 
 // Schema for creating a company with admin user
 export const createCompanyWithAdminSchema = z.object({
-  // Company data
+  // Company data (email is taken from admin.email)
   company: z.object({
     name: z.string().min(1, "Company name is required"),
     slug: z.string().min(1, "Slug is required"),
-    email: z.string().email("Valid email is required").optional(),
     phone: z.string().min(1, "Phone is required"),
     address: z.string().min(1, "Address is required"),
   }),
