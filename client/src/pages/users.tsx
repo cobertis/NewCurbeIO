@@ -142,7 +142,7 @@ export default function Users() {
   const onCreateSubmit = (data: UserForm) => {
     const normalizedData = {
       ...data,
-      companyId: data.companyId || undefined,
+      companyId: data.companyId && data.companyId !== "__none__" ? data.companyId : undefined,
     };
     createMutation.mutate(normalizedData);
   };
@@ -151,7 +151,7 @@ export default function Users() {
     if (editingUser?.id) {
       const normalizedData = {
         ...data,
-        companyId: data.companyId || undefined,
+        companyId: data.companyId && data.companyId !== "__none__" ? data.companyId : undefined,
       };
       updateMutation.mutate({ id: editingUser.id, data: normalizedData });
     }
@@ -288,7 +288,7 @@ export default function Users() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No Company</SelectItem>
+                            <SelectItem value="__none__">No Company</SelectItem>
                             {companies.map((company) => (
                               <SelectItem key={company.id} value={company.id}>
                                 {company.name}
@@ -400,7 +400,7 @@ export default function Users() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No Company</SelectItem>
+                          <SelectItem value="__none__">No Company</SelectItem>
                           {companies.map((company) => (
                             <SelectItem key={company.id} value={company.id}>
                               {company.name}
