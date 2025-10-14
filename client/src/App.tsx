@@ -22,6 +22,7 @@ import Analytics from "@/pages/analytics";
 import Users from "@/pages/users";
 import Companies from "@/pages/companies";
 import Plans from "@/pages/plans";
+import Features from "@/pages/features";
 import Invoices from "@/pages/invoices";
 import Settings from "@/pages/settings";
 import AuditLogs from "@/pages/audit-logs";
@@ -220,6 +221,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Plans />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/features">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Features />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
