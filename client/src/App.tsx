@@ -14,7 +14,7 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Users from "@/pages/users";
-import Organizations from "@/pages/organizations";
+import Companies from "@/pages/companies";
 import Settings from "@/pages/settings";
 import Support from "@/pages/support";
 import NotFound from "@/pages/not-found";
@@ -84,10 +84,10 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/organizations">
+      <Route path="/companies">
         <ProtectedRoute>
           <DashboardLayout>
-            <Organizations />
+            <Companies />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

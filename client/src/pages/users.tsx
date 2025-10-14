@@ -9,16 +9,14 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, type User } from "@shared/schema";
+import { insertUserSchema, updateUserSchema, type User } from "@shared/schema";
 import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
 const userFormSchema = insertUserSchema.extend({
-  role: z.enum(["superadmin", "org_admin", "org_user"]),
+  role: z.enum(["superadmin", "admin", "member", "viewer"]),
 });
-
-import { updateUserSchema } from "@shared/schema";
 
 type UserForm = z.infer<typeof userFormSchema>;
 type EditUserForm = z.infer<typeof updateUserSchema>;
@@ -44,14 +42,14 @@ export default function Users() {
       setCreateOpen(false);
       createForm.reset();
       toast({
-        title: "Usuario creado",
-        description: "El usuario se ha creado correctamente.",
+        title: "User Created",
+        description: "The user has been created successfully.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo crear el usuario.",
+        description: "Failed to create user.",
         variant: "destructive",
       });
     },
@@ -68,14 +66,14 @@ export default function Users() {
       setEditingUser(null);
       editForm.reset();
       toast({
-        title: "Usuario actualizado",
-        description: "El usuario se ha actualizado correctamente.",
+        title: "User Updated",
+        description: "The user has been updated successfully.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo actualizar el usuario.",
+        description: "Failed to update user.",
         variant: "destructive",
       });
     },
@@ -89,14 +87,14 @@ export default function Users() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "Usuario eliminado",
-        description: "El usuario se ha eliminado correctamente.",
+        title: "User Deleted",
+        description: "The user has been deleted successfully.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar el usuario.",
+        description: "Failed to delete user.",
         variant: "destructive",
       });
     },
@@ -107,7 +105,7 @@ export default function Users() {
     defaultValues: {
       email: "",
       password: "",
-      role: "org_user",
+      role: "member",
     },
   });
 
@@ -115,7 +113,7 @@ export default function Users() {
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
       email: "",
-      role: "org_user",
+      role: "member",
     },
   });
 
@@ -133,7 +131,7 @@ export default function Users() {
     setEditingUser(user);
     editForm.reset({
       email: user.email,
-      role: user.role as "superadmin" | "org_admin" | "org_user",
+      role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
     });
     setEditOpen(true);
   };
@@ -142,25 +140,49 @@ export default function Users() {
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+  const getRoleBadge = (role: string) => {
+    const roleConfig = {
+      superadmin: {
+        label: "Super Admin",
+        className: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+      },
+      admin: {
+        label: "Admin",
+        className: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+      },
+      member: {
+        label: "Member",
+        className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
+      },
+      viewer: {
+        label: "Viewer",
+        className: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+      }
+    };
+
+    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.member;
+    return config;
+  };
+
   return (
     <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Usuarios</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Gestiona los usuarios y sus permisos.</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Users</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Manage users and their permissions.</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-user">
               <UserPlus className="h-4 w-4 mr-2" />
-              Añadir Usuario
+              Add User
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Crear Usuario</DialogTitle>
+              <DialogTitle>Create User</DialogTitle>
               <DialogDescription>
-                Añade un nuevo usuario al sistema.
+                Add a new user to the system.
               </DialogDescription>
             </DialogHeader>
             <Form {...createForm}>
@@ -183,7 +205,7 @@ export default function Users() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contraseña</FormLabel>
+                      <FormLabel>Password</FormLabel>
                       <FormControl>
                         <Input {...field} type="password" data-testid="input-create-password" />
                       </FormControl>
@@ -196,17 +218,18 @@ export default function Users() {
                   name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Rol</FormLabel>
+                      <FormLabel>Role</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-create-role">
-                            <SelectValue placeholder="Selecciona un rol" />
+                            <SelectValue placeholder="Select a role" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="superadmin">Super Admin</SelectItem>
-                          <SelectItem value="org_admin">Org Admin</SelectItem>
-                          <SelectItem value="org_user">Usuario</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="viewer">Viewer</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -215,7 +238,7 @@ export default function Users() {
                 />
                 <DialogFooter>
                   <Button type="submit" disabled={createMutation.isPending} data-testid="button-create-user-submit">
-                    {createMutation.isPending ? "Creando..." : "Crear Usuario"}
+                    {createMutation.isPending ? "Creating..." : "Create User"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -227,9 +250,9 @@ export default function Users() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
-              Modifica el email y rol del usuario.
+              Modify user email and role.
             </DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
@@ -252,17 +275,18 @@ export default function Users() {
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rol</FormLabel>
+                    <FormLabel>Role</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-edit-role">
-                          <SelectValue placeholder="Selecciona un rol" />
+                          <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="superadmin">Super Admin</SelectItem>
-                        <SelectItem value="org_admin">Org Admin</SelectItem>
-                        <SelectItem value="org_user">Usuario</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -271,7 +295,7 @@ export default function Users() {
               />
               <DialogFooter>
                 <Button type="submit" disabled={updateMutation.isPending} data-testid="button-edit-user-submit">
-                  {updateMutation.isPending ? "Actualizando..." : "Actualizar Usuario"}
+                  {updateMutation.isPending ? "Updating..." : "Update User"}
                 </Button>
               </DialogFooter>
             </form>
@@ -282,11 +306,11 @@ export default function Users() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Todos los Usuarios</CardTitle>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">All Users</CardTitle>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar usuarios..."
+                placeholder="Search users..."
                 className="pl-9"
                 data-testid="input-search-users"
                 value={searchQuery}
@@ -298,7 +322,7 @@ export default function Users() {
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-sm text-gray-500">Cargando...</p>
+              <p className="text-sm text-gray-500">Loading...</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -309,68 +333,65 @@ export default function Users() {
                       Email
                     </th>
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
-                      Rol
+                      Role
                     </th>
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
-                      Fecha Creación
+                      Created At
                     </th>
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
-                      Acciones
+                      Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr
-                      key={user.id}
-                      className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                      data-testid={`row-user-${user.id}`}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-                            {user.email.charAt(0).toUpperCase()}
+                  {filteredUsers.map((user) => {
+                    const roleBadge = getRoleBadge(user.role);
+                    return (
+                      <tr
+                        key={user.id}
+                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                        data-testid={`row-user-${user.id}`}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
+                              {user.email.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</span>
                           </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.role === "superadmin" 
-                            ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                            : user.role === "org_admin"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
-                        }`} data-testid={`badge-role-${user.id}`}>
-                          {user.role === "superadmin" ? "Super Admin" : user.role === "org_admin" ? "Org Admin" : "Usuario"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(user.createdAt).toLocaleDateString('es-ES')}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleEdit(user)}
-                            data-testid={`button-edit-user-${user.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => deleteMutation.mutate(user.id)}
-                            disabled={deleteMutation.isPending}
-                            data-testid={`button-delete-user-${user.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadge.className}`} data-testid={`badge-role-${user.id}`}>
+                            {roleBadge.label}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {new Date(user.createdAt).toLocaleDateString('en-US')}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleEdit(user)}
+                              data-testid={`button-edit-user-${user.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => deleteMutation.mutate(user.id)}
+                              disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-user-${user.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

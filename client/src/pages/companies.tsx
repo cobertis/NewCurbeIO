@@ -8,29 +8,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertOrganizationSchema, type Organization } from "@shared/schema";
+import { insertCompanySchema, type Company } from "@shared/schema";
 import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
-const orgFormSchema = insertOrganizationSchema;
+const companyFormSchema = insertCompanySchema;
 
-type OrgForm = z.infer<typeof orgFormSchema>;
+type CompanyForm = z.infer<typeof companyFormSchema>;
 
-export default function Organizations() {
+export default function Companies() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const { data, isLoading } = useQuery<{ organizations: Organization[] }>({
-    queryKey: ["/api/organizations"],
+  const { data, isLoading } = useQuery<{ companies: Company[] }>({
+    queryKey: ["/api/companies"],
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: OrgForm) => {
-      const response = await fetch("/api/organizations", {
+    mutationFn: async (data: CompanyForm) => {
+      const response = await fetch("/api/companies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -39,27 +39,27 @@ export default function Organizations() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       setCreateOpen(false);
       createForm.reset();
       toast({
-        title: "Organización creada",
-        description: "La organización ha sido creada exitosamente",
+        title: "Company Created",
+        description: "The company has been created successfully",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo crear la organización",
+        description: "Failed to create company",
         variant: "destructive",
       });
     },
   });
 
   const editMutation = useMutation({
-    mutationFn: async (data: Partial<OrgForm> & { id: string }) => {
+    mutationFn: async (data: Partial<CompanyForm> & { id: string }) => {
       const { id, ...rest } = data;
-      const response = await fetch(`/api/organizations/${id}`, {
+      const response = await fetch(`/api/companies/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -68,19 +68,19 @@ export default function Organizations() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       setEditOpen(false);
-      setSelectedOrg(null);
+      setSelectedCompany(null);
       editForm.reset();
       toast({
-        title: "Organización actualizada",
-        description: "La organización ha sido actualizada exitosamente",
+        title: "Company Updated",
+        description: "The company has been updated successfully",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo actualizar la organización",
+        description: "Failed to update company",
         variant: "destructive",
       });
     },
@@ -88,73 +88,73 @@ export default function Organizations() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/organizations/${id}`, {
+      const response = await fetch(`/api/companies/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       toast({
-        title: "Organización eliminada",
-        description: "La organización ha sido eliminada exitosamente",
+        title: "Company Deleted",
+        description: "The company has been deleted successfully",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar la organización",
+        description: "Failed to delete company",
         variant: "destructive",
       });
     },
   });
 
-  const createForm = useForm<OrgForm>({
-    resolver: zodResolver(orgFormSchema),
+  const createForm = useForm<CompanyForm>({
+    resolver: zodResolver(companyFormSchema),
     defaultValues: {
       name: "",
       domain: "",
     },
   });
 
-  const editForm = useForm<Partial<OrgForm>>({
-    resolver: zodResolver(orgFormSchema.partial()),
+  const editForm = useForm<Partial<CompanyForm>>({
+    resolver: zodResolver(companyFormSchema.partial()),
     defaultValues: {
       name: "",
       domain: "",
     },
   });
 
-  const onCreateSubmit = (data: OrgForm) => {
+  const onCreateSubmit = (data: CompanyForm) => {
     createMutation.mutate(data);
   };
 
-  const onEditSubmit = (data: Partial<OrgForm>) => {
-    if (selectedOrg) {
-      editMutation.mutate({ ...data, id: selectedOrg.id });
+  const onEditSubmit = (data: Partial<CompanyForm>) => {
+    if (selectedCompany) {
+      editMutation.mutate({ ...data, id: selectedCompany.id });
     }
   };
 
-  const handleEdit = (org: Organization) => {
-    setSelectedOrg(org);
+  const handleEdit = (company: Company) => {
+    setSelectedCompany(company);
     editForm.reset({
-      name: org.name,
-      domain: org.domain ?? "",
+      name: company.name,
+      domain: company.domain ?? "",
     });
     setEditOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("¿Estás seguro de que quieres eliminar esta organización?")) {
+    if (confirm("Are you sure you want to delete this company?")) {
       deleteMutation.mutate(id);
     }
   };
 
-  const organizations = data?.organizations || [];
-  const filteredOrganizations = organizations.filter((org) =>
-    org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.domain?.toLowerCase().includes(searchTerm.toLowerCase())
+  const companies = data?.companies || [];
+  const filteredCompanies = companies.filter((company) =>
+    company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.domain?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (isLoading) {
@@ -172,57 +172,57 @@ export default function Organizations() {
     <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Organizaciones</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Gestiona las organizaciones del sistema</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Companies</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Manage system companies</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} data-testid="button-create-organization">
+        <Button onClick={() => setCreateOpen(true)} data-testid="button-create-company">
           <Plus className="h-4 w-4 mr-2" />
-          Nueva Organización
+          New Company
         </Button>
       </div>
 
-      <Card className="bg-white dark:text-gray-800 border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Lista de Organizaciones</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Company List</CardTitle>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Buscar organizaciones..."
+                placeholder="Search companies..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
-                data-testid="input-search-organizations"
+                data-testid="input-search-companies"
               />
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {filteredOrganizations.length === 0 ? (
+            {filteredCompanies.length === 0 ? (
               <div className="text-center py-12">
                 <Building2 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-500">No hay organizaciones</p>
+                <p className="text-gray-500 dark:text-gray-400">No companies found</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {filteredOrganizations.map((org) => (
+                {filteredCompanies.map((company) => (
                   <div
-                    key={org.id}
+                    key={company.id}
                     className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    data-testid={`org-item-${org.id}`}
+                    data-testid={`company-item-${company.id}`}
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
                         <Building2 className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-org-name-${org.id}`}>
-                          {org.name}
+                        <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-company-name-${company.id}`}>
+                          {company.name}
                         </h3>
-                        {org.domain && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-org-domain-${org.id}`}>
-                            {org.domain}
+                        {company.domain && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-company-domain-${company.id}`}>
+                            {company.domain}
                           </p>
                         )}
                       </div>
@@ -231,16 +231,16 @@ export default function Organizations() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleEdit(org)}
-                        data-testid={`button-edit-org-${org.id}`}
+                        onClick={() => handleEdit(company)}
+                        data-testid={`button-edit-company-${company.id}`}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(org.id)}
-                        data-testid={`button-delete-org-${org.id}`}
+                        onClick={() => handleDelete(company.id)}
+                        data-testid={`button-delete-company-${company.id}`}
                       >
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
@@ -255,9 +255,9 @@ export default function Organizations() {
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent data-testid="dialog-create-organization">
+        <DialogContent data-testid="dialog-create-company">
           <DialogHeader>
-            <DialogTitle>Nueva Organización</DialogTitle>
+            <DialogTitle>New Company</DialogTitle>
           </DialogHeader>
           <Form {...createForm}>
             <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
@@ -266,9 +266,9 @@ export default function Organizations() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre</FormLabel>
+                    <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nombre de la organización" {...field} data-testid="input-create-org-name" />
+                      <Input placeholder="Company name" {...field} data-testid="input-create-company-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -279,9 +279,9 @@ export default function Organizations() {
                 name="domain"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Dominio (opcional)</FormLabel>
+                    <FormLabel>Domain (optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="ejemplo.com" {...field} value={field.value ?? ""} data-testid="input-create-org-domain" />
+                      <Input placeholder="example.com" {...field} value={field.value ?? ""} data-testid="input-create-company-domain" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -289,10 +289,10 @@ export default function Organizations() {
               />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-                  Cancelar
+                  Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-create-org">
-                  {createMutation.isPending ? "Creando..." : "Crear"}
+                <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-create-company">
+                  {createMutation.isPending ? "Creating..." : "Create"}
                 </Button>
               </DialogFooter>
             </form>
@@ -302,9 +302,9 @@ export default function Organizations() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent data-testid="dialog-edit-organization">
+        <DialogContent data-testid="dialog-edit-company">
           <DialogHeader>
-            <DialogTitle>Editar Organización</DialogTitle>
+            <DialogTitle>Edit Company</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
@@ -313,9 +313,9 @@ export default function Organizations() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre</FormLabel>
+                    <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nombre de la organización" {...field} data-testid="input-edit-org-name" />
+                      <Input placeholder="Company name" {...field} data-testid="input-edit-company-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -326,9 +326,9 @@ export default function Organizations() {
                 name="domain"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Dominio (opcional)</FormLabel>
+                    <FormLabel>Domain (optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="ejemplo.com" {...field} value={field.value ?? ""} data-testid="input-edit-org-domain" />
+                      <Input placeholder="example.com" {...field} value={field.value ?? ""} data-testid="input-edit-company-domain" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -336,10 +336,10 @@ export default function Organizations() {
               />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-                  Cancelar
+                  Cancel
                 </Button>
-                <Button type="submit" disabled={editMutation.isPending} data-testid="button-submit-edit-org">
-                  {editMutation.isPending ? "Guardando..." : "Guardar"}
+                <Button type="submit" disabled={editMutation.isPending} data-testid="button-submit-edit-company">
+                  {editMutation.isPending ? "Saving..." : "Save"}
                 </Button>
               </DialogFooter>
             </form>

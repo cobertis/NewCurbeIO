@@ -31,8 +31,8 @@ const menuItems = [
     icon: Users,
   },
   {
-    title: "Organizations",
-    url: "/organizations",
+    title: "Companies",
+    url: "/companies",
     icon: Building2,
     superAdminOnly: true,
   },
@@ -119,7 +119,7 @@ export function AppSidebar() {
               data-testid="button-logout"
             >
               <LogOut className="h-5 w-5" />
-              <span className="font-medium">Cerrar Sesión</span>
+              <span className="font-medium">Sign Out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 
 const recentActivity = [
-  { name: "Ucstart", code: "Blxtued", amount: "$0.00 9GDx nry", count: "M O 4188", change: "E5.0%", status: "success" },
-  { name: "Whit Exonce Linc", code: "", amount: "", count: "", change: "", status: "error" },
-  { name: "Dampointer", code: "RGOX CTY 20 0u", amount: "", count: "7.7/0 (55)", change: "6.9%", status: "success" },
-  { name: "ELGCCS", code: "67 00F S'teku", amount: "$5.5Au", count: "IP 995", change: "6.9%", status: "warning" },
+  { name: "User Created", code: "admin@company.com", amount: "$1,250.00", count: "ID 4188", change: "+5.0%", status: "success" },
+  { name: "Login Failed", code: "", amount: "", count: "", change: "", status: "error" },
+  { name: "Data Import", code: "CSV Import 2024", amount: "", count: "740 rows", change: "+8.9%", status: "success" },
+  { name: "API Call", code: "GET /api/users", amount: "$5.50", count: "IP 195", change: "+6.9%", status: "warning" },
 ];
 
 interface Stats {
@@ -30,57 +30,56 @@ export default function Dashboard() {
 
   const quickStats = [
     {
-      title: "Bluudtles",
-      subtitle: "Cloud coloniary cremele",
-      icon: BarChart3,
+      title: "Total Users",
+      subtitle: `${totalUsers} active users`,
+      icon: Users,
       color: "bg-blue-500",
     },
     {
-      title: "Quentry",
-      subtitle: "3 string plansise slaxh",
+      title: "Admins",
+      subtitle: `${adminCount} administrators`,
       icon: Activity,
       color: "bg-cyan-500",
     },
     {
-      title: "Mackenurs",
-      subtitle: "du-aligned stallons",
+      title: "Revenue",
+      subtitle: "$124,530 this month",
       icon: TrendingUp,
       color: "bg-blue-600",
     },
     {
-      title: "Real",
-      subtitle: "Ixeguan on et apuis",
+      title: "Growth",
+      subtitle: "+12.5% vs last month",
       icon: PieChart,
       color: "bg-gray-400",
     },
     {
-      title: "Pocdefts",
-      subtitle: "Dialuier greenwigh",
+      title: "Companies",
+      subtitle: "15 active companies",
       icon: Building2,
       color: "bg-blue-400",
     },
     {
-      title: "Méhres",
-      subtitle: "d. Aeep",
+      title: "Members",
+      subtitle: `${viewerCount} members`,
       icon: Users,
       color: "bg-blue-500",
     },
   ];
 
   const monthlyData = [
-    { month: "1.8", value: 20 },
-    { month: "2.0", value: 15 },
-    { month: "2.11", value: 18 },
-    { month: "3.15", value: 22 },
-    { month: "4.1", value: 10 },
-    { month: "5.0", value: 8 },
-    { month: "6.12", value: 25 },
-    { month: "7.1", value: 85 },
-    { month: "8.9", value: 95 },
-    { month: "9.7", value: 88 },
-    { month: "10.5", value: 92 },
-    { month: "11.3", value: 78 },
-    { month: "12.0", value: 85 },
+    { month: "Jan", value: 20 },
+    { month: "Feb", value: 15 },
+    { month: "Mar", value: 18 },
+    { month: "Apr", value: 22 },
+    { month: "May", value: 10 },
+    { month: "Jun", value: 8 },
+    { month: "Jul", value: 25 },
+    { month: "Aug", value: 85 },
+    { month: "Sep", value: 95 },
+    { month: "Oct", value: 88 },
+    { month: "Nov", value: 92 },
+    { month: "Dec", value: 78 },
   ];
 
   return (
@@ -88,7 +87,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Dashboard</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Vista general del sistema</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">System overview and statistics</p>
         </div>
       </div>
 
@@ -115,29 +114,23 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              Time to enery
+              Monthly Performance
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" className="h-7 text-xs">
-                Netrinosa
+                This Year
               </Button>
               <Button variant="ghost" size="sm" className="h-7 text-xs">
-                Dash <ChevronDown className="h-3 w-3 ml-1" />
+                View <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-xs text-gray-500 mb-1">1.5</div>
-            <div className="text-xs text-gray-500 mb-1">105</div>
-            <div className="text-xs text-gray-500 mb-1">1.0</div>
-            <div className="text-xs text-gray-500 mb-1">50s</div>
-            <div className="text-xs text-gray-500 mb-4">0</div>
             <div className="h-48 flex items-end justify-between gap-1 relative">
               {monthlyData.map((data, index) => (
                 <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="text-xs text-gray-400 mb-1">{index === 6 ? "Peternity" : ""}</div>
                   <div
-                    className={`w-full ${index === 6 || index === 7 || index === 8 ? 'bg-blue-400' : 'bg-blue-300'} rounded-sm transition-all duration-300`}
+                    className={`w-full ${index >= 7 && index <= 9 ? 'bg-blue-400' : 'bg-blue-300'} rounded-sm transition-all duration-300`}
                     style={{ height: `${data.value}%` }}
                     data-testid={`bar-monthly-${index}`}
                   ></div>
@@ -152,10 +145,10 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              Rely TimeDaahle caate Data
+              Featured Analytics
             </CardTitle>
             <Button variant="ghost" size="sm" className="h-7 text-xs text-white hover:bg-white/20 self-start mt-2">
-              Launch <ChevronDown className="h-3 w-3 ml-1" />
+              Explore <ChevronDown className="h-3 w-3 ml-1" />
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -164,7 +157,8 @@ export default function Dashboard() {
                 <Building2 className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium">Ocupmaster</p>
+                <p className="text-sm font-medium">Active Companies</p>
+                <p className="text-xs text-white/70">15 companies</p>
               </div>
             </div>
             <div className="bg-white/10 rounded-lg p-3 flex items-center gap-3">
@@ -172,8 +166,8 @@ export default function Dashboard() {
                 <Activity className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium">Om</p>
-                <p className="text-xs text-white/70">Consistelet</p>
+                <p className="text-sm font-medium">API Calls</p>
+                <p className="text-xs text-white/70">1.2M this month</p>
               </div>
             </div>
             <div className="h-20 bg-white/90 rounded-lg flex items-center justify-center">
@@ -188,7 +182,7 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <Activity className="h-4 w-4" />
-              Occuposs
+              Recent Activity
             </CardTitle>
             <Button variant="ghost" size="sm" className="h-7 text-xs">
               Month <ChevronDown className="h-3 w-3 ml-1" />
@@ -236,15 +230,15 @@ export default function Dashboard() {
         <div className="lg:col-span-2">
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Temperature Datigns..</CardTitle>
+              <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">User Distribution</CardTitle>
               <Button variant="ghost" size="sm" className="h-7 text-xs">
-                Namsburg <ChevronDown className="h-3 w-3 ml-1" />
+                All Time <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-8">
                 <div className="flex flex-col items-center">
-                  <p className="text-xs text-gray-500 mb-2">Ocupation</p>
+                  <p className="text-xs text-gray-500 mb-2">By Role</p>
                   <div className="relative w-32 h-32">
                     <svg className="w-full h-full transform -rotate-90">
                       <circle
@@ -263,25 +257,40 @@ export default function Dashboard() {
                         stroke="currentColor"
                         strokeWidth="16"
                         fill="none"
-                        strokeDasharray={`${2 * Math.PI * 56 * 0.77} ${2 * Math.PI * 56}`}
-                        className="text-blue-500 transition-all duration-500"
+                        strokeDasharray={`${(adminCount / totalUsers) * 351} 351`}
+                        className="text-blue-500"
+                      />
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="56"
+                        stroke="currentColor"
+                        strokeWidth="16"
+                        fill="none"
+                        strokeDasharray={`${(viewerCount / totalUsers) * 351} 351`}
+                        strokeDashoffset={`-${(adminCount / totalUsers) * 351}`}
+                        className="text-cyan-500"
                       />
                     </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-gray-900 dark:text-white">77/1</span>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalUsers}</p>
+                      <p className="text-xs text-gray-500">Total</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <TrendingUp className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">48%</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-red-600">GB 6.0%</span>
+                  <div className="mt-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Admins ({adminCount})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-cyan-500"></div>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Members ({viewerCount})</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-center">
-                  <p className="text-xs text-gray-500 mb-2">Later</p>
+                  <p className="text-xs text-gray-500 mb-2">By Status</p>
                   <div className="relative w-32 h-32">
                     <svg className="w-full h-full transform -rotate-90">
                       <circle
@@ -300,20 +309,35 @@ export default function Dashboard() {
                         stroke="currentColor"
                         strokeWidth="16"
                         fill="none"
-                        strokeDasharray={`${2 * Math.PI * 56 * 0.84} ${2 * Math.PI * 56}`}
-                        className="text-blue-500 transition-all duration-500"
+                        strokeDasharray="263 351"
+                        className="text-emerald-500"
+                      />
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="56"
+                        stroke="currentColor"
+                        strokeWidth="16"
+                        fill="none"
+                        strokeDasharray="88 351"
+                        strokeDashoffset="-263"
+                        className="text-red-500"
                       />
                     </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-gray-900 dark:text-white">1.5.6 K</span>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">75%</p>
+                      <p className="text-xs text-gray-500">Active</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <Activity className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">13%</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-red-600">SD 2.3 K</span>
+                  <div className="mt-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Active (75%)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Inactive (25%)</span>
+                    </div>
                   </div>
                 </div>
               </div>
