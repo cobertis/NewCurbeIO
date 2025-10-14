@@ -22,8 +22,8 @@ Built with React 18, TypeScript, and Vite, the frontend uses Wouter for routing,
 -   **Features (Superadmin-only):** Complete CRUD interface for system features with categorization, status management, and activation controls. Features can be created with unique keys and assigned to specific companies.
 -   **Invoices:** View and download invoices with role-based access.
 -   **Settings:** Comprehensive settings with tabs for Profile (includes phone number management), Preferences, Company Settings, System (SMTP, email templates), and Security.
--   **Login:** Two-factor authentication with OTP verification via email or SMS.
--   **OTP Verification:** Dedicated verification page with 6-digit code input, method selection (email/SMS), device trust option, countdown timers.
+-   **Login:** Two-factor authentication with user-selected delivery method (email or SMS) before code is sent.
+-   **OTP Verification:** Two-step verification flow: (1) User selects delivery method (email/SMS), (2) Enters 6-digit code with device trust option and countdown timers.
 -   **Audit Logs:** Timeline view of system actions with role-based filtering, including 2FA events.
 -   **Email Templates:** Management interface with HTML editor and live preview (superadmin-only).
 
@@ -56,11 +56,11 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
 ### Security
 
 -   **Password Security:** Bcrypt hashing for all passwords.
--   **Two-Factor Authentication (2FA):** OTP-based verification with email and SMS delivery options.
+-   **Two-Factor Authentication (2FA):** OTP-based verification with user-selected delivery method.
     -   6-digit codes with 5-minute expiration
-    -   Method selection during verification (email always available, SMS requires phone number)
+    -   User selects method (email or SMS) **before** code is sent - email always available, SMS requires phone number
     -   1-minute resend cooldown with countdown timer
-    -   Optional device trust for 30 days (extends session duration)
+    -   Optional device trust for 30 days (extends session duration to 30 days vs default 7 days)
     -   Two-stage session: `pendingUserId` → credential validation → `userId` after OTP verification
     -   All protected routes verify `userId` exists (not just session presence)
 -   **Authentication:** Session-based with `express-session` and RBAC for protected routes.

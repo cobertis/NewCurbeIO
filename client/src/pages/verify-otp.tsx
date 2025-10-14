@@ -27,12 +27,7 @@ export default function VerifyOTP() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Send initial OTP when method is selected
-  useEffect(() => {
-    if (!otpSent && userId) {
-      sendOTP();
-    }
-  }, [method]);
+  // No longer auto-send on mount - user must click "Send Code" button
 
   // Countdown timer for code expiry
   useEffect(() => {
@@ -53,6 +48,7 @@ export default function VerifyOTP() {
   const sendOTP = async () => {
     if (!userId) return;
 
+    setIsLoading(true);
     try {
       const response = await fetch("/api/auth/send-otp", {
         method: "POST",
@@ -83,6 +79,8 @@ export default function VerifyOTP() {
         title: "Error",
         description: "Failed to send verification code",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -251,118 +249,131 @@ export default function VerifyOTP() {
           {/* Title */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              Enter Verification Code
+              {otpSent ? "Enter Verification Code" : "Two-Factor Authentication"}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              We've sent a 6-digit code to your {method === "email" ? "email" : "phone"}.
-              <br />
-              Please enter it below to continue.
+              {otpSent 
+                ? `We've sent a 6-digit code to your ${method === "email" ? "email" : "phone"}. Please enter it below to continue.`
+                : "Choose how you'd like to receive your verification code"
+              }
             </p>
           </div>
 
-          {/* Method Selector */}
-          <div className="mb-6">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
-              Send code via:
-            </Label>
-            <RadioGroup 
-              value={method} 
-              onValueChange={(value) => {
-                setMethod(value as "email" | "sms");
-                setOtpSent(false);
-                setOtp(["", "", "", "", "", ""]);
-              }}
-              className="flex gap-4"
-              data-testid="radio-group-method"
-            >
-              <div className="flex items-center space-x-2 flex-1">
-                <RadioGroupItem value="email" id="email-method" data-testid="radio-email" />
-                <Label 
-                  htmlFor="email-method" 
-                  className="flex items-center gap-2 cursor-pointer text-sm font-normal"
-                >
-                  <Mail className="h-4 w-4" />
-                  Email
+          {!otpSent ? (
+            // Step 1: Method Selection (before sending code)
+            <>
+              <div className="mb-6">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
+                  Receive code via:
                 </Label>
-              </div>
-              <div className="flex items-center space-x-2 flex-1">
-                <RadioGroupItem value="sms" id="sms-method" data-testid="radio-sms" />
-                <Label 
-                  htmlFor="sms-method" 
-                  className="flex items-center gap-2 cursor-pointer text-sm font-normal"
+                <RadioGroup 
+                  value={method} 
+                  onValueChange={(value) => setMethod(value as "email" | "sms")}
+                  className="flex gap-4"
+                  data-testid="radio-group-method"
                 >
-                  <MessageSquare className="h-4 w-4" />
-                  SMS
-                </Label>
+                  <div className="flex items-center space-x-2 flex-1">
+                    <RadioGroupItem value="email" id="email-method" data-testid="radio-email" />
+                    <Label 
+                      htmlFor="email-method" 
+                      className="flex items-center gap-2 cursor-pointer text-sm font-normal"
+                    >
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 flex-1">
+                    <RadioGroupItem value="sms" id="sms-method" data-testid="radio-sms" />
+                    <Label 
+                      htmlFor="sms-method" 
+                      className="flex items-center gap-2 cursor-pointer text-sm font-normal"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      SMS
+                    </Label>
+                  </div>
+                </RadioGroup>
               </div>
-            </RadioGroup>
-          </div>
 
-          {/* OTP Input Fields */}
-          <div className="flex gap-3 justify-center mb-6" onPaste={handlePaste}>
-            {otp.map((digit, index) => (
-              <Input
-                key={index}
-                ref={(el) => (inputRefs.current[index] = el)}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleOtpChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-14 text-center text-2xl font-semibold bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                data-testid={`input-otp-${index}`}
-              />
-            ))}
-          </div>
-
-          {/* Remember Device */}
-          <div className="flex items-center space-x-2 mb-6">
-            <Checkbox
-              id="remember"
-              checked={rememberDevice}
-              onCheckedChange={(checked) => setRememberDevice(checked as boolean)}
-              data-testid="checkbox-remember-device"
-            />
-            <Label
-              htmlFor="remember"
-              className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer"
-            >
-              Remember this device for 30 days
-            </Label>
-          </div>
-
-          {/* Verify Button */}
-          <Button
-            onClick={handleVerify}
-            className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg mb-4"
-            disabled={isLoading || otp.join("").length !== 6}
-            data-testid="button-verify"
-          >
-            {isLoading ? "Verifying..." : "Verify & Continue"}
-          </Button>
-
-          {/* Expiry and Resend */}
-          <div className="text-center space-y-2">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Code expires in <span className="font-semibold">{formatTime(expiryTime)}</span>
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Didn't receive the code?{" "}
-              <button
-                onClick={handleResend}
-                disabled={resendCooldown > 0}
-                className={`font-medium ${
-                  resendCooldown > 0
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                }`}
-                data-testid="button-resend"
+              <Button
+                onClick={sendOTP}
+                className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
+                disabled={isLoading}
+                data-testid="button-send-code"
               >
-                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend"}
-              </button>
-            </p>
-          </div>
+                {isLoading ? "Sending..." : "Send Code"}
+              </Button>
+            </>
+          ) : (
+            // Step 2: OTP Input (after code is sent)
+            <>
+              {/* OTP Input Fields */}
+              <div className="flex gap-3 justify-center mb-6" onPaste={handlePaste}>
+                {otp.map((digit, index) => (
+                  <Input
+                    key={index}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className="w-12 h-14 text-center text-2xl font-semibold bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                    data-testid={`input-otp-${index}`}
+                  />
+                ))}
+              </div>
+
+              {/* Remember Device */}
+              <div className="flex items-center space-x-2 mb-6">
+                <Checkbox
+                  id="remember"
+                  checked={rememberDevice}
+                  onCheckedChange={(checked) => setRememberDevice(checked as boolean)}
+                  data-testid="checkbox-remember-device"
+                />
+                <Label
+                  htmlFor="remember"
+                  className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer"
+                >
+                  Remember this device for 30 days
+                </Label>
+              </div>
+
+              {/* Verify Button */}
+              <Button
+                onClick={handleVerify}
+                className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg mb-4"
+                disabled={isLoading || otp.join("").length !== 6}
+                data-testid="button-verify"
+              >
+                {isLoading ? "Verifying..." : "Verify & Continue"}
+              </Button>
+
+              {/* Expiry and Resend */}
+              <div className="text-center space-y-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Code expires in <span className="font-semibold">{formatTime(expiryTime)}</span>
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Didn't receive the code?{" "}
+                  <button
+                    onClick={handleResend}
+                    disabled={resendCooldown > 0}
+                    className={`font-medium ${
+                      resendCooldown > 0
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                    }`}
+                    data-testid="button-resend"
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend"}
+                  </button>
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
