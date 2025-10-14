@@ -93,7 +93,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="border-b border-border px-6 py-4">
+      <SidebarHeader className="px-6 py-4">
         <Link href="/dashboard" className="flex flex-col items-center gap-2">
           <img 
             src={logo} 
