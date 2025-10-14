@@ -71,7 +71,11 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
     -   6-digit codes with 5-minute expiration
     -   User selects method (email or SMS) **before** code is sent - email always available, SMS requires phone number
     -   1-minute resend cooldown with countdown timer
-    -   Optional device trust for 30 days (extends session duration to 30 days vs default 7 days)
+    -   **Remember this device for 30 days:** User can opt to extend session duration
+        -   When checked: Session persists for **30 days** (cookie maxAge: 2,592,000,000 ms)
+        -   When unchecked: Session persists for **7 days** (default, cookie maxAge: 604,800,000 ms)
+        -   Session duration set dynamically in `/api/auth/verify-otp` (no fixed maxAge in middleware)
+        -   Both `cookie.maxAge` and `cookie.expires` are set to ensure proper persistence
     -   Two-stage session: `pendingUserId` → credential validation → `userId` after OTP verification
     -   All protected routes verify `userId` exists (not just session presence)
 -   **Authentication:** Session-based with `express-session` and RBAC for protected routes.

@@ -25,7 +25,8 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24 * 7, // Default: 7 days (can be extended to 30 days with "remember device")
+      // maxAge is set dynamically in /api/auth/verify-otp based on "remember device" preference
+      // Default: 7 days, Extended: 30 days when user selects "Remember this device"
       sameSite: "lax",
     },
   })

@@ -256,22 +256,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete req.session.pendingUserId;
       req.session.userId = user.id;
 
-      // Set cookie maxAge BEFORE saving
-      if (rememberDevice === true || rememberDevice === "true") {
-        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
-        console.log("Setting session maxAge to 30 days for user:", user.email);
-      } else {
-        // Explicitly set default maxAge if not remembering
-        req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-        console.log("Setting session maxAge to 7 days for user:", user.email);
-      }
+      // Set cookie maxAge and expires BEFORE saving
+      const sessionDuration = (rememberDevice === true || rememberDevice === "true") 
+        ? 30 * 24 * 60 * 60 * 1000  // 30 days
+        : 7 * 24 * 60 * 60 * 1000;   // 7 days (default)
+      
+      req.session.cookie.maxAge = sessionDuration;
+      req.session.cookie.expires = new Date(Date.now() + sessionDuration);
+      
+      console.log(`Setting session for user ${user.email}:`, {
+        rememberDevice: !!rememberDevice,
+        maxAge: sessionDuration,
+        expires: req.session.cookie.expires,
+        days: sessionDuration / (24 * 60 * 60 * 1000)
+      });
 
       await logger.logAuth({
         req,
         action: "login_with_otp",
         userId: user.id,
         email: user.email,
-        metadata: { rememberDevice: !!rememberDevice, cookieMaxAge: req.session.cookie.maxAge },
+        metadata: { 
+          rememberDevice: !!rememberDevice, 
+          cookieMaxAge: req.session.cookie.maxAge,
+          cookieExpires: req.session.cookie.expires 
+        },
       });
 
       // Force save session with new cookie settings
@@ -282,7 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const maxAgeDays = req.session.cookie.maxAge ? req.session.cookie.maxAge / (24 * 60 * 60 * 1000) : 0;
-        console.log("Session saved successfully. Cookie expires in:", maxAgeDays, "days");
+        console.log(`✓ Session saved successfully for ${user.email}. Cookie expires in: ${maxAgeDays} days`);
 
         res.json({
           success: true,
