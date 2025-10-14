@@ -8,6 +8,15 @@ This project is a modern multi-tenant admin dashboard for Curbe, designed to pro
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**October 14, 2025 - Standardized Page Layouts**
+- Updated all pages to use consistent layout format: `flex flex-col gap-6 p-6`
+- Removed all max-width restrictions and side margins (`max-w-[1600px] mx-auto`)
+- All pages now match the invoices page format for full-width content
+- Updated pages: dashboard, users, companies, settings, analytics, support
+- Plans and invoices pages already had the correct format
+
 ## System Architecture
 
 ### Frontend
