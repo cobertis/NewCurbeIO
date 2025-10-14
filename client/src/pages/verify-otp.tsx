@@ -16,6 +16,7 @@ export default function VerifyOTP() {
   const params = new URLSearchParams(window.location.search);
   const userId = params.get("userId");
   const userEmail = params.get("email");
+  const userPhone = params.get("phone");
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [method, setMethod] = useState<"email" | "sms">("email");
@@ -26,6 +27,29 @@ export default function VerifyOTP() {
   const [expiryTime, setExpiryTime] = useState(300); // 5 minutes in seconds
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Mask email: h***@example.com
+  const maskEmail = (email: string | null) => {
+    if (!email) return "";
+    const [localPart, domain] = email.split("@");
+    if (!localPart || !domain) return email;
+    const maskedLocal = localPart.charAt(0) + "***";
+    return `${maskedLocal}@${domain}`;
+  };
+
+  // Mask phone: XXX-XXX-2522
+  const maskPhone = (phone: string | null) => {
+    if (!phone) return "";
+    // Remove all non-digits
+    const digits = phone.replace(/\D/g, "");
+    // Get last 4 digits
+    const lastFour = digits.slice(-4);
+    return `XXX-XXX-${lastFour}`;
+  };
+
+  const maskedEmail = maskEmail(userEmail);
+  const maskedPhone = maskPhone(userPhone);
+  const hasPhone = !!userPhone;
 
   // No longer auto-send on mount - user must click "Send Code" button
 
@@ -264,32 +288,62 @@ export default function VerifyOTP() {
             <>
               <div className="mb-6">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
-                  Receive code via:
+                  Choose verification method:
                 </Label>
                 <RadioGroup 
                   value={method} 
                   onValueChange={(value) => setMethod(value as "email" | "sms")}
-                  className="flex gap-4"
+                  className="space-y-3"
                   data-testid="radio-group-method"
                 >
-                  <div className="flex items-center space-x-2 flex-1">
+                  {/* Email Option */}
+                  <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
+                    method === "email" 
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" 
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                  }`}>
                     <RadioGroupItem value="email" id="email-method" data-testid="radio-email" />
                     <Label 
                       htmlFor="email-method" 
-                      className="flex items-center gap-2 cursor-pointer text-sm font-normal"
+                      className="flex items-center justify-between flex-1 cursor-pointer"
                     >
-                      <Mail className="h-4 w-4" />
-                      Email
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">Email</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{maskedEmail}</div>
+                        </div>
+                      </div>
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2 flex-1">
-                    <RadioGroupItem value="sms" id="sms-method" data-testid="radio-sms" />
+
+                  {/* SMS Option */}
+                  <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
+                    !hasPhone 
+                      ? "opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700" 
+                      : method === "sms" 
+                        ? "border-green-500 bg-green-50 dark:bg-green-950/20" 
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                  }`}>
+                    <RadioGroupItem 
+                      value="sms" 
+                      id="sms-method" 
+                      disabled={!hasPhone}
+                      data-testid="radio-sms" 
+                    />
                     <Label 
                       htmlFor="sms-method" 
-                      className="flex items-center gap-2 cursor-pointer text-sm font-normal"
+                      className={`flex items-center justify-between flex-1 ${hasPhone ? "cursor-pointer" : "cursor-not-allowed"}`}
                     >
-                      <MessageSquare className="h-4 w-4" />
-                      SMS
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">SMS</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {hasPhone ? maskedPhone : "No phone number on file"}
+                          </div>
+                        </div>
+                      </div>
                     </Label>
                   </div>
                 </RadioGroup>

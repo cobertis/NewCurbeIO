@@ -29,8 +29,9 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // Redirect to OTP verification page
-        setLocation(`/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(email)}`);
+        // Redirect to OTP verification page with email and phone
+        const phoneParam = data.user.phone ? `&phone=${encodeURIComponent(data.user.phone)}` : '';
+        setLocation(`/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(email)}${phoneParam}`);
       } else {
         toast({
           variant: "destructive",
