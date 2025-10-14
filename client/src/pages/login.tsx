@@ -2,9 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Mail, Lock, Eye, EyeOff, LogIn, Smartphone, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/logo no fondo_1760457183587.png";
 
@@ -12,7 +10,6 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [method, setMethod] = useState<"email" | "sms">("email");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -22,21 +19,20 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/send-otp", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password, method }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        toast({
-          title: "Verification code sent",
-          description: `A 6-digit code has been sent to your ${method === "email" ? "email" : "phone"}.`,
-        });
-        setLocation(`/verify-otp?userId=${data.userId}&method=${method}`);
+        // Store password temporarily for OTP sending
+        sessionStorage.setItem("tempPassword", password);
+        // Redirect to OTP verification page instead of dashboard
+        setLocation(`/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(email)}`);
       } else {
         toast({
           variant: "destructive",
@@ -126,40 +122,6 @@ export default function Login() {
                   <Eye className="h-5 w-5" />
                 )}
               </button>
-            </div>
-
-            {/* Method Selector */}
-            <div className="pt-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
-                Receive verification code via:
-              </Label>
-              <RadioGroup 
-                value={method} 
-                onValueChange={(value) => setMethod(value as "email" | "sms")}
-                className="flex gap-4"
-                data-testid="radio-group-method"
-              >
-                <div className="flex items-center space-x-2 flex-1">
-                  <RadioGroupItem value="email" id="email-method" data-testid="radio-email" />
-                  <Label 
-                    htmlFor="email-method" 
-                    className="flex items-center gap-2 cursor-pointer text-sm font-normal"
-                  >
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 flex-1">
-                  <RadioGroupItem value="sms" id="sms-method" data-testid="radio-sms" />
-                  <Label 
-                    htmlFor="sms-method" 
-                    className="flex items-center gap-2 cursor-pointer text-sm font-normal"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    SMS
-                  </Label>
-                </div>
-              </RadioGroup>
             </div>
 
             {/* Forgot Password */}
