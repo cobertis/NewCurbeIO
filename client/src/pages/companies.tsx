@@ -221,6 +221,7 @@ export default function Companies() {
         firstName: "",
         lastName: "",
         email: "",
+        phone: "",
       },
     },
   });
@@ -583,6 +584,28 @@ export default function Companies() {
                       <FormLabel>Admin Email</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="john@acme.com" {...field} data-testid="input-create-admin-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="admin.phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Admin Phone (optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="(555) 123-4567" 
+                          {...field} 
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const formatted = formatPhoneNumber(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          data-testid="input-create-admin-phone" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -995,6 +995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: undefined, // Password will be set during account activation
         firstName: adminData.firstName,
         lastName: adminData.lastName,
+        phone: adminData.phone, // Save phone number for 2FA
         role: "admin",
         companyId: newCompany.id,
         isActive: true,
