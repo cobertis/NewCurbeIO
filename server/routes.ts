@@ -67,6 +67,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
+      // Check for trusted device token
+      const trustedDeviceToken = req.cookies?.trusted_device;
+      if (trustedDeviceToken) {
+        const trustedUserId = await storage.validateTrustedDevice(trustedDeviceToken);
+        
+        // If device is trusted for this user, skip OTP
+        if (trustedUserId === user.id) {
+          req.session.userId = user.id;
+          
+          // Set session duration (7 days)
+          const sessionDuration = 7 * 24 * 60 * 60 * 1000;
+          req.session.cookie.maxAge = sessionDuration;
+          req.session.cookie.expires = new Date(Date.now() + sessionDuration);
+          
+          await logger.logAuth({
+            req,
+            action: "login_trusted_device",
+            userId: user.id,
+            email: user.email,
+            metadata: { trustedDevice: true },
+          });
+          
+          console.log(`✓ Trusted device login for ${user.email} - skipping OTP`);
+          
+          return req.session.save((err) => {
+            if (err) {
+              console.error("Error saving session:", err);
+              return res.status(500).json({ message: "Failed to save session" });
+            }
+            
+            res.json({
+              success: true,
+              skipOTP: true,
+              user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phone: user.phone,
+                role: user.role,
+                companyId: user.companyId,
+              },
+            });
+          });
+        }
+      }
+
       // Set pending user ID - full authentication only after OTP verification
       req.session.pendingUserId = user.id;
 
