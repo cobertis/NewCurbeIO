@@ -3,12 +3,14 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building2, Plus, Pencil, Trash2, Search } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Building2, Plus, Pencil, Trash2, Search, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createCompanyWithAdminSchema, updateCompanySchema, type Company } from "@shared/schema";
+import { createCompanyWithAdminSchema, updateCompanySchema, type Company, type Feature } from "@shared/schema";
 import { useState, useRef } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +33,7 @@ type UpdateCompanyForm = z.infer<typeof updateCompanySchema>;
 export default function Companies() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [featuresOpen, setFeaturesOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
@@ -131,6 +134,78 @@ export default function Companies() {
     },
   });
 
+  const { data: allFeaturesData } = useQuery<{ features: Feature[] }>({
+    queryKey: ["/api/features"],
+    enabled: featuresOpen,
+  });
+
+  const { data: companyFeaturesData, isLoading: isLoadingCompanyFeatures } = useQuery<{ features: Feature[] }>({
+    queryKey: ["/api/companies", selectedCompany?.id, "features"],
+    enabled: featuresOpen && !!selectedCompany?.id,
+  });
+
+  const addFeatureMutation = useMutation({
+    mutationFn: async ({ companyId, featureId }: { companyId: string; featureId: string }) => {
+      const response = await fetch(`/api/companies/${companyId}/features`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ featureId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to add feature");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      if (selectedCompany) {
+        queryClient.invalidateQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
+      }
+      toast({
+        title: "Feature Added",
+        description: "The feature has been added to the company",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add feature",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeFeatureMutation = useMutation({
+    mutationFn: async ({ companyId, featureId }: { companyId: string; featureId: string }) => {
+      const response = await fetch(`/api/companies/${companyId}/features/${featureId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to remove feature");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      if (selectedCompany) {
+        queryClient.invalidateQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
+      }
+      toast({
+        title: "Feature Removed",
+        description: "The feature has been removed from the company",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove feature",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createForm = useForm<CreateCompanyForm>({
     resolver: zodResolver(createCompanyWithAdminSchema),
     defaultValues: {
@@ -188,6 +263,25 @@ export default function Companies() {
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to delete this company?")) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleManageFeatures = (company: Company) => {
+    setSelectedCompany(company);
+    setFeaturesOpen(true);
+  };
+
+  const allFeatures = allFeaturesData?.features || [];
+  const companyFeatures = companyFeaturesData?.features || [];
+  const companyFeatureIds = new Set(companyFeatures.map(f => f.id));
+
+  const handleToggleFeature = (featureId: string) => {
+    if (!selectedCompany) return;
+    
+    if (companyFeatureIds.has(featureId)) {
+      removeFeatureMutation.mutate({ companyId: selectedCompany.id, featureId });
+    } else {
+      addFeatureMutation.mutate({ companyId: selectedCompany.id, featureId });
     }
   };
 
@@ -283,6 +377,15 @@ export default function Companies() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleManageFeatures(company)}
+                        data-testid={`button-manage-features-${company.id}`}
+                        title="Manage Features"
+                      >
+                        <Package className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -582,6 +685,97 @@ export default function Companies() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Features Dialog */}
+      <Dialog open={featuresOpen} onOpenChange={setFeaturesOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]" data-testid="dialog-manage-features">
+          <DialogHeader>
+            <DialogTitle>Manage Features - {selectedCompany?.name}</DialogTitle>
+            <DialogDescription>
+              Select which features this company should have access to
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto max-h-[60vh] px-1">
+            {isLoadingCompanyFeatures ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse flex items-center gap-3 p-4 border rounded-lg">
+                    <div className="w-4 h-4 bg-muted rounded" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-1/3" />
+                      <div className="h-3 bg-muted rounded w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : allFeatures.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No features available. Create features first to assign them to companies.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {allFeatures.map((feature) => {
+                  const isAssigned = companyFeatureIds.has(feature.id);
+                  const isActive = feature.isActive;
+                  
+                  return (
+                    <div
+                      key={feature.id}
+                      className={`flex items-start gap-3 p-4 border rounded-lg hover-elevate ${
+                        !isActive ? 'opacity-50' : ''
+                      }`}
+                      data-testid={`feature-item-${feature.id}`}
+                    >
+                      <Checkbox
+                        checked={isAssigned}
+                        disabled={!isActive || addFeatureMutation.isPending || removeFeatureMutation.isPending}
+                        onCheckedChange={() => handleToggleFeature(feature.id)}
+                        data-testid={`checkbox-feature-${feature.id}`}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h4 className="font-medium" data-testid={`text-feature-name-${feature.id}`}>
+                            {feature.name}
+                          </h4>
+                          <Badge variant="secondary" className="text-xs">
+                            {feature.category}
+                          </Badge>
+                          {!isActive && (
+                            <Badge variant="outline" className="text-xs">
+                              Inactive
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground" data-testid={`text-feature-desc-${feature.id}`}>
+                          {feature.description || 'No description'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Key: <span className="font-mono">{feature.key}</span>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFeaturesOpen(false);
+                setSelectedCompany(null);
+              }}
+              data-testid="button-close-features"
+            >
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
