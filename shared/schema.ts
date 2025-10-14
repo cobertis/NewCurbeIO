@@ -322,12 +322,14 @@ export const apiKeys = pgTable("api_keys", {
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  type: text("type").notNull(), // info, success, warning, error
+  type: text("type").notNull(), // info, success, warning, error, email
   title: text("title").notNull(),
   message: text("message").notNull(),
   link: text("link"),
   isRead: boolean("is_read").notNull().default(false),
   readAt: timestamp("read_at"),
+  emailSent: boolean("email_sent").notNull().default(false),
+  emailSentAt: timestamp("email_sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -512,6 +514,7 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
   createdAt: true,
   readAt: true,
+  emailSentAt: true,
 });
 
 // =====================================================
