@@ -238,6 +238,7 @@ export default function Companies() {
   });
 
   const onCreateSubmit = (data: CreateCompanyForm) => {
+    console.log("Creating company with data:", data);
     createMutation.mutate(data);
   };
 
