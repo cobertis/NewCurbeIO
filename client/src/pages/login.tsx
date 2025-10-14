@@ -79,9 +79,7 @@ export default function Login() {
               Sign in with email
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Take your business to the next level with
-              <br />
-              the power of our platform
+              To help keep your account safe, Curbe.io wants to make sure it's really you trying to sign in.
             </p>
           </div>
 
