@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -28,10 +28,28 @@ export default function Settings() {
   });
 
   const [emailTestAddress, setEmailTestAddress] = useState("");
-
+  
   const user = userData?.user;
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
+
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+      });
+    }
+  }, [user]);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
@@ -91,12 +109,7 @@ export default function Settings() {
 
   const handleProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    updateProfileMutation.mutate({
-      firstName: formData.get("firstName") as string,
-      lastName: formData.get("lastName") as string,
-      email: formData.get("email") as string,
-    });
+    updateProfileMutation.mutate(profileForm);
   };
 
   const handleSendTestEmail = (e: React.FormEvent) => {
@@ -153,14 +166,15 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleProfileSubmit} className="space-y-4" key={user?.id}>
+              <form onSubmit={handleProfileSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
                     <Input
                       id="firstName"
                       name="firstName"
-                      defaultValue={user?.firstName || ""}
+                      value={profileForm.firstName}
+                      onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
                       data-testid="input-firstname"
                       required
                     />
@@ -170,7 +184,8 @@ export default function Settings() {
                     <Input
                       id="lastName"
                       name="lastName"
-                      defaultValue={user?.lastName || ""}
+                      value={profileForm.lastName}
+                      onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
                       data-testid="input-lastname"
                       required
                     />
@@ -182,7 +197,8 @@ export default function Settings() {
                     id="email"
                     name="email"
                     type="email"
-                    defaultValue={user?.email}
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
                     data-testid="input-email-settings"
                     required
                   />
