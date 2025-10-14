@@ -559,7 +559,17 @@ export default function Companies() {
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-create-company">
+                <Button 
+                  type="submit" 
+                  disabled={createMutation.isPending} 
+                  data-testid="button-submit-create-company"
+                  onClick={() => {
+                    const errors = createForm.formState.errors;
+                    if (Object.keys(errors).length > 0) {
+                      console.log("Form validation errors:", errors);
+                    }
+                  }}
+                >
                   {createMutation.isPending ? "Creating..." : "Create Company & Admin"}
                 </Button>
               </DialogFooter>
