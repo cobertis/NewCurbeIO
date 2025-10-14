@@ -3,9 +3,10 @@ import { useLocation } from "wouter";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  fallbackPath?: string;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedRouteProps) {
   const [, setLocation] = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,17 +21,17 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         if (response.ok) {
           setIsAuthenticated(true);
         } else {
-          setLocation("/");
+          setLocation(fallbackPath);
         }
       } catch (error) {
-        setLocation("/");
+        setLocation(fallbackPath);
       } finally {
         setIsChecking(false);
       }
     };
 
     checkAuth();
-  }, [setLocation]);
+  }, [setLocation, fallbackPath]);
 
   if (isChecking) {
     return (

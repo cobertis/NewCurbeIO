@@ -189,7 +189,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Login} />
+      <Route path="/">
+        <ProtectedRoute fallbackPath="/login">
+          <DashboardLayout>
+            <Dashboard />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/login" component={Login} />
       <Route path="/verify-otp" component={VerifyOTP} />
       <Route path="/dashboard">
         <ProtectedRoute>

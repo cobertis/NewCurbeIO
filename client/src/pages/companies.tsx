@@ -432,9 +432,24 @@ export default function Companies() {
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-800 dark:text-red-200">
               <p className="font-semibold mb-1">Please fix the following errors:</p>
               <ul className="list-disc list-inside space-y-1">
-                {Object.entries(createForm.formState.errors).map(([key, error]) => (
-                  <li key={key}>{key}: {error?.message?.toString()}</li>
-                ))}
+                {(() => {
+                  const getErrorMessages = (errors: any, prefix = ''): string[] => {
+                    const messages: string[] = [];
+                    Object.entries(errors).forEach(([key, value]: [string, any]) => {
+                      const fullKey = prefix ? `${prefix}.${key}` : key;
+                      if (value?.message) {
+                        messages.push(`${fullKey}: ${value.message}`);
+                      } else if (typeof value === 'object' && value !== null) {
+                        messages.push(...getErrorMessages(value, fullKey));
+                      }
+                    });
+                    return messages;
+                  };
+                  
+                  return getErrorMessages(createForm.formState.errors).map((message, index) => (
+                    <li key={index}>{message}</li>
+                  ));
+                })()}
               </ul>
             </div>
           )}
