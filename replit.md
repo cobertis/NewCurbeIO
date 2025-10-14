@@ -2,7 +2,9 @@
 
 ## Overview
 
-This project is a modern multi-tenant admin dashboard for Curbe, designed to provide a comprehensive management solution for businesses. It supports a superadmin role capable of overseeing multiple companies, with each company having its own users assigned various roles (admin, member, viewer). The application focuses on delivering an efficient, data-rich experience with robust multi-tenant management, advanced data visualization, and a scalable full-stack architecture, drawing inspiration from leading SaaS platforms.
+**Curbe** is a multi-tenant CRM system for enterprise messaging that integrates iMessage/SMS/RCS through BlueBubbles, offering a WhatsApp Business-like interface for managing customer communications.
+
+This admin dashboard provides comprehensive management capabilities for the platform. It supports a superadmin role capable of overseeing multiple companies (tenants), with each company having its own users assigned various roles (admin, member, viewer). The application focuses on delivering an efficient, data-rich experience with robust multi-tenant management, billing/invoicing through Stripe, email notifications via custom SMTP, and a scalable full-stack architecture.
 
 ## User Preferences
 
