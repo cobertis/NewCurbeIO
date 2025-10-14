@@ -696,6 +696,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =====================================================
+  // EMAIL & NOTIFICATIONS ENDPOINTS
+  // =====================================================
+
+  // Test email connection
+  app.get("/api/email/test", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const { emailService } = await import("./email");
+      const isConnected = await emailService.verifyConnection();
+      
+      if (isConnected) {
+        res.json({ 
+          success: true, 
+          message: "Email service connected successfully" 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Email service not configured or connection failed" 
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        message: error.message 
+      });
+    }
+  });
+
+  // Send test email
+  app.post("/api/email/send-test", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const { to } = req.body;
+      if (!to) {
+        return res.status(400).json({ message: "Email address required" });
+      }
+
+      const { emailService } = await import("./email");
+      const success = await emailService.sendNotificationEmail(
+        to,
+        "Test Email - Curbe Admin",
+        "Este es un email de prueba del sistema de notificaciones de Curbe Admin. Si estás recibiendo esto, significa que el sistema de emails está funcionando correctamente."
+      );
+
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: `Test email sent successfully to ${to}` 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Failed to send test email" 
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        message: error.message 
+      });
+    }
+  });
+
+  // Get user notifications
+  app.get("/api/notifications", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      const notifications = await storage.getNotificationsByUser(req.session.userId, limit);
+      res.json({ notifications });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Create notification (with optional email)
+  app.post("/api/notifications", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || (currentUser.role !== "superadmin" && currentUser.role !== "admin")) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const { userId, type, title, message, link, sendEmail } = req.body;
+      
+      if (!userId || !type || !title || !message) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Create notification in database
+      const notification = await storage.createNotification({
+        userId,
+        type,
+        title,
+        message,
+        link,
+        isRead: false,
+        emailSent: false,
+      });
+
+      // Send email if requested
+      if (sendEmail) {
+        const targetUser = await storage.getUser(userId);
+        if (targetUser?.email) {
+          const { emailService } = await import("./email");
+          const emailSuccess = await emailService.sendNotificationEmail(
+            targetUser.email,
+            title,
+            message
+          );
+
+          if (emailSuccess) {
+            await storage.markNotificationEmailSent(notification.id);
+          }
+        }
+      }
+
+      res.json({ notification });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create notification" });
+    }
+  });
+
+  // Mark notification as read
+  app.patch("/api/notifications/:id/read", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const success = await storage.markNotificationAsRead(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update notification" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.post("/api/notifications/mark-all-read", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      await storage.markAllNotificationsAsRead(req.session.userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark notifications as read" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

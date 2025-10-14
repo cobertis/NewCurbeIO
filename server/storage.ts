@@ -409,6 +409,22 @@ export class DbStorage implements IStorage {
       .returning();
     return result.length > 0;
   }
+
+  async markAllNotificationsAsRead(userId: string): Promise<boolean> {
+    const result = await db.update(notifications)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(notifications.userId, userId))
+      .returning();
+    return result.length > 0;
+  }
+
+  async markNotificationEmailSent(id: string): Promise<boolean> {
+    const result = await db.update(notifications)
+      .set({ emailSent: true, emailSentAt: new Date() })
+      .where(eq(notifications.id, id))
+      .returning();
+    return result.length > 0;
+  }
 }
 
 export const storage = new DbStorage();
