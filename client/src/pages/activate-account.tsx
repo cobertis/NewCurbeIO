@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, CheckCircle2, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import logo from "@assets/logo no fondo_1760457183587.png";
 
 // Password strength validation
@@ -204,179 +202,221 @@ export default function ActivateAccount() {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5 p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Validating...</CardTitle>
-            <CardDescription>Please wait while we validate your activation link</CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
+        {/* Logo in top left */}
+        <div className="absolute top-6 left-6">
+          <img 
+            src={logo} 
+            alt="Curbe.io" 
+            className="h-10 w-auto object-contain"
+          />
+        </div>
+
+        <div className="w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10 text-center">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+              Validating...
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Please wait while we validate your activation link
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!isValidToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5 p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-red-600">Invalid Link</CardTitle>
-            <CardDescription>
-              This activation link is invalid or has expired. Please contact your administrator for a new activation link.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
+        {/* Logo in top left */}
+        <div className="absolute top-6 left-6">
+          <img 
+            src={logo} 
+            alt="Curbe.io" 
+            className="h-10 w-auto object-contain"
+          />
+        </div>
+
+        <div className="w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-semibold text-red-600 dark:text-red-500 mb-2">
+                Invalid Link
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                This activation link is invalid or has expired. Please contact your administrator for a new activation link.
+              </p>
+            </div>
             <Button
               onClick={() => setLocation("/login")}
-              className="w-full"
-              variant="outline"
+              className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
               data-testid="button-back-to-login"
             >
               Back to Login
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <img src={logo} alt="Curbe Logo" className="h-16 w-auto" />
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
+      {/* Logo in top left */}
+      <div className="absolute top-6 left-6">
+        <img 
+          src={logo} 
+          alt="Curbe.io" 
+          className="h-10 w-auto object-contain"
+        />
+      </div>
+
+      {/* Activation Card */}
+      <div className="w-full max-w-md">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
+          {/* Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-2xl">Activate Your Account</CardTitle>
-            <CardDescription>Set your password to complete account activation</CardDescription>
+
+          {/* Title */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+              Activate Your Account
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Set your password to complete account activation
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
+
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter secure password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  data-testid="input-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  data-testid="button-toggle-password"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-
-              {/* Password Strength Indicator */}
-              {password && (
-                <div className="space-y-2 mt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Password strength:</span>
-                    <span className={`text-sm font-medium ${checkPasswordStrength(password).color}`}>
-                      {checkPasswordStrength(password).label}
-                    </span>
-                  </div>
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full transition-colors ${
-                          i < checkPasswordStrength(password).score 
-                            ? checkPasswordStrength(password).score <= 1 
-                              ? 'bg-red-500' 
-                              : checkPasswordStrength(password).score <= 2 
-                              ? 'bg-orange-500' 
-                              : checkPasswordStrength(password).score <= 3 
-                              ? 'bg-yellow-500' 
-                              : 'bg-green-500'
-                            : 'bg-gray-200 dark:bg-gray-700'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+            {/* Password Input */}
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-10 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                required
+                data-testid="input-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                data-testid="button-toggle-password"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Re-enter password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  data-testid="input-confirm-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  data-testid="button-toggle-confirm-password"
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-
-              {/* Password Requirements */}
-              {password && (
-                <div className="space-y-1 mt-3 p-3 bg-muted/50 rounded-md">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Password must contain:</p>
-                  {Object.entries({
-                    minLength: "At least 8 characters",
-                    hasUpperCase: "One uppercase letter (A-Z)",
-                    hasLowerCase: "One lowercase letter (a-z)",
-                    hasNumber: "One number (0-9)",
-                    hasSpecialChar: "One special character (!@#$%^&*)",
-                  }).map(([key, label]) => {
-                    const requirements = validatePasswordRequirements(password);
-                    const isValid = requirements[key as keyof typeof requirements];
-                    return (
-                      <div key={key} className="flex items-center gap-2 text-xs">
-                        {isValid ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <X className="h-3 w-3 text-muted-foreground" />
-                        )}
-                        <span className={isValid ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
-                          {label}
-                        </span>
-                      </div>
-                    );
-                  })}
+            {/* Password Strength Indicator */}
+            {password && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Password strength:</span>
+                  <span className={`text-sm font-medium ${checkPasswordStrength(password).color}`}>
+                    {checkPasswordStrength(password).label}
+                  </span>
                 </div>
-              )}
+                <div className="flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        i < checkPasswordStrength(password).score 
+                          ? checkPasswordStrength(password).score <= 1 
+                            ? 'bg-red-500' 
+                            : checkPasswordStrength(password).score <= 2 
+                            ? 'bg-orange-500' 
+                            : checkPasswordStrength(password).score <= 3 
+                            ? 'bg-yellow-500' 
+                            : 'bg-green-500'
+                          : 'bg-gray-200 dark:bg-gray-700'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Confirm Password Input */}
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="pr-10 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                required
+                data-testid="input-confirm-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                data-testid="button-toggle-confirm-password"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
 
+            {/* Password Requirements */}
+            {password && (
+              <div className="space-y-1 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Password must contain:</p>
+                {Object.entries({
+                  minLength: "At least 8 characters",
+                  hasUpperCase: "One uppercase letter (A-Z)",
+                  hasLowerCase: "One lowercase letter (a-z)",
+                  hasNumber: "One number (0-9)",
+                  hasSpecialChar: "One special character (!@#$%^&*)",
+                }).map(([key, label]) => {
+                  const requirements = validatePasswordRequirements(password);
+                  const isValid = requirements[key as keyof typeof requirements];
+                  return (
+                    <div key={key} className="flex items-center gap-2 text-xs">
+                      {isValid ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <X className="h-3 w-3 text-gray-400" />
+                      )}
+                      <span className={isValid ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-gray-400"}>
+                        {label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Activate Button */}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
               disabled={isLoading}
               data-testid="button-activate-account"
             >
-              {isLoading ? (
-                "Activating..."
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Activate Account
-                </>
-              )}
+              {isLoading ? "Activating..." : "Activate Account"}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

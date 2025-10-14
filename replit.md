@@ -16,20 +16,20 @@ Built with React 18, TypeScript, and Vite, the frontend uses Wouter for routing,
 
 **Key UI Features:**
 -   **Dashboard:** Real-time statistics, charts, and recent activity.
--   **Users:** CRUD operations with role-based access. Includes firstName, lastName, phone fields. Phone number required for SMS-based 2FA. Superadmins can view and assign company associations. User table displays full names (when available) and company column (superadmin-only).
--   **Companies (Superadmin-only):** CRUD operations, visual cards, and feature management. Each company card includes a button to manage assigned features through a modal dialog with checkboxes. When creating a company, admin users are created without passwords and receive email-based activation links.
+-   **Users:** CRUD operations with role-based access. Includes firstName, lastName, phone fields. Phone number required for SMS-based 2FA. Superadmins can view and assign company associations. User table displays full names (when available), phone numbers, company column (superadmin-only), role, and creation date.
+-   **Companies (Superadmin-only):** CRUD operations, visual cards, and feature management. Each company card includes a button to manage assigned features through a modal dialog with checkboxes. When creating a company, admin users are created without passwords and receive email-based activation links. Uses AlertDialog for deletion confirmations (not browser confirm).
 -   **Plans (Superadmin-only):** CRUD operations for subscription plans.
 -   **Features (Superadmin-only):** Complete CRUD interface for system features with categorization, status management, and activation controls. Features can be created with unique keys and assigned to specific companies.
 -   **Invoices:** View and download invoices with role-based access.
 -   **Settings:** Comprehensive settings with tabs for Profile (includes phone number management), Preferences, Company Settings, System (SMTP, email templates), and Security.
--   **Login:** Two-factor authentication with user-selected delivery method (email or SMS) before code is sent. Blocks login for accounts that haven't been activated via email.
+-   **Login:** Clean, modern design with gradient background (sky-100/blue-50/indigo-100), rounded-2xl card, centered layout. Two-factor authentication with user-selected delivery method (email or SMS) before code is sent. Blocks login for accounts that haven't been activated via email.
 -   **OTP Verification:** Two-step verification flow: (1) User selects delivery method (email/SMS), (2) Enters 6-digit code with device trust option and countdown timers.
--   **Account Activation:** Secure email-based activation where new admin users set their password via a unique token link.
+-   **Account Activation:** Matches Login page design with gradient background, logo in top-left corner, rounded card. Secure email-based activation where new admin users set their password via a unique token link. Features password strength indicator, real-time requirement checklist (below confirm password field), and strong password validation.
 -   **Audit Logs:** Timeline view of system actions with role-based filtering, including 2FA and activation events.
 -   **Email Templates:** Management interface with HTML editor and live preview (superadmin-only).
 
 **Design System:**
-Features a clean sidebar and header, with a Curbe.io logo, role-based navigation, and semantic color tokens adapting to light/dark modes. Leverages Shadcn/ui components for consistency.
+Features a clean sidebar and header, with a Curbe.io logo, role-based navigation, and semantic color tokens adapting to light/dark modes. Leverages Shadcn/ui components for consistency. Authentication pages (Login, Activation) use a cohesive design language with gradient backgrounds, centered rounded cards, and consistent spacing.
 
 ### Backend
 
