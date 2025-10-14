@@ -15,6 +15,8 @@ import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Users from "@/pages/users";
 import Companies from "@/pages/companies";
+import Plans from "@/pages/plans";
+import Invoices from "@/pages/invoices";
 import Settings from "@/pages/settings";
 import Support from "@/pages/support";
 import NotFound from "@/pages/not-found";
@@ -88,6 +90,20 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Companies />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/plans">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Plans />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/invoices">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Invoices />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

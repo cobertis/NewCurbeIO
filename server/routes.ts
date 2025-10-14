@@ -7,7 +7,8 @@ import {
   updateUserSchema, 
   insertCompanySchema, 
   updateCompanySchema,
-  createCompanyWithAdminSchema 
+  createCompanyWithAdminSchema,
+  insertPlanSchema
 } from "@shared/schema";
 import "./types";
 
@@ -343,6 +344,345 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     res.json({ success: true });
+  });
+
+  // ===================================================================
+  // PLANS MANAGEMENT (Superadmin only)
+  // ===================================================================
+
+  // Get all plans
+  app.get("/api/plans", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Superadmins see all plans, others see only active plans
+    const plans = currentUser.role === "superadmin" 
+      ? await storage.getAllPlans()
+      : await storage.getActivePlans();
+    
+    res.json({ plans });
+  });
+
+  // Get plan by ID
+  app.get("/api/plans/:id", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const plan = await storage.getPlan(req.params.id);
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found" });
+    }
+
+    res.json({ plan });
+  });
+
+  // Create plan (superadmin only)
+  app.post("/api/plans", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const validatedData = insertPlanSchema.parse(req.body);
+      const plan = await storage.createPlan(validatedData);
+      res.json({ plan });
+    } catch (error) {
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  // Update plan (superadmin only)
+  app.patch("/api/plans/:id", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const validatedData = insertPlanSchema.partial().parse(req.body);
+      const updatedPlan = await storage.updatePlan(req.params.id, validatedData);
+      if (!updatedPlan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      res.json({ plan: updatedPlan });
+    } catch (error) {
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  // Delete plan (superadmin only)
+  app.delete("/api/plans/:id", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser || currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const success = await storage.deletePlan(req.params.id);
+    if (!success) {
+      return res.status(404).json({ message: "Plan not found" });
+    }
+
+    res.json({ success: true });
+  });
+
+  // ===================================================================
+  // INVOICES & PAYMENTS
+  // ===================================================================
+
+  // Get invoices (scoped by company for non-superadmins)
+  app.get("/api/invoices", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Superadmins need companyId query param, others use their company
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    const invoices = await storage.getInvoicesByCompany(companyId);
+    res.json({ invoices });
+  });
+
+  // Get invoice by ID
+  app.get("/api/invoices/:id", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const invoice = await storage.getInvoice(req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    // Check access: superadmin or same company
+    if (currentUser.role !== "superadmin" && invoice.companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    // Get invoice items
+    const items = await storage.getInvoiceItems(invoice.id);
+    res.json({ invoice, items });
+  });
+
+  // Get payments (scoped by company for non-superadmins)
+  app.get("/api/payments", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    const payments = await storage.getPaymentsByCompany(companyId);
+    res.json({ payments });
+  });
+
+  // ===================================================================
+  // SUBSCRIPTION & STRIPE CHECKOUT
+  // ===================================================================
+
+  // Get subscription for company
+  app.get("/api/subscription", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    const subscription = await storage.getSubscriptionByCompany(companyId);
+    res.json({ subscription });
+  });
+
+  // Create checkout session
+  app.post("/api/checkout", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Only admin or superadmin can create checkout
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const { planId, stripePriceId } = req.body;
+    if (!planId || !stripePriceId) {
+      return res.status(400).json({ message: "Plan ID and Stripe Price ID required" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const { createSubscriptionCheckout } = await import("./stripe");
+      const session = await createSubscriptionCheckout(
+        companyId,
+        planId,
+        stripePriceId,
+        `${req.headers.origin}/subscription/success`,
+        `${req.headers.origin}/subscription/cancel`
+      );
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Cancel subscription
+  app.post("/api/subscription/cancel", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const currentUser = await storage.getUser(req.session.userId);
+    if (!currentUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Only admin or superadmin can cancel
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    const subscription = await storage.getSubscriptionByCompany(companyId);
+    if (!subscription || !subscription.stripeSubscriptionId) {
+      return res.status(404).json({ message: "No active subscription found" });
+    }
+
+    try {
+      const { cancelStripeSubscription } = await import("./stripe");
+      const cancelAtPeriodEnd = req.body.cancelAtPeriodEnd !== false;
+      await cancelStripeSubscription(subscription.stripeSubscriptionId, cancelAtPeriodEnd);
+      await storage.cancelSubscription(subscription.id, cancelAtPeriodEnd);
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ===================================================================
+  // STRIPE WEBHOOKS
+  // ===================================================================
+
+  app.post("/api/webhooks/stripe", async (req: Request, res: Response) => {
+    const sig = req.headers['stripe-signature'];
+    if (!sig) {
+      return res.status(400).json({ message: "No signature" });
+    }
+
+    try {
+      const { stripe } = await import("./stripe");
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET || ""
+      );
+
+      const {
+        handleSubscriptionCreated,
+        handleSubscriptionUpdated,
+        handleSubscriptionDeleted,
+        syncInvoiceFromStripe,
+      } = await import("./stripe");
+
+      switch (event.type) {
+        case 'customer.subscription.created':
+          await handleSubscriptionCreated(event.data.object);
+          break;
+        case 'customer.subscription.updated':
+          await handleSubscriptionUpdated(event.data.object);
+          break;
+        case 'customer.subscription.deleted':
+          await handleSubscriptionDeleted(event.data.object);
+          break;
+        case 'invoice.paid':
+        case 'invoice.payment_succeeded':
+          await syncInvoiceFromStripe(event.data.object.id);
+          break;
+        default:
+          console.log(`Unhandled event type: ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error("Webhook error:", error.message);
+      res.status(400).json({ message: error.message });
+    }
   });
 
   const httpServer = createServer(app);

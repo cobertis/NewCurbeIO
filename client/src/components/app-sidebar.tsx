@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Users, Building2, Settings, HelpCircle, LogOut } from "lucide-react";
+import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Receipt, Settings, HelpCircle, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -35,6 +35,17 @@ const menuItems = [
     url: "/companies",
     icon: Building2,
     superAdminOnly: true,
+  },
+  {
+    title: "Plans",
+    url: "/plans",
+    icon: CreditCard,
+    superAdminOnly: true,
+  },
+  {
+    title: "Invoices",
+    url: "/invoices",
+    icon: Receipt,
   },
   {
     title: "Settings",

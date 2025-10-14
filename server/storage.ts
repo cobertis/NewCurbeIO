@@ -64,11 +64,40 @@ export interface IStorage {
   createCompanySettings(settings: InsertCompanySettings): Promise<CompanySettings>;
   updateCompanySettings(companyId: string, data: Partial<InsertCompanySettings>): Promise<CompanySettings | undefined>;
   
+  // Plans
+  getPlan(id: string): Promise<Plan | undefined>;
+  getAllPlans(): Promise<Plan[]>;
+  getActivePlans(): Promise<Plan[]>;
+  createPlan(plan: InsertPlan): Promise<Plan>;
+  updatePlan(id: string, data: Partial<InsertPlan>): Promise<Plan | undefined>;
+  deletePlan(id: string): Promise<boolean>;
+  
   // Subscriptions
   getSubscription(id: string): Promise<Subscription | undefined>;
   getSubscriptionByCompany(companyId: string): Promise<Subscription | undefined>;
+  getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | undefined>;
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
   updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
+  cancelSubscription(id: string, cancelAtPeriodEnd: boolean): Promise<Subscription | undefined>;
+  
+  // Invoices
+  getInvoice(id: string): Promise<Invoice | undefined>;
+  getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined>;
+  getInvoicesByCompany(companyId: string): Promise<Invoice[]>;
+  getInvoiceByStripeId(stripeInvoiceId: string): Promise<Invoice | undefined>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  
+  // Invoice Items
+  getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]>;
+  createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
+  
+  // Payments
+  getPayment(id: string): Promise<Payment | undefined>;
+  getPaymentsByCompany(companyId: string): Promise<Payment[]>;
+  getPaymentsByInvoice(invoiceId: string): Promise<Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined>;
   
   // Activity Logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
@@ -174,6 +203,36 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  // ==================== PLANS ====================
+  
+  async getPlan(id: string): Promise<Plan | undefined> {
+    const result = await db.select().from(plans).where(eq(plans.id, id));
+    return result[0];
+  }
+
+  async getAllPlans(): Promise<Plan[]> {
+    return db.select().from(plans).orderBy(desc(plans.createdAt));
+  }
+
+  async getActivePlans(): Promise<Plan[]> {
+    return db.select().from(plans).where(eq(plans.isActive, true)).orderBy(desc(plans.createdAt));
+  }
+
+  async createPlan(insertPlan: InsertPlan): Promise<Plan> {
+    const result = await db.insert(plans).values(insertPlan).returning();
+    return result[0];
+  }
+
+  async updatePlan(id: string, data: Partial<InsertPlan>): Promise<Plan | undefined> {
+    const result = await db.update(plans).set(data).where(eq(plans.id, id)).returning();
+    return result[0];
+  }
+
+  async deletePlan(id: string): Promise<boolean> {
+    const result = await db.delete(plans).where(eq(plans.id, id)).returning();
+    return result.length > 0;
+  }
+
   // ==================== SUBSCRIPTIONS ====================
   
   async getSubscription(id: string): Promise<Subscription | undefined> {
@@ -186,6 +245,11 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  async getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | undefined> {
+    const result = await db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId));
+    return result[0];
+  }
+
   async createSubscription(insertSubscription: InsertSubscription): Promise<Subscription> {
     const result = await db.insert(subscriptions).values(insertSubscription).returning();
     return result[0];
@@ -193,6 +257,82 @@ export class DbStorage implements IStorage {
 
   async updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined> {
     const result = await db.update(subscriptions).set(data).where(eq(subscriptions.id, id)).returning();
+    return result[0];
+  }
+
+  async cancelSubscription(id: string, cancelAtPeriodEnd: boolean): Promise<Subscription | undefined> {
+    const data: Partial<InsertSubscription> = {
+      cancelAtPeriodEnd,
+      ...(cancelAtPeriodEnd ? {} : { status: "cancelled", cancelledAt: new Date() })
+    };
+    const result = await db.update(subscriptions).set(data).where(eq(subscriptions.id, id)).returning();
+    return result[0];
+  }
+
+  // ==================== INVOICES ====================
+  
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    const result = await db.select().from(invoices).where(eq(invoices.id, id));
+    return result[0];
+  }
+
+  async getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined> {
+    const result = await db.select().from(invoices).where(eq(invoices.invoiceNumber, invoiceNumber));
+    return result[0];
+  }
+
+  async getInvoicesByCompany(companyId: string): Promise<Invoice[]> {
+    return db.select().from(invoices).where(eq(invoices.companyId, companyId)).orderBy(desc(invoices.createdAt));
+  }
+
+  async getInvoiceByStripeId(stripeInvoiceId: string): Promise<Invoice | undefined> {
+    const result = await db.select().from(invoices).where(eq(invoices.stripeInvoiceId, stripeInvoiceId));
+    return result[0];
+  }
+
+  async createInvoice(insertInvoice: InsertInvoice): Promise<Invoice> {
+    const result = await db.insert(invoices).values(insertInvoice).returning();
+    return result[0];
+  }
+
+  async updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const result = await db.update(invoices).set(data).where(eq(invoices.id, id)).returning();
+    return result[0];
+  }
+
+  // ==================== INVOICE ITEMS ====================
+  
+  async getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]> {
+    return db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+  }
+
+  async createInvoiceItem(insertItem: InsertInvoiceItem): Promise<InvoiceItem> {
+    const result = await db.insert(invoiceItems).values(insertItem).returning();
+    return result[0];
+  }
+
+  // ==================== PAYMENTS ====================
+  
+  async getPayment(id: string): Promise<Payment | undefined> {
+    const result = await db.select().from(payments).where(eq(payments.id, id));
+    return result[0];
+  }
+
+  async getPaymentsByCompany(companyId: string): Promise<Payment[]> {
+    return db.select().from(payments).where(eq(payments.companyId, companyId)).orderBy(desc(payments.createdAt));
+  }
+
+  async getPaymentsByInvoice(invoiceId: string): Promise<Payment[]> {
+    return db.select().from(payments).where(eq(payments.invoiceId, invoiceId)).orderBy(desc(payments.createdAt));
+  }
+
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const result = await db.insert(payments).values(insertPayment).returning();
+    return result[0];
+  }
+
+  async updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const result = await db.update(payments).set(data).where(eq(payments.id, id)).returning();
     return result[0];
   }
 
