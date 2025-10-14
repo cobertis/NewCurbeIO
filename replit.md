@@ -16,7 +16,7 @@ Built with React 18, TypeScript, and Vite, the frontend uses Wouter for routing,
 
 **Key UI Features:**
 -   **Dashboard:** Real-time statistics, charts, and recent activity.
--   **Users:** CRUD operations with role-based access.
+-   **Users:** CRUD operations with role-based access. Includes firstName, lastName fields. Superadmins can view and assign company associations. User table displays full names (when available) and company column (superadmin-only).
 -   **Companies (Superadmin-only):** CRUD operations and visual cards.
 -   **Plans (Superadmin-only):** CRUD operations for subscription plans.
 -   **Invoices:** View and download invoices with role-based access.
