@@ -19,11 +19,24 @@ const userFormSchema = insertUserSchema.extend({
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  phone: z.string().optional().or(z.literal("")),
   companyId: z.string().optional(),
 });
 
+// Custom schema for edit form that accepts display format phone (no strict E.164 validation)
+const editUserFormSchema = z.object({
+  email: z.string().email().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  avatar: z.string().url().optional(),
+  phone: z.string().optional().or(z.literal("")),
+  role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
+  companyId: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
 type UserForm = z.infer<typeof userFormSchema>;
-type EditUserForm = z.infer<typeof updateUserSchema>;
+type EditUserForm = z.infer<typeof editUserFormSchema>;
 
 export default function Users() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -141,7 +154,7 @@ export default function Users() {
   });
 
   const editForm = useForm<EditUserForm>({
-    resolver: zodResolver(updateUserSchema),
+    resolver: zodResolver(editUserFormSchema),
     defaultValues: {
       email: "",
       firstName: "",
