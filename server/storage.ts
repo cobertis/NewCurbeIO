@@ -158,8 +158,21 @@ export class DbStorage implements IStorage {
     return db.select().from(users).where(eq(users.companyId, companyId));
   }
 
-  async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
-    const result = await db.update(users).set(data).where(eq(users.id, id)).returning();
+  async updateUser(id: string, data: any): Promise<User | undefined> {
+    // Map camelCase to the Drizzle schema format
+    const mappedData: any = {};
+    if (data.email !== undefined) mappedData.email = data.email;
+    if (data.password !== undefined) mappedData.password = data.password;
+    if (data.firstName !== undefined) mappedData.firstName = data.firstName;
+    if (data.lastName !== undefined) mappedData.lastName = data.lastName;
+    if (data.avatar !== undefined) mappedData.avatar = data.avatar;
+    if (data.phone !== undefined) mappedData.phone = data.phone;
+    if (data.role !== undefined) mappedData.role = data.role;
+    if (data.companyId !== undefined) mappedData.companyId = data.companyId;
+    if (data.isActive !== undefined) mappedData.isActive = data.isActive;
+    if (data.emailVerified !== undefined) mappedData.emailVerified = data.emailVerified;
+    
+    const result = await db.update(users).set(mappedData).where(eq(users.id, id)).returning();
     return result[0];
   }
 
