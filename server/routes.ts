@@ -42,6 +42,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
+      // Check if user has activated their account (password set)
+      if (!user.password) {
+        await logger.logAuth({
+          req,
+          action: "login_failed",
+          userId: user.id,
+          email,
+          metadata: { reason: "Account not activated" },
+        });
+        return res.status(401).json({ message: "Please activate your account first. Check your email for the activation link." });
+      }
+
       const isValidPassword = await verifyPassword(password, user.password);
       if (!isValidPassword) {
         await logger.logAuth({
@@ -611,8 +623,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Hash password before creating user
-      const hashedPassword = await hashPassword(userData.password);
+      // Hash password before creating user (if provided)
+      const hashedPassword = userData.password ? await hashPassword(userData.password) : undefined;
       const newUser = await storage.createUser({ ...userData, password: hashedPassword });
       
       await logger.logCrud({
@@ -805,17 +817,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: companyData.email!, // Already ensured it has a value above
       });
       
-      // If no password provided, generate a temporary random one
-      // This will be replaced when the user activates their account via email
-      const passwordToUse = adminData.password || Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-      
-      // Hash password before creating admin user
-      const hashedPassword = await hashPassword(passwordToUse);
-      
-      // Create admin user for the company
+      // Create admin user WITHOUT password (will be set during activation)
       const adminUser = await storage.createUser({
         email: adminData.email,
-        password: hashedPassword,
+        password: undefined, // Password will be set during account activation
         firstName: adminData.firstName,
         lastName: adminData.lastName,
         role: "admin",
@@ -823,6 +828,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
         emailVerified: false,
       });
+
+      // Generate secure activation token (random 32-byte hex string)
+      const crypto = await import('crypto');
+      const activationToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      // Save activation token
+      await storage.createActivationToken({
+        userId: adminUser.id,
+        token: activationToken,
+        expiresAt,
+        used: false,
+      });
+
+      // Send activation email
+      const activationLink = `${req.protocol}://${req.get('host')}/activate-account?token=${activationToken}`;
+      
+      try {
+        await emailService.sendEmail({
+          to: adminData.email,
+          subject: 'Activate Your Account - Curbe',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>Welcome to ${newCompany.name}!</h2>
+              <p>Your administrator account has been created. Please click the button below to activate your account and set your password:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${activationLink}" style="background-color: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Activate Account</a>
+              </div>
+              <p>Or copy and paste this link into your browser:</p>
+              <p style="color: #666; word-break: break-all;">${activationLink}</p>
+              <p style="color: #999; font-size: 12px;">This link will expire in 7 days.</p>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error('Failed to send activation email:', emailError);
+        // Continue anyway - user can request a new activation link later
+      }
 
       const { password, ...sanitizedAdmin } = adminUser;
       

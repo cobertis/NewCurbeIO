@@ -30,7 +30,9 @@ import {
   type CompanyFeature,
   type InsertCompanyFeature,
   type OtpCode,
-  type InsertOtpCode
+  type InsertOtpCode,
+  type SelectActivationToken,
+  type InsertActivationToken
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -49,7 +51,8 @@ import {
   emailTemplates,
   features,
   companyFeatures,
-  otpCodes
+  otpCodes,
+  activationTokens
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -159,6 +162,12 @@ export interface IStorage {
   getLatestOtpCode(userId: string, method: string): Promise<OtpCode | undefined>;
   verifyAndMarkUsed(userId: string, code: string): Promise<boolean>;
   deleteExpiredOtpCodes(): Promise<boolean>;
+  
+  // Activation Tokens
+  createActivationToken(token: InsertActivationToken): Promise<SelectActivationToken>;
+  getActivationToken(token: string): Promise<SelectActivationToken | undefined>;
+  markActivationTokenUsed(token: string): Promise<boolean>;
+  deleteExpiredActivationTokens(): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -670,6 +679,62 @@ export class DbStorage implements IStorage {
     const now = new Date();
     await db.delete(otpCodes).where(and(
       eq(otpCodes.used, false)
+    ));
+    return true;
+  }
+  
+  // ==================== ACTIVATION TOKENS ====================
+  
+  async createActivationToken(token: InsertActivationToken): Promise<SelectActivationToken> {
+    const result = await db.insert(activationTokens).values(token).returning();
+    return result[0];
+  }
+  
+  async getActivationToken(token: string): Promise<SelectActivationToken | undefined> {
+    const result = await db
+      .select()
+      .from(activationTokens)
+      .where(and(
+        eq(activationTokens.token, token),
+        eq(activationTokens.used, false)
+      ))
+      .limit(1);
+    return result[0];
+  }
+  
+  async markActivationTokenUsed(token: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(activationTokens)
+      .where(and(
+        eq(activationTokens.token, token),
+        eq(activationTokens.used, false)
+      ))
+      .limit(1);
+    
+    if (result.length === 0) {
+      return false;
+    }
+    
+    const activationToken = result[0];
+    const now = new Date();
+    
+    if (activationToken.expiresAt < now) {
+      return false;
+    }
+    
+    await db
+      .update(activationTokens)
+      .set({ used: true, usedAt: now })
+      .where(eq(activationTokens.id, activationToken.id));
+    
+    return true;
+  }
+  
+  async deleteExpiredActivationTokens(): Promise<boolean> {
+    const now = new Date();
+    await db.delete(activationTokens).where(and(
+      eq(activationTokens.used, false)
     ));
     return true;
   }
