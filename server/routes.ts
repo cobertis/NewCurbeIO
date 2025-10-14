@@ -173,8 +173,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Replace variables in template
-        const htmlContent = template.htmlContent.replace(/\{\{otp_code\}\}/g, code);
-        const textContent = template.textContent?.replace(/\{\{otp_code\}\}/g, code);
+        let htmlContent = template.htmlContent
+          .replace(/\{\{otp_code\}\}/g, code)
+          .replace(/\{\{firstName\}\}/g, user.firstName || 'there');
+        let textContent = template.textContent
+          ?.replace(/\{\{otp_code\}\}/g, code)
+          ?.replace(/\{\{firstName\}\}/g, user.firstName || 'there');
         
         await emailService.sendEmail({
           to: user.email,
@@ -328,8 +332,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Replace variables in template
-        const htmlContent = template.htmlContent.replace(/\{\{otp_code\}\}/g, code);
-        const textContent = template.textContent?.replace(/\{\{otp_code\}\}/g, code);
+        let htmlContent = template.htmlContent
+          .replace(/\{\{otp_code\}\}/g, code)
+          .replace(/\{\{firstName\}\}/g, user.firstName || 'there');
+        let textContent = template.textContent
+          ?.replace(/\{\{otp_code\}\}/g, code)
+          ?.replace(/\{\{firstName\}\}/g, user.firstName || 'there');
         
         await emailService.sendEmail({
           to: user.email,
