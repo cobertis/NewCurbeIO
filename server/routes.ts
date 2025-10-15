@@ -1435,8 +1435,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Return user preferences from user data
     res.json({
       preferences: {
-        emailNotifications: true, // Default or from user settings
+        emailNotifications: true,
         marketingEmails: user.emailSubscribed || false,
+        invoiceAlerts: true,
+        systemNotifications: true,
+        batchNotifications: false,
         theme: "light",
       }
     });
@@ -1447,19 +1450,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = req.user!; // User is guaranteed by middleware
 
     try {
-      const { marketingEmails, emailNotifications, theme } = req.body;
+      const preferences = req.body;
       
       // Update emailSubscribed field if marketingEmails is provided
-      if (typeof marketingEmails === 'boolean') {
-        await storage.updateUser(user.id, { emailSubscribed: marketingEmails });
+      if (typeof preferences.marketingEmails === 'boolean') {
+        await storage.updateUser(user.id, { emailSubscribed: preferences.marketingEmails });
       }
       
       res.json({ 
         success: true,
         preferences: {
-          emailNotifications: emailNotifications ?? true,
-          marketingEmails: marketingEmails ?? user.emailSubscribed,
-          theme: theme ?? "light",
+          ...preferences,
+          marketingEmails: preferences.marketingEmails ?? user.emailSubscribed,
         }
       });
     } catch (error) {
