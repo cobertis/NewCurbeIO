@@ -297,6 +297,10 @@ export class DbStorage implements IStorage {
     if (data.companyId !== undefined) mappedData.companyId = data.companyId;
     if (data.isActive !== undefined) mappedData.isActive = data.isActive;
     if (data.emailVerified !== undefined) mappedData.emailVerified = data.emailVerified;
+    // Email preferences
+    if (data.emailSubscribed !== undefined) mappedData.emailSubscribed = data.emailSubscribed;
+    if (data.emailNotifications !== undefined) mappedData.emailNotifications = data.emailNotifications;
+    if (data.invoiceAlerts !== undefined) mappedData.invoiceAlerts = data.invoiceAlerts;
     
     const result = await db.update(users).set(mappedData).where(eq(users.id, id)).returning();
     return result[0];
