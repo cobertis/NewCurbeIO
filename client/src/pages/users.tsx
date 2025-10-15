@@ -1345,9 +1345,12 @@ export default function Users() {
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-                              {(user.firstName?.[0] || user.email.charAt(0)).toUpperCase()}
-                            </div>
+                            <Avatar className="h-9 w-9">
+                              <AvatarImage src={user.avatar || undefined} alt={user.email} />
+                              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                                {(user.firstName?.[0] || user.email.charAt(0)).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
                             <div className="flex flex-col">
                               {(user.firstName || user.lastName) ? (
                                 <>
