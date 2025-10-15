@@ -292,12 +292,10 @@ export default function Users() {
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div 
-                    className={`relative ${currentUser?.id === profileUser.id ? 'group cursor-pointer' : ''} flex-shrink-0`}
+                    className="relative group cursor-pointer flex-shrink-0"
                     onClick={() => {
-                      if (currentUser?.id === profileUser.id) {
-                        setAvatarUrl(profileUser.avatar || "");
-                        setAvatarDialogOpen(true);
-                      }
+                      setAvatarUrl(profileUser.avatar || "");
+                      setAvatarDialogOpen(true);
                     }}
                     data-testid="avatar-edit-trigger"
                   >
@@ -307,11 +305,9 @@ export default function Users() {
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
-                    {currentUser?.id === profileUser.id && (
-                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="h-8 w-8 text-white" />
-                      </div>
-                    )}
+                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="h-8 w-8 text-white" />
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-bold mb-2">
@@ -827,12 +823,12 @@ export default function Users() {
           <DialogHeader>
             <DialogTitle>Edit Profile Picture</DialogTitle>
             <DialogDescription>
-              Upload an image from your device or paste an image URL
+              Upload an image from your device
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Upload Image</label>
+              <label className="text-sm font-medium">Select Image</label>
               <div className="mt-2">
                 <Input
                   type="file"
@@ -850,34 +846,11 @@ export default function Users() {
                   data-testid="input-avatar-file"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Select an image from your device (JPG, PNG, GIF)
+                  JPG, PNG or GIF (max 5MB)
                 </p>
               </div>
             </div>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
 
-            <div>
-              <label className="text-sm font-medium">Image URL</label>
-              <Input
-                type="url"
-                placeholder="https://example.com/image.jpg"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                data-testid="input-avatar-url"
-                className="mt-2"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Or paste a direct link to an image
-              </p>
-            </div>
             {avatarUrl && (
               <div className="flex justify-center">
                 <Avatar className="h-24 w-24">
