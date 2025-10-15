@@ -1137,6 +1137,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: newCompany.id,
         isActive: true,
         emailVerified: false,
+        emailSubscribed: true,
+        emailNotifications: true,
+        invoiceAlerts: true,
       });
 
       // Generate secure activation token (random 32-byte hex string)

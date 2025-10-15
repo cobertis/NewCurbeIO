@@ -530,6 +530,9 @@ export const insertUserSchema = createInsertSchema(users).omit({
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
   companyId: z.string().optional(),
   phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
+  emailSubscribed: z.boolean().optional().default(true), // Default to true for marketing emails
+  emailNotifications: z.boolean().optional().default(true), // Default to true for notifications
+  invoiceAlerts: z.boolean().optional().default(true), // Default to true for invoice alerts
 });
 
 export const updateUserSchema = z.object({
