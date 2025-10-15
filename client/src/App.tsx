@@ -71,13 +71,23 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   });
 
   const user = userData?.user;
+
+  // Fetch company data for non-superadmin users
+  const { data: companyData } = useQuery<{ company: any }>({
+    queryKey: ["/api/companies", user?.companyId],
+    enabled: !!user?.companyId && user?.role !== "superadmin",
+  });
+
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
   const userName = user?.firstName && user?.lastName 
     ? `${user.firstName} ${user.lastName}` 
     : user?.email || "User";
-  const userRole = user?.role === "superadmin" ? "Super Admin" : 
-                   user?.role === "admin" ? "Admin" : 
-                   user?.role === "member" ? "Member" : "Viewer";
+  
+  // Show company name for non-superadmin users, role for superadmin
+  const userSubtitle = user?.role === "superadmin" 
+    ? "Super Admin" 
+    : companyData?.company?.name || "Loading...";
+  
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter((n: any) => !n.read).length;
   const pageTitle = getPageTitle(location);
@@ -194,7 +204,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </Avatar>
                     <div className="flex flex-col items-start">
                       <span className="text-sm font-medium leading-none">{userName}</span>
-                      <span className="text-xs text-muted-foreground leading-none mt-0.5">{userRole}</span>
+                      <span className="text-xs text-muted-foreground leading-none mt-0.5">{userSubtitle}</span>
                     </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </Button>

@@ -1017,6 +1017,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ companies });
   });
 
+  // Get single company by ID
+  app.get("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = req.params.id;
+
+    try {
+      const company = await storage.getCompany(companyId);
+      
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Check permissions: superadmin can view any company, others only their own
+      if (currentUser.role === "superadmin" || currentUser.companyId === companyId) {
+        res.json({ company });
+      } else {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch company" });
+    }
+  });
+
   // Create company with admin user
   app.post("/api/companies", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
