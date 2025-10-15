@@ -16,7 +16,7 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
 **Backend:** Express.js and TypeScript, providing a RESTful API with session-based authentication (`express-session`) and role-based access control (RBAC).
 
 **Feature Specifications:**
-- **User Management:** CRUD operations for users with role-based access and phone number support for 2FA. Superadmins can manage company associations.
+- **User Management:** CRUD operations for users with role-based access and phone number support for 2FA. Superadmins can manage company associations. Users can edit their profile picture by clicking on their avatar in the profile page, allowing them to paste an image URL or remove their current avatar.
 - **Company Management (Superadmin-only):** CRUD operations, visual cards, and feature management. Company creation includes admin user setup with email-based activation.
 - **Plans & Features (Superadmin-only):** CRUD interfaces for subscription plans and system features, allowing categorization and selective assignment to companies.
 - **Authentication & Security:**

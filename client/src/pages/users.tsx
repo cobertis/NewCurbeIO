@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon, Power } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon, Power, Camera } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -49,6 +49,8 @@ export default function Users() {
   const [editOpen, setEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
   const { toast } = useToast();
 
   const { data: sessionData } = useQuery<{ user: User }>({
@@ -176,6 +178,30 @@ export default function Users() {
     },
   });
 
+  const updateAvatarMutation = useMutation({
+    mutationFn: async ({ id, avatar }: { id: string; avatar: string | null }) => {
+      return apiRequest("PATCH", `/api/users/${id}`, { avatar });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      setAvatarDialogOpen(false);
+      setAvatarUrl("");
+      toast({
+        title: "Avatar Updated",
+        description: "Your profile picture has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update avatar.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createForm = useForm<UserForm>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
@@ -265,12 +291,24 @@ export default function Users() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex flex-col items-center text-center">
-                  <Avatar className="h-24 w-24 mb-4">
-                    <AvatarImage src={profileUser.avatar || undefined} alt={profileUser.email} />
-                    <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                      {userInitial}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div 
+                    className="relative group cursor-pointer mb-4" 
+                    onClick={() => {
+                      setAvatarUrl(profileUser.avatar || "");
+                      setAvatarDialogOpen(true);
+                    }}
+                    data-testid="avatar-edit-trigger"
+                  >
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={profileUser.avatar || undefined} alt={profileUser.email} />
+                      <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                        {userInitial}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
                   <h2 className="text-xl font-bold mb-1">
                     {profileUser.firstName && profileUser.lastName
                       ? `${profileUser.firstName} ${profileUser.lastName}`
@@ -768,6 +806,71 @@ export default function Users() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Avatar Edit Dialog */}
+      <Dialog open={avatarDialogOpen} onOpenChange={setAvatarDialogOpen}>
+        <DialogContent data-testid="dialog-edit-avatar">
+          <DialogHeader>
+            <DialogTitle>Edit Profile Picture</DialogTitle>
+            <DialogDescription>
+              Paste an image URL or remove your current profile picture
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Image URL</label>
+              <Input
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                data-testid="input-avatar-url"
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Paste a direct link to an image
+              </p>
+            </div>
+            {avatarUrl && (
+              <div className="flex justify-center">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={avatarUrl} alt="Preview" />
+                  <AvatarFallback>Preview</AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2">
+            {profileUser?.avatar && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (profileUser?.id) {
+                    updateAvatarMutation.mutate({ id: profileUser.id, avatar: null });
+                  }
+                }}
+                disabled={updateAvatarMutation.isPending}
+                data-testid="button-remove-avatar"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove
+              </Button>
+            )}
+            <Button
+              variant="default"
+              onClick={() => {
+                if (profileUser?.id && avatarUrl) {
+                  updateAvatarMutation.mutate({ id: profileUser.id, avatar: avatarUrl });
+                }
+              }}
+              disabled={!avatarUrl || updateAvatarMutation.isPending}
+              data-testid="button-save-avatar"
+            >
+              {updateAvatarMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
