@@ -2597,6 +2597,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get campaign emails list (authenticated, superadmin only)
+  app.get("/api/campaigns/:id/emails", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const { id } = req.params;
+      const { status, search } = req.query;
+      
+      const filters: { status?: string; search?: string } = {};
+      if (status && typeof status === 'string') filters.status = status;
+      if (search && typeof search === 'string') filters.search = search;
+      
+      const emails = await storage.getCampaignEmails(id, filters);
+      
+      res.json({ emails });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get campaign emails" });
+    }
+  });
+
   // ==================== CONTACT LISTS ENDPOINTS ====================
 
   // Get all contact lists (superadmin only)
