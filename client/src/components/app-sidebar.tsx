@@ -104,7 +104,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="px-6 py-3">
+      <SidebarHeader className="px-6 py-3 pb-2">
         <Link href="/dashboard" className="flex items-center justify-center">
           <img 
             src={logo} 
@@ -114,7 +114,7 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4">
+      <SidebarContent className="px-3 pt-2 pb-4">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
