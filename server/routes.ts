@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
 import { twilioService } from "./twilio";
+import { EmailCampaignService } from "./email-campaign-service";
 import { 
   insertUserSchema, 
   loginSchema, 
@@ -24,6 +25,9 @@ import "./types";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize logging service
   const logger = new LoggingService(storage);
+  
+  // Initialize email campaign service
+  const emailCampaignService = new EmailCampaignService(storage);
 
   // Middleware to check authentication and company active status
   const requireActiveCompany = async (req: Request, res: Response, next: Function) => {
@@ -2306,22 +2310,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Campaign has already been sent" });
       }
 
-      // Get subscribed users
-      const subscribedUsers = await storage.getSubscribedUsers();
+      // Send campaign using EmailCampaignService
+      const result = await emailCampaignService.sendCampaign(req.params.id);
 
-      if (subscribedUsers.length === 0) {
-        return res.status(400).json({ message: "No subscribed users to send campaign to" });
+      if (!result.success) {
+        return res.status(500).json({ 
+          message: "Failed to send campaign", 
+          totalSent: result.totalSent,
+          totalFailed: result.totalFailed,
+          errors: result.errors 
+        });
       }
 
-      // TODO: Implement EmailCampaignService to send emails
-      // For now, just mark as sent
-      const updatedCampaign = await storage.updateCampaign(req.params.id, {
-        status: "sent",
-        sentAt: new Date(),
-        recipientCount: subscribedUsers.length
-      });
+      const updatedCampaign = await storage.getCampaign(req.params.id);
 
-      res.json(updatedCampaign);
+      res.json({ 
+        campaign: updatedCampaign, 
+        result: {
+          totalSent: result.totalSent,
+          totalFailed: result.totalFailed,
+          errors: result.errors
+        }
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to send campaign" });
     }
