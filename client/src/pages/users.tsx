@@ -791,6 +791,9 @@ export default function Users() {
                       Role
                     </th>
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
+                      Status
+                    </th>
+                    <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
                       Created At
                     </th>
                     <th className="text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider px-6 py-3">
@@ -844,6 +847,33 @@ export default function Users() {
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadge.className}`} data-testid={`badge-role-${user.id}`}>
                             {roleBadge.label}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {(() => {
+                            const userCompany = user.companyId ? companies.find(c => c.id === user.companyId) : null;
+                            const isCompanySuspended = userCompany && !userCompany.isActive;
+                            const isUserInactive = user.isActive === false;
+                            
+                            if (isCompanySuspended) {
+                              return (
+                                <Badge variant="destructive" className="text-xs" data-testid={`badge-status-${user.id}`}>
+                                  Suspended
+                                </Badge>
+                              );
+                            } else if (isUserInactive) {
+                              return (
+                                <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600 dark:text-yellow-400" data-testid={`badge-status-${user.id}`}>
+                                  Inactive
+                                </Badge>
+                              );
+                            } else {
+                              return (
+                                <Badge variant="default" className="text-xs bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-300" data-testid={`badge-status-${user.id}`}>
+                                  Active
+                                </Badge>
+                              );
+                            }
+                          })()}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                           {new Date(user.createdAt).toLocaleDateString('en-US')}
