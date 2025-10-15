@@ -118,7 +118,7 @@ export default function Campaigns() {
   });
 
   const { data: membersData, isLoading: membersLoading } = useQuery<{ members: User[] }>({
-    queryKey: ["/api/contact-lists", selectedList?.id, "members"],
+    queryKey: [`/api/contact-lists/${selectedList?.id}/members`],
     enabled: !!selectedList?.id,
   });
 
@@ -352,8 +352,8 @@ export default function Campaigns() {
     mutationFn: async ({ listId, userId }: { listId: string; userId: string }) => {
       return apiRequest("POST", `/api/contact-lists/${listId}/members`, { userId });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists", selectedList?.id, "members"] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/contact-lists/${variables.listId}/members`] });
       queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
       toast({
         title: "Member Added",
@@ -373,8 +373,8 @@ export default function Campaigns() {
     mutationFn: async ({ listId, userId }: { listId: string; userId: string }) => {
       return apiRequest("DELETE", `/api/contact-lists/${listId}/members/${userId}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists", selectedList?.id, "members"] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/contact-lists/${variables.listId}/members`] });
       queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
       toast({
         title: "Member Removed",
@@ -394,9 +394,12 @@ export default function Campaigns() {
     mutationFn: async ({ userIds, targetListId }: { userIds: string[]; targetListId: string }) => {
       return apiRequest("POST", "/api/contact-lists/bulk-move", { userIds, targetListId });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists", selectedList?.id, "members"] });
+      if (selectedList?.id) {
+        queryClient.invalidateQueries({ queryKey: [`/api/contact-lists/${selectedList.id}/members`] });
+      }
+      queryClient.invalidateQueries({ queryKey: [`/api/contact-lists/${variables.targetListId}/members`] });
       setSelectedMembers([]);
       setMoveToListOpen(false);
       setTargetMoveListId("");

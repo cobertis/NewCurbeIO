@@ -35,14 +35,14 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
 - **Email Campaign System (Superadmin-only):**
     - **Unified Interface with Tabs:** Campaigns, Contacts, and Lists integrated in a single page using Shadcn Tabs component for seamless navigation.
     - **Contact Management:** View and manage all subscribed users in a table format with search functionality, toggle subscription status per user with instant feedback.
-    - **Contact List Segmentation:** 
-        - Create and manage contact lists for targeted campaign delivery
-        - CRUD operations for lists with name and description
-        - Member management interface to add/remove users from lists with inline checkboxes for bulk selection
-        - Bulk operations: Select multiple contacts and move them between lists using "Move to List" button and list selector dialog
-        - Visual cards showing list details and member counts
-        - Database schema includes contact_lists and contact_list_members tables with proper foreign keys
-        - Two-column layout (33/67 split): left panel for list selection, right panel for member management
+    - **Advanced Contact List Management:**
+        - **Smart Views:** "All Contacts" shows entire contact database, "Unsubscribed" filters non-subscribed users
+        - **Custom Lists:** Create and manage segmented contact lists with name and description
+        - **Three-column Layout:** Action buttons header, left sidebar (25%) for views/lists, main area (75%) for contact table
+        - **Bulk Operations:** Select multiple contacts and move them between lists using "Move to List" button and list selector dialog
+        - **Contact Actions:** Add individual contacts via dialog form, download all contacts as CSV, upload contacts via CSV (planned)
+        - **Rich Contact Table:** Displays name, email, phone, company, subscription status with action buttons per row (message, edit, more options)
+        - **Database Schema:** contact_lists and contact_list_members tables with proper foreign keys
     - **Campaign Creation:** CRUD operations for email campaigns with rich HTML editor featuring formatting toolbar (bold, italic, headings, lists, links) and live preview.
     - **Targeted Campaign Sending:** 
         - Optional "Target Audience" dropdown in campaign creation
