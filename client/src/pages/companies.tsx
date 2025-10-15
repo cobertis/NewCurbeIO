@@ -392,20 +392,11 @@ export default function Companies() {
                       <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
                         <Building2 className="h-6 w-6 text-primary" />
                       </div>
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-company-name-${company.id}`}>
-                              {company.name}
-                            </h3>
-                            <Badge 
-                              variant={company.isActive ? "default" : "destructive"}
-                              className="text-xs"
-                              data-testid={`badge-company-status-${company.id}`}
-                            >
-                              {company.isActive ? "Active" : "Inactive"}
-                            </Badge>
-                          </div>
+                          <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-company-name-${company.id}`}>
+                            {company.name}
+                          </h3>
                           <p className="text-xs text-gray-500 dark:text-gray-400" data-testid={`text-company-slug-${company.id}`}>
                             {company.slug}
                           </p>
@@ -420,6 +411,15 @@ export default function Companies() {
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-company-address-${company.id}`}>
                           {company.address}
+                        </div>
+                        <div className="flex items-center">
+                          <Badge 
+                            variant={company.isActive ? "default" : "destructive"}
+                            className="text-xs"
+                            data-testid={`badge-company-status-${company.id}`}
+                          >
+                            {company.isActive ? "Active" : "Inactive"}
+                          </Badge>
                         </div>
                       </div>
                     </div>
