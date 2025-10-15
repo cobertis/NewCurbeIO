@@ -738,6 +738,10 @@ export const emailCampaigns = pgTable("email_campaigns", {
   sentAt: timestamp("sent_at"), // When the campaign was sent
   sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }), // Who sent it
   recipientCount: integer("recipient_count").default(0), // Number of recipients
+  openCount: integer("open_count").default(0), // Total opens (including multiple from same user)
+  uniqueOpenCount: integer("unique_open_count").default(0), // Unique users who opened
+  clickCount: integer("click_count").default(0), // Total clicks
+  uniqueClickCount: integer("unique_click_count").default(0), // Unique users who clicked
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -750,3 +754,42 @@ export const insertEmailCampaignSchema = createInsertSchema(emailCampaigns).omit
 
 export type EmailCampaign = typeof emailCampaigns.$inferSelect;
 export type InsertEmailCampaign = z.infer<typeof insertEmailCampaignSchema>;
+
+// =====================================================
+// EMAIL TRACKING - Opens and Clicks
+// =====================================================
+
+export const emailOpens = pgTable("email_opens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => emailCampaigns.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userAgent: text("user_agent"), // Browser/email client info
+  ipAddress: text("ip_address"), // For geographic tracking
+  openedAt: timestamp("opened_at").notNull().defaultNow(),
+});
+
+export const emailOpenSchema = createInsertSchema(emailOpens).omit({
+  id: true,
+  openedAt: true,
+});
+
+export type EmailOpen = typeof emailOpens.$inferSelect;
+export type InsertEmailOpen = z.infer<typeof emailOpenSchema>;
+
+export const linkClicks = pgTable("link_clicks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => emailCampaigns.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  url: text("url").notNull(), // The original destination URL
+  userAgent: text("user_agent"), // Browser info
+  ipAddress: text("ip_address"), // For geographic tracking
+  clickedAt: timestamp("clicked_at").notNull().defaultNow(),
+});
+
+export const linkClickSchema = createInsertSchema(linkClicks).omit({
+  id: true,
+  clickedAt: true,
+});
+
+export type LinkClick = typeof linkClicks.$inferSelect;
+export type InsertLinkClick = z.infer<typeof linkClickSchema>;
