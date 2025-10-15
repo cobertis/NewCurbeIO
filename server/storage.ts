@@ -218,6 +218,11 @@ export class DbStorage implements IStorage {
     if (data.avatar !== undefined) mappedData.avatar = data.avatar === "" ? null : data.avatar;
     // Convert empty string to null for phone removal
     if (data.phone !== undefined) mappedData.phone = data.phone === "" ? null : data.phone;
+    // Convert empty string to null for dateOfBirth removal
+    if (data.dateOfBirth !== undefined) mappedData.dateOfBirth = data.dateOfBirth === "" ? null : data.dateOfBirth;
+    if (data.preferredLanguage !== undefined) mappedData.preferredLanguage = data.preferredLanguage;
+    // Convert empty string to null for address removal
+    if (data.address !== undefined) mappedData.address = data.address === "" ? null : data.address;
     if (data.role !== undefined) mappedData.role = data.role;
     if (data.companyId !== undefined) mappedData.companyId = data.companyId;
     if (data.isActive !== undefined) mappedData.isActive = data.isActive;
