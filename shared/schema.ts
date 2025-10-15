@@ -802,6 +802,33 @@ export type EmailCampaign = typeof emailCampaigns.$inferSelect;
 export type InsertEmailCampaign = z.infer<typeof insertEmailCampaignSchema>;
 
 // =====================================================
+// CAMPAIGN EMAILS - Individual Email Tracking
+// =====================================================
+
+export const campaignEmails = pgTable("campaign_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => emailCampaigns.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  email: text("email").notNull(), // Email address at time of sending
+  status: text("status").notNull().default("sent"), // sent, delivered, opened, clicked, bounced, failed, unsubscribed
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+  deliveredAt: timestamp("delivered_at"),
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  bouncedAt: timestamp("bounced_at"),
+  unsubscribedAt: timestamp("unsubscribed_at"),
+  errorMessage: text("error_message"), // Error details if status is 'failed' or 'bounced'
+});
+
+export const insertCampaignEmailSchema = createInsertSchema(campaignEmails).omit({
+  id: true,
+  sentAt: true,
+});
+
+export type CampaignEmail = typeof campaignEmails.$inferSelect;
+export type InsertCampaignEmail = z.infer<typeof insertCampaignEmailSchema>;
+
+// =====================================================
 // EMAIL TRACKING - Opens and Clicks
 // =====================================================
 
