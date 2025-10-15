@@ -91,6 +91,7 @@ export default function Settings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings/preferences"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       toast({
         title: "Preferences updated",
         description: "Your preferences have been saved.",
@@ -273,13 +274,14 @@ export default function Settings() {
                 </div>
                 <Switch
                   id="emailNotifications"
-                  defaultChecked={preferencesData?.preferences?.emailNotifications}
+                  checked={preferencesData?.preferences?.emailNotifications ?? true}
                   onCheckedChange={(checked) => {
                     updatePreferencesMutation.mutate({
                       ...preferencesData?.preferences,
                       emailNotifications: checked,
                     });
                   }}
+                  disabled={updatePreferencesMutation.isPending}
                   data-testid="switch-email-notifications"
                 />
               </div>
@@ -294,13 +296,14 @@ export default function Settings() {
                 </div>
                 <Switch
                   id="marketingEmails"
-                  defaultChecked={preferencesData?.preferences?.marketingEmails}
+                  checked={preferencesData?.preferences?.marketingEmails || false}
                   onCheckedChange={(checked) => {
                     updatePreferencesMutation.mutate({
                       ...preferencesData?.preferences,
                       marketingEmails: checked,
                     });
                   }}
+                  disabled={updatePreferencesMutation.isPending}
                   data-testid="switch-marketing-emails"
                 />
               </div>

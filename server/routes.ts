@@ -1432,11 +1432,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/settings/preferences", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
 
-    // Return user preferences (email notifications, theme, etc.)
+    // Return user preferences from user data
     res.json({
       preferences: {
         emailNotifications: true, // Default or from user settings
-        marketingEmails: false,
+        marketingEmails: user.emailSubscribed || false,
         theme: "light",
       }
     });
@@ -1447,10 +1447,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = req.user!; // User is guaranteed by middleware
 
     try {
-      // Store preferences (you could add a preferences column to users table or separate table)
+      const { marketingEmails, emailNotifications, theme } = req.body;
+      
+      // Update emailSubscribed field if marketingEmails is provided
+      if (typeof marketingEmails === 'boolean') {
+        await storage.updateUser(user.id, { emailSubscribed: marketingEmails });
+      }
+      
       res.json({ 
         success: true,
-        preferences: req.body 
+        preferences: {
+          emailNotifications: emailNotifications ?? true,
+          marketingEmails: marketingEmails ?? user.emailSubscribed,
+          theme: theme ?? "light",
+        }
       });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
