@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog, Phone, Building, UserCheck, UserX } from "lucide-react";
+import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog, Phone, Building, UserCheck, UserX, MoveRight } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -80,6 +81,9 @@ export default function Campaigns() {
   const [deleteListOpen, setDeleteListOpen] = useState(false);
   const [listToDelete, setListToDelete] = useState<ContactList | null>(null);
   const [selectedList, setSelectedList] = useState<ContactList | null>(null);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [moveToListOpen, setMoveToListOpen] = useState(false);
+  const [targetMoveListId, setTargetMoveListId] = useState("");
   const { toast } = useToast();
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
@@ -359,6 +363,30 @@ export default function Campaigns() {
       toast({
         title: "Error",
         description: error.message || "Failed to remove member.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const moveContactsMutation = useMutation({
+    mutationFn: async ({ userIds, targetListId }: { userIds: string[]; targetListId: string }) => {
+      return apiRequest("POST", "/api/contact-lists/bulk-move", { userIds, targetListId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists", selectedList?.id, "members"] });
+      setSelectedMembers([]);
+      setMoveToListOpen(false);
+      setTargetMoveListId("");
+      toast({
+        title: "Contacts Moved",
+        description: "Selected contacts have been moved successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to move contacts.",
         variant: "destructive",
       });
     },
@@ -941,7 +969,35 @@ export default function Campaigns() {
                     </div>
                   ) : (
                     <div className="mb-6">
-                      <h4 className="text-sm font-medium mb-3">List Members</h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedMembers.length === membersData?.members.length && membersData.members.length > 0}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedMembers(membersData?.members.map((m: User) => m.id) || []);
+                              } else {
+                                setSelectedMembers([]);
+                              }
+                            }}
+                            data-testid="checkbox-select-all-members"
+                          />
+                          <h4 className="text-sm font-medium">
+                            List Members {selectedMembers.length > 0 && `(${selectedMembers.length} selected)`}
+                          </h4>
+                        </div>
+                        {selectedMembers.length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setMoveToListOpen(true)}
+                            data-testid="button-move-to-list"
+                          >
+                            <MoveRight className="h-4 w-4 mr-2" />
+                            Move to List
+                          </Button>
+                        )}
+                      </div>
                       <div className="space-y-2">
                         {membersData?.members.map((member: User) => (
                           <div 
@@ -950,6 +1006,17 @@ export default function Campaigns() {
                             data-testid={`member-item-${member.id}`}
                           >
                             <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={selectedMembers.includes(member.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedMembers([...selectedMembers, member.id]);
+                                  } else {
+                                    setSelectedMembers(selectedMembers.filter(id => id !== member.id));
+                                  }
+                                }}
+                                data-testid={`checkbox-member-${member.id}`}
+                              />
                               <Avatar className="h-8 w-8">
                                 <AvatarImage src={member.avatar || undefined} />
                                 <AvatarFallback>
@@ -1291,6 +1358,56 @@ export default function Campaigns() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Move Contacts to List Dialog */}
+      <Dialog open={moveToListOpen} onOpenChange={setMoveToListOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move Contacts to List</DialogTitle>
+            <DialogDescription>
+              Select a target list to move the {selectedMembers.length} selected {selectedMembers.length === 1 ? 'contact' : 'contacts'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Target List</label>
+              <Select value={targetMoveListId} onValueChange={setTargetMoveListId}>
+                <SelectTrigger data-testid="select-move-target-list">
+                  <SelectValue placeholder="Select a list" />
+                </SelectTrigger>
+                <SelectContent>
+                  {lists
+                    .filter(list => list.id !== selectedList?.id)
+                    .map((list) => (
+                      <SelectItem key={list.id} value={list.id} data-testid={`option-move-list-${list.id}`}>
+                        {list.name} ({list.memberCount || 0} members)
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveToListOpen(false)} data-testid="button-cancel-move">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (targetMoveListId) {
+                  moveContactsMutation.mutate({ 
+                    userIds: selectedMembers, 
+                    targetListId: targetMoveListId 
+                  });
+                }
+              }}
+              disabled={!targetMoveListId || moveContactsMutation.isPending}
+              data-testid="button-confirm-move"
+            >
+              {moveContactsMutation.isPending ? "Moving..." : "Move Contacts"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

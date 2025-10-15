@@ -2202,7 +2202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const { subject, htmlContent, textContent } = req.body;
+      const { subject, htmlContent, textContent, targetListId } = req.body;
 
       if (!subject || !htmlContent) {
         return res.status(400).json({ message: "Subject and HTML content are required" });
@@ -2212,6 +2212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subject,
         htmlContent,
         textContent: textContent || null,
+        targetListId: targetListId || null,
         status: "draft",
         sentAt: null,
         sentBy: currentUser.id,
@@ -2711,6 +2712,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Member removed successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove member" });
+    }
+  });
+
+  // Bulk move contacts between lists (superadmin only)
+  app.post("/api/contact-lists/bulk-move", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { userIds, targetListId } = req.body;
+
+      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ message: "User IDs array is required" });
+      }
+
+      if (!targetListId) {
+        return res.status(400).json({ message: "Target list ID is required" });
+      }
+
+      // Add users to target list
+      for (const userId of userIds) {
+        await storage.addMemberToList(targetListId, userId);
+      }
+
+      res.json({ 
+        message: "Contacts moved successfully",
+        movedCount: userIds.length
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to move contacts" });
     }
   });
 
