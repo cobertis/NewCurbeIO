@@ -125,6 +125,9 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").notNull().default(false),
   emailVerifiedAt: timestamp("email_verified_at"),
   
+  // Email marketing subscription
+  emailSubscribed: boolean("email_subscribed").notNull().default(true), // Subscribed to marketing emails
+  
   // Security
   lastLoginAt: timestamp("last_login_at"),
   passwordChangedAt: timestamp("password_changed_at"),
@@ -721,3 +724,29 @@ export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit
 
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+
+// =====================================================
+// EMAIL CAMPAIGNS
+// =====================================================
+
+export const emailCampaigns = pgTable("email_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subject: text("subject").notNull(), // Email subject
+  htmlContent: text("html_content").notNull(), // HTML email content
+  textContent: text("text_content"), // Plain text fallback
+  status: text("status").notNull().default("draft"), // draft, sending, sent, failed
+  sentAt: timestamp("sent_at"), // When the campaign was sent
+  sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }), // Who sent it
+  recipientCount: integer("recipient_count").default(0), // Number of recipients
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertEmailCampaignSchema = createInsertSchema(emailCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type EmailCampaign = typeof emailCampaigns.$inferSelect;
+export type InsertEmailCampaign = z.infer<typeof insertEmailCampaignSchema>;
