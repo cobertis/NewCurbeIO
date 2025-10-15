@@ -1,11 +1,15 @@
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Mail, MousePointer, Users, Eye, BarChart, ExternalLink, UserX } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowLeft, Mail, MousePointer, Users, Eye, BarChart, ExternalLink, UserX, Search, Filter } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { EmailCampaign, EmailOpen, LinkClick } from "@shared/schema";
+import type { EmailCampaign, EmailOpen, LinkClick, CampaignEmail } from "@shared/schema";
 
 interface CampaignStats {
   campaign: EmailCampaign;
@@ -20,10 +24,28 @@ interface CampaignStats {
 export default function CampaignStats() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   const { data: stats, isLoading } = useQuery<CampaignStats>({
     queryKey: ["/api/campaigns", id, "stats"],
   });
+
+  const { data: emailsData } = useQuery<{ emails: CampaignEmail[] }>({
+    queryKey: ["/api/campaigns", id, "emails", statusFilter, searchTerm],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter) params.append("status", statusFilter);
+      if (searchTerm) params.append("search", searchTerm);
+      const url = `/api/campaigns/${id}/emails${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch emails");
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  const emails = emailsData?.emails || [];
 
   if (isLoading || !stats) {
     return (
@@ -317,6 +339,111 @@ export default function CampaignStats() {
                 Total {opens.length} opens
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <CardTitle>Campaign Recipients</CardTitle>
+              <CardDescription>Individual email delivery status and engagement tracking</CardDescription>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                  data-testid="input-search-emails"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-40" data-testid="select-status-filter">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="opened">Opened</SelectItem>
+                  <SelectItem value="clicked">Clicked</SelectItem>
+                  <SelectItem value="bounced">Bounced</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {emails.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-emails">
+              No emails found
+            </p>
+          ) : (
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Sent At</TableHead>
+                    <TableHead>Opened At</TableHead>
+                    <TableHead>Clicked At</TableHead>
+                    <TableHead>Unsubscribed</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {emails.map((email) => (
+                    <TableRow key={email.id} data-testid={`email-row-${email.id}`}>
+                      <TableCell className="font-medium">{email.email}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            email.status === "opened" || email.status === "clicked"
+                              ? "default"
+                              : email.status === "failed" || email.status === "bounced"
+                              ? "destructive"
+                              : email.status === "unsubscribed"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          data-testid={`badge-status-${email.id}`}
+                        >
+                          {email.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(email.sentAt), { addSuffix: true })}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {email.openedAt
+                          ? formatDistanceToNow(new Date(email.openedAt), { addSuffix: true })
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {email.clickedAt
+                          ? formatDistanceToNow(new Date(email.clickedAt), { addSuffix: true })
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {email.unsubscribedAt
+                          ? formatDistanceToNow(new Date(email.unsubscribedAt), { addSuffix: true })
+                          : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          <div className="mt-4 text-sm text-muted-foreground">
+            Showing {emails.length} {emails.length === 1 ? "email" : "emails"}
           </div>
         </CardContent>
       </Card>
