@@ -76,6 +76,8 @@ export default function Campaigns() {
   const [editingList, setEditingList] = useState<ContactList | null>(null);
   const [deleteListOpen, setDeleteListOpen] = useState(false);
   const [listToDelete, setListToDelete] = useState<ContactList | null>(null);
+  const [manageMembersOpen, setManageMembersOpen] = useState(false);
+  const [selectedList, setSelectedList] = useState<ContactList | null>(null);
   const { toast } = useToast();
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
@@ -96,6 +98,11 @@ export default function Campaigns() {
 
   const { data: listsData, isLoading: listsLoading } = useQuery<{ lists: ContactList[] }>({
     queryKey: ["/api/contact-lists"],
+  });
+
+  const { data: membersData, isLoading: membersLoading } = useQuery<{ members: User[] }>({
+    queryKey: ["/api/contact-lists", selectedList?.id, "members"],
+    enabled: !!selectedList?.id,
   });
 
   const toggleSubscriptionMutation = useMutation({
@@ -307,6 +314,46 @@ export default function Campaigns() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete list.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: async ({ listId, userId }: { listId: string; userId: string }) => {
+      return apiRequest("POST", `/api/contact-lists/${listId}/members`, { userId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists", selectedList?.id, "members"] });
+      toast({
+        title: "Member Added",
+        description: "User has been added to the list successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add member.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: async ({ listId, userId }: { listId: string; userId: string }) => {
+      return apiRequest("DELETE", `/api/contact-lists/${listId}/members/${userId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists", selectedList?.id, "members"] });
+      toast({
+        title: "Member Removed",
+        description: "User has been removed from the list successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove member.",
         variant: "destructive",
       });
     },
@@ -787,6 +834,17 @@ export default function Campaigns() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
+                            setSelectedList(list);
+                            setManageMembersOpen(true);
+                          }}
+                          data-testid={`button-manage-members-${list.id}`}
+                        >
+                          <Users className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
                             setEditingList(list);
                             editListForm.reset({ name: list.name, description: list.description || "" });
                             setEditListOpen(true);
@@ -1072,6 +1130,93 @@ export default function Campaigns() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Manage List Members Dialog */}
+      <Dialog open={manageMembersOpen} onOpenChange={setManageMembersOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Manage Members - {selectedList?.name}</DialogTitle>
+            <DialogDescription>
+              Add or remove users from this contact list.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {membersLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contacts.map((contact) => {
+                    const isMember = membersData?.members.some(m => m.id === contact.id) || false;
+                    const company = companies.find(c => c.id === contact.companyId);
+                    
+                    return (
+                      <TableRow key={contact.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={contact.avatar || undefined} />
+                              <AvatarFallback>
+                                {contact.firstName?.[0]}{contact.lastName?.[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{contact.firstName} {contact.lastName}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{contact.email}</TableCell>
+                        <TableCell>{company?.name || 'N/A'}</TableCell>
+                        <TableCell>
+                          {isMember ? (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => selectedList && removeMemberMutation.mutate({ 
+                                listId: selectedList.id, 
+                                userId: contact.id 
+                              })}
+                              disabled={removeMemberMutation.isPending}
+                              data-testid={`button-remove-member-${contact.id}`}
+                            >
+                              <UserX className="h-4 w-4 mr-2" />
+                              Remove
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => selectedList && addMemberMutation.mutate({ 
+                                listId: selectedList.id, 
+                                userId: contact.id 
+                              })}
+                              disabled={addMemberMutation.isPending}
+                              data-testid={`button-add-member-${contact.id}`}
+                            >
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              Add
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
