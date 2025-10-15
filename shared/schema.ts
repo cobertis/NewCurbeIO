@@ -112,6 +112,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   dateOfBirth: timestamp("date_of_birth"), // Date of birth
   preferredLanguage: text("preferred_language").default("en"), // Preferred language (en, es, etc.)
+  address: text("address"), // Office address
   
   // Role within the company
   role: text("role").notNull().default("member"), // superadmin, admin, member, viewer
@@ -532,6 +533,7 @@ export const updateUserSchema = z.object({
   phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   preferredLanguage: z.string().optional(),
+  address: z.string().optional(),
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
   isActive: z.boolean().optional(),
