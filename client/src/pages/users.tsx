@@ -34,7 +34,12 @@ const editUserFormSchema = z.object({
   email: z.string().email().optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  avatar: z.string().url().optional(),
+  avatar: z.union([
+    z.string().url(),
+    z.string().regex(/^data:image\/(png|jpg|jpeg|gif|webp);base64,/, "Avatar must be a valid URL or base64 image"),
+    z.literal(""),
+    z.null()
+  ]).optional(),
   phone: z.string().optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   preferredLanguage: z.string().optional(),
