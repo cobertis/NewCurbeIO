@@ -31,6 +31,8 @@ import {
   type InsertEmailOpen,
   type LinkClick,
   type InsertLinkClick,
+  type CampaignUnsubscribe,
+  type InsertCampaignUnsubscribe,
   type Feature,
   type InsertFeature,
   type CompanyFeature,
@@ -64,6 +66,7 @@ import {
   emailCampaigns,
   emailOpens,
   linkClicks,
+  campaignUnsubscribes,
   features,
   companyFeatures,
   otpCodes,
@@ -220,6 +223,11 @@ export interface IStorage {
   getLinkClicksByUrl(campaignId: string): Promise<{url: string, clickCount: number, uniqueClickCount: number}[]>;
   updateCampaignClickStats(campaignId: string): Promise<void>;
   
+  // Email Tracking - Campaign Unsubscribes
+  recordCampaignUnsubscribe(campaignId: string, userId: string, userAgent?: string, ipAddress?: string): Promise<CampaignUnsubscribe>;
+  getCampaignUnsubscribes(campaignId: string): Promise<CampaignUnsubscribe[]>;
+  getCampaignUnsubscribeCount(campaignId: string): Promise<number>;
+  
   // Campaign Statistics
   getCampaignStats(campaignId: string): Promise<{
     campaign: EmailCampaign;
@@ -228,7 +236,7 @@ export interface IStorage {
     uniqueOpeners: string[];
     uniqueClickers: string[];
     clicksByUrl: {url: string, clickCount: number, uniqueClickCount: number}[];
-    unsubscribedCount: number;
+    campaignUnsubscribes: number;
   }>;
   
   // Contact Lists
@@ -1087,6 +1095,43 @@ export class DbStorage implements IStorage {
       .where(eq(emailCampaigns.id, campaignId));
   }
   
+  // ==================== EMAIL TRACKING - CAMPAIGN UNSUBSCRIBES ====================
+  
+  async recordCampaignUnsubscribe(campaignId: string, userId: string, userAgent?: string, ipAddress?: string): Promise<CampaignUnsubscribe> {
+    try {
+      const result = await db.insert(campaignUnsubscribes).values({
+        campaignId,
+        userId,
+        userAgent,
+        ipAddress
+      }).returning();
+      return result[0];
+    } catch (error: any) {
+      // If duplicate, return existing record (user already unsubscribed from this campaign)
+      if (error.code === '23505') { // Unique constraint violation
+        const existing = await db.select().from(campaignUnsubscribes)
+          .where(and(
+            eq(campaignUnsubscribes.campaignId, campaignId),
+            eq(campaignUnsubscribes.userId, userId)
+          ))
+          .limit(1);
+        return existing[0];
+      }
+      throw error;
+    }
+  }
+  
+  async getCampaignUnsubscribes(campaignId: string): Promise<CampaignUnsubscribe[]> {
+    return db.select().from(campaignUnsubscribes).where(eq(campaignUnsubscribes.campaignId, campaignId)).orderBy(desc(campaignUnsubscribes.unsubscribedAt));
+  }
+  
+  async getCampaignUnsubscribeCount(campaignId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(campaignUnsubscribes)
+      .where(eq(campaignUnsubscribes.campaignId, campaignId));
+    return Number(result[0]?.count || 0);
+  }
+  
   // ==================== CAMPAIGN STATISTICS ====================
   
   async getCampaignStats(campaignId: string): Promise<{
@@ -1096,20 +1141,20 @@ export class DbStorage implements IStorage {
     uniqueOpeners: string[];
     uniqueClickers: string[];
     clicksByUrl: {url: string, clickCount: number, uniqueClickCount: number}[];
-    unsubscribedCount: number;
+    campaignUnsubscribes: number;
   }> {
     const campaign = await this.getCampaign(campaignId);
     if (!campaign) {
       throw new Error('Campaign not found');
     }
     
-    const [opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl, unsubscribedCount] = await Promise.all([
+    const [opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl, campaignUnsubscribes] = await Promise.all([
       this.getEmailOpens(campaignId),
       this.getLinkClicks(campaignId),
       this.getUniqueOpeners(campaignId),
       this.getUniqueClickers(campaignId),
       this.getLinkClicksByUrl(campaignId),
-      this.getUnsubscribedUsersCount()
+      this.getCampaignUnsubscribeCount(campaignId)
     ]);
     
     return {
@@ -1119,7 +1164,7 @@ export class DbStorage implements IStorage {
       uniqueOpeners,
       uniqueClickers,
       clicksByUrl,
-      unsubscribedCount
+      campaignUnsubscribes
     };
   }
   

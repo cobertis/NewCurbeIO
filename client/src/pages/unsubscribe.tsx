@@ -14,6 +14,7 @@ import { useSearch } from "wouter";
 const unsubscribeSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   token: z.string().optional(),
+  campaignId: z.string().optional(),
 });
 
 type UnsubscribeForm = z.infer<typeof unsubscribeSchema>;
@@ -22,6 +23,7 @@ export default function Unsubscribe() {
   const searchParams = new URLSearchParams(useSearch());
   const emailFromUrl = searchParams.get("email");
   const tokenFromUrl = searchParams.get("token");
+  const campaignIdFromUrl = searchParams.get("campaignId");
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasToken] = useState(!!tokenFromUrl);
 
@@ -30,6 +32,7 @@ export default function Unsubscribe() {
     defaultValues: {
       email: emailFromUrl || "",
       token: tokenFromUrl || "",
+      campaignId: campaignIdFromUrl || "",
     },
   });
 
@@ -40,7 +43,10 @@ export default function Unsubscribe() {
     if (tokenFromUrl) {
       form.setValue("token", tokenFromUrl);
     }
-  }, [emailFromUrl, tokenFromUrl, form]);
+    if (campaignIdFromUrl) {
+      form.setValue("campaignId", campaignIdFromUrl);
+    }
+  }, [emailFromUrl, tokenFromUrl, campaignIdFromUrl, form]);
 
   const unsubscribeMutation = useMutation({
     mutationFn: async (data: UnsubscribeForm) => {
@@ -134,6 +140,18 @@ export default function Unsubscribe() {
               <FormField
                 control={form.control}
                 name="token"
+                render={({ field }) => (
+                  <FormItem className="hidden">
+                    <FormControl>
+                      <Input type="hidden" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="campaignId"
                 render={({ field }) => (
                   <FormItem className="hidden">
                     <FormControl>

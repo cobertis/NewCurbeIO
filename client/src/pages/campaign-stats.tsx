@@ -14,7 +14,7 @@ interface CampaignStats {
   uniqueOpeners: string[];
   uniqueClickers: string[];
   clicksByUrl: { url: string; clickCount: number; uniqueClickCount: number }[];
-  unsubscribedCount: number;
+  campaignUnsubscribes: number;
 }
 
 export default function CampaignStats() {
@@ -48,7 +48,7 @@ export default function CampaignStats() {
     );
   }
 
-  const { campaign, opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl, unsubscribedCount } = stats;
+  const { campaign, opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl, campaignUnsubscribes } = stats;
 
   const recipientCount = campaign.recipientCount || 0;
   const uniqueOpenCount = campaign.uniqueOpenCount || 0;
@@ -157,9 +157,9 @@ export default function CampaignStats() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="metric-unsubscribed">
-              {unsubscribedCount}
+              {campaignUnsubscribes}
             </div>
-            <p className="text-xs text-muted-foreground">Total unsubscribed</p>
+            <p className="text-xs text-muted-foreground">From this campaign</p>
           </CardContent>
         </Card>
       </div>

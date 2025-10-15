@@ -2417,7 +2417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public unsubscribe endpoint (no auth required)
   app.post("/api/unsubscribe", async (req: Request, res: Response) => {
     try {
-      const { email, token } = req.body;
+      const { email, token, campaignId } = req.body;
 
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
@@ -2439,7 +2439,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Update user subscription
       await storage.updateUserSubscription(user.id, false);
+
+      // If campaignId is provided, record the unsubscribe for that campaign
+      if (campaignId) {
+        const userAgent = req.headers['user-agent'];
+        const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
+        
+        await storage.recordCampaignUnsubscribe(campaignId, user.id, userAgent, ipAddress);
+      }
 
       res.json({ success: true, message: "Successfully unsubscribed from emails" });
     } catch (error) {

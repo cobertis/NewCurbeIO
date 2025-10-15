@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -836,3 +836,22 @@ export const linkClickSchema = createInsertSchema(linkClicks).omit({
 
 export type LinkClick = typeof linkClicks.$inferSelect;
 export type InsertLinkClick = z.infer<typeof linkClickSchema>;
+
+export const campaignUnsubscribes = pgTable("campaign_unsubscribes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => emailCampaigns.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  unsubscribedAt: timestamp("unsubscribed_at").notNull().defaultNow(),
+}, (table) => ({
+  uniqueCampaignUser: unique().on(table.campaignId, table.userId),
+}));
+
+export const campaignUnsubscribeSchema = createInsertSchema(campaignUnsubscribes).omit({
+  id: true,
+  unsubscribedAt: true,
+});
+
+export type CampaignUnsubscribe = typeof campaignUnsubscribes.$inferSelect;
+export type InsertCampaignUnsubscribe = z.infer<typeof campaignUnsubscribeSchema>;

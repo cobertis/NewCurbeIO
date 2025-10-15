@@ -116,7 +116,7 @@ export class EmailCampaignService {
    */
   private personalizeContent(content: string, user: User, appUrl: string, campaignId: string): string {
     const token = generateUnsubscribeToken(user.email);
-    const unsubscribeUrl = `${appUrl}/unsubscribe?email=${encodeURIComponent(user.email)}&token=${token}`;
+    const unsubscribeUrl = `${appUrl}/unsubscribe?email=${encodeURIComponent(user.email)}&token=${token}&campaignId=${campaignId}`;
     
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const firstName = user.firstName || user.email;
