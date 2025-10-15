@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog, Phone, Building, UserCheck, UserX, MoveRight } from "lucide-react";
+import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog, Phone, Building, UserCheck, UserX, MoveRight, Upload, Download, MessageSquare, MoreHorizontal } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -60,8 +60,17 @@ const contactListSchema = z.object({
   description: z.string().optional(),
 });
 
+const addContactSchema = z.object({
+  email: z.string().email("Valid email is required"),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  phone: z.string().optional(),
+  companyId: z.string().optional(),
+});
+
 type CampaignForm = z.infer<typeof campaignSchema>;
 type ContactListForm = z.infer<typeof contactListSchema>;
+type AddContactForm = z.infer<typeof addContactSchema>;
 
 export default function Campaigns() {
   const [, navigate] = useLocation();
@@ -84,6 +93,8 @@ export default function Campaigns() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [moveToListOpen, setMoveToListOpen] = useState(false);
   const [targetMoveListId, setTargetMoveListId] = useState("");
+  const [selectedView, setSelectedView] = useState<"all" | "unsubscribed" | string>("all");
+  const [addContactOpen, setAddContactOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
@@ -156,6 +167,17 @@ export default function Campaigns() {
 
   const editListForm = useForm<ContactListForm>({
     resolver: zodResolver(contactListSchema),
+  });
+
+  const addContactForm = useForm<AddContactForm>({
+    resolver: zodResolver(addContactSchema),
+    defaultValues: {
+      email: "",
+      firstName: "",
+      lastName: "",
+      phone: "",
+      companyId: "",
+    },
   });
 
   const createMutation = useMutation({
@@ -392,6 +414,34 @@ export default function Campaigns() {
     },
   });
 
+  const addContactMutation = useMutation({
+    mutationFn: async (data: AddContactForm) => {
+      return apiRequest("POST", "/api/users", {
+        ...data,
+        password: Math.random().toString(36).slice(-8),
+        role: "viewer",
+        emailSubscribed: true,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setAddContactOpen(false);
+      addContactForm.reset();
+      toast({
+        title: "Contact Added",
+        description: "The contact has been created successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add contact.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const currentUser = sessionData?.user;
   const campaigns = data?.campaigns || [];
   const contacts = contactsData?.contacts || [];
@@ -428,6 +478,48 @@ export default function Campaigns() {
     if (!user.companyId) return "No Company";
     return companies.find(c => c.id === user.companyId)?.name || "Unknown";
   };
+
+  const handleDownloadCSV = () => {
+    const csvData = contacts.map(c => ({
+      Name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.email,
+      Email: c.email,
+      Phone: c.phone ? formatPhoneDisplay(c.phone) : '',
+      Company: getCompanyName(c),
+      Status: c.emailSubscribed ? 'Subscribed' : 'Unsubscribed',
+    }));
+
+    const headers = ['Name', 'Email', 'Phone', 'Company', 'Status'];
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => 
+        headers.map(h => `"${row[h as keyof typeof row] || ''}"`).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `contacts_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    toast({
+      title: "CSV Downloaded",
+      description: `Downloaded ${contacts.length} contacts.`,
+    });
+  };
+
+  const getViewContacts = () => {
+    if (selectedView === "all") {
+      return contacts;
+    } else if (selectedView === "unsubscribed") {
+      return contacts.filter(c => !c.emailSubscribed);
+    } else if (selectedList) {
+      return membersData?.members || [];
+    }
+    return [];
+  };
+
+  const viewContacts = getViewContacts();
 
   // Don't show access denied while session is loading
   if (sessionLoading) {
@@ -836,89 +928,133 @@ export default function Campaigns() {
       </Card>
     </TabsContent>
 
-    <TabsContent value="lists">
+    <TabsContent value="lists" className="space-y-4">
+      {/* Header with action buttons */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">Contact Management</h2>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" data-testid="button-upload-csv" onClick={() => toast({ title: "Upload CSV", description: "CSV upload coming soon" })}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload CSV
+              </Button>
+              <Button variant="outline" size="sm" data-testid="button-download-csv" onClick={handleDownloadCSV}>
+                <Download className="h-4 w-4 mr-2" />
+                Download Contacts
+              </Button>
+              <Button size="sm" data-testid="button-add-contact" onClick={() => setAddContactOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Contact
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main content area */}
       <div className="grid grid-cols-12 gap-6">
-        {/* Left Column - Lists */}
-        <div className="col-span-4">
+        {/* Left Column - Views and Lists */}
+        <div className="col-span-3">
           <Card className="h-full">
             <CardHeader>
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-lg font-semibold">Lists</CardTitle>
-                  <Badge variant="outline" data-testid="badge-list-count">
-                    {lists.length}
-                  </Badge>
-                </div>
+                <CardTitle className="text-base font-semibold">Contact Lists</CardTitle>
                 <Button size="sm" onClick={() => setCreateListOpen(true)} data-testid="button-create-list">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              {listsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="space-y-1">
+                {/* All Contacts */}
+                <div
+                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover-elevate ${
+                    selectedView === "all" ? 'bg-accent' : ''
+                  }`}
+                  onClick={() => {
+                    setSelectedView("all");
+                    setSelectedList(null);
+                    setSelectedMembers([]);
+                  }}
+                  data-testid="view-all-contacts"
+                >
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">All Contacts</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">{contacts.length}</Badge>
                 </div>
-              ) : lists.length === 0 ? (
-                <div className="text-center py-8">
-                  <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground" data-testid="text-no-lists">
-                    No lists yet. Create your first list.
-                  </p>
+
+                {/* Unsubscribed */}
+                <div
+                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover-elevate ${
+                    selectedView === "unsubscribed" ? 'bg-accent' : ''
+                  }`}
+                  onClick={() => {
+                    setSelectedView("unsubscribed");
+                    setSelectedList(null);
+                    setSelectedMembers([]);
+                  }}
+                  data-testid="view-unsubscribed"
+                >
+                  <div className="flex items-center gap-2">
+                    <UserX className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-medium">Unsubscribed</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">{contacts.filter(c => !c.emailSubscribed).length}</Badge>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {lists.map((list) => (
-                    <div
-                      key={list.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors hover-elevate ${
-                        selectedList?.id === list.id 
-                          ? 'bg-accent border-accent-foreground/20' 
-                          : 'border-border'
-                      }`}
-                      onClick={() => setSelectedList(list)}
-                      data-testid={`list-item-${list.id}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium truncate" data-testid={`text-list-name-${list.id}`}>
-                            {list.name}
-                          </h3>
-                          {list.description && (
-                            <p className="text-xs text-muted-foreground truncate mt-1" data-testid={`text-list-description-${list.id}`}>
-                              {list.description}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                            <Users className="h-3 w-3" />
-                            <span>{list.memberCount || 0} members</span>
-                          </div>
-                        </div>
-                      </div>
+
+                {/* Divider */}
+                {lists.length > 0 && <div className="border-t my-3" />}
+
+                {/* Custom Lists */}
+                {lists.map((list) => (
+                  <div
+                    key={list.id}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover-elevate ${
+                      selectedList?.id === list.id ? 'bg-accent' : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedList(list);
+                      setSelectedView(list.id);
+                      setSelectedMembers([]);
+                    }}
+                    data-testid={`list-item-${list.id}`}
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <UserCog className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">{list.name}</span>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <Badge variant="outline" className="text-xs ml-2">{list.memberCount || 0}</Badge>
+                  </div>
+                ))}
+
+                {lists.length === 0 && (
+                  <div className="text-center py-6">
+                    <p className="text-xs text-muted-foreground">No custom lists yet</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Column - Members */}
-        <div className="col-span-8">
+        {/* Right Column - Contact Table */}
+        <div className="col-span-9">
           <Card className="h-full">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  {selectedList ? (
-                    <div>
-                      <CardTitle className="text-lg font-semibold">{selectedList.name}</CardTitle>
-                      {selectedList.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{selectedList.description}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <CardTitle className="text-lg font-semibold">Select a list</CardTitle>
-                  )}
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-base font-semibold">
+                    {selectedView === "all" ? "All Contacts" : 
+                     selectedView === "unsubscribed" ? "Unsubscribed" : 
+                     selectedList?.name || "Contacts"}
+                  </CardTitle>
+                  <Badge variant="outline" data-testid="text-contact-count">{viewContacts.length}</Badge>
                 </div>
                 {selectedList && (
                   <div className="flex gap-2">
@@ -950,152 +1086,62 @@ export default function Campaigns() {
               </div>
             </CardHeader>
             <CardContent>
-              {!selectedList ? (
+              {viewContacts.length === 0 ? (
                 <div className="text-center py-12">
-                  <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Select a list to view and manage its members</p>
+                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No contacts in this view</p>
                 </div>
               ) : (
-                <div>
-                  {membersLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : membersData?.members.length === 0 ? (
-                    <div className="text-center py-8">
-                      <UserX className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                      <p className="text-muted-foreground mb-4">No members in this list yet</p>
-                      <p className="text-sm text-muted-foreground mb-4">Add members from your contacts below</p>
-                    </div>
-                  ) : (
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={selectedMembers.length === membersData?.members.length && membersData.members.length > 0}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedMembers(membersData?.members.map((m: User) => m.id) || []);
-                              } else {
-                                setSelectedMembers([]);
-                              }
-                            }}
-                            data-testid="checkbox-select-all-members"
-                          />
-                          <h4 className="text-sm font-medium">
-                            List Members {selectedMembers.length > 0 && `(${selectedMembers.length} selected)`}
-                          </h4>
-                        </div>
-                        {selectedMembers.length > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setMoveToListOpen(true)}
-                            data-testid="button-move-to-list"
-                          >
-                            <MoveRight className="h-4 w-4 mr-2" />
-                            Move to List
-                          </Button>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        {membersData?.members.map((member: User) => (
-                          <div 
-                            key={member.id} 
-                            className="flex items-center justify-between p-3 border rounded-lg"
-                            data-testid={`member-item-${member.id}`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <Checkbox
-                                checked={selectedMembers.includes(member.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setSelectedMembers([...selectedMembers, member.id]);
-                                  } else {
-                                    setSelectedMembers(selectedMembers.filter(id => id !== member.id));
-                                  }
-                                }}
-                                data-testid={`checkbox-member-${member.id}`}
-                              />
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={member.avatar || undefined} />
-                                <AvatarFallback>
-                                  {member.firstName?.[0]}{member.lastName?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {member.firstName} {member.lastName}
-                                </p>
-                                <p className="text-xs text-muted-foreground">{member.email}</p>
-                              </div>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeMemberMutation.mutate({ 
-                                listId: selectedList.id, 
-                                userId: member.id 
-                              })}
-                              disabled={removeMemberMutation.isPending}
-                              data-testid={`button-remove-member-${member.id}`}
-                            >
-                              <UserX className="h-4 w-4 mr-2" />
-                              Remove
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {viewContacts.map((contact) => (
+                      <TableRow key={contact.id} data-testid={`contact-row-${contact.id}`}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={contact.avatar || undefined} />
+                              <AvatarFallback>{getInitials(contact)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{contact.firstName && contact.lastName ? `${contact.firstName} ${contact.lastName}` : contact.email}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{contact.email}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {contact.phone ? formatPhoneDisplay(contact.phone) : "-"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{getCompanyName(contact)}</TableCell>
+                        <TableCell>
+                          <Badge variant={contact.emailSubscribed ? "default" : "outline"} className="text-xs">
+                            {contact.emailSubscribed ? "Subscribed" : "Unsubscribed"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" data-testid={`button-message-${contact.id}`}>
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => navigate(`/users/${contact.id}`)} data-testid={`button-edit-contact-${contact.id}`}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" data-testid={`button-more-${contact.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Add Members Section */}
-                  <div className="border-t pt-6 mt-6">
-                    <h4 className="text-sm font-medium mb-3">Add Members</h4>
-                    <div className="space-y-2">
-                      {contacts
-                        .filter(contact => !membersData?.members.some((m: User) => m.id === contact.id))
-                        .map((contact) => {
-                          const company = companies.find(c => c.id === contact.companyId);
-                          return (
-                            <div 
-                              key={contact.id} 
-                              className="flex items-center justify-between p-3 border rounded-lg"
-                              data-testid={`available-contact-${contact.id}`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={contact.avatar || undefined} />
-                                  <AvatarFallback>
-                                    {contact.firstName?.[0]}{contact.lastName?.[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {contact.firstName} {contact.lastName}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">{contact.email}</p>
-                                </div>
-                              </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addMemberMutation.mutate({ 
-                                  listId: selectedList.id, 
-                                  userId: contact.id 
-                                })}
-                                disabled={addMemberMutation.isPending}
-                                data-testid={`button-add-member-${contact.id}`}
-                              >
-                                <UserCheck className="h-4 w-4 mr-2" />
-                                Add
-                              </Button>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
@@ -1406,6 +1452,108 @@ export default function Campaigns() {
               {moveContactsMutation.isPending ? "Moving..." : "Move Contacts"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Contact Dialog */}
+      <Dialog open={addContactOpen} onOpenChange={setAddContactOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Contact</DialogTitle>
+            <DialogDescription>
+              Add a new contact to your database. They will be automatically subscribed to email campaigns.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...addContactForm}>
+            <form
+              onSubmit={addContactForm.handleSubmit((data) => addContactMutation.mutate(data))}
+              className="space-y-4"
+            >
+              <FormField
+                control={addContactForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email*</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="contact@example.com" {...field} data-testid="input-contact-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={addContactForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John" {...field} data-testid="input-contact-firstname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addContactForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Doe" {...field} data-testid="input-contact-lastname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={addContactForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1 (415) 555-1234" {...field} data-testid="input-contact-phone" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addContactForm.control}
+                name="companyId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company</FormLabel>
+                    <FormControl>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger data-testid="select-contact-company">
+                          <SelectValue placeholder="Select company" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {companies.map((company) => (
+                            <SelectItem key={company.id} value={company.id}>
+                              {company.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" disabled={addContactMutation.isPending} data-testid="button-submit-contact">
+                  {addContactMutation.isPending ? "Adding..." : "Add Contact"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
