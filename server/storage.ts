@@ -204,6 +204,7 @@ export interface IStorage {
   
   // Email Subscriptions
   getSubscribedUsers(): Promise<User[]>;
+  getUnsubscribedUsersCount(): Promise<number>;
   updateUserSubscription(userId: string, subscribed: boolean): Promise<User | undefined>;
   
   // Email Tracking - Opens
@@ -227,6 +228,7 @@ export interface IStorage {
     uniqueOpeners: string[];
     uniqueClickers: string[];
     clicksByUrl: {url: string, clickCount: number, uniqueClickCount: number}[];
+    unsubscribedCount: number;
   }>;
   
   // Contact Lists
@@ -969,6 +971,13 @@ export class DbStorage implements IStorage {
     );
   }
   
+  async getUnsubscribedUsersCount(): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(eq(users.emailSubscribed, false));
+    return Number(result[0]?.count || 0);
+  }
+  
   async updateUserSubscription(userId: string, subscribed: boolean): Promise<User | undefined> {
     const result = await db.update(users).set({ emailSubscribed: subscribed }).where(eq(users.id, userId)).returning();
     return result[0];
@@ -1083,18 +1092,20 @@ export class DbStorage implements IStorage {
     uniqueOpeners: string[];
     uniqueClickers: string[];
     clicksByUrl: {url: string, clickCount: number, uniqueClickCount: number}[];
+    unsubscribedCount: number;
   }> {
     const campaign = await this.getCampaign(campaignId);
     if (!campaign) {
       throw new Error('Campaign not found');
     }
     
-    const [opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl] = await Promise.all([
+    const [opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl, unsubscribedCount] = await Promise.all([
       this.getEmailOpens(campaignId),
       this.getLinkClicks(campaignId),
       this.getUniqueOpeners(campaignId),
       this.getUniqueClickers(campaignId),
-      this.getLinkClicksByUrl(campaignId)
+      this.getLinkClicksByUrl(campaignId),
+      this.getUnsubscribedUsersCount()
     ]);
     
     return {
@@ -1103,7 +1114,8 @@ export class DbStorage implements IStorage {
       clicks,
       uniqueOpeners,
       uniqueClickers,
-      clicksByUrl
+      clicksByUrl,
+      unsubscribedCount
     };
   }
   

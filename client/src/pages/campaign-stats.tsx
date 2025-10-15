@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Mail, MousePointer, Users, Eye, BarChart, ExternalLink } from "lucide-react";
+import { ArrowLeft, Mail, MousePointer, Users, Eye, BarChart, ExternalLink, UserX } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { EmailCampaign, EmailOpen, LinkClick } from "@shared/schema";
 
@@ -14,6 +14,7 @@ interface CampaignStats {
   uniqueOpeners: string[];
   uniqueClickers: string[];
   clicksByUrl: { url: string; clickCount: number; uniqueClickCount: number }[];
+  unsubscribedCount: number;
 }
 
 export default function CampaignStats() {
@@ -47,7 +48,7 @@ export default function CampaignStats() {
     );
   }
 
-  const { campaign, opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl } = stats;
+  const { campaign, opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl, unsubscribedCount } = stats;
 
   const recipientCount = campaign.recipientCount || 0;
   const uniqueOpenCount = campaign.uniqueOpenCount || 0;
@@ -92,7 +93,7 @@ export default function CampaignStats() {
         </p>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Recipients</CardTitle>
@@ -146,6 +147,19 @@ export default function CampaignStats() {
               {clickToOpenRate}%
             </div>
             <p className="text-xs text-muted-foreground">Of those who opened</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Unsubscribed</CardTitle>
+            <UserX className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-unsubscribed">
+              {unsubscribedCount}
+            </div>
+            <p className="text-xs text-muted-foreground">Total unsubscribed</p>
           </CardContent>
         </Card>
       </div>

@@ -969,7 +969,7 @@ export default function Campaigns() {
               <div className="space-y-1">
                 {/* All Contacts */}
                 <div
-                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover-elevate ${
+                  className={`p-2 rounded-lg cursor-pointer hover-elevate ${
                     selectedView === "all" ? 'bg-accent' : ''
                   }`}
                   onClick={() => {
@@ -979,11 +979,16 @@ export default function Campaigns() {
                   }}
                   data-testid="view-all-contacts"
                 >
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">All Contacts</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">All Contacts</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs">{contacts.length}</Badge>
                   </div>
-                  <Badge variant="outline" className="text-xs">{contacts.length}</Badge>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6" data-testid="text-subscribed-count">
+                    {contacts.filter(c => c.emailSubscribed).length} subscribed
+                  </p>
                 </div>
 
                 {/* Unsubscribed */}
