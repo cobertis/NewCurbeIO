@@ -290,9 +290,9 @@ export default function Users() {
           <div className="col-span-12 lg:col-span-3">
             <Card>
               <CardContent className="p-6">
-                <div className="flex flex-col items-center text-center">
+                <div className="flex items-start gap-4">
                   <div 
-                    className="relative group cursor-pointer mb-4" 
+                    className="relative group cursor-pointer flex-shrink-0" 
                     onClick={() => {
                       setAvatarUrl(profileUser.avatar || "");
                       setAvatarDialogOpen(true);
@@ -309,23 +309,27 @@ export default function Users() {
                       <Camera className="h-8 w-8 text-white" />
                     </div>
                   </div>
-                  <h2 className="text-xl font-bold mb-1">
-                    {profileUser.firstName && profileUser.lastName
-                      ? `${profileUser.firstName} ${profileUser.lastName}`
-                      : profileUser.email}
-                  </h2>
-                  <Badge variant={
-                    profileUser.role === "superadmin" ? "default" :
-                    profileUser.role === "admin" ? "secondary" :
-                    "outline"
-                  } className="mb-4">
-                    {profileUser.role === "superadmin" ? "Super Admin" :
-                     profileUser.role === "admin" ? "Admin" :
-                     profileUser.role === "member" ? "Member" : "Viewer"}
-                  </Badge>
-                  {profileUser.isActive === false && (
-                    <Badge variant="destructive" className="mb-4">Inactive</Badge>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl font-bold mb-2">
+                      {profileUser.firstName && profileUser.lastName
+                        ? `${profileUser.firstName} ${profileUser.lastName}`
+                        : profileUser.email}
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant={
+                        profileUser.role === "superadmin" ? "default" :
+                        profileUser.role === "admin" ? "secondary" :
+                        "outline"
+                      }>
+                        {profileUser.role === "superadmin" ? "Super Admin" :
+                         profileUser.role === "admin" ? "Admin" :
+                         profileUser.role === "member" ? "Member" : "Viewer"}
+                      </Badge>
+                      <Badge variant={profileUser.isActive === false ? "destructive" : "default"}>
+                        {profileUser.isActive === false ? "Inactive" : "Active"}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4 mt-6 text-sm">
