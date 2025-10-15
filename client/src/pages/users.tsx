@@ -423,11 +423,12 @@ export default function Users() {
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">Date of Birth:</p>
                       <p className="font-medium">
-                        {profileUser.dateOfBirth ? new Date(profileUser.dateOfBirth).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        }) : "-"}
+                        {profileUser.dateOfBirth ? (() => {
+                          const dateStr = profileUser.dateOfBirth.toString().split('T')[0];
+                          const [year, month, day] = dateStr.split('-');
+                          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                          return `${monthNames[parseInt(month) - 1]} ${parseInt(day)}, ${year}`;
+                        })() : "-"}
                       </p>
                     </div>
                     <div>
