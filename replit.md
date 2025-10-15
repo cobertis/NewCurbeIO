@@ -11,12 +11,14 @@ Preferred communication style: Simple, everyday language.
 ### UI/UX Decisions
 The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New York style) with Radix UI for components and Tailwind CSS for styling. It features a custom theming system (light/dark modes) inspired by Linear and Vercel. Authentication pages share a cohesive design with gradient backgrounds, centered rounded cards, and consistent spacing. Key UI features include a dashboard, CRUD operations for users, companies (superadmin-only), plans (superadmin-only), and features (superadmin-only). It also supports invoice viewing, comprehensive settings, a secure login with 2FA, account activation, audit logs, and email template management.
 
+**Page Headers:** All page title/description headers have been removed from the UI. Navigation context is provided solely through the sidebar, eliminating redundant page titles for a cleaner interface.
+
 ### Technical Implementations
 **Frontend:** React 18, TypeScript, Vite, Wouter for routing, TanStack Query for state management.
 **Backend:** Express.js and TypeScript, providing a RESTful API with session-based authentication (`express-session`) and role-based access control (RBAC).
 
 **Feature Specifications:**
-- **User Management:** CRUD operations for users with role-based access and phone number support for 2FA. Superadmins can manage company associations. Users can edit their profile picture by clicking on their avatar in the profile page, allowing them to paste an image URL or remove their current avatar.
+- **User Management:** CRUD operations for users with role-based access and phone number support for 2FA. Superadmins can manage company associations. Users can edit their profile picture by clicking on their avatar in the profile page, allowing them to paste an image URL or remove their current avatar. All contact/user displays consistently use the `avatar` field from the users table with Avatar/AvatarImage/AvatarFallback components showing profile pictures when available or initials as fallback.
 - **Company Management (Superadmin-only):** CRUD operations, visual cards, and feature management. Company creation includes admin user setup with email-based activation.
 - **Plans & Features (Superadmin-only):** CRUD interfaces for subscription plans and system features, allowing categorization and selective assignment to companies.
 - **Authentication & Security:**

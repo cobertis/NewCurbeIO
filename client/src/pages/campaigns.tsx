@@ -746,7 +746,7 @@ export default function Campaigns() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={contact.avatarUrl || undefined} />
+                          <AvatarImage src={contact.avatar || undefined} />
                           <AvatarFallback>{getInitials(contact)}</AvatarFallback>
                         </Avatar>
                         <div>
