@@ -1005,6 +1005,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Toggle user active status (enable/disable)
+  app.patch("/api/users/:id/toggle-status", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Admin can only toggle users in their company
+      if (currentUser.role === "admin") {
+        if (targetUser.companyId !== currentUser.companyId) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+
+      const newStatus = !targetUser.isActive;
+      const updatedUser = await storage.updateUser(req.params.id, {
+        isActive: newStatus,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "user",
+        entityId: updatedUser.id,
+        companyId: updatedUser.companyId || undefined,
+        metadata: {
+          email: updatedUser.email,
+          action: newStatus ? "enabled" : "disabled",
+          updatedBy: currentUser.email,
+        },
+      });
+
+      const { password, ...sanitizedUser } = updatedUser;
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      console.error("Error toggling user status:", error);
+      return res.status(500).json({ message: "Failed to toggle user status", error: error.message });
+    }
+  });
+
   // ==================== COMPANY ENDPOINTS (superadmin only) ====================
 
   // Get all companies

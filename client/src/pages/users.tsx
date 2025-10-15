@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon, Power } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -150,6 +150,27 @@ export default function Users() {
       toast({
         title: "Error",
         description: "Failed to delete user.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("PATCH", `/api/users/${id}/toggle-status`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: "Status Updated",
+        description: "The user status has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update user status.",
         variant: "destructive",
       });
     },
@@ -880,6 +901,16 @@ export default function Users() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => toggleStatusMutation.mutate(user.id)}
+                              disabled={toggleStatusMutation.isPending}
+                              data-testid={`button-toggle-status-${user.id}`}
+                              title={user.isActive ? "Disable User" : "Enable User"}
+                            >
+                              <Power className={`h-4 w-4 ${user.isActive ? 'text-green-600' : 'text-gray-400'}`} />
+                            </Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
