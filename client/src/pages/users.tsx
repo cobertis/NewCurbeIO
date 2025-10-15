@@ -305,7 +305,7 @@ export default function Users() {
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                       <Camera className="h-8 w-8 text-white" />
                     </div>
                   </div>
