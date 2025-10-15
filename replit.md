@@ -38,9 +38,11 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
     - **Contact List Segmentation:** 
         - Create and manage contact lists for targeted campaign delivery
         - CRUD operations for lists with name and description
-        - Member management interface to add/remove users from lists
+        - Member management interface to add/remove users from lists with inline checkboxes for bulk selection
+        - Bulk operations: Select multiple contacts and move them between lists using "Move to List" button and list selector dialog
         - Visual cards showing list details and member counts
         - Database schema includes contact_lists and contact_list_members tables with proper foreign keys
+        - Two-column layout (33/67 split): left panel for list selection, right panel for member management
     - **Campaign Creation:** CRUD operations for email campaigns with rich HTML editor featuring formatting toolbar (bold, italic, headings, lists, links) and live preview.
     - **Targeted Campaign Sending:** 
         - Optional "Target Audience" dropdown in campaign creation
