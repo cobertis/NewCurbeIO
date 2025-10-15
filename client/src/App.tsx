@@ -32,6 +32,9 @@ import Invoices from "@/pages/invoices";
 import Settings from "@/pages/settings";
 import AuditLogs from "@/pages/audit-logs";
 import Support from "@/pages/support";
+import Contacts from "@/pages/contacts";
+import Campaigns from "@/pages/campaigns";
+import Unsubscribe from "@/pages/unsubscribe";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -48,6 +51,8 @@ const getPageTitle = (path: string): string => {
     '/settings': 'Settings',
     '/audit-logs': 'Audit Logs',
     '/support': 'Support',
+    '/contacts': 'Email Contacts',
+    '/campaigns': 'Email Campaigns',
   };
   return routes[path] || 'Dashboard';
 };
@@ -363,6 +368,21 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/contacts">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Contacts />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/campaigns">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Campaigns />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/unsubscribe" component={Unsubscribe} />
       <Route component={NotFound} />
     </Switch>
   );
