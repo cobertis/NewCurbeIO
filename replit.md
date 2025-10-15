@@ -54,7 +54,13 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
     - **Secure Unsubscribe:** HMAC-SHA256 tokens using SESSION_SECRET with timing-safe verification, format validation, and graceful error handling.
     - **Backward Compatibility:** Legacy unsubscribe (email-only) supported for existing flows; tokens validated only when present.
     - **Public Unsubscribe Page:** No authentication required, accepts email and optional token, shows security warning for non-tokenized requests.
-    - **Email Analytics:** Unique open tracking (1 per user), link click tracking, comprehensive statistics dashboard with charts and detailed metrics.
+    - **Campaign-Specific Unsubscribe Tracking:**
+        - **Database Table:** `campaign_unsubscribes` tracks which users unsubscribed from which campaigns with unique constraint on (campaignId, userId)
+        - **Unsubscribe Links:** Include campaignId parameter to attribute unsubscribes to specific campaigns
+        - **Idempotent Operations:** Multiple clicks on same unsubscribe link handled gracefully, no duplicate records created
+        - **Statistics Display:** Campaign stats show "Unsubscribed from this campaign" count (not total system unsubscribes)
+        - **Error Handling:** Graceful handling of unique constraint violations returns existing record
+    - **Email Analytics:** Unique open tracking (1 per user), link click tracking, campaign-specific unsubscribe tracking, comprehensive statistics dashboard with charts and detailed metrics.
 
 ### System Design Choices
 The system employs a clear separation of concerns between frontend and backend. Data models are designed for multi-tenancy in PostgreSQL using Drizzle ORM, ensuring strict data isolation. Security is paramount, with comprehensive measures for password management, account activation, and 2FA. The modular feature system provides flexibility for customizing tenant functionalities.
