@@ -149,16 +149,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Right: Action Icons + User Profile */}
             <div className="flex items-center gap-2">
-              {/* Theme/Brightness Icon */}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                data-testid="button-brightness"
-                className="rounded-md"
-              >
-                <Sun className="h-5 w-5 text-blue-500" />
-              </Button>
-
               {/* Messages Icon */}
               <Button 
                 variant="ghost" 
@@ -168,6 +158,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               >
                 <MessageSquare className="h-5 w-5 text-blue-500" />
               </Button>
+
+              {/* Theme Toggle */}
+              <ThemeToggle />
 
               {/* Notifications Button */}
               <Button 
@@ -184,9 +177,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
               </Button>
-
-              {/* Theme Toggle */}
-              <ThemeToggle />
 
               {/* User Profile with Dropdown */}
               <DropdownMenu>
