@@ -726,6 +726,44 @@ export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
 
 // =====================================================
+// CONTACT LISTS (for segmentation)
+// =====================================================
+
+export const contactLists = pgTable("contact_lists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const contactListSchema = createInsertSchema(contactLists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ContactList = typeof contactLists.$inferSelect;
+export type InsertContactList = z.infer<typeof contactListSchema>;
+
+// Contact List Members (many-to-many relationship)
+export const contactListMembers = pgTable("contact_list_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listId: varchar("list_id").notNull().references(() => contactLists.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+});
+
+export const contactListMemberSchema = createInsertSchema(contactListMembers).omit({
+  id: true,
+  addedAt: true,
+});
+
+export type ContactListMember = typeof contactListMembers.$inferSelect;
+export type InsertContactListMember = z.infer<typeof contactListMemberSchema>;
+
+// =====================================================
 // EMAIL CAMPAIGNS
 // =====================================================
 
@@ -735,6 +773,7 @@ export const emailCampaigns = pgTable("email_campaigns", {
   htmlContent: text("html_content").notNull(), // HTML email content
   textContent: text("text_content"), // Plain text fallback
   status: text("status").notNull().default("draft"), // draft, sending, sent, failed
+  targetListId: varchar("target_list_id").references(() => contactLists.id, { onDelete: "set null" }), // Optional: send to specific list
   sentAt: timestamp("sent_at"), // When the campaign was sent
   sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }), // Who sent it
   recipientCount: integer("recipient_count").default(0), // Number of recipients

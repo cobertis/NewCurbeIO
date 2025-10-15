@@ -40,7 +40,11 @@ import {
   type SelectActivationToken,
   type InsertActivationToken,
   type SelectTrustedDevice,
-  type InsertTrustedDevice
+  type InsertTrustedDevice,
+  type ContactList,
+  type InsertContactList,
+  type ContactListMember,
+  type InsertContactListMember
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -64,7 +68,9 @@ import {
   companyFeatures,
   otpCodes,
   activationTokens,
-  trustedDevices
+  trustedDevices,
+  contactLists,
+  contactListMembers
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -222,6 +228,19 @@ export interface IStorage {
     uniqueClickers: string[];
     clicksByUrl: {url: string, clickCount: number, uniqueClickCount: number}[];
   }>;
+  
+  // Contact Lists
+  getAllContactLists(createdBy?: string): Promise<ContactList[]>;
+  getContactList(id: string): Promise<ContactList | undefined>;
+  createContactList(list: InsertContactList): Promise<ContactList>;
+  updateContactList(id: string, data: Partial<InsertContactList>): Promise<ContactList | undefined>;
+  deleteContactList(id: string): Promise<boolean>;
+  
+  // Contact List Members
+  getListMembers(listId: string): Promise<User[]>;
+  addMemberToList(listId: string, userId: string): Promise<ContactListMember>;
+  removeMemberFromList(listId: string, userId: string): Promise<boolean>;
+  getListsForUser(userId: string): Promise<ContactList[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -1086,6 +1105,74 @@ export class DbStorage implements IStorage {
       uniqueClickers,
       clicksByUrl
     };
+  }
+  
+  // ==================== CONTACT LISTS ====================
+  
+  async getAllContactLists(createdBy?: string): Promise<ContactList[]> {
+    if (createdBy) {
+      return db.select().from(contactLists)
+        .where(eq(contactLists.createdBy, createdBy))
+        .orderBy(desc(contactLists.createdAt));
+    }
+    return db.select().from(contactLists).orderBy(desc(contactLists.createdAt));
+  }
+  
+  async getContactList(id: string): Promise<ContactList | undefined> {
+    const result = await db.select().from(contactLists).where(eq(contactLists.id, id));
+    return result[0];
+  }
+  
+  async createContactList(list: InsertContactList): Promise<ContactList> {
+    const result = await db.insert(contactLists).values(list).returning();
+    return result[0];
+  }
+  
+  async updateContactList(id: string, data: Partial<InsertContactList>): Promise<ContactList | undefined> {
+    const result = await db.update(contactLists)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(contactLists.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  async deleteContactList(id: string): Promise<boolean> {
+    const result = await db.delete(contactLists).where(eq(contactLists.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+  
+  // ==================== CONTACT LIST MEMBERS ====================
+  
+  async getListMembers(listId: string): Promise<User[]> {
+    const members = await db.select({ user: users })
+      .from(contactListMembers)
+      .innerJoin(users, eq(contactListMembers.userId, users.id))
+      .where(eq(contactListMembers.listId, listId));
+    return members.map(m => m.user);
+  }
+  
+  async addMemberToList(listId: string, userId: string): Promise<ContactListMember> {
+    const result = await db.insert(contactListMembers)
+      .values({ listId, userId })
+      .returning();
+    return result[0];
+  }
+  
+  async removeMemberFromList(listId: string, userId: string): Promise<boolean> {
+    const result = await db.delete(contactListMembers)
+      .where(and(
+        eq(contactListMembers.listId, listId),
+        eq(contactListMembers.userId, userId)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+  
+  async getListsForUser(userId: string): Promise<ContactList[]> {
+    const lists = await db.select({ list: contactLists })
+      .from(contactListMembers)
+      .innerJoin(contactLists, eq(contactListMembers.listId, contactLists.id))
+      .where(eq(contactListMembers.userId, userId));
+    return lists.map(l => l.list);
   }
 }
 

@@ -36,13 +36,28 @@ interface EmailCampaign {
   updatedAt: Date;
 }
 
+interface ContactList {
+  id: string;
+  name: string;
+  description: string | null;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const campaignSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   htmlContent: z.string().min(1, "Email content is required"),
   textContent: z.string().optional(),
 });
 
+const contactListSchema = z.object({
+  name: z.string().min(1, "List name is required"),
+  description: z.string().optional(),
+});
+
 type CampaignForm = z.infer<typeof campaignSchema>;
+type ContactListForm = z.infer<typeof contactListSchema>;
 
 export default function Campaigns() {
   const [, navigate] = useLocation();
@@ -56,6 +71,11 @@ export default function Campaigns() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<EmailCampaign | null>(null);
   const [activeTab, setActiveTab] = useState("campaigns");
+  const [createListOpen, setCreateListOpen] = useState(false);
+  const [editListOpen, setEditListOpen] = useState(false);
+  const [editingList, setEditingList] = useState<ContactList | null>(null);
+  const [deleteListOpen, setDeleteListOpen] = useState(false);
+  const [listToDelete, setListToDelete] = useState<ContactList | null>(null);
   const { toast } = useToast();
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
@@ -72,6 +92,10 @@ export default function Campaigns() {
 
   const { data: companiesData } = useQuery<{ companies: any[] }>({
     queryKey: ["/api/companies"],
+  });
+
+  const { data: listsData, isLoading: listsLoading } = useQuery<{ lists: ContactList[] }>({
+    queryKey: ["/api/contact-lists"],
   });
 
   const toggleSubscriptionMutation = useMutation({
@@ -106,6 +130,18 @@ export default function Campaigns() {
 
   const editForm = useForm<CampaignForm>({
     resolver: zodResolver(campaignSchema),
+  });
+
+  const listForm = useForm<ContactListForm>({
+    resolver: zodResolver(contactListSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
+
+  const editListForm = useForm<ContactListForm>({
+    resolver: zodResolver(contactListSchema),
   });
 
   const createMutation = useMutation({
@@ -209,10 +245,78 @@ export default function Campaigns() {
     },
   });
 
+  const createListMutation = useMutation({
+    mutationFn: async (data: ContactListForm) => {
+      return apiRequest("POST", "/api/contact-lists", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      setCreateListOpen(false);
+      listForm.reset();
+      toast({
+        title: "List Created",
+        description: "The contact list has been created successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create list.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateListMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<ContactListForm> }) => {
+      return apiRequest("PATCH", `/api/contact-lists/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      setEditListOpen(false);
+      setEditingList(null);
+      editListForm.reset();
+      toast({
+        title: "List Updated",
+        description: "The contact list has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update list.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteListMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/contact-lists/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      setDeleteListOpen(false);
+      setListToDelete(null);
+      toast({
+        title: "List Deleted",
+        description: "The contact list has been deleted successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete list.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const currentUser = sessionData?.user;
   const campaigns = data?.campaigns || [];
   const contacts = contactsData?.contacts || [];
   const companies = companiesData?.companies || [];
+  const lists = listsData?.lists || [];
 
   const filteredCampaigns = campaigns.filter(campaign => {
     const query = searchQuery.toLowerCase();
@@ -389,6 +493,11 @@ export default function Campaigns() {
             <Users className="h-4 w-4 mr-2" />
             Contacts
             <Badge variant="secondary" className="ml-2">{contacts.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="lists" data-testid="tab-lists">
+            <UserCog className="h-4 w-4 mr-2" />
+            Lists
+            <Badge variant="secondary" className="ml-2">{lists.length}</Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -622,6 +731,91 @@ export default function Campaigns() {
         </CardContent>
       </Card>
     </TabsContent>
+
+    <TabsContent value="lists">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 flex-1">
+              <CardTitle className="text-2xl font-semibold">Contact Lists</CardTitle>
+              <Badge variant="outline" data-testid="badge-list-count">
+                {lists.length} {lists.length === 1 ? "List" : "Lists"}
+              </Badge>
+            </div>
+            <Button onClick={() => setCreateListOpen(true)} data-testid="button-create-list">
+              <Plus className="h-4 w-4 mr-2" />
+              Create List
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {listsLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : lists.length === 0 ? (
+            <div className="text-center py-8">
+              <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground" data-testid="text-no-lists">
+                No contact lists yet. Create your first list to segment your audience.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {lists.map((list) => (
+                <Card key={list.id} className="hover-elevate" data-testid={`card-list-${list.id}`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium mb-2" data-testid={`text-list-name-${list.id}`}>
+                          {list.name}
+                        </h3>
+                        {list.description && (
+                          <p className="text-sm text-muted-foreground mb-3" data-testid={`text-list-description-${list.id}`}>
+                            {list.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span data-testid={`text-list-created-${list.id}`}>
+                            Created {formatDistanceToNow(new Date(list.createdAt))} ago
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingList(list);
+                            editListForm.reset({ name: list.name, description: list.description || "" });
+                            setEditListOpen(true);
+                          }}
+                          data-testid={`button-edit-list-${list.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setListToDelete(list);
+                            setDeleteListOpen(true);
+                          }}
+                          data-testid={`button-delete-list-${list.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
   </Tabs>
 
       {/* Edit Campaign Dialog */}
@@ -741,6 +935,139 @@ export default function Campaigns() {
               data-testid="button-confirm-delete"
             >
               {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Contact List Dialog */}
+      <Dialog open={createListOpen} onOpenChange={setCreateListOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Contact List</DialogTitle>
+            <DialogDescription>
+              Create a new contact list to segment your audience for targeted campaigns.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...listForm}>
+            <form onSubmit={listForm.handleSubmit((data) => createListMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={listForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>List Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Premium Users, Newsletter Subscribers" {...field} data-testid="input-list-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={listForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Brief description of this contact list..."
+                        className="min-h-[80px]"
+                        {...field}
+                        data-testid="textarea-list-description"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" disabled={createListMutation.isPending} data-testid="button-submit-list">
+                  {createListMutation.isPending ? "Creating..." : "Create List"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contact List Dialog */}
+      <Dialog open={editListOpen} onOpenChange={setEditListOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Contact List</DialogTitle>
+            <DialogDescription>
+              Update the contact list details.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editListForm}>
+            <form
+              onSubmit={editListForm.handleSubmit((data) =>
+                editingList && updateListMutation.mutate({ id: editingList.id, data })
+              )}
+              className="space-y-4"
+            >
+              <FormField
+                control={editListForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>List Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="List name" {...field} data-testid="input-edit-list-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editListForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Brief description..."
+                        className="min-h-[80px]"
+                        {...field}
+                        data-testid="textarea-edit-list-description"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" disabled={updateListMutation.isPending} data-testid="button-update-list">
+                  {updateListMutation.isPending ? "Updating..." : "Update List"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Contact List Confirmation Dialog */}
+      <AlertDialog open={deleteListOpen} onOpenChange={setDeleteListOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente la lista{" "}
+              <strong>"{listToDelete?.name}"</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-list">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => listToDelete && deleteListMutation.mutate(listToDelete.id)}
+              disabled={deleteListMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-list"
+            >
+              {deleteListMutation.isPending ? "Eliminando..." : "Eliminar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -2532,6 +2532,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== CONTACT LISTS ENDPOINTS ====================
+
+  // Get all contact lists (superadmin only)
+  app.get("/api/contact-lists", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const lists = await storage.getAllContactLists();
+      res.json({ lists });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch contact lists" });
+    }
+  });
+
+  // Get contact list by ID (superadmin only)
+  app.get("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const list = await storage.getContactList(req.params.id);
+      if (!list) {
+        return res.status(404).json({ message: "Contact list not found" });
+      }
+      res.json(list);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch contact list" });
+    }
+  });
+
+  // Create contact list (superadmin only)
+  app.post("/api/contact-lists", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { name, description } = req.body;
+
+      if (!name) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+
+      const list = await storage.createContactList({
+        name,
+        description: description || null,
+        createdBy: currentUser.id
+      });
+
+      res.status(201).json(list);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create contact list" });
+    }
+  });
+
+  // Update contact list (superadmin only)
+  app.patch("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { name, description } = req.body;
+
+      const updatedList = await storage.updateContactList(req.params.id, {
+        name,
+        description
+      });
+
+      if (!updatedList) {
+        return res.status(404).json({ message: "Contact list not found" });
+      }
+
+      res.json(updatedList);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update contact list" });
+    }
+  });
+
+  // Delete contact list (superadmin only)
+  app.delete("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const deleted = await storage.deleteContactList(req.params.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Contact list not found" });
+      }
+
+      res.json({ message: "Contact list deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete contact list" });
+    }
+  });
+
+  // Get members of a contact list (superadmin only)
+  app.get("/api/contact-lists/:id/members", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const members = await storage.getListMembers(req.params.id);
+      res.json({ members });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch list members" });
+    }
+  });
+
+  // Add member to contact list (superadmin only)
+  app.post("/api/contact-lists/:id/members", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { userId } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      const member = await storage.addMemberToList(req.params.id, userId);
+      res.status(201).json(member);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add member to list" });
+    }
+  });
+
+  // Remove member from contact list (superadmin only)
+  app.delete("/api/contact-lists/:id/members/:userId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const deleted = await storage.removeMemberFromList(req.params.id, req.params.userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Member not found in list" });
+      }
+
+      res.json({ message: "Member removed successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to remove member" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
