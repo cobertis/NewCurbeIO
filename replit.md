@@ -49,6 +49,7 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
         - Select specific contact lists or send to all subscribers
         - EmailCampaignService filters recipients to only subscribed users in selected list
         - Displays member count for each list in selection dropdown
+        - Send confirmation dialog shows accurate recipient count with visual breakdown
     - **Campaign Deletion:** Secure deletion with confirmation dialog (AlertDialog) showing campaign subject, preventing accidental deletions (draft campaigns only).
     - **Mass Email Delivery:** Send campaigns to all subscribed users or targeted list members with personalized content and secure tokenized unsubscribe links.
     - **Secure Unsubscribe:** HMAC-SHA256 tokens using SESSION_SECRET with timing-safe verification, format validation, and graceful error handling.

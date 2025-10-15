@@ -31,6 +31,7 @@ interface EmailCampaign {
   htmlContent: string;
   textContent: string | null;
   status: string;
+  targetListId: string | null;
   sentAt: Date | null;
   sentBy: string | null;
   recipientCount: number | null;
@@ -1227,7 +1228,53 @@ export default function Campaigns() {
           <DialogHeader>
             <DialogTitle>Send Campaign</DialogTitle>
             <DialogDescription>
-              Are you sure you want to send this campaign to all {contacts.length} subscribed {contacts.length === 1 ? "user" : "users"}? This action cannot be undone.
+              {(() => {
+                if (!campaignToSend) return null;
+                
+                let targetDescription = "";
+                let recipientInfo = null;
+                
+                if (campaignToSend.targetListId) {
+                  // Find the target list
+                  const targetList = lists.find(l => l.id === campaignToSend.targetListId);
+                  if (targetList) {
+                    targetDescription = `the "${targetList.name}" list`;
+                    recipientInfo = (
+                      <div className="mt-3 p-3 bg-muted rounded-md">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">Up to {targetList.memberCount || 0} {(targetList.memberCount || 0) === 1 ? "recipient" : "recipients"}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Only subscribed members of this list will receive the email.
+                        </p>
+                      </div>
+                    );
+                  }
+                } else {
+                  // All subscribed users
+                  targetDescription = "all subscribers";
+                  recipientInfo = (
+                    <div className="mt-3 p-3 bg-muted rounded-md">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{contacts.length} {contacts.length === 1 ? "recipient" : "recipients"}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        All users subscribed to email campaigns will receive this email.
+                      </p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <>
+                    Are you sure you want to send this campaign to {targetDescription}?
+                    {recipientInfo}
+                    <p className="mt-3 text-sm text-muted-foreground">This action cannot be undone.</p>
+                  </>
+                );
+              })()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
