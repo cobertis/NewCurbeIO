@@ -25,6 +25,8 @@ import {
   type InsertNotification,
   type EmailTemplate,
   type InsertEmailTemplate,
+  type EmailCampaign,
+  type InsertEmailCampaign,
   type Feature,
   type InsertFeature,
   type CompanyFeature,
@@ -51,6 +53,7 @@ import {
   apiKeys, 
   notifications,
   emailTemplates,
+  emailCampaigns,
   features,
   companyFeatures,
   otpCodes,
@@ -179,6 +182,17 @@ export interface IStorage {
   validateTrustedDevice(deviceToken: string): Promise<string | null>;
   removeTrustedDevice(deviceToken: string): Promise<boolean>;
   removeExpiredTrustedDevices(): Promise<boolean>;
+  
+  // Email Campaigns
+  getAllCampaigns(): Promise<EmailCampaign[]>;
+  getCampaign(id: string): Promise<EmailCampaign | undefined>;
+  createCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign>;
+  updateCampaign(id: string, data: Partial<InsertEmailCampaign>): Promise<EmailCampaign | undefined>;
+  deleteCampaign(id: string): Promise<boolean>;
+  
+  // Email Subscriptions
+  getSubscribedUsers(): Promise<User[]>;
+  updateUserSubscription(userId: string, subscribed: boolean): Promise<User | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -867,6 +881,49 @@ export class DbStorage implements IStorage {
       eq(trustedDevices.expiresAt, now)
     );
     return true;
+  }
+  
+  // ==================== EMAIL CAMPAIGNS ====================
+  
+  async getAllCampaigns(): Promise<EmailCampaign[]> {
+    return db.select().from(emailCampaigns).orderBy(desc(emailCampaigns.createdAt));
+  }
+  
+  async getCampaign(id: string): Promise<EmailCampaign | undefined> {
+    const result = await db.select().from(emailCampaigns).where(eq(emailCampaigns.id, id));
+    return result[0];
+  }
+  
+  async createCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign> {
+    const result = await db.insert(emailCampaigns).values(campaign).returning();
+    return result[0];
+  }
+  
+  async updateCampaign(id: string, data: Partial<InsertEmailCampaign>): Promise<EmailCampaign | undefined> {
+    const result = await db.update(emailCampaigns).set(data).where(eq(emailCampaigns.id, id)).returning();
+    return result[0];
+  }
+  
+  async deleteCampaign(id: string): Promise<boolean> {
+    const result = await db.delete(emailCampaigns).where(eq(emailCampaigns.id, id)).returning();
+    return result.length > 0;
+  }
+  
+  // ==================== EMAIL SUBSCRIPTIONS ====================
+  
+  async getSubscribedUsers(): Promise<User[]> {
+    return db.select().from(users).where(
+      and(
+        eq(users.emailSubscribed, true),
+        eq(users.isActive, true),
+        eq(users.emailVerified, true)
+      )
+    );
+  }
+  
+  async updateUserSubscription(userId: string, subscribed: boolean): Promise<User | undefined> {
+    const result = await db.update(users).set({ emailSubscribed: subscribed }).where(eq(users.id, userId)).returning();
+    return result[0];
   }
 }
 
