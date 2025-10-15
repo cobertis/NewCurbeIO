@@ -656,7 +656,7 @@ export default function Users() {
                     <FormItem>
                       <FormLabel>Office Address (Optional)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="123 Main St, City, State, ZIP" data-testid="input-edit-address" />
+                        <Input {...field} value={field.value || ""} placeholder="123 Main St, City, State, ZIP" data-testid="input-edit-address" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -936,7 +936,7 @@ export default function Users() {
                     <FormItem>
                       <FormLabel>Office Address (Optional)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="123 Main St, City, State, ZIP" data-testid="input-create-address" />
+                        <Input {...field} value={field.value || ""} placeholder="123 Main St, City, State, ZIP" data-testid="input-create-address" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
