@@ -122,7 +122,7 @@ export default function CampaignStats() {
               {openRate}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {uniqueOpenCount} unique opens / {openCount} total
+              {uniqueOpenCount} {uniqueOpenCount === 1 ? 'subscriber' : 'subscribers'} opened
             </p>
           </CardContent>
         </Card>
@@ -137,7 +137,7 @@ export default function CampaignStats() {
               {clickRate}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {uniqueClickCount} unique clicks / {clickCount} total
+              {uniqueClickCount} {uniqueClickCount === 1 ? 'subscriber' : 'subscribers'} clicked
             </p>
           </CardContent>
         </Card>

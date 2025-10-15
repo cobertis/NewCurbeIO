@@ -2440,15 +2440,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).send();
       }
 
-      const userAgent = req.headers['user-agent'];
-      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
+      // Check if this user has already opened this campaign
+      const existingOpens = await storage.getEmailOpens(campaignId as string);
+      const userAlreadyOpened = existingOpens.some(open => open.userId === userId);
 
-      await storage.recordEmailOpen(
-        campaignId as string,
-        userId as string,
-        userAgent,
-        ipAddress
-      );
+      // Only record the first open from this user
+      if (!userAlreadyOpened) {
+        const userAgent = req.headers['user-agent'];
+        const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
+
+        await storage.recordEmailOpen(
+          campaignId as string,
+          userId as string,
+          userAgent,
+          ipAddress
+        );
+      }
 
       // Return transparent 1x1 pixel GIF
       const pixel = Buffer.from(
