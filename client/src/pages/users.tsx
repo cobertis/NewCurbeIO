@@ -23,6 +23,8 @@ const userFormSchema = insertUserSchema.extend({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   phone: z.string().optional().or(z.literal("")),
+  dateOfBirth: z.string().optional().or(z.literal("")),
+  preferredLanguage: z.string().optional(),
   companyId: z.string().optional(),
 });
 
@@ -33,6 +35,8 @@ const editUserFormSchema = z.object({
   lastName: z.string().optional(),
   avatar: z.string().url().optional(),
   phone: z.string().optional().or(z.literal("")),
+  dateOfBirth: z.string().optional().or(z.literal("")),
+  preferredLanguage: z.string().optional(),
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
   isActive: z.boolean().optional(),
@@ -210,6 +214,8 @@ export default function Users() {
       firstName: "",
       lastName: "",
       phone: "",
+      dateOfBirth: "",
+      preferredLanguage: "en",
       role: "member",
       companyId: "",
     },
@@ -222,6 +228,8 @@ export default function Users() {
       firstName: "",
       lastName: "",
       phone: "",
+      dateOfBirth: "",
+      preferredLanguage: "en",
       role: "member",
       companyId: "",
     },
@@ -252,6 +260,8 @@ export default function Users() {
       firstName: user.firstName || "",
       lastName: user.lastName || "",
       phone: user.phone ? formatPhoneDisplay(user.phone) : "",
+      dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
+      preferredLanguage: user.preferredLanguage || "en",
       role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
       companyId: user.companyId || "__none__",
     });
@@ -393,7 +403,7 @@ export default function Users() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">First name:</p>
                       <p className="font-medium">{profileUser.firstName || "-"}</p>
@@ -410,6 +420,24 @@ export default function Users() {
                       <p className="text-sm text-muted-foreground mb-1">Phone:</p>
                       <p className="font-medium">
                         {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Date of Birth:</p>
+                      <p className="font-medium">
+                        {profileUser.dateOfBirth ? new Date(profileUser.dateOfBirth).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }) : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Preferred Language:</p>
+                      <p className="font-medium">
+                        {profileUser.preferredLanguage === "es" ? "Spanish" : 
+                         profileUser.preferredLanguage === "en" ? "English" : 
+                         profileUser.preferredLanguage || "-"}
                       </p>
                     </div>
                   </div>
@@ -431,7 +459,7 @@ export default function Users() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">Role:</p>
                       <p className="font-medium">
@@ -602,6 +630,47 @@ export default function Users() {
                     </FormItem>
                   )}
                 />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="dateOfBirth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            value={field.value || ""} 
+                            type="date" 
+                            data-testid="input-create-dateofbirth"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="preferredLanguage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Preferred Language</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-create-language">
+                              <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="en">English</SelectItem>
+                            <SelectItem value="es">Spanish</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={createForm.control}
                   name="password"
@@ -751,6 +820,50 @@ export default function Users() {
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""} 
+                          type="date" 
+                          data-testid="input-edit-dateofbirth"
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="preferredLanguage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Language</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-edit-language">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="es">Spanish</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               {isSuperAdmin && (
                 <FormField
                   control={editForm.control}
