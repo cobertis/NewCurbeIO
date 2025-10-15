@@ -2455,6 +2455,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userAgent,
           ipAddress
         );
+        console.log(`[TRACKING] First open recorded for user ${userId} in campaign ${campaignId}`);
+      } else {
+        console.log(`[TRACKING] Duplicate open ignored for user ${userId} in campaign ${campaignId}`);
       }
 
       // Return transparent 1x1 pixel GIF
