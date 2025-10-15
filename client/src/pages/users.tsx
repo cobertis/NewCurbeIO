@@ -315,19 +315,23 @@ export default function Users() {
                         ? `${profileUser.firstName} ${profileUser.lastName}`
                         : profileUser.email}
                     </h2>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant={
-                        profileUser.role === "superadmin" ? "default" :
-                        profileUser.role === "admin" ? "secondary" :
-                        "outline"
-                      }>
-                        {profileUser.role === "superadmin" ? "Super Admin" :
-                         profileUser.role === "admin" ? "Admin" :
-                         profileUser.role === "member" ? "Member" : "Viewer"}
-                      </Badge>
-                      <Badge variant={profileUser.isActive === false ? "destructive" : "default"}>
-                        {profileUser.isActive === false ? "Inactive" : "Active"}
-                      </Badge>
+                    <div className="space-y-2">
+                      <div>
+                        <Badge variant={
+                          profileUser.role === "superadmin" ? "default" :
+                          profileUser.role === "admin" ? "secondary" :
+                          "outline"
+                        }>
+                          {profileUser.role === "superadmin" ? "Super Admin" :
+                           profileUser.role === "admin" ? "Admin" :
+                           profileUser.role === "member" ? "Member" : "Viewer"}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Badge variant={profileUser.isActive === false ? "destructive" : "default"}>
+                          {profileUser.isActive === false ? "Inactive" : "Active"}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 </div>
