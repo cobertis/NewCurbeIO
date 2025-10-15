@@ -237,51 +237,65 @@ export default function Users() {
     const userCompany = companies.find(c => c.id === profileUser.companyId);
 
     return (
-      <div className="p-6 space-y-6">
-        {/* Profile Card */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-6">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={profileUser.avatar || undefined} alt={profileUser.email} />
-                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                  {userInitial}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold">
-                  {profileUser.firstName && profileUser.lastName
-                    ? `${profileUser.firstName} ${profileUser.lastName}`
-                    : profileUser.email}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">{profileUser.email}</p>
-                <div className="flex items-center gap-2 mt-2">
+      <div className="p-6">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left Sidebar */}
+          <div className="col-span-12 lg:col-span-3">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center text-center">
+                  <Avatar className="h-24 w-24 mb-4">
+                    <AvatarImage src={profileUser.avatar || undefined} alt={profileUser.email} />
+                    <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                      {userInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                  <h2 className="text-xl font-bold mb-1">
+                    {profileUser.firstName && profileUser.lastName
+                      ? `${profileUser.firstName} ${profileUser.lastName}`
+                      : profileUser.email}
+                  </h2>
                   <Badge variant={
                     profileUser.role === "superadmin" ? "default" :
                     profileUser.role === "admin" ? "secondary" :
                     "outline"
-                  }>
+                  } className="mb-4">
                     {profileUser.role === "superadmin" ? "Super Admin" :
                      profileUser.role === "admin" ? "Admin" :
                      profileUser.role === "member" ? "Member" : "Viewer"}
                   </Badge>
                   {profileUser.isActive === false && (
-                    <Badge variant="destructive">Inactive</Badge>
+                    <Badge variant="destructive" className="mb-4">Inactive</Badge>
                   )}
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="default"
-                  onClick={() => handleEdit(profileUser)}
-                  data-testid="button-edit-profile"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
+
+                <div className="space-y-4 mt-6 text-sm">
+                  <div>
+                    <p className="text-muted-foreground mb-1">Email:</p>
+                    <p className="font-medium break-all">{profileUser.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Cellphone:</p>
+                    <p className="font-medium">
+                      {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Created:</p>
+                    <p className="font-medium">
+                      {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+
                 {(isSuperAdmin || currentUser?.role === "admin") && currentUser?.id !== profileUser.id && (
                   <Button
                     variant="destructive"
+                    className="w-full mt-6"
                     onClick={() => deleteMutation.mutate(profileUser.id)}
                     disabled={deleteMutation.isPending}
                     data-testid="button-delete-user-profile"
@@ -290,119 +304,127 @@ export default function Users() {
                     {deleteMutation.isPending ? "Deleting..." : "Delete User"}
                   </Button>
                 )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Contact Information */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Email</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <div className="col-span-12 lg:col-span-9 space-y-6">
+            {/* Personal Information Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle className="text-base font-semibold">Personal Information</CardTitle>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => handleEdit(profileUser)}
+                  data-testid="button-edit-personal"
+                >
+                  <Edit className="h-3 w-3 mr-2" />
+                  Edit
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">First name:</p>
+                    <p className="font-medium">{profileUser.firstName || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Last name:</p>
+                    <p className="font-medium">{profileUser.lastName || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Email address:</p>
                     <p className="font-medium break-all">{profileUser.email}</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <Phone className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p className="text-sm text-muted-foreground mb-1">Phone:</p>
                     <p className="font-medium">
-                      {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "Not provided"}
+                      {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
                     </p>
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Personal Information */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <UserIcon className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">First Name</p>
-                    <p className="font-medium">
-                      {profileUser.firstName || "Not provided"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <UserIcon className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Last Name</p>
-                    <p className="font-medium">
-                      {profileUser.lastName || "Not provided"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Organization Information */}
+            {/* Organization Card */}
             {isSuperAdmin && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Organization</h3>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <Building className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Company</p>
-                    <p className="font-medium">
-                      {userCompany?.name || "No company assigned"}
-                    </p>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle className="text-base font-semibold">Organization</CardTitle>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleEdit(profileUser)}
+                    data-testid="button-edit-organization"
+                  >
+                    <Edit className="h-3 w-3 mr-2" />
+                    Edit
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Company:</p>
+                      <p className="font-medium">{userCompany?.name || "No company assigned"}</p>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
-            {/* Account Information */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Account Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
+            {/* Account Information Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle className="text-base font-semibold">Account Information</CardTitle>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => handleEdit(profileUser)}
+                  data-testid="button-edit-account"
+                >
+                  <Edit className="h-3 w-3 mr-2" />
+                  Edit
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Member Since</p>
-                    <p className="font-medium">
-                      {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <Shield className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Role</p>
+                    <p className="text-sm text-muted-foreground mb-1">Role:</p>
                     <p className="font-medium">
                       {profileUser.role === "superadmin" ? "Super Administrator" :
                        profileUser.role === "admin" ? "Administrator" :
                        profileUser.role === "member" ? "Team Member" : "Viewer"}
                     </p>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Avatar URL Section */}
-            {profileUser.avatar && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Profile Image</h3>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Avatar URL</p>
-                    <p className="font-medium text-sm break-all">{profileUser.avatar}</p>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Status:</p>
+                    <p className="font-medium">
+                      {profileUser.isActive === false ? "Inactive" : "Active"}
+                    </p>
                   </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Member since:</p>
+                    <p className="font-medium">
+                      {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                  {profileUser.avatar && (
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-muted-foreground mb-1">Avatar URL:</p>
+                      <p className="font-medium text-sm break-all">{profileUser.avatar}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
