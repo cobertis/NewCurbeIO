@@ -26,8 +26,8 @@ export default function CampaignStats() {
 
   if (isLoading || !stats) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center gap-4 mb-6">
+      <div className="p-8 space-y-6">
+        <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
@@ -36,15 +36,13 @@ export default function CampaignStats() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-3xl font-bold">Campaign Statistics</h1>
+          <h1 className="text-3xl font-semibold">Campaign Statistics</h1>
         </div>
-        <div className="grid gap-4">
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-muted-foreground">Loading statistics...</p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-muted-foreground">Loading statistics...</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -70,8 +68,8 @@ export default function CampaignStats() {
     : "0.0";
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center gap-4 mb-6">
+    <div className="p-8 space-y-6">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -81,7 +79,7 @@ export default function CampaignStats() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold">Campaign Statistics</h1>
+          <h1 className="text-3xl font-semibold">Campaign Statistics</h1>
           <p className="text-muted-foreground mt-1">{campaign.subject}</p>
         </div>
         <Badge
@@ -93,12 +91,12 @@ export default function CampaignStats() {
       </div>
 
       {campaign.sentAt && (
-        <p className="text-sm text-muted-foreground mb-6" data-testid="text-sent-at">
+        <p className="text-sm text-muted-foreground" data-testid="text-sent-at">
           Sent {formatDistanceToNow(new Date(campaign.sentAt), { addSuffix: true })}
         </p>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Recipients</CardTitle>
