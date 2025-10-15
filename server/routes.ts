@@ -2369,7 +2369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== EMAIL CONTACTS/SUBSCRIPTIONS ENDPOINTS ====================
 
-  // Get all subscribed users (contacts) - superadmin only
+  // Get all users (contacts) - superadmin only
   app.get("/api/contacts", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
@@ -2378,7 +2378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const contacts = await storage.getSubscribedUsers();
+      const contacts = await storage.getAllUsers();
       res.json({ contacts });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contacts" });
