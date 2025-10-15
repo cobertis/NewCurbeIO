@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart } from "lucide-react";
+import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -231,14 +231,23 @@ export default function Campaigns() {
             Create and send email campaigns to subscribers
           </p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-campaign">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Campaign
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/contacts")}
+            data-testid="button-manage-contacts"
+          >
+            <UserCog className="h-4 w-4 mr-2" />
+            Manage Contacts
+          </Button>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-campaign">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Campaign
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Email Campaign</DialogTitle>
               <DialogDescription>
@@ -304,6 +313,7 @@ export default function Campaigns() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
@@ -322,9 +332,16 @@ export default function Campaigns() {
             <Badge variant="outline" data-testid="badge-campaign-count">
               {campaigns.length} {campaigns.length === 1 ? "Campaign" : "Campaigns"}
             </Badge>
-            <Badge variant="secondary" data-testid="badge-subscriber-count">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/contacts")}
+              data-testid="button-view-contacts"
+              className="gap-2"
+            >
+              <Users className="h-4 w-4" />
               {contacts.length} {contacts.length === 1 ? "Subscriber" : "Subscribers"}
-            </Badge>
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
