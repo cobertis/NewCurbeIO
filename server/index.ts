@@ -19,8 +19,10 @@ const pgStore = new PgStore({
   createTableIfMissing: true,
   pruneSessionInterval: 60 * 60, // 1 hour in seconds
   errorLog: (error: Error) => {
-    console.error('Session store error:', error.message);
-    // Don't crash the app on session store errors
+    // Only log actual errors with messages
+    if (error && error.message) {
+      console.error('Session store error:', error.message);
+    }
   },
 });
 
