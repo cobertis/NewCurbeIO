@@ -79,7 +79,6 @@ export default function Campaigns() {
   const [editingList, setEditingList] = useState<ContactList | null>(null);
   const [deleteListOpen, setDeleteListOpen] = useState(false);
   const [listToDelete, setListToDelete] = useState<ContactList | null>(null);
-  const [manageMembersOpen, setManageMembersOpen] = useState(false);
   const [selectedList, setSelectedList] = useState<ContactList | null>(null);
   const { toast } = useToast();
 
@@ -329,6 +328,7 @@ export default function Campaigns() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contact-lists", selectedList?.id, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
       toast({
         title: "Member Added",
         description: "User has been added to the list successfully.",
@@ -349,6 +349,7 @@ export default function Campaigns() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contact-lists", selectedList?.id, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
       toast({
         title: "Member Removed",
         description: "User has been removed from the list successfully.",
@@ -808,99 +809,231 @@ export default function Campaigns() {
     </TabsContent>
 
     <TabsContent value="lists">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 flex-1">
-              <CardTitle className="text-2xl font-semibold">Contact Lists</CardTitle>
-              <Badge variant="outline" data-testid="badge-list-count">
-                {lists.length} {lists.length === 1 ? "List" : "Lists"}
-              </Badge>
-            </div>
-            <Button onClick={() => setCreateListOpen(true)} data-testid="button-create-list">
-              <Plus className="h-4 w-4 mr-2" />
-              Create List
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {listsLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : lists.length === 0 ? (
-            <div className="text-center py-8">
-              <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground" data-testid="text-no-lists">
-                No contact lists yet. Create your first list to segment your audience.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {lists.map((list) => (
-                <Card key={list.id} className="hover-elevate" data-testid={`card-list-${list.id}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium mb-2" data-testid={`text-list-name-${list.id}`}>
-                          {list.name}
-                        </h3>
-                        {list.description && (
-                          <p className="text-sm text-muted-foreground mb-3" data-testid={`text-list-description-${list.id}`}>
-                            {list.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          <span data-testid={`text-list-created-${list.id}`}>
-                            Created {formatDistanceToNow(new Date(list.createdAt))} ago
-                          </span>
+      <div className="grid grid-cols-12 gap-6">
+        {/* Left Column - Lists */}
+        <div className="col-span-4">
+          <Card className="h-full">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-lg font-semibold">Lists</CardTitle>
+                  <Badge variant="outline" data-testid="badge-list-count">
+                    {lists.length}
+                  </Badge>
+                </div>
+                <Button size="sm" onClick={() => setCreateListOpen(true)} data-testid="button-create-list">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {listsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : lists.length === 0 ? (
+                <div className="text-center py-8">
+                  <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground" data-testid="text-no-lists">
+                    No lists yet. Create your first list.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {lists.map((list) => (
+                    <div
+                      key={list.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors hover-elevate ${
+                        selectedList?.id === list.id 
+                          ? 'bg-accent border-accent-foreground/20' 
+                          : 'border-border'
+                      }`}
+                      onClick={() => setSelectedList(list)}
+                      data-testid={`list-item-${list.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium truncate" data-testid={`text-list-name-${list.id}`}>
+                            {list.name}
+                          </h3>
+                          {list.description && (
+                            <p className="text-xs text-muted-foreground truncate mt-1" data-testid={`text-list-description-${list.id}`}>
+                              {list.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            <span>{list.memberCount || 0} members</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedList(list);
-                            setManageMembersOpen(true);
-                          }}
-                          data-testid={`button-manage-members-${list.id}`}
-                        >
-                          <Users className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingList(list);
-                            editListForm.reset({ name: list.name, description: list.description || "" });
-                            setEditListOpen(true);
-                          }}
-                          data-testid={`button-edit-list-${list.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setListToDelete(list);
-                            setDeleteListOpen(true);
-                          }}
-                          data-testid={`button-delete-list-${list.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Members */}
+        <div className="col-span-8">
+          <Card className="h-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  {selectedList ? (
+                    <div>
+                      <CardTitle className="text-lg font-semibold">{selectedList.name}</CardTitle>
+                      {selectedList.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{selectedList.description}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <CardTitle className="text-lg font-semibold">Select a list</CardTitle>
+                  )}
+                </div>
+                {selectedList && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingList(selectedList);
+                        editListForm.reset({ name: selectedList.name, description: selectedList.description || "" });
+                        setEditListOpen(true);
+                      }}
+                      data-testid={`button-edit-list-${selectedList.id}`}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setListToDelete(selectedList);
+                        setDeleteListOpen(true);
+                      }}
+                      data-testid={`button-delete-list-${selectedList.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!selectedList ? (
+                <div className="text-center py-12">
+                  <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Select a list to view and manage its members</p>
+                </div>
+              ) : (
+                <div>
+                  {membersLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : membersData?.members.length === 0 ? (
+                    <div className="text-center py-8">
+                      <UserX className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground mb-4">No members in this list yet</p>
+                      <p className="text-sm text-muted-foreground mb-4">Add members from your contacts below</p>
+                    </div>
+                  ) : (
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium mb-3">List Members</h4>
+                      <div className="space-y-2">
+                        {membersData?.members.map((member: User) => (
+                          <div 
+                            key={member.id} 
+                            className="flex items-center justify-between p-3 border rounded-lg"
+                            data-testid={`member-item-${member.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={member.avatar || undefined} />
+                                <AvatarFallback>
+                                  {member.firstName?.[0]}{member.lastName?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {member.firstName} {member.lastName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">{member.email}</p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeMemberMutation.mutate({ 
+                                listId: selectedList.id, 
+                                userId: member.id 
+                              })}
+                              disabled={removeMemberMutation.isPending}
+                              data-testid={`button-remove-member-${member.id}`}
+                            >
+                              <UserX className="h-4 w-4 mr-2" />
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  )}
+
+                  {/* Add Members Section */}
+                  <div className="border-t pt-6 mt-6">
+                    <h4 className="text-sm font-medium mb-3">Add Members</h4>
+                    <div className="space-y-2">
+                      {contacts
+                        .filter(contact => !membersData?.members.some((m: User) => m.id === contact.id))
+                        .map((contact) => {
+                          const company = companies.find(c => c.id === contact.companyId);
+                          return (
+                            <div 
+                              key={contact.id} 
+                              className="flex items-center justify-between p-3 border rounded-lg"
+                              data-testid={`available-contact-${contact.id}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={contact.avatar || undefined} />
+                                  <AvatarFallback>
+                                    {contact.firstName?.[0]}{contact.lastName?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {contact.firstName} {contact.lastName}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">{contact.email}</p>
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addMemberMutation.mutate({ 
+                                  listId: selectedList.id, 
+                                  userId: contact.id 
+                                })}
+                                disabled={addMemberMutation.isPending}
+                                data-testid={`button-add-member-${contact.id}`}
+                              >
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Add
+                              </Button>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </TabsContent>
   </Tabs>
 
@@ -1159,92 +1292,6 @@ export default function Campaigns() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Manage List Members Dialog */}
-      <Dialog open={manageMembersOpen} onOpenChange={setManageMembersOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Manage Members - {selectedList?.name}</DialogTitle>
-            <DialogDescription>
-              Add or remove users from this contact list.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {membersLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contacts.map((contact) => {
-                    const isMember = membersData?.members.some(m => m.id === contact.id) || false;
-                    const company = companies.find(c => c.id === contact.companyId);
-                    
-                    return (
-                      <TableRow key={contact.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={contact.avatar || undefined} />
-                              <AvatarFallback>
-                                {contact.firstName?.[0]}{contact.lastName?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{contact.firstName} {contact.lastName}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{contact.email}</TableCell>
-                        <TableCell>{company?.name || 'N/A'}</TableCell>
-                        <TableCell>
-                          {isMember ? (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => selectedList && removeMemberMutation.mutate({ 
-                                listId: selectedList.id, 
-                                userId: contact.id 
-                              })}
-                              disabled={removeMemberMutation.isPending}
-                              data-testid={`button-remove-member-${contact.id}`}
-                            >
-                              <UserX className="h-4 w-4 mr-2" />
-                              Remove
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => selectedList && addMemberMutation.mutate({ 
-                                listId: selectedList.id, 
-                                userId: contact.id 
-                              })}
-                              disabled={addMemberMutation.isPending}
-                              data-testid={`button-add-member-${contact.id}`}
-                            >
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              Add
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
