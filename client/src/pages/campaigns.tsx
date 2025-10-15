@@ -49,7 +49,7 @@ export default function Campaigns() {
   const [campaignToSend, setCampaignToSend] = useState<EmailCampaign | null>(null);
   const { toast } = useToast();
 
-  const { data: sessionData } = useQuery<{ user: User }>({
+  const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
   });
 
@@ -179,6 +179,11 @@ export default function Campaigns() {
     const query = searchQuery.toLowerCase();
     return campaign.subject.toLowerCase().includes(query);
   });
+
+  // Don't show access denied while session is loading
+  if (sessionLoading) {
+    return null;
+  }
 
   if (currentUser?.role !== "superadmin") {
     return (
