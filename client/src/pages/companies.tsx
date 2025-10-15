@@ -399,7 +399,7 @@ export default function Companies() {
                               {company.name}
                             </h3>
                             <Badge 
-                              variant={company.isActive ? "default" : "secondary"}
+                              variant={company.isActive ? "default" : "destructive"}
                               className="text-xs"
                               data-testid={`badge-company-status-${company.id}`}
                             >
