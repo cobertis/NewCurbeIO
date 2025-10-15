@@ -376,120 +376,114 @@ export default function Users() {
           </div>
 
           {/* Main Content */}
-          <div className="col-span-12 lg:col-span-9 space-y-6">
-            {/* Personal Information Card */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle className="text-base font-semibold">Personal Information</CardTitle>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => handleEdit(profileUser)}
-                  data-testid="button-edit-personal"
-                >
-                  <Edit className="h-3 w-3 mr-2" />
-                  Edit
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">First name:</p>
-                    <p className="font-medium">{profileUser.firstName || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Last name:</p>
-                    <p className="font-medium">{profileUser.lastName || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Email address:</p>
-                    <p className="font-medium break-all">{profileUser.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Phone:</p>
-                    <p className="font-medium">
-                      {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Organization Card */}
-            {isSuperAdmin && (
+          <div className="col-span-12 lg:col-span-9">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Personal Information Card */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle className="text-base font-semibold">Organization</CardTitle>
+                  <CardTitle className="text-base font-semibold">Personal Information</CardTitle>
                   <Button
                     variant="default"
                     size="sm"
                     onClick={() => handleEdit(profileUser)}
-                    data-testid="button-edit-organization"
+                    data-testid="button-edit-personal"
                   >
                     <Edit className="h-3 w-3 mr-2" />
                     Edit
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                  <div className="space-y-4">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Company:</p>
-                      <p className="font-medium">{userCompany?.name || "No company assigned"}</p>
+                      <p className="text-sm text-muted-foreground mb-1">First name:</p>
+                      <p className="font-medium">{profileUser.firstName || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Last name:</p>
+                      <p className="font-medium">{profileUser.lastName || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Email address:</p>
+                      <p className="font-medium break-all">{profileUser.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Phone:</p>
+                      <p className="font-medium">
+                        {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            )}
 
-            {/* Account Information Card */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle className="text-base font-semibold">Account Information</CardTitle>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => handleEdit(profileUser)}
-                  data-testid="button-edit-account"
-                >
-                  <Edit className="h-3 w-3 mr-2" />
-                  Edit
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Role:</p>
-                    <p className="font-medium">
-                      {profileUser.role === "superadmin" ? "Super Administrator" :
-                       profileUser.role === "admin" ? "Administrator" :
-                       profileUser.role === "member" ? "Team Member" : "Viewer"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Status:</p>
-                    <p className="font-medium">
-                      {profileUser.isActive === false ? "Inactive" : "Active"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Member since:</p>
-                    <p className="font-medium">
-                      {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                  {profileUser.avatar && (
-                    <div className="md:col-span-2">
-                      <p className="text-sm text-muted-foreground mb-1">Avatar URL:</p>
-                      <p className="font-medium text-sm break-all">{profileUser.avatar}</p>
+              {/* Account Information Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle className="text-base font-semibold">Account Information</CardTitle>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleEdit(profileUser)}
+                    data-testid="button-edit-account"
+                  >
+                    <Edit className="h-3 w-3 mr-2" />
+                    Edit
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Role:</p>
+                      <p className="font-medium">
+                        {profileUser.role === "superadmin" ? "Super Administrator" :
+                         profileUser.role === "admin" ? "Administrator" :
+                         profileUser.role === "member" ? "Team Member" : "Viewer"}
+                      </p>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Status:</p>
+                      <p className="font-medium">
+                        {profileUser.isActive === false ? "Inactive" : "Active"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Member since:</p>
+                      <p className="font-medium">
+                        {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Organization Card */}
+              {isSuperAdmin && (
+                <Card className="md:col-span-2">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                    <CardTitle className="text-base font-semibold">Organization</CardTitle>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleEdit(profileUser)}
+                      data-testid="button-edit-organization"
+                    >
+                      <Edit className="h-3 w-3 mr-2" />
+                      Edit
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Company:</p>
+                      <p className="font-medium">{userCompany?.name || "No company assigned"}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
       </div>
