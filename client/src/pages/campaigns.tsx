@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog, Phone, Building, UserCheck, UserX } from "lucide-react";
@@ -43,12 +44,14 @@ interface ContactList {
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  memberCount?: number;
 }
 
 const campaignSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   htmlContent: z.string().min(1, "Email content is required"),
   textContent: z.string().optional(),
+  targetListId: z.string().optional(),
 });
 
 const contactListSchema = z.object({
@@ -132,6 +135,7 @@ export default function Campaigns() {
       subject: "",
       htmlContent: "",
       textContent: "",
+      targetListId: "",
     },
   });
 
@@ -514,6 +518,36 @@ export default function Campaigns() {
                           data-testid="textarea-campaign-text"
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="targetListId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Target Audience (Optional)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-target-list">
+                            <SelectValue placeholder="All subscribers (default)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="" data-testid="option-all-subscribers">
+                            All subscribers
+                          </SelectItem>
+                          {lists.map((list) => (
+                            <SelectItem key={list.id} value={list.id} data-testid={`option-list-${list.id}`}>
+                              {list.name} ({list.memberCount} members)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Select a specific contact list or send to all subscribers
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
