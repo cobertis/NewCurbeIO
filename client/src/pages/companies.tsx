@@ -346,26 +346,25 @@ export default function Companies() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <Button onClick={() => setCreateOpen(true)} data-testid="button-create-company">
-          <Plus className="h-4 w-4 mr-2" />
-          New Company
-        </Button>
-      </div>
-
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Company List</CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search companies..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-companies"
-              />
+            <div className="flex items-center gap-4">
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search companies..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                  data-testid="input-search-companies"
+                />
+              </div>
+              <Button onClick={() => setCreateOpen(true)} data-testid="button-create-company">
+                <Plus className="h-4 w-4 mr-2" />
+                New Company
+              </Button>
             </div>
           </div>
         </CardHeader>

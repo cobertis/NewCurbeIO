@@ -166,12 +166,17 @@ export default function PlansPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <Button onClick={handleCreate} data-testid="button-create-plan">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Plan
-        </Button>
-      </div>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle>Subscription Plans</CardTitle>
+            <Button onClick={handleCreate} data-testid="button-create-plan">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Plan
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
 
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

@@ -573,113 +573,103 @@ export default function Campaigns() {
 
   return (
     <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          {activeTab === "campaigns" && (
-            <DialogTrigger asChild>
-              <Button data-testid="button-create-campaign">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Campaign
-              </Button>
-            </DialogTrigger>
-          )}
-            <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create Email Campaign</DialogTitle>
-              <DialogDescription>
-                Create a new email campaign to send to your subscribers. Use variables like {"{{"} name {"}}"}, {"{{"} email {"}}"}, {"{{"} firstName {"}}"} for personalization.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...createForm}>
-              <form onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
-                <FormField
-                  control={createForm.control}
-                  name="subject"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Subject</FormLabel>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Email Campaign</DialogTitle>
+            <DialogDescription>
+              Create a new email campaign to send to your subscribers. Use variables like {"{{"} name {"}}"}, {"{{"} email {"}}"}, {"{{"} firstName {"}}"} for personalization.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...createForm}>
+            <form onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={createForm.control}
+                name="subject"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Campaign subject line" {...field} data-testid="input-campaign-subject" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createForm.control}
+                name="htmlContent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Content</FormLabel>
+                    <FormControl>
+                      <HtmlEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="<h1>Hello {{name}}</h1><p>Your email content here...</p>"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createForm.control}
+                name="textContent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Plain Text Content (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Plain text version of your email..."
+                        className="min-h-[100px]"
+                        {...field}
+                        data-testid="textarea-campaign-text"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createForm.control}
+                name="targetListId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Audience (Optional)</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(value === "all" ? "" : value)} value={field.value || "all"}>
                       <FormControl>
-                        <Input placeholder="Campaign subject line" {...field} data-testid="input-campaign-subject" />
+                        <SelectTrigger data-testid="select-target-list">
+                          <SelectValue placeholder="All subscribers (default)" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="htmlContent"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Content</FormLabel>
-                      <FormControl>
-                        <HtmlEditor
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="<h1>Hello {{name}}</h1><p>Your email content here...</p>"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="textContent"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Plain Text Content (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Plain text version of your email..."
-                          className="min-h-[100px]"
-                          {...field}
-                          data-testid="textarea-campaign-text"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="targetListId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target Audience (Optional)</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(value === "all" ? "" : value)} value={field.value || "all"}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-target-list">
-                            <SelectValue placeholder="All subscribers (default)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="all" data-testid="option-all-subscribers">
-                            All subscribers
+                      <SelectContent>
+                        <SelectItem value="all" data-testid="option-all-subscribers">
+                          All subscribers
+                        </SelectItem>
+                        {lists.map((list) => (
+                          <SelectItem key={list.id} value={list.id} data-testid={`option-list-${list.id}`}>
+                            {list.name} ({list.memberCount} members)
                           </SelectItem>
-                          {lists.map((list) => (
-                            <SelectItem key={list.id} value={list.id} data-testid={`option-list-${list.id}`}>
-                              {list.name} ({list.memberCount} members)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Select a specific contact list or send to all subscribers
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-campaign">
-                    {createMutation.isPending ? "Creating..." : "Create Campaign"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Select a specific contact list or send to all subscribers
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-campaign">
+                  {createMutation.isPending ? "Creating..." : "Create Campaign"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
@@ -717,6 +707,12 @@ export default function Campaigns() {
                 <Badge variant="outline" data-testid="badge-campaign-count">
                   {campaigns.length} {campaigns.length === 1 ? "Campaign" : "Campaigns"}
                 </Badge>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-create-campaign">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Campaign
+                  </Button>
+                </DialogTrigger>
               </div>
             </CardHeader>
         <CardContent>
