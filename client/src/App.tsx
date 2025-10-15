@@ -9,10 +9,11 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/schema";
@@ -31,13 +32,31 @@ import AuditLogs from "@/pages/audit-logs";
 import Support from "@/pages/support";
 import NotFound from "@/pages/not-found";
 
+// Helper function to get page title from route
+const getPageTitle = (path: string): string => {
+  const routes: Record<string, string> = {
+    '/': 'Dashboard',
+    '/dashboard': 'Dashboard',
+    '/analytics': 'Analytics',
+    '/users': 'Users',
+    '/companies': 'Companies',
+    '/plans': 'Plans',
+    '/features': 'Features',
+    '/invoices': 'Invoices',
+    '/settings': 'Settings',
+    '/audit-logs': 'Audit Logs',
+    '/support': 'Support',
+  };
+  return routes[path] || 'Dashboard';
+};
+
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const style = {
     "--sidebar-width": "15rem",
     "--sidebar-width-icon": "3rem",
   };
 
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
 
   const { data: userData } = useQuery<{ user: User }>({
@@ -50,8 +69,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const user = userData?.user;
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
+  const userName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user?.email || "User";
+  const userRole = user?.role === "superadmin" ? "Super Admin" : 
+                   user?.role === "admin" ? "Admin" : 
+                   user?.role === "member" ? "Member" : "Viewer";
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter((n: any) => !n.read).length;
+  const pageTitle = getPageTitle(location);
 
   const handleLogout = async () => {
     try {
@@ -89,10 +115,32 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <header className="h-16 border-b border-border bg-background flex items-center justify-between px-6 sticky top-0 z-10">
-            <div className="flex items-center gap-3">
+            {/* Left: Sidebar Toggle + Page Title */}
+            <div className="flex items-center gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" className="hover-elevate active-elevate-2 rounded-md" />
+              <h1 className="text-xl font-semibold text-foreground">{pageTitle}</h1>
             </div>
+
+            {/* Center: Search Bar */}
+            <div className="flex-1 max-w-xl mx-8">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search for anything here..."
+                  className="pl-9 bg-muted/50 border-muted-foreground/20"
+                  data-testid="input-global-search"
+                />
+              </div>
+            </div>
+
+            {/* Right: Action Icons + User Profile */}
             <div className="flex items-center gap-2">
+              {/* Quick Action Button */}
+              <Button size="icon" className="rounded-full bg-primary hover:bg-primary/90" data-testid="button-quick-action">
+                <Plus className="h-5 w-5" />
+              </Button>
+
               {/* Notifications Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -135,29 +183,56 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Analytics Icon */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setLocation("/analytics")}
+                data-testid="button-analytics"
+                className="rounded-md"
+              >
+                <BarChart3 className="h-5 w-5" />
+              </Button>
+
+              {/* Settings Icon */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setLocation("/settings")}
+                data-testid="button-settings"
+                className="rounded-md"
+              >
+                <SettingsIcon className="h-5 w-5" />
+              </Button>
+
               {/* Theme Toggle */}
               <ThemeToggle />
 
-              {/* User Avatar Dropdown */}
+              {/* User Profile with Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="rounded-full h-9 w-9 p-0" data-testid="button-user-menu">
-                    <Avatar className="h-9 w-9">
+                  <Button 
+                    variant="ghost" 
+                    className="flex items-center gap-3 px-3 h-10 hover-elevate rounded-md" 
+                    data-testid="button-user-menu"
+                  >
+                    <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-medium leading-none">{userName}</span>
+                      <span className="text-xs text-muted-foreground leading-none mt-0.5">{userRole}</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {user?.firstName} {user?.lastName}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email}
-                      </p>
+                      <p className="text-sm font-medium leading-none">{userName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
