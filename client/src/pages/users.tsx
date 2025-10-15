@@ -307,97 +307,95 @@ export default function Users() {
       <div className="p-6">
         <div className="grid grid-cols-12 gap-6">
           {/* Left Sidebar */}
-          <div className="col-span-12 lg:col-span-3">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div 
-                    className="relative group cursor-pointer flex-shrink-0"
-                    onClick={() => {
-                      setAvatarUrl(profileUser.avatar || "");
-                      setAvatarDialogOpen(true);
-                    }}
-                    data-testid="avatar-edit-trigger"
-                  >
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={profileUser.avatar || undefined} alt={profileUser.email} />
-                      <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                        {userInitial}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <Camera className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-bold mb-2">
-                      {profileUser.firstName && profileUser.lastName
-                        ? `${profileUser.firstName} ${profileUser.lastName}`
-                        : profileUser.email}
-                    </h2>
-                    <div className="space-y-2">
-                      <div>
-                        <Badge variant={
-                          profileUser.role === "superadmin" ? "default" :
-                          profileUser.role === "admin" ? "secondary" :
-                          "outline"
-                        }>
-                          {profileUser.role === "superadmin" ? "Super Admin" :
-                           profileUser.role === "admin" ? "Admin" :
-                           profileUser.role === "member" ? "Member" : "Viewer"}
-                        </Badge>
-                      </div>
-                      <div>
-                        <Badge variant={profileUser.isActive === false ? "destructive" : "default"}>
-                          {profileUser.isActive === false ? "Inactive" : "Active"}
-                        </Badge>
+          <div className="col-span-12 lg:col-span-4 xl:col-span-3">
+            <div className="space-y-6">
+              {/* User Info Card */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div 
+                      className="relative group cursor-pointer flex-shrink-0"
+                      onClick={() => {
+                        setAvatarUrl(profileUser.avatar || "");
+                        setAvatarDialogOpen(true);
+                      }}
+                      data-testid="avatar-edit-trigger"
+                    >
+                      <Avatar className="h-24 w-24">
+                        <AvatarImage src={profileUser.avatar || undefined} alt={profileUser.email} />
+                        <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                          {userInitial}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <Camera className="h-8 w-8 text-white" />
                       </div>
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-xl font-bold mb-2">
+                        {profileUser.firstName && profileUser.lastName
+                          ? `${profileUser.firstName} ${profileUser.lastName}`
+                          : profileUser.email}
+                      </h2>
+                      <div className="space-y-2">
+                        <div>
+                          <Badge variant={
+                            profileUser.role === "superadmin" ? "default" :
+                            profileUser.role === "admin" ? "secondary" :
+                            "outline"
+                          }>
+                            {profileUser.role === "superadmin" ? "Super Admin" :
+                             profileUser.role === "admin" ? "Admin" :
+                             profileUser.role === "member" ? "Member" : "Viewer"}
+                          </Badge>
+                        </div>
+                        <div>
+                          <Badge variant={profileUser.isActive === false ? "destructive" : "default"}>
+                            {profileUser.isActive === false ? "Inactive" : "Active"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-4 mt-6 text-sm">
-                  <div>
-                    <p className="text-muted-foreground mb-1">Email:</p>
-                    <p className="font-medium break-all">{profileUser.email}</p>
+                  <div className="space-y-4 mt-6 text-sm">
+                    <div>
+                      <p className="text-muted-foreground mb-1">Email:</p>
+                      <p className="font-medium break-all">{profileUser.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Cellphone:</p>
+                      <p className="font-medium">
+                        {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Created:</p>
+                      <p className="font-medium">
+                        {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Cellphone:</p>
-                    <p className="font-medium">
-                      {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Created:</p>
-                    <p className="font-medium">
-                      {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                </div>
 
-                {(isSuperAdmin || currentUser?.role === "admin") && currentUser?.id !== profileUser.id && (
-                  <Button
-                    variant="destructive"
-                    className="w-full mt-6"
-                    onClick={() => deleteMutation.mutate(profileUser.id)}
-                    disabled={deleteMutation.isPending}
-                    data-testid="button-delete-user-profile"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {deleteMutation.isPending ? "Deleting..." : "Delete User"}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  {(isSuperAdmin || currentUser?.role === "admin") && currentUser?.id !== profileUser.id && (
+                    <Button
+                      variant="destructive"
+                      className="w-full mt-6"
+                      onClick={() => deleteMutation.mutate(profileUser.id)}
+                      disabled={deleteMutation.isPending}
+                      data-testid="button-delete-user-profile"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {deleteMutation.isPending ? "Deleting..." : "Delete User"}
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
 
-          {/* Main Content */}
-          <div className="col-span-12 lg:col-span-9">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Personal Information Card */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -413,7 +411,7 @@ export default function Users() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  <div className="space-y-4">
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">First name:</p>
                       <p className="font-medium">{profileUser.firstName || "-"}</p>
@@ -421,16 +419,6 @@ export default function Users() {
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">Last name:</p>
                       <p className="font-medium">{profileUser.lastName || "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Email address:</p>
-                      <p className="font-medium break-all">{profileUser.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Phone:</p>
-                      <p className="font-medium">
-                        {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
-                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">Date of Birth:</p>
@@ -477,31 +465,34 @@ export default function Users() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Organization Card */}
-              {isSuperAdmin && (
-                <Card className="md:col-span-2">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle className="text-base font-semibold">Organization</CardTitle>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleEdit(profileUser)}
-                      data-testid="button-edit-organization"
-                    >
-                      <Edit className="h-3 w-3 mr-2" />
-                      Edit
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Company:</p>
-                      <p className="font-medium">{userCompany?.name || "No company assigned"}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="col-span-12 lg:col-span-8 xl:col-span-9">
+            {/* Organization Card */}
+            {isSuperAdmin && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle className="text-base font-semibold">Organization</CardTitle>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleEdit(profileUser)}
+                    data-testid="button-edit-organization"
+                  >
+                    <Edit className="h-3 w-3 mr-2" />
+                    Edit
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Company:</p>
+                    <p className="font-medium">{userCompany?.name || "No company assigned"}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
