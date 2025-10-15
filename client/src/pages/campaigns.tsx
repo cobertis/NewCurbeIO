@@ -551,14 +551,14 @@ export default function Campaigns() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Target Audience (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <Select onValueChange={(value) => field.onChange(value === "all" ? "" : value)} value={field.value || "all"}>
                         <FormControl>
                           <SelectTrigger data-testid="select-target-list">
                             <SelectValue placeholder="All subscribers (default)" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="" data-testid="option-all-subscribers">
+                          <SelectItem value="all" data-testid="option-all-subscribers">
                             All subscribers
                           </SelectItem>
                           {lists.map((list) => (
