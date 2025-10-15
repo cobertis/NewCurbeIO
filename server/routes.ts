@@ -2208,7 +2208,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(campaign);
     } catch (error) {
-      res.status(400).json({ message: "Failed to create campaign" });
+      console.error("Error creating campaign:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to create campaign";
+      res.status(500).json({ message: errorMessage });
     }
   });
 

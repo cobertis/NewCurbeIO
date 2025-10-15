@@ -87,10 +87,11 @@ export default function Campaigns() {
         description: "The campaign has been created successfully.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      const errorMessage = error?.message || "Failed to create campaign. Please try again.";
       toast({
-        title: "Error",
-        description: "Failed to create campaign.",
+        title: "Error Creating Campaign",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -157,15 +158,16 @@ export default function Campaigns() {
         });
       } else {
         toast({
-          title: "Campaign Sent",
-          description: `Successfully sent to ${result.totalSent} users.`,
+          title: "Campaign Sent Successfully",
+          description: `Successfully sent to ${result.totalSent} ${result.totalSent === 1 ? 'subscriber' : 'subscribers'}.`,
         });
       }
     },
-    onError: () => {
+    onError: (error: any) => {
+      const errorMessage = error?.message || "Failed to send campaign. Please try again.";
       toast({
-        title: "Error",
-        description: "Failed to send campaign.",
+        title: "Error Sending Campaign",
+        description: errorMessage,
         variant: "destructive",
       });
     },

@@ -13,14 +13,20 @@ app.use(cookieParser()); // Required to read cookies like 'trusted_device'
 // Configure PostgreSQL session store for persistent sessions
 const PgStore = connectPgSimple(session);
 
+// Create PgStore with error handling
+const pgStore = new PgStore({
+  conString: process.env.DATABASE_URL,
+  createTableIfMissing: true,
+  pruneSessionInterval: 60 * 60, // 1 hour in seconds
+  errorLog: (error: Error) => {
+    console.error('Session store error:', error.message);
+    // Don't crash the app on session store errors
+  },
+});
+
 app.use(
   session({
-    store: new PgStore({
-      conString: process.env.DATABASE_URL,
-      createTableIfMissing: true,
-      // Clean up expired sessions every hour
-      pruneSessionInterval: 60 * 60, // 1 hour in seconds
-    }),
+    store: pgStore,
     secret: process.env.SESSION_SECRET || "curbe-admin-secret-key-2024",
     resave: false,
     saveUninitialized: false,
