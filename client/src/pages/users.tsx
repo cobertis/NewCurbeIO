@@ -292,10 +292,12 @@ export default function Users() {
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div 
-                    className="relative group cursor-pointer flex-shrink-0" 
+                    className={`relative ${currentUser?.id === profileUser.id ? 'group cursor-pointer' : ''} flex-shrink-0`}
                     onClick={() => {
-                      setAvatarUrl(profileUser.avatar || "");
-                      setAvatarDialogOpen(true);
+                      if (currentUser?.id === profileUser.id) {
+                        setAvatarUrl(profileUser.avatar || "");
+                        setAvatarDialogOpen(true);
+                      }
                     }}
                     data-testid="avatar-edit-trigger"
                   >
@@ -305,9 +307,11 @@ export default function Users() {
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera className="h-8 w-8 text-white" />
-                    </div>
+                    {currentUser?.id === profileUser.id && (
+                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="h-8 w-8 text-white" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-bold mb-2">
