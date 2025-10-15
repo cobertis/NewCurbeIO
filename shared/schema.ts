@@ -128,6 +128,10 @@ export const users = pgTable("users", {
   // Email marketing subscription
   emailSubscribed: boolean("email_subscribed").notNull().default(true), // Subscribed to marketing emails
   
+  // Email preferences
+  emailNotifications: boolean("email_notifications").notNull().default(true), // General email notifications
+  invoiceAlerts: boolean("invoice_alerts").notNull().default(true), // Invoice notification emails
+  
   // Security
   lastLoginAt: timestamp("last_login_at"),
   passwordChangedAt: timestamp("password_changed_at"),

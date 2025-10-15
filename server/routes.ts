@@ -1435,9 +1435,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Return user preferences from user data
     res.json({
       preferences: {
-        emailNotifications: true,
-        marketingEmails: user.emailSubscribed || false,
-        invoiceAlerts: true,
+        emailNotifications: user.emailNotifications ?? true,
+        marketingEmails: user.emailSubscribed ?? false,
+        invoiceAlerts: user.invoiceAlerts ?? true,
         systemNotifications: true,
         batchNotifications: false,
         theme: "light",
@@ -1451,17 +1451,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const preferences = req.body;
+      const updateData: any = {};
       
-      // Update emailSubscribed field if marketingEmails is provided
+      // Map preferences to user fields
       if (typeof preferences.marketingEmails === 'boolean') {
-        await storage.updateUser(user.id, { emailSubscribed: preferences.marketingEmails });
+        updateData.emailSubscribed = preferences.marketingEmails;
+      }
+      if (typeof preferences.emailNotifications === 'boolean') {
+        updateData.emailNotifications = preferences.emailNotifications;
+      }
+      if (typeof preferences.invoiceAlerts === 'boolean') {
+        updateData.invoiceAlerts = preferences.invoiceAlerts;
+      }
+      
+      // Update user if there are changes
+      if (Object.keys(updateData).length > 0) {
+        await storage.updateUser(user.id, updateData);
       }
       
       res.json({ 
         success: true,
         preferences: {
-          ...preferences,
+          emailNotifications: preferences.emailNotifications ?? user.emailNotifications,
           marketingEmails: preferences.marketingEmails ?? user.emailSubscribed,
+          invoiceAlerts: preferences.invoiceAlerts ?? user.invoiceAlerts,
+          systemNotifications: preferences.systemNotifications ?? true,
+          batchNotifications: preferences.batchNotifications ?? false,
         }
       });
     } catch (error) {
