@@ -923,7 +923,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      console.log("About to update user with data:", validatedData);
       const updatedUser = await storage.updateUser(req.params.id, validatedData);
+      console.log("Updated user result:", updatedUser);
+      
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -943,8 +946,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { password, ...sanitizedUser } = updatedUser;
       res.json({ user: sanitizedUser });
-    } catch (error) {
-      res.status(400).json({ message: "Invalid request" });
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      res.status(400).json({ message: "Invalid request", error: error.message });
     }
   });
 
