@@ -2159,6 +2159,244 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== EMAIL CAMPAIGNS ENDPOINTS ====================
+
+  // Get all campaigns (superadmin only)
+  app.get("/api/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const campaigns = await storage.getAllCampaigns();
+      res.json({ campaigns });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch campaigns" });
+    }
+  });
+
+  // Create a new campaign (superadmin only)
+  app.post("/api/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { subject, htmlContent, textContent } = req.body;
+
+      if (!subject || !htmlContent) {
+        return res.status(400).json({ message: "Subject and HTML content are required" });
+      }
+
+      const campaign = await storage.createCampaign({
+        subject,
+        htmlContent,
+        textContent: textContent || null,
+        status: "draft",
+        sentAt: null,
+        sentBy: currentUser.id,
+        recipientCount: 0
+      });
+
+      res.status(201).json(campaign);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create campaign" });
+    }
+  });
+
+  // Get campaign by ID (superadmin only)
+  app.get("/api/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const campaign = await storage.getCampaign(req.params.id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      res.json(campaign);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch campaign" });
+    }
+  });
+
+  // Update campaign (superadmin only)
+  app.patch("/api/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const campaign = await storage.getCampaign(req.params.id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+
+      if (campaign.status === "sent") {
+        return res.status(400).json({ message: "Cannot edit a campaign that has already been sent" });
+      }
+
+      const { subject, htmlContent, textContent } = req.body;
+      const updateData: Partial<{ subject: string; htmlContent: string; textContent: string | null }> = {};
+      if (subject !== undefined) updateData.subject = subject;
+      if (htmlContent !== undefined) updateData.htmlContent = htmlContent;
+      if (textContent !== undefined) updateData.textContent = textContent;
+
+      const updatedCampaign = await storage.updateCampaign(req.params.id, updateData);
+
+      res.json(updatedCampaign);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update campaign" });
+    }
+  });
+
+  // Delete campaign (superadmin only)
+  app.delete("/api/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const campaign = await storage.getCampaign(req.params.id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+
+      if (campaign.status === "sent") {
+        return res.status(400).json({ message: "Cannot delete a campaign that has already been sent" });
+      }
+
+      const success = await storage.deleteCampaign(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete campaign" });
+    }
+  });
+
+  // Send campaign (superadmin only) - This will be implemented with EmailCampaignService
+  app.post("/api/campaigns/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const campaign = await storage.getCampaign(req.params.id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+
+      if (campaign.status === "sent") {
+        return res.status(400).json({ message: "Campaign has already been sent" });
+      }
+
+      // Get subscribed users
+      const subscribedUsers = await storage.getSubscribedUsers();
+
+      if (subscribedUsers.length === 0) {
+        return res.status(400).json({ message: "No subscribed users to send campaign to" });
+      }
+
+      // TODO: Implement EmailCampaignService to send emails
+      // For now, just mark as sent
+      const updatedCampaign = await storage.updateCampaign(req.params.id, {
+        status: "sent",
+        sentAt: new Date(),
+        recipientCount: subscribedUsers.length
+      });
+
+      res.json(updatedCampaign);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send campaign" });
+    }
+  });
+
+  // ==================== EMAIL CONTACTS/SUBSCRIPTIONS ENDPOINTS ====================
+
+  // Get all subscribed users (contacts) - superadmin only
+  app.get("/api/contacts", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const contacts = await storage.getSubscribedUsers();
+      res.json({ contacts });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  // Update user email subscription
+  app.patch("/api/users/:id/subscription", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const targetUserId = req.params.id;
+
+    // Users can only update their own subscription unless they're superadmin
+    if (currentUser.role !== "superadmin" && currentUser.id !== targetUserId) {
+      return res.status(403).json({ message: "Forbidden - Can only update your own subscription" });
+    }
+
+    try {
+      const { emailSubscribed } = req.body;
+
+      if (typeof emailSubscribed !== "boolean") {
+        return res.status(400).json({ message: "emailSubscribed must be a boolean" });
+      }
+
+      const updatedUser = await storage.updateUserSubscription(targetUserId, emailSubscribed);
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update subscription" });
+    }
+  });
+
+  // Public unsubscribe endpoint (no auth required)
+  app.post("/api/unsubscribe", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.updateUserSubscription(user.id, false);
+
+      res.json({ success: true, message: "Successfully unsubscribed from emails" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to unsubscribe" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
