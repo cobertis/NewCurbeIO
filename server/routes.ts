@@ -2313,7 +2313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Send campaign using EmailCampaignService
-      const result = await emailCampaignService.sendCampaign(req.params.id);
+      const result = await emailCampaignService.sendCampaign(req.params.id, campaign.targetListId || undefined);
 
       if (!result.success) {
         return res.status(500).json({ 

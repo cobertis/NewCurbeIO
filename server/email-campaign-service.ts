@@ -15,9 +15,9 @@ export class EmailCampaignService {
   constructor(private storage: IStorage) {}
 
   /**
-   * Send a campaign to all subscribed users
+   * Send a campaign to all subscribed users or to a specific list
    */
-  async sendCampaign(campaignId: string): Promise<CampaignResult> {
+  async sendCampaign(campaignId: string, targetListId?: string): Promise<CampaignResult> {
     const result: CampaignResult = {
       success: false,
       totalSent: 0,
@@ -35,15 +35,26 @@ export class EmailCampaignService {
         throw new Error("Campaign has already been sent");
       }
 
-      const subscribedUsers = await this.storage.getSubscribedUsers();
-
-      if (subscribedUsers.length === 0) {
-        throw new Error("No subscribed users to send campaign to");
+      let recipientsToSend: User[];
+      
+      if (targetListId) {
+        const listMembers = await this.storage.getListMembers(targetListId);
+        recipientsToSend = listMembers.filter(user => user.emailSubscribed);
+        
+        if (recipientsToSend.length === 0) {
+          throw new Error("No subscribed users in the selected contact list");
+        }
+      } else {
+        recipientsToSend = await this.storage.getSubscribedUsers();
+        
+        if (recipientsToSend.length === 0) {
+          throw new Error("No subscribed users to send campaign to");
+        }
       }
 
       const appUrl = process.env.APP_URL || "http://localhost:5000";
 
-      for (const user of subscribedUsers) {
+      for (const user of recipientsToSend) {
         try {
           let personalizedHtml = this.personalizeContent(
             campaign.htmlContent,
