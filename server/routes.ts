@@ -832,19 +832,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check permissions: users can view their own profile, admins can view their company users, superadmins can view all
-      if (currentUser.role === "superadmin") {
-        // Superadmin can view any user
-      } else if (currentUser.id === userId) {
-        // Users can view their own profile
-      } else if (currentUser.role === "admin" && user.companyId === currentUser.companyId) {
-        // Admins can view users in their company
-      } else {
+      const canAccess = 
+        currentUser.role === "superadmin" || // Superadmin can view any user
+        currentUser.id === userId || // Users can view their own profile
+        (currentUser.role === "admin" && user.companyId === currentUser.companyId) || // Admins can view users in their company
+        (currentUser.role === "member" && user.companyId === currentUser.companyId) || // Members can view users in their company
+        (currentUser.role === "viewer" && user.companyId === currentUser.companyId); // Viewers can view users in their company
+
+      if (!canAccess) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
       const { password, ...sanitizedUser } = user;
       res.json({ user: sanitizedUser });
     } catch (error) {
+      console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });

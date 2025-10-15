@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -283,14 +283,27 @@ export default function Users() {
                   )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => handleEdit(profileUser)}
-                data-testid="button-edit-profile"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Profile
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  onClick={() => handleEdit(profileUser)}
+                  data-testid="button-edit-profile"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Profile
+                </Button>
+                {(isSuperAdmin || currentUser?.role === "admin") && currentUser?.id !== profileUser.id && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => deleteMutation.mutate(profileUser.id)}
+                    disabled={deleteMutation.isPending}
+                    data-testid="button-delete-user-profile"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteMutation.isPending ? "Deleting..." : "Delete User"}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -300,9 +313,9 @@ export default function Users() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
                   <Mail className="h-5 w-5 text-muted-foreground" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-medium">{profileUser.email}</p>
+                    <p className="font-medium break-all">{profileUser.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
@@ -311,6 +324,31 @@ export default function Users() {
                     <p className="text-sm text-muted-foreground">Phone</p>
                     <p className="font-medium">
                       {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "Not provided"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Personal Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <UserIcon className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">First Name</p>
+                    <p className="font-medium">
+                      {profileUser.firstName || "Not provided"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <UserIcon className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Last Name</p>
+                    <p className="font-medium">
+                      {profileUser.lastName || "Not provided"}
                     </p>
                   </div>
                 </div>
