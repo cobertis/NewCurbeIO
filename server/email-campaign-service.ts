@@ -81,8 +81,23 @@ export class EmailCampaignService {
           });
 
           if (emailSent) {
+            // Create individual email tracking record
+            await this.storage.createCampaignEmail({
+              campaignId,
+              userId: user.id,
+              email: user.email,
+              status: "sent",
+            });
             result.totalSent++;
           } else {
+            // Create failed email tracking record
+            await this.storage.createCampaignEmail({
+              campaignId,
+              userId: user.id,
+              email: user.email,
+              status: "failed",
+              errorMessage: "Failed to send email (unknown error)",
+            });
             result.totalFailed++;
             result.errors.push({
               email: user.email,
@@ -90,10 +105,19 @@ export class EmailCampaignService {
             });
           }
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          // Create failed email tracking record
+          await this.storage.createCampaignEmail({
+            campaignId,
+            userId: user.id,
+            email: user.email,
+            status: "failed",
+            errorMessage,
+          });
           result.totalFailed++;
           result.errors.push({
             email: user.email,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: errorMessage,
           });
         }
       }

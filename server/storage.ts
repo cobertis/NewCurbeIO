@@ -27,6 +27,8 @@ import {
   type InsertEmailTemplate,
   type EmailCampaign,
   type InsertEmailCampaign,
+  type CampaignEmail,
+  type InsertCampaignEmail,
   type EmailOpen,
   type InsertEmailOpen,
   type LinkClick,
@@ -64,6 +66,7 @@ import {
   notifications,
   emailTemplates,
   emailCampaigns,
+  campaignEmails,
   emailOpens,
   linkClicks,
   campaignUnsubscribes,
@@ -204,6 +207,11 @@ export interface IStorage {
   createCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign>;
   updateCampaign(id: string, data: Partial<InsertEmailCampaign>): Promise<EmailCampaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
+  
+  // Campaign Emails - Individual Email Tracking
+  createCampaignEmail(email: InsertCampaignEmail): Promise<CampaignEmail>;
+  getCampaignEmails(campaignId: string, filters?: { status?: string; search?: string }): Promise<CampaignEmail[]>;
+  updateCampaignEmailStatus(campaignId: string, userId: string, status: string, timestamp?: Date): Promise<CampaignEmail | undefined>;
   
   // Email Subscriptions
   getSubscribedUsers(): Promise<User[]>;
@@ -969,6 +977,54 @@ export class DbStorage implements IStorage {
   async deleteCampaign(id: string): Promise<boolean> {
     const result = await db.delete(emailCampaigns).where(eq(emailCampaigns.id, id)).returning();
     return result.length > 0;
+  }
+  
+  // ==================== CAMPAIGN EMAILS - INDIVIDUAL TRACKING ====================
+  
+  async createCampaignEmail(email: InsertCampaignEmail): Promise<CampaignEmail> {
+    const result = await db.insert(campaignEmails).values(email).returning();
+    return result[0];
+  }
+  
+  async getCampaignEmails(campaignId: string, filters?: { status?: string; search?: string }): Promise<CampaignEmail[]> {
+    const conditions = [eq(campaignEmails.campaignId, campaignId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(campaignEmails.status, filters.status));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      conditions.push(sql`LOWER(${campaignEmails.email}) LIKE ${searchTerm}`);
+    }
+    
+    return db.select()
+      .from(campaignEmails)
+      .where(and(...conditions))
+      .orderBy(desc(campaignEmails.sentAt));
+  }
+  
+  async updateCampaignEmailStatus(campaignId: string, userId: string, status: string, timestamp?: Date): Promise<CampaignEmail | undefined> {
+    const updateData: any = { status };
+    
+    // Set appropriate timestamp based on status
+    if (timestamp) {
+      if (status === 'delivered') updateData.deliveredAt = timestamp;
+      else if (status === 'opened') updateData.openedAt = timestamp;
+      else if (status === 'clicked') updateData.clickedAt = timestamp;
+      else if (status === 'bounced') updateData.bouncedAt = timestamp;
+      else if (status === 'unsubscribed') updateData.unsubscribedAt = timestamp;
+    }
+    
+    const result = await db.update(campaignEmails)
+      .set(updateData)
+      .where(and(
+        eq(campaignEmails.campaignId, campaignId),
+        eq(campaignEmails.userId, userId)
+      ))
+      .returning();
+    
+    return result[0];
   }
   
   // ==================== EMAIL SUBSCRIPTIONS ====================

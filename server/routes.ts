@@ -2451,6 +2451,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
         
         await storage.recordCampaignUnsubscribe(campaignId, user.id, userAgent, ipAddress);
+        
+        // Update campaign_emails status to 'unsubscribed'
+        await storage.updateCampaignEmailStatus(
+          campaignId,
+          user.id,
+          'unsubscribed',
+          new Date()
+        );
       }
 
       res.json({ success: true, message: "Successfully unsubscribed from emails" });
@@ -2495,6 +2503,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userAgent,
           ipAddress
         );
+        
+        // Update campaign_emails status to 'opened'
+        await storage.updateCampaignEmailStatus(
+          campaignId as string,
+          userId as string,
+          'opened',
+          new Date()
+        );
+        
         console.log(`[TRACKING] First open recorded for user ${userId} in campaign ${campaignId}`);
       } else {
         console.log(`[TRACKING] Duplicate open ignored for user ${userId} in campaign ${campaignId}`);
@@ -2546,6 +2563,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         decodedUrl,
         userAgent,
         ipAddress
+      );
+      
+      // Update campaign_emails status to 'clicked'
+      await storage.updateCampaignEmailStatus(
+        campaignId as string,
+        userId as string,
+        'clicked',
+        new Date()
       );
 
       res.redirect(decodedUrl);
