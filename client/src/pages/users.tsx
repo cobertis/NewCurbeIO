@@ -815,10 +815,43 @@ export default function Users() {
           <DialogHeader>
             <DialogTitle>Edit Profile Picture</DialogTitle>
             <DialogDescription>
-              Paste an image URL or remove your current profile picture
+              Upload an image from your device or paste an image URL
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Upload Image</label>
+              <div className="mt-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setAvatarUrl(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  data-testid="input-avatar-file"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select an image from your device (JPG, PNG, GIF)
+                </p>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
             <div>
               <label className="text-sm font-medium">Image URL</label>
               <Input
@@ -830,7 +863,7 @@ export default function Users() {
                 className="mt-2"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Paste a direct link to an image
+                Or paste a direct link to an image
               </p>
             </div>
             {avatarUrl && (
