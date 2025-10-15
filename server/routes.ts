@@ -2387,11 +2387,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public unsubscribe endpoint (no auth required)
   app.post("/api/unsubscribe", async (req: Request, res: Response) => {
     try {
-      const { email } = req.body;
+      const { email, token } = req.body;
 
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
+
+      // If token is provided, it must be valid
+      if (token) {
+        const { verifyUnsubscribeToken } = await import("./unsubscribe-token");
+        
+        if (!verifyUnsubscribeToken(email, token)) {
+          return res.status(403).json({ message: "Invalid unsubscribe token" });
+        }
+      }
+      // If no token provided, allow legacy/manual unsubscribe (backward compatibility)
 
       const user = await storage.getUserByEmail(email);
 

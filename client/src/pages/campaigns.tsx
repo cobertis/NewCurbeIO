@@ -15,6 +15,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { HtmlEditor } from "@/components/html-editor";
 
 interface EmailCampaign {
   id: string;
@@ -257,13 +258,12 @@ export default function Campaigns() {
                   name="htmlContent"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email Content (HTML)</FormLabel>
+                      <FormLabel>Email Content</FormLabel>
                       <FormControl>
-                        <Textarea
+                        <HtmlEditor
+                          value={field.value}
+                          onChange={field.onChange}
                           placeholder="<h1>Hello {{name}}</h1><p>Your email content here...</p>"
-                          className="min-h-[200px] font-mono text-sm"
-                          {...field}
-                          data-testid="textarea-campaign-html"
                         />
                       </FormControl>
                       <FormMessage />
@@ -446,13 +446,12 @@ export default function Campaigns() {
                 name="htmlContent"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email Content (HTML)</FormLabel>
+                    <FormLabel>Email Content</FormLabel>
                     <FormControl>
-                      <Textarea
+                      <HtmlEditor
+                        value={field.value}
+                        onChange={field.onChange}
                         placeholder="<h1>Hello {{name}}</h1><p>Your email content here...</p>"
-                        className="min-h-[200px] font-mono text-sm"
-                        {...field}
-                        data-testid="textarea-edit-campaign-html"
                       />
                     </FormControl>
                     <FormMessage />

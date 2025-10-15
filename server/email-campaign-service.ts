@@ -1,6 +1,7 @@
 import { emailService } from "./email";
 import type { IStorage } from "./storage";
 import type { EmailCampaign, User } from "@shared/schema";
+import { generateUnsubscribeToken } from "./unsubscribe-token";
 
 interface CampaignResult {
   success: boolean;
@@ -95,7 +96,8 @@ export class EmailCampaignService {
    * Personalize email content with user data and add unsubscribe link
    */
   private personalizeContent(content: string, user: User, appUrl: string): string {
-    const unsubscribeUrl = `${appUrl}/unsubscribe?email=${encodeURIComponent(user.email)}`;
+    const token = generateUnsubscribeToken(user.email);
+    const unsubscribeUrl = `${appUrl}/unsubscribe?email=${encodeURIComponent(user.email)}&token=${token}`;
     
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const firstName = user.firstName || user.email;

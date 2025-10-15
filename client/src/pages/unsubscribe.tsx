@@ -13,6 +13,7 @@ import { useSearch } from "wouter";
 
 const unsubscribeSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
+  token: z.string().optional(),
 });
 
 type UnsubscribeForm = z.infer<typeof unsubscribeSchema>;
@@ -20,12 +21,15 @@ type UnsubscribeForm = z.infer<typeof unsubscribeSchema>;
 export default function Unsubscribe() {
   const searchParams = new URLSearchParams(useSearch());
   const emailFromUrl = searchParams.get("email");
+  const tokenFromUrl = searchParams.get("token");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [hasToken] = useState(!!tokenFromUrl);
 
   const form = useForm<UnsubscribeForm>({
     resolver: zodResolver(unsubscribeSchema),
     defaultValues: {
       email: emailFromUrl || "",
+      token: tokenFromUrl || "",
     },
   });
 
@@ -33,7 +37,10 @@ export default function Unsubscribe() {
     if (emailFromUrl) {
       form.setValue("email", emailFromUrl);
     }
-  }, [emailFromUrl, form]);
+    if (tokenFromUrl) {
+      form.setValue("token", tokenFromUrl);
+    }
+  }, [emailFromUrl, tokenFromUrl, form]);
 
   const unsubscribeMutation = useMutation({
     mutationFn: async (data: UnsubscribeForm) => {
@@ -89,8 +96,18 @@ export default function Unsubscribe() {
           </div>
           <CardTitle className="text-2xl">Unsubscribe from Emails</CardTitle>
           <CardDescription className="text-base mt-2">
-            We're sorry to see you go. Enter your email address below to unsubscribe from our campaign emails.
+            {hasToken 
+              ? "We're sorry to see you go. Confirm your email address below to unsubscribe from our campaign emails."
+              : "We're sorry to see you go. Enter your email address below to unsubscribe from our campaign emails."
+            }
           </CardDescription>
+          {!hasToken && (
+            <div className="mt-4 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                For best security, please use the unsubscribe link from your email campaign.
+              </p>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -110,6 +127,18 @@ export default function Unsubscribe() {
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="token"
+                render={({ field }) => (
+                  <FormItem className="hidden">
+                    <FormControl>
+                      <Input type="hidden" {...field} />
+                    </FormControl>
                   </FormItem>
                 )}
               />
