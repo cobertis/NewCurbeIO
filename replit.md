@@ -31,11 +31,22 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
 - **Audit Logging:** Centralized `LoggingService` tracks critical actions with metadata, supporting role-based access for viewing logs.
 - **Company Activation/Deactivation:** Superadmins can activate/deactivate companies, immediately logging out all users of that company on their next API request, enforced by `requireActiveCompany` middleware.
 - **Email Campaign System (Superadmin-only):**
-    - **Unified Interface with Tabs:** Campaigns and Contacts integrated in a single page using Shadcn Tabs component for seamless navigation.
+    - **Unified Interface with Tabs:** Campaigns, Contacts, and Lists integrated in a single page using Shadcn Tabs component for seamless navigation.
     - **Contact Management:** View and manage all subscribed users in a table format with search functionality, toggle subscription status per user with instant feedback.
+    - **Contact List Segmentation:** 
+        - Create and manage contact lists for targeted campaign delivery
+        - CRUD operations for lists with name and description
+        - Member management interface to add/remove users from lists
+        - Visual cards showing list details and member counts
+        - Database schema includes contact_lists and contact_list_members tables with proper foreign keys
     - **Campaign Creation:** CRUD operations for email campaigns with rich HTML editor featuring formatting toolbar (bold, italic, headings, lists, links) and live preview.
+    - **Targeted Campaign Sending:** 
+        - Optional "Target Audience" dropdown in campaign creation
+        - Select specific contact lists or send to all subscribers
+        - EmailCampaignService filters recipients to only subscribed users in selected list
+        - Displays member count for each list in selection dropdown
     - **Campaign Deletion:** Secure deletion with confirmation dialog (AlertDialog) showing campaign subject, preventing accidental deletions (draft campaigns only).
-    - **Mass Email Delivery:** Send campaigns to all subscribed users with personalized content and secure tokenized unsubscribe links.
+    - **Mass Email Delivery:** Send campaigns to all subscribed users or targeted list members with personalized content and secure tokenized unsubscribe links.
     - **Secure Unsubscribe:** HMAC-SHA256 tokens using SESSION_SECRET with timing-safe verification, format validation, and graceful error handling.
     - **Backward Compatibility:** Legacy unsubscribe (email-only) supported for existing flows; tokens validated only when present.
     - **Public Unsubscribe Page:** No authentication required, accepts email and optional token, shows security warning for non-tokenized requests.
