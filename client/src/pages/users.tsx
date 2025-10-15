@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, UserPlus, Trash2, Edit } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -14,6 +14,9 @@ import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
+import { useParams, useLocation } from "wouter";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 const userFormSchema = insertUserSchema.extend({
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
@@ -39,6 +42,9 @@ type UserForm = z.infer<typeof userFormSchema>;
 type EditUserForm = z.infer<typeof editUserFormSchema>;
 
 export default function Users() {
+  const params = useParams();
+  const userId = params.id;
+  const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
@@ -58,9 +64,16 @@ export default function Users() {
     enabled: sessionData?.user?.role === "superadmin",
   });
 
+  // Fetch individual user if userId is present
+  const { data: singleUserData, isLoading: isLoadingSingleUser } = useQuery<{ user: User }>({
+    queryKey: ["/api/users", userId],
+    enabled: !!userId,
+  });
+
   const currentUser = sessionData?.user;
   const isSuperAdmin = currentUser?.role === "superadmin";
   const companies = companiesData?.companies || [];
+  const profileUser = singleUserData?.user;
 
   const createMutation = useMutation({
     mutationFn: async (data: UserForm) => {
@@ -201,6 +214,173 @@ export default function Users() {
   const filteredUsers = data?.users.filter(user => 
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  // If userId is present, render user profile instead of list
+  if (userId) {
+    if (isLoadingSingleUser) {
+      return (
+        <div className="p-6">
+          <div className="text-center">Loading user profile...</div>
+        </div>
+      );
+    }
+
+    if (!profileUser) {
+      return (
+        <div className="p-6">
+          <div className="text-center">User not found</div>
+        </div>
+      );
+    }
+
+    const userInitial = (profileUser.firstName?.[0] || profileUser.email.charAt(0)).toUpperCase();
+    const userCompany = companies.find(c => c.id === profileUser.companyId);
+
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header with Back Button */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/users")}
+            data-testid="button-back-to-users"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Users
+          </Button>
+        </div>
+
+        {/* Profile Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-6">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={profileUser.avatar || undefined} alt={profileUser.email} />
+                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                  {userInitial}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold">
+                  {profileUser.firstName && profileUser.lastName
+                    ? `${profileUser.firstName} ${profileUser.lastName}`
+                    : profileUser.email}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">{profileUser.email}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant={
+                    profileUser.role === "superadmin" ? "default" :
+                    profileUser.role === "admin" ? "secondary" :
+                    "outline"
+                  }>
+                    {profileUser.role === "superadmin" ? "Super Admin" :
+                     profileUser.role === "admin" ? "Admin" :
+                     profileUser.role === "member" ? "Member" : "Viewer"}
+                  </Badge>
+                  {profileUser.isActive === false && (
+                    <Badge variant="destructive">Inactive</Badge>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => handleEdit(profileUser)}
+                data-testid="button-edit-profile"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Contact Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-medium">{profileUser.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <Phone className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p className="font-medium">
+                      {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "Not provided"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Organization Information */}
+            {isSuperAdmin && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Organization</h3>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <Building className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Company</p>
+                    <p className="font-medium">
+                      {userCompany?.name || "No company assigned"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Account Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Account Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Member Since</p>
+                    <p className="font-medium">
+                      {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <Shield className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Role</p>
+                    <p className="font-medium">
+                      {profileUser.role === "superadmin" ? "Super Administrator" :
+                       profileUser.role === "admin" ? "Administrator" :
+                       profileUser.role === "member" ? "Team Member" : "Viewer"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Avatar URL Section */}
+            {profileUser.avatar && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Profile Image</h3>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">Avatar URL</p>
+                    <p className="font-medium text-sm break-all">{profileUser.avatar}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {

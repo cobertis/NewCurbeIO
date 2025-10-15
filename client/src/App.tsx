@@ -14,10 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown, Camera } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { UploadAvatarDialog } from "@/components/upload-avatar-dialog";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
 import VerifyOTP from "@/pages/verify-otp";
@@ -60,7 +59,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
 
   const { data: userData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -240,15 +238,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setUploadAvatarOpen(true)} data-testid="menu-item-upload-photo">
-                    <Camera className="mr-2 h-4 w-4" />
-                    <span>Upload Photo</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation("/settings")} data-testid="menu-item-settings">
+                  <DropdownMenuItem onClick={() => user && setLocation(`/users/${user.id}`)} data-testid="menu-item-profile">
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation("/settings")} data-testid="menu-item-preferences">
+                  <DropdownMenuItem onClick={() => setLocation("/settings")} data-testid="menu-item-settings">
                     <SettingsIcon className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
@@ -266,14 +260,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-      
-      {/* Upload Avatar Dialog */}
-      <UploadAvatarDialog
-        open={uploadAvatarOpen}
-        onOpenChange={setUploadAvatarOpen}
-        currentAvatar={user?.avatar || undefined}
-        userInitial={userInitial}
-      />
     </SidebarProvider>
   );
 }
@@ -306,6 +292,13 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/users">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Users />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/users/:id">
         <ProtectedRoute>
           <DashboardLayout>
             <Users />

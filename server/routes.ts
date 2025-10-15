@@ -819,6 +819,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ users: sanitizedUsers });
   });
 
+  // Get single user by ID
+  app.get("/api/users/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const userId = req.params.id;
+
+    try {
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check permissions: users can view their own profile, admins can view their company users, superadmins can view all
+      if (currentUser.role === "superadmin") {
+        // Superadmin can view any user
+      } else if (currentUser.id === userId) {
+        // Users can view their own profile
+      } else if (currentUser.role === "admin" && user.companyId === currentUser.companyId) {
+        // Admins can view users in their company
+      } else {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { password, ...sanitizedUser } = user;
+      res.json({ user: sanitizedUser });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   // Create user (superadmin or admin)
   app.post("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
