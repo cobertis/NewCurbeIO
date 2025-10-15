@@ -1406,7 +1406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const updatedUser = await storage.updateUser(req.session.userId, validatedData);
+      const updatedUser = await storage.updateUser(user.id, validatedData);
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
