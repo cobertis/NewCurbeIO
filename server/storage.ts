@@ -27,6 +27,10 @@ import {
   type InsertEmailTemplate,
   type EmailCampaign,
   type InsertEmailCampaign,
+  type EmailOpen,
+  type InsertEmailOpen,
+  type LinkClick,
+  type InsertLinkClick,
   type Feature,
   type InsertFeature,
   type CompanyFeature,
@@ -193,6 +197,29 @@ export interface IStorage {
   // Email Subscriptions
   getSubscribedUsers(): Promise<User[]>;
   updateUserSubscription(userId: string, subscribed: boolean): Promise<User | undefined>;
+  
+  // Email Tracking - Opens
+  recordEmailOpen(campaignId: string, userId: string, userAgent?: string, ipAddress?: string): Promise<EmailOpen>;
+  getEmailOpens(campaignId: string): Promise<EmailOpen[]>;
+  getUniqueOpeners(campaignId: string): Promise<string[]>; // Returns array of unique user IDs
+  updateCampaignOpenStats(campaignId: string): Promise<void>;
+  
+  // Email Tracking - Link Clicks
+  recordLinkClick(campaignId: string, userId: string, url: string, userAgent?: string, ipAddress?: string): Promise<LinkClick>;
+  getLinkClicks(campaignId: string): Promise<LinkClick[]>;
+  getUniqueClickers(campaignId: string): Promise<string[]>; // Returns array of unique user IDs
+  getLinkClicksByUrl(campaignId: string): Promise<{url: string, clickCount: number, uniqueClickCount: number}[]>;
+  updateCampaignClickStats(campaignId: string): Promise<void>;
+  
+  // Campaign Statistics
+  getCampaignStats(campaignId: string): Promise<{
+    campaign: EmailCampaign;
+    opens: EmailOpen[];
+    clicks: LinkClick[];
+    uniqueOpeners: string[];
+    uniqueClickers: string[];
+    clicksByUrl: {url: string, clickCount: number, uniqueClickCount: number}[];
+  }>;
 }
 
 export class DbStorage implements IStorage {
