@@ -58,6 +58,8 @@ import {
   notifications,
   emailTemplates,
   emailCampaigns,
+  emailOpens,
+  linkClicks,
   features,
   companyFeatures,
   otpCodes,
@@ -951,6 +953,139 @@ export class DbStorage implements IStorage {
   async updateUserSubscription(userId: string, subscribed: boolean): Promise<User | undefined> {
     const result = await db.update(users).set({ emailSubscribed: subscribed }).where(eq(users.id, userId)).returning();
     return result[0];
+  }
+  
+  // ==================== EMAIL TRACKING - OPENS ====================
+  
+  async recordEmailOpen(campaignId: string, userId: string, userAgent?: string, ipAddress?: string): Promise<EmailOpen> {
+    const result = await db.insert(emailOpens).values({
+      campaignId,
+      userId,
+      userAgent,
+      ipAddress
+    }).returning();
+    
+    await this.updateCampaignOpenStats(campaignId);
+    
+    return result[0];
+  }
+  
+  async getEmailOpens(campaignId: string): Promise<EmailOpen[]> {
+    return db.select().from(emailOpens).where(eq(emailOpens.campaignId, campaignId)).orderBy(desc(emailOpens.openedAt));
+  }
+  
+  async getUniqueOpeners(campaignId: string): Promise<string[]> {
+    const result = await db.selectDistinct({ userId: emailOpens.userId })
+      .from(emailOpens)
+      .where(eq(emailOpens.campaignId, campaignId));
+    return result.map(r => r.userId);
+  }
+  
+  async updateCampaignOpenStats(campaignId: string): Promise<void> {
+    const opens = await this.getEmailOpens(campaignId);
+    const uniqueOpeners = await this.getUniqueOpeners(campaignId);
+    
+    await db.update(emailCampaigns)
+      .set({
+        openCount: opens.length,
+        uniqueOpenCount: uniqueOpeners.length
+      })
+      .where(eq(emailCampaigns.id, campaignId));
+  }
+  
+  // ==================== EMAIL TRACKING - CLICKS ====================
+  
+  async recordLinkClick(campaignId: string, userId: string, url: string, userAgent?: string, ipAddress?: string): Promise<LinkClick> {
+    const result = await db.insert(linkClicks).values({
+      campaignId,
+      userId,
+      url,
+      userAgent,
+      ipAddress
+    }).returning();
+    
+    await this.updateCampaignClickStats(campaignId);
+    
+    return result[0];
+  }
+  
+  async getLinkClicks(campaignId: string): Promise<LinkClick[]> {
+    return db.select().from(linkClicks).where(eq(linkClicks.campaignId, campaignId)).orderBy(desc(linkClicks.clickedAt));
+  }
+  
+  async getUniqueClickers(campaignId: string): Promise<string[]> {
+    const result = await db.selectDistinct({ userId: linkClicks.userId })
+      .from(linkClicks)
+      .where(eq(linkClicks.campaignId, campaignId));
+    return result.map(r => r.userId);
+  }
+  
+  async getLinkClicksByUrl(campaignId: string): Promise<{url: string, clickCount: number, uniqueClickCount: number}[]> {
+    const clicks = await this.getLinkClicks(campaignId);
+    
+    const urlStats = clicks.reduce((acc, click) => {
+      if (!acc[click.url]) {
+        acc[click.url] = {
+          url: click.url,
+          clickCount: 0,
+          uniqueUserIds: new Set<string>()
+        };
+      }
+      acc[click.url].clickCount++;
+      acc[click.url].uniqueUserIds.add(click.userId);
+      return acc;
+    }, {} as Record<string, {url: string, clickCount: number, uniqueUserIds: Set<string>}>);
+    
+    return Object.values(urlStats).map(stat => ({
+      url: stat.url,
+      clickCount: stat.clickCount,
+      uniqueClickCount: stat.uniqueUserIds.size
+    }));
+  }
+  
+  async updateCampaignClickStats(campaignId: string): Promise<void> {
+    const clicks = await this.getLinkClicks(campaignId);
+    const uniqueClickers = await this.getUniqueClickers(campaignId);
+    
+    await db.update(emailCampaigns)
+      .set({
+        clickCount: clicks.length,
+        uniqueClickCount: uniqueClickers.length
+      })
+      .where(eq(emailCampaigns.id, campaignId));
+  }
+  
+  // ==================== CAMPAIGN STATISTICS ====================
+  
+  async getCampaignStats(campaignId: string): Promise<{
+    campaign: EmailCampaign;
+    opens: EmailOpen[];
+    clicks: LinkClick[];
+    uniqueOpeners: string[];
+    uniqueClickers: string[];
+    clicksByUrl: {url: string, clickCount: number, uniqueClickCount: number}[];
+  }> {
+    const campaign = await this.getCampaign(campaignId);
+    if (!campaign) {
+      throw new Error('Campaign not found');
+    }
+    
+    const [opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl] = await Promise.all([
+      this.getEmailOpens(campaignId),
+      this.getLinkClicks(campaignId),
+      this.getUniqueOpeners(campaignId),
+      this.getUniqueClickers(campaignId),
+      this.getLinkClicksByUrl(campaignId)
+    ]);
+    
+    return {
+      campaign,
+      opens,
+      clicks,
+      uniqueOpeners,
+      uniqueClickers,
+      clicksByUrl
+    };
   }
 }
 

@@ -2,6 +2,7 @@ import { emailService } from "./email";
 import type { IStorage } from "./storage";
 import type { EmailCampaign, User } from "@shared/schema";
 import { generateUnsubscribeToken } from "./unsubscribe-token";
+import { trackingService } from "./tracking-service";
 
 interface CampaignResult {
   success: boolean;
@@ -44,14 +45,21 @@ export class EmailCampaignService {
 
       for (const user of subscribedUsers) {
         try {
-          const personalizedHtml = this.personalizeContent(
+          let personalizedHtml = this.personalizeContent(
             campaign.htmlContent,
             user,
-            appUrl
+            appUrl,
+            campaignId
+          );
+          
+          personalizedHtml = trackingService.injectTrackingIntoHtml(
+            personalizedHtml,
+            campaignId,
+            user.id
           );
           
           const personalizedText = campaign.textContent
-            ? this.personalizeContent(campaign.textContent, user, appUrl)
+            ? this.personalizeContent(campaign.textContent, user, appUrl, campaignId)
             : undefined;
 
           const emailSent = await emailService.sendEmail({
@@ -95,7 +103,7 @@ export class EmailCampaignService {
   /**
    * Personalize email content with user data and add unsubscribe link
    */
-  private personalizeContent(content: string, user: User, appUrl: string): string {
+  private personalizeContent(content: string, user: User, appUrl: string, campaignId: string): string {
     const token = generateUnsubscribeToken(user.email);
     const unsubscribeUrl = `${appUrl}/unsubscribe?email=${encodeURIComponent(user.email)}&token=${token}`;
     

@@ -2417,6 +2417,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== EMAIL TRACKING (Public endpoints) ====================
+
+  // Track email open (transparent pixel)
+  app.get("/api/track/open", async (req: Request, res: Response) => {
+    try {
+      const { c: campaignId, u: userId, t: token } = req.query;
+
+      if (!campaignId || !userId || !token) {
+        return res.status(400).send();
+      }
+
+      const { trackingService } = await import("./tracking-service");
+      
+      if (!trackingService.verifyTrackingToken(
+        campaignId as string,
+        userId as string,
+        token as string
+      )) {
+        return res.status(403).send();
+      }
+
+      const userAgent = req.headers['user-agent'];
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
+
+      await storage.recordEmailOpen(
+        campaignId as string,
+        userId as string,
+        userAgent,
+        ipAddress
+      );
+
+      // Return transparent 1x1 pixel GIF
+      const pixel = Buffer.from(
+        'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+        'base64'
+      );
+      
+      res.writeHead(200, {
+        'Content-Type': 'image/gif',
+        'Content-Length': pixel.length,
+        'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      });
+      res.end(pixel);
+    } catch (error) {
+      res.status(500).send();
+    }
+  });
+
+  // Track link click and redirect
+  app.get("/api/track/click", async (req: Request, res: Response) => {
+    try {
+      const { c: campaignId, u: userId, url, t: token } = req.query;
+
+      if (!campaignId || !userId || !url || !token) {
+        return res.status(400).json({ message: "Missing parameters" });
+      }
+
+      const { trackingService } = await import("./tracking-service");
+      
+      if (!trackingService.verifyTrackingToken(
+        campaignId as string,
+        userId as string,
+        token as string
+      )) {
+        return res.status(403).json({ message: "Invalid token" });
+      }
+
+      const decodedUrl = decodeURIComponent(url as string);
+      const userAgent = req.headers['user-agent'];
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
+
+      await storage.recordLinkClick(
+        campaignId as string,
+        userId as string,
+        decodedUrl,
+        userAgent,
+        ipAddress
+      );
+
+      res.redirect(decodedUrl);
+    } catch (error) {
+      res.status(500).json({ message: "Tracking failed" });
+    }
+  });
+
+  // Get campaign statistics (authenticated, superadmin only)
+  app.get("/api/campaigns/:id/stats", requireAuth, requireSuperadmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const stats = await storage.getCampaignStats(id);
+      
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get campaign statistics" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
