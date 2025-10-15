@@ -35,11 +35,6 @@ const supportOptions = [
 export default function Support() {
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Support</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400">Get help and contact our support team.</p>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {supportOptions.map((option) => (
           <Card key={option.title} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">

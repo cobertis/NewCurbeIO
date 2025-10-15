@@ -134,12 +134,6 @@ export default function Settings() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold mb-1">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your account settings and system preferences.
-        </p>
-      </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">

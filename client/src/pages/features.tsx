@@ -176,12 +176,6 @@ export default function FeaturesPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Features</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Manage system features that can be assigned to companies
-          </p>
-        </div>
         <Button onClick={openCreateDialog} data-testid="button-create-feature">
           <Plus className="h-4 w-4 mr-2" />
           Create Feature

@@ -96,12 +96,6 @@ export default function Contacts() {
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-contacts-heading">Email Contacts</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage email subscribers for campaigns
-          </p>
-        </div>
         <Badge variant="secondary" data-testid="badge-contact-count">
           {contacts.length} {contacts.length === 1 ? "Contact" : "Contacts"}
         </Badge>

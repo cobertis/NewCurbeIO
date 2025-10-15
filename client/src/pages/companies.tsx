@@ -347,10 +347,6 @@ export default function Companies() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Companies</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Manage system companies</p>
-        </div>
         <Button onClick={() => setCreateOpen(true)} data-testid="button-create-company">
           <Plus className="h-4 w-4 mr-2" />
           New Company

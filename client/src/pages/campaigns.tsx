@@ -450,12 +450,6 @@ export default function Campaigns() {
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-campaigns-heading">Email Campaigns</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage campaigns and subscriber contacts
-          </p>
-        </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           {activeTab === "campaigns" && (
             <DialogTrigger asChild>

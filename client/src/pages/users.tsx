@@ -804,10 +804,6 @@ export default function Users() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Users</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Manage users and their permissions.</p>
-        </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-user">

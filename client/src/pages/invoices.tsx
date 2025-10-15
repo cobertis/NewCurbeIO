@@ -37,13 +37,6 @@ export default function InvoicesPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-invoices-title">Invoices</h1>
-          <p className="text-muted-foreground">View and manage your invoices</p>
-        </div>
-      </div>
-
       {isLoading ? (
         <Card>
           <CardContent className="py-12">
