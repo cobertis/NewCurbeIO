@@ -25,6 +25,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize logging service
   const logger = new LoggingService(storage);
 
+  // Middleware to check authentication and company active status
+  const requireActiveCompany = async (req: Request, res: Response, next: Function) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Check if user's company is still active (for non-superadmin users)
+    if (user.companyId && user.role !== "superadmin") {
+      const company = await storage.getCompany(user.companyId);
+      if (!company || !company.isActive) {
+        // Company was deactivated - destroy the session
+        req.session.destroy((err) => {
+          if (err) {
+            console.error("Error destroying session:", err);
+          }
+        });
+        return res.status(401).json({ 
+          message: "Your account has been deactivated. Please contact support for assistance.",
+          deactivated: true 
+        });
+      }
+    }
+
+    // Store user in request for use in route handlers
+    req.user = user;
+    next();
+  };
+
   // ==================== AUTH ENDPOINTS ====================
   
   app.post("/api/login", async (req: Request, res: Response) => {
@@ -179,16 +212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get("/api/session", async (req: Request, res: Response) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const user = await storage.getUser(req.session.userId);
-
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
+  app.get("/api/session", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user!; // User is guaranteed by middleware
 
     // Get company name if user has a company
     let companyName: string | undefined;
@@ -611,15 +636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== STATS ENDPOINTS ====================
 
-  app.get("/api/stats", async (req: Request, res: Response) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const currentUser = await storage.getUser(req.session.userId);
-    if (!currentUser) {
-      return res.status(401).json({ message: "User not found" });
-    }
+  app.get("/api/stats", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
 
     let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
     if (currentUser.role === "superadmin") {
@@ -641,15 +659,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get dashboard stats with billing and company info
-  app.get("/api/dashboard-stats", async (req: Request, res: Response) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const currentUser = await storage.getUser(req.session.userId);
-    if (!currentUser) {
-      return res.status(401).json({ message: "User not found" });
-    }
+  app.get("/api/dashboard-stats", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
 
     try {
       // Determine which company to get stats for
@@ -787,15 +798,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== USER ENDPOINTS ====================
 
   // Get all users (superadmin or admin)
-  app.get("/api/users", async (req: Request, res: Response) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const currentUser = await storage.getUser(req.session.userId);
-    if (!currentUser) {
-      return res.status(401).json({ message: "User not found" });
-    }
+  app.get("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
 
     if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
@@ -815,15 +819,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create user (superadmin or admin)
-  app.post("/api/users", async (req: Request, res: Response) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const currentUser = await storage.getUser(req.session.userId);
-    if (!currentUser) {
-      return res.status(401).json({ message: "User not found" });
-    }
+  app.post("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
 
     if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
@@ -992,13 +989,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== COMPANY ENDPOINTS (superadmin only) ====================
 
   // Get all companies
-  app.get("/api/companies", async (req: Request, res: Response) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const currentUser = await storage.getUser(req.session.userId);
-    if (!currentUser || currentUser.role !== "superadmin") {
+  app.get("/api/companies", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -1007,13 +1001,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create company with admin user
-  app.post("/api/companies", async (req: Request, res: Response) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const currentUser = await storage.getUser(req.session.userId);
-    if (!currentUser || currentUser.role !== "superadmin") {
+  app.post("/api/companies", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 

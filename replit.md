@@ -92,6 +92,15 @@ The backend uses Express.js and TypeScript, providing a RESTful API. It implemen
     -   Two-stage session: `pendingUserId` → credential validation → `userId` after OTP verification (or trusted device)
     -   All protected routes verify `userId` exists (not just session presence)
 -   **Authentication:** Session-based with `express-session` and RBAC for protected routes.
+-   **Company Activation/Deactivation:** 
+    -   Superadmins can activate/deactivate companies using the Power toggle button on the Companies page
+    -   When a company is deactivated, all users of that company are automatically logged out on their next API request
+    -   `requireActiveCompany` middleware verifies both authentication and company active status on protected routes
+    -   Middleware checks: session exists → user exists → company is active (for non-superadmin users)
+    -   Deactivated company response includes `{ deactivated: true }` flag for frontend handling
+    -   Frontend automatically redirects to login with "Account deactivated" message
+    -   Currently applied to: `/api/session`, `/api/stats`, `/api/dashboard-stats`, `/api/users`, `/api/companies`
+    -   **Note:** Middleware should be applied to all remaining protected endpoints for consistent enforcement
 
 ### Data Models & Multi-Tenant Schema
 

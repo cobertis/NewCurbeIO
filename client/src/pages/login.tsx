@@ -14,6 +14,21 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Check if user was redirected due to account deactivation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("deactivated") === "true") {
+      toast({
+        variant: "destructive",
+        title: "Account Deactivated",
+        description: "Your account has been deactivated. Please contact support for assistance.",
+        duration: 8000,
+      });
+      // Clean up the URL
+      window.history.replaceState({}, "", "/login");
+    }
+  }, [toast]);
+
   // Check if user is already authenticated
   useEffect(() => {
     const checkAuth = async () => {

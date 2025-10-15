@@ -57,7 +57,7 @@ import {
   activationTokens,
   trustedDevices
 } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -259,6 +259,24 @@ export class DbStorage implements IStorage {
   async deleteCompany(id: string): Promise<boolean> {
     const result = await db.delete(companies).where(eq(companies.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Invalidate all active sessions for users of a specific company
+  async invalidateCompanySessions(companyId: string): Promise<void> {
+    // Get all users from the company
+    const companyUsers = await db.select({ id: users.id })
+      .from(users)
+      .where(eq(users.companyId, companyId));
+    
+    if (companyUsers.length === 0) return;
+
+    // Delete sessions for each user
+    for (const user of companyUsers) {
+      await db.execute(sql`
+        DELETE FROM session 
+        WHERE (sess->>'userId')::text = ${user.id}
+      `);
+    }
   }
 
   // ==================== COMPANY SETTINGS ====================
