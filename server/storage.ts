@@ -1171,12 +1171,31 @@ export class DbStorage implements IStorage {
   // ==================== CONTACT LISTS ====================
   
   async getAllContactLists(createdBy?: string): Promise<ContactList[]> {
+    let lists: ContactList[];
+    
     if (createdBy) {
-      return db.select().from(contactLists)
+      lists = await db.select().from(contactLists)
         .where(eq(contactLists.createdBy, createdBy))
         .orderBy(desc(contactLists.createdAt));
+    } else {
+      lists = await db.select().from(contactLists).orderBy(desc(contactLists.createdAt));
     }
-    return db.select().from(contactLists).orderBy(desc(contactLists.createdAt));
+    
+    // Calculate member count for each list
+    const listsWithCounts = await Promise.all(
+      lists.map(async (list) => {
+        const members = await db.select({ count: sql<number>`count(*)` })
+          .from(contactListMembers)
+          .where(eq(contactListMembers.listId, list.id));
+        
+        return {
+          ...list,
+          memberCount: Number(members[0].count)
+        };
+      })
+    );
+    
+    return listsWithCounts;
   }
   
   async getContactList(id: string): Promise<ContactList | undefined> {
