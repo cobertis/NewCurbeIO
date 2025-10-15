@@ -3,8 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog, Phone, Building, UserCheck, UserX } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -17,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { HtmlEditor } from "@/components/html-editor";
+import { formatPhoneDisplay } from "@/lib/phone-formatter";
 
 interface EmailCampaign {
   id: string;
@@ -42,11 +47,15 @@ type CampaignForm = z.infer<typeof campaignSchema>;
 export default function Campaigns() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [contactSearchQuery, setContactSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<EmailCampaign | null>(null);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [campaignToSend, setCampaignToSend] = useState<EmailCampaign | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<EmailCampaign | null>(null);
+  const [activeTab, setActiveTab] = useState("campaigns");
   const { toast } = useToast();
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
@@ -57,8 +66,33 @@ export default function Campaigns() {
     queryKey: ["/api/campaigns"],
   });
 
-  const { data: contactsData } = useQuery<{ contacts: User[] }>({
+  const { data: contactsData, isLoading: contactsLoading } = useQuery<{ contacts: User[] }>({
     queryKey: ["/api/contacts"],
+  });
+
+  const { data: companiesData } = useQuery<{ companies: any[] }>({
+    queryKey: ["/api/companies"],
+  });
+
+  const toggleSubscriptionMutation = useMutation({
+    mutationFn: async ({ userId, subscribed }: { userId: string; subscribed: boolean }) => {
+      return apiRequest("PATCH", `/api/users/${userId}/subscription`, { emailSubscribed: subscribed });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Subscription Updated",
+        description: "User subscription status has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update subscription status.",
+        variant: "destructive",
+      });
+    },
   });
 
   const createForm = useForm<CampaignForm>({
@@ -126,15 +160,17 @@ export default function Campaigns() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      setDeleteDialogOpen(false);
+      setCampaignToDelete(null);
       toast({
         title: "Campaign Deleted",
         description: "The campaign has been deleted successfully.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to delete campaign.",
+        description: error.message || "Failed to delete campaign.",
         variant: "destructive",
       });
     },
@@ -176,11 +212,38 @@ export default function Campaigns() {
   const currentUser = sessionData?.user;
   const campaigns = data?.campaigns || [];
   const contacts = contactsData?.contacts || [];
+  const companies = companiesData?.companies || [];
 
   const filteredCampaigns = campaigns.filter(campaign => {
     const query = searchQuery.toLowerCase();
     return campaign.subject.toLowerCase().includes(query);
   });
+
+  const filteredContacts = contacts.filter(contact => {
+    const query = contactSearchQuery.toLowerCase();
+    const firstName = contact.firstName?.toLowerCase() || "";
+    const lastName = contact.lastName?.toLowerCase() || "";
+    const email = contact.email.toLowerCase();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    return (
+      fullName.includes(query) ||
+      email.includes(query) ||
+      (contact.phone && formatPhoneDisplay(contact.phone).includes(query))
+    );
+  });
+
+  const getInitials = (user: User) => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    return user.email.substring(0, 2).toUpperCase();
+  };
+
+  const getCompanyName = (user: User) => {
+    if (!user.companyId) return "No Company";
+    return companies.find(c => c.id === user.companyId)?.name || "Unknown";
+  };
 
   // Don't show access denied while session is loading
   if (sessionLoading) {
@@ -217,6 +280,11 @@ export default function Campaigns() {
     setSendDialogOpen(true);
   };
 
+  const handleDelete = (campaign: EmailCampaign) => {
+    setCampaignToDelete(campaign);
+    setDeleteDialogOpen(true);
+  };
+
   const getStatusBadge = (campaign: EmailCampaign) => {
     if (campaign.status === "sent") {
       return <Badge variant="default">Sent</Badge>;
@@ -230,25 +298,18 @@ export default function Campaigns() {
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-campaigns-heading">Email Campaigns</h1>
           <p className="text-muted-foreground mt-1">
-            Create and send email campaigns to subscribers
+            Manage campaigns and subscriber contacts
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate("/contacts")}
-            data-testid="button-manage-contacts"
-          >
-            <UserCog className="h-4 w-4 mr-2" />
-            Manage Contacts
-          </Button>
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          {activeTab === "campaigns" && (
             <DialogTrigger asChild>
               <Button data-testid="button-create-campaign">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Campaign
               </Button>
             </DialogTrigger>
+          )}
             <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Email Campaign</DialogTitle>
@@ -315,37 +376,41 @@ export default function Campaigns() {
             </Form>
           </DialogContent>
         </Dialog>
-        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search campaigns by subject..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-campaigns"
-              />
-            </div>
-            <Badge variant="outline" data-testid="badge-campaign-count">
-              {campaigns.length} {campaigns.length === 1 ? "Campaign" : "Campaigns"}
-            </Badge>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/contacts")}
-              data-testid="button-view-contacts"
-              className="gap-2"
-            >
-              <Users className="h-4 w-4" />
-              {contacts.length} {contacts.length === 1 ? "Subscriber" : "Subscribers"}
-            </Button>
-          </div>
-        </CardHeader>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="campaigns" data-testid="tab-campaigns">
+            <Mail className="h-4 w-4 mr-2" />
+            Campaigns
+            <Badge variant="secondary" className="ml-2">{campaigns.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="contacts" data-testid="tab-contacts">
+            <Users className="h-4 w-4 mr-2" />
+            Contacts
+            <Badge variant="secondary" className="ml-2">{contacts.length}</Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="campaigns">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search campaigns by subject..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-search-campaigns"
+                  />
+                </div>
+                <Badge variant="outline" data-testid="badge-campaign-count">
+                  {campaigns.length} {campaigns.length === 1 ? "Campaign" : "Campaigns"}
+                </Badge>
+              </div>
+            </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-8">
@@ -420,8 +485,7 @@ export default function Campaigns() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => deleteMutation.mutate(campaign.id)}
-                              disabled={deleteMutation.isPending}
+                              onClick={() => handleDelete(campaign)}
                               data-testid={`button-delete-campaign-${campaign.id}`}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -448,6 +512,117 @@ export default function Campaigns() {
           )}
         </CardContent>
       </Card>
+    </TabsContent>
+
+    <TabsContent value="contacts">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search contacts by name, email, or phone..."
+                value={contactSearchQuery}
+                onChange={(e) => setContactSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-contacts"
+              />
+            </div>
+            <Badge variant="outline" data-testid="badge-contact-count">
+              {contacts.length} {contacts.length === 1 ? "Contact" : "Contacts"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {contactsLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredContacts.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground" data-testid="text-no-contacts">
+                {contactSearchQuery ? "No contacts found matching your search." : "No contacts yet."}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Subscription</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredContacts.map((contact) => (
+                  <TableRow key={contact.id} data-testid={`row-contact-${contact.id}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={contact.avatarUrl || undefined} />
+                          <AvatarFallback>{getInitials(contact)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium" data-testid={`text-contact-name-${contact.id}`}>
+                            {contact.firstName && contact.lastName
+                              ? `${contact.firstName} ${contact.lastName}`
+                              : contact.email}
+                          </p>
+                          <p className="text-sm text-muted-foreground capitalize">
+                            {contact.role}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell data-testid={`text-contact-email-${contact.id}`}>
+                      {contact.email}
+                    </TableCell>
+                    <TableCell data-testid={`text-contact-phone-${contact.id}`}>
+                      {contact.phone ? formatPhoneDisplay(contact.phone) : "-"}
+                    </TableCell>
+                    <TableCell data-testid={`text-contact-company-${contact.id}`}>
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <span>{getCompanyName(contact)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant={contact.emailSubscribed ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleSubscriptionMutation.mutate({
+                          userId: contact.id,
+                          subscribed: !contact.emailSubscribed
+                        })}
+                        disabled={toggleSubscriptionMutation.isPending}
+                        data-testid={`button-toggle-subscription-${contact.id}`}
+                        className="gap-2"
+                      >
+                        {contact.emailSubscribed ? (
+                          <>
+                            <UserCheck className="h-4 w-4" />
+                            Subscribed
+                          </>
+                        ) : (
+                          <>
+                            <UserX className="h-4 w-4" />
+                            Unsubscribed
+                          </>
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+  </Tabs>
 
       {/* Edit Campaign Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -546,6 +721,30 @@ export default function Campaigns() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Campaign Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente la campaña{" "}
+              <strong>"{campaignToDelete?.subject}"</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => campaignToDelete && deleteMutation.mutate(campaignToDelete.id)}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
