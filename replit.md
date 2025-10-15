@@ -30,6 +30,13 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
 - **Phone Number Formatting:** Standardized formatting (`+1 (415) 555-2671`) across the system, with functions for input, display, and E.164 conversion for backend/Twilio.
 - **Audit Logging:** Centralized `LoggingService` tracks critical actions with metadata, supporting role-based access for viewing logs.
 - **Company Activation/Deactivation:** Superadmins can activate/deactivate companies, immediately logging out all users of that company on their next API request, enforced by `requireActiveCompany` middleware.
+- **Email Campaign System (Superadmin-only):**
+    - **Contact Management:** View and manage all subscribed users, toggle subscription status per user.
+    - **Campaign Creation:** CRUD operations for email campaigns with rich HTML editor featuring formatting toolbar (bold, italic, headings, lists, links) and live preview.
+    - **Mass Email Delivery:** Send campaigns to all subscribed users with personalized content and secure tokenized unsubscribe links.
+    - **Secure Unsubscribe:** HMAC-SHA256 tokens using SESSION_SECRET with timing-safe verification, format validation, and graceful error handling.
+    - **Backward Compatibility:** Legacy unsubscribe (email-only) supported for existing flows; tokens validated only when present.
+    - **Public Unsubscribe Page:** No authentication required, accepts email and optional token, shows security warning for non-tokenized requests.
 
 ### System Design Choices
 The system employs a clear separation of concerns between frontend and backend. Data models are designed for multi-tenancy in PostgreSQL using Drizzle ORM, ensuring strict data isolation. Security is paramount, with comprehensive measures for password management, account activation, and 2FA. The modular feature system provides flexibility for customizing tenant functionalities.
