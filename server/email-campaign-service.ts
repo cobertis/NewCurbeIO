@@ -122,13 +122,25 @@ export class EmailCampaignService {
         }
       }
 
-      await this.storage.updateCampaign(campaignId, {
-        status: "sent",
-        sentAt: new Date(),
-        recipientCount: result.totalSent,
-      });
+      // Update campaign status based on delivery results
+      if (result.totalSent > 0) {
+        // At least one email was successfully delivered - mark as sent
+        await this.storage.updateCampaign(campaignId, {
+          status: "sent",
+          sentAt: new Date(),
+          recipientCount: result.totalSent,
+        });
+        result.success = true;
+      } else {
+        // All emails failed - mark as failed and record the attempt
+        await this.storage.updateCampaign(campaignId, {
+          status: "failed",
+          sentAt: new Date(), // Record when the attempt was made
+          recipientCount: 0, // No successful deliveries
+        });
+        result.success = false;
+      }
 
-      result.success = result.totalSent > 0;
       return result;
     } catch (error) {
       throw error;
