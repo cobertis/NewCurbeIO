@@ -282,8 +282,8 @@ export default function Users() {
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  // If userId is present, render user profile instead of list
-  if (userId) {
+  // Profile view JSX
+  const renderProfileView = () => {
     if (isLoadingSingleUser) {
       return (
         <div className="p-6">
@@ -506,7 +506,7 @@ export default function Users() {
         </div>
       </div>
     );
-  }
+  };
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
@@ -531,6 +531,283 @@ export default function Users() {
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.member;
     return config;
   };
+
+  // If userId is present, render profile view
+  if (userId) {
+    return (
+      <>
+        {renderProfileView()}
+        
+        {/* Edit User Dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>
+                Modify user email and role.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-edit-firstname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-edit-lastname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={editForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="email" data-testid="input-edit-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          type="tel" 
+                          placeholder="+1 (415) 555-2671" 
+                          data-testid="input-edit-phone"
+                          onChange={(e) => {
+                            const formatted = formatPhoneInput(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="dateOfBirth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""} 
+                            type="date" 
+                            data-testid="input-edit-dateofbirth"
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="preferredLanguage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Preferred Language</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-language">
+                              <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="en">English</SelectItem>
+                            <SelectItem value="es">Spanish</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={editForm.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Office Address (Optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="123 Main St, City, State, ZIP" data-testid="input-edit-address" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {isSuperAdmin && (
+                  <FormField
+                    control={editForm.control}
+                    name="companyId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-company">
+                              <SelectValue placeholder="Select a company" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="__none__">No Company</SelectItem>
+                            {companies.map((company) => (
+                              <SelectItem key={company.id} value={company.id}>
+                                {company.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                <FormField
+                  control={editForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-edit-role">
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="superadmin">Super Admin</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="submit" disabled={updateMutation.isPending} data-testid="button-edit-user-submit">
+                    {updateMutation.isPending ? "Updating..." : "Update User"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Avatar Edit Dialog */}
+        <Dialog open={avatarDialogOpen} onOpenChange={setAvatarDialogOpen}>
+          <DialogContent data-testid="dialog-edit-avatar">
+            <DialogHeader>
+              <DialogTitle>Edit Profile Picture</DialogTitle>
+              <DialogDescription>
+                Upload an image from your device
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Select Image</label>
+                <div className="mt-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setAvatarUrl(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    data-testid="input-avatar-file"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    JPG, PNG or GIF (max 5MB)
+                  </p>
+                </div>
+              </div>
+
+              {avatarUrl && (
+                <div className="flex justify-center">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={avatarUrl} alt="Preview" />
+                    <AvatarFallback>Preview</AvatarFallback>
+                  </Avatar>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="flex gap-2">
+              {profileUser?.avatar && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (profileUser?.id) {
+                      updateAvatarMutation.mutate({ id: profileUser.id, avatar: null });
+                    }
+                  }}
+                  disabled={updateAvatarMutation.isPending}
+                  data-testid="button-remove-avatar"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove
+                </Button>
+              )}
+              <Button
+                variant="default"
+                onClick={() => {
+                  if (profileUser?.id && avatarUrl) {
+                    updateAvatarMutation.mutate({ id: profileUser.id, avatar: avatarUrl });
+                  }
+                }}
+                disabled={!avatarUrl || updateAvatarMutation.isPending}
+                data-testid="button-save-avatar"
+              >
+                {updateAvatarMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
