@@ -695,7 +695,7 @@ export default function Campaigns() {
           </TabsTrigger>
           <TabsTrigger value="lists" data-testid="tab-lists">
             <UserCog className="h-4 w-4 mr-2" />
-            Lists
+            Contact Lists
             <Badge variant="secondary" className="ml-2">{lists.length}</Badge>
           </TabsTrigger>
         </TabsList>
