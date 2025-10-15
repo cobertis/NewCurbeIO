@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown, MessageSquare, Sun } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/schema";
@@ -59,6 +60,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const { data: userData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -137,73 +139,40 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Right: Action Icons + User Profile */}
             <div className="flex items-center gap-2">
-              {/* Quick Action Button */}
-              <Button size="icon" className="rounded-full bg-primary hover:bg-primary/90" data-testid="button-quick-action">
-                <Plus className="h-5 w-5" />
+              {/* Theme/Brightness Icon */}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                data-testid="button-brightness"
+                className="rounded-md"
+              >
+                <Sun className="h-5 w-5 text-blue-500" />
               </Button>
 
-              {/* Notifications Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" data-testid="button-notifications" className="rounded-md relative">
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                      <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                        {unreadCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {isLoadingNotifications ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground" data-testid="notifications-loading">
-                      Loading notifications...
-                    </div>
-                  ) : isErrorNotifications ? (
-                    <div className="py-6 text-center text-sm text-destructive" data-testid="notifications-error">
-                      Failed to load notifications
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground" data-testid="notifications-empty">
-                      No notifications
-                    </div>
-                  ) : (
-                    notifications.slice(0, 5).map((notification: any) => (
-                      <DropdownMenuItem 
-                        key={notification.id} 
-                        className="flex flex-col items-start py-3"
-                        data-testid={`notification-item-${notification.id}`}
-                      >
-                        <div className="font-medium">{notification.title}</div>
-                        <div className="text-sm text-muted-foreground">{notification.message}</div>
-                      </DropdownMenuItem>
-                    ))
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Messages Icon */}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                data-testid="button-messages"
+                className="rounded-md"
+              >
+                <MessageSquare className="h-5 w-5 text-blue-500" />
+              </Button>
 
-              {/* Analytics Icon */}
+              {/* Notifications Button */}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => setLocation("/analytics")}
-                data-testid="button-analytics"
-                className="rounded-md"
+                onClick={() => setNotificationsOpen(true)}
+                data-testid="button-notifications" 
+                className="rounded-md relative"
               >
-                <BarChart3 className="h-5 w-5" />
-              </Button>
-
-              {/* Settings Icon */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setLocation("/settings")}
-                data-testid="button-settings"
-                className="rounded-md"
-              >
-                <SettingsIcon className="h-5 w-5" />
+                <Bell className="h-5 w-5 text-blue-500" />
+                {unreadCount > 0 && (
+                  <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-semibold">!</span>
+                  </div>
+                )}
               </Button>
 
               {/* Theme Toggle */}
@@ -260,6 +229,46 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+
+      {/* Notifications Sidebar */}
+      <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+        <SheetContent side="right" className="w-96">
+          <SheetHeader>
+            <SheetTitle>Notifications</SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            {isLoadingNotifications ? (
+              <div className="py-6 text-center text-sm text-muted-foreground" data-testid="notifications-loading">
+                Loading notifications...
+              </div>
+            ) : isErrorNotifications ? (
+              <div className="py-6 text-center text-sm text-destructive" data-testid="notifications-error">
+                Failed to load notifications
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground" data-testid="notifications-empty">
+                No notifications
+              </div>
+            ) : (
+              notifications.map((notification: any) => (
+                <div 
+                  key={notification.id}
+                  className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                  data-testid={`notification-item-${notification.id}`}
+                >
+                  <div className="font-medium text-sm mb-1">{notification.title}</div>
+                  <div className="text-sm text-muted-foreground">{notification.message}</div>
+                  {!notification.read && (
+                    <div className="mt-2">
+                      <Badge variant="destructive" className="text-xs">New</Badge>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </SidebarProvider>
   );
 }
