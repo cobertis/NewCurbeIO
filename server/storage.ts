@@ -214,8 +214,10 @@ export class DbStorage implements IStorage {
     if (data.password !== undefined) mappedData.password = data.password;
     if (data.firstName !== undefined) mappedData.firstName = data.firstName;
     if (data.lastName !== undefined) mappedData.lastName = data.lastName;
-    if (data.avatar !== undefined) mappedData.avatar = data.avatar;
-    if (data.phone !== undefined) mappedData.phone = data.phone;
+    // Convert empty string to null for avatar removal
+    if (data.avatar !== undefined) mappedData.avatar = data.avatar === "" ? null : data.avatar;
+    // Convert empty string to null for phone removal
+    if (data.phone !== undefined) mappedData.phone = data.phone === "" ? null : data.phone;
     if (data.role !== undefined) mappedData.role = data.role;
     if (data.companyId !== undefined) mappedData.companyId = data.companyId;
     if (data.isActive !== undefined) mappedData.isActive = data.isActive;

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,12 +11,13 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown, Camera } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { UploadAvatarDialog } from "@/components/upload-avatar-dialog";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
 import VerifyOTP from "@/pages/verify-otp";
@@ -58,6 +60,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
 
   const { data: userData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -217,6 +220,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     data-testid="button-user-menu"
                   >
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.avatar || undefined} alt={userName} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                         {userInitial}
                       </AvatarFallback>
@@ -236,6 +240,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setUploadAvatarOpen(true)} data-testid="menu-item-upload-photo">
+                    <Camera className="mr-2 h-4 w-4" />
+                    <span>Upload Photo</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setLocation("/settings")} data-testid="menu-item-settings">
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Profile</span>
@@ -258,6 +266,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+      
+      {/* Upload Avatar Dialog */}
+      <UploadAvatarDialog
+        open={uploadAvatarOpen}
+        onOpenChange={setUploadAvatarOpen}
+        currentAvatar={user?.avatar || undefined}
+        userInitial={userInitial}
+      />
     </SidebarProvider>
   );
 }
