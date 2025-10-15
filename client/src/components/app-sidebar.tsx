@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Mail, Send } from "lucide-react";
+import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -68,12 +68,6 @@ const menuItems = [
     title: "Support",
     url: "/support",
     icon: HelpCircle,
-  },
-  {
-    title: "Contacts",
-    url: "/contacts",
-    icon: Mail,
-    superAdminOnly: true,
   },
   {
     title: "Campaigns",
