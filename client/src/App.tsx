@@ -34,6 +34,7 @@ import AuditLogs from "@/pages/audit-logs";
 import Support from "@/pages/support";
 import Contacts from "@/pages/contacts";
 import Campaigns from "@/pages/campaigns";
+import CampaignStats from "@/pages/campaign-stats";
 import Unsubscribe from "@/pages/unsubscribe";
 import NotFound from "@/pages/not-found";
 
@@ -54,6 +55,11 @@ const getPageTitle = (path: string): string => {
     '/contacts': 'Email Contacts',
     '/campaigns': 'Email Campaigns',
   };
+  
+  if (path.startsWith('/campaigns/') && path.includes('/stats')) {
+    return 'Campaign Statistics';
+  }
+  
   return routes[path] || 'Dashboard';
 };
 
@@ -379,6 +385,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Campaigns />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/campaigns/:id/stats">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <CampaignStats />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

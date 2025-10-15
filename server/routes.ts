@@ -2503,7 +2503,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get campaign statistics (authenticated, superadmin only)
-  app.get("/api/campaigns/:id/stats", requireAuth, requireSuperadmin, async (req: Request, res: Response) => {
+  app.get("/api/campaigns/:id/stats", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     try {
       const { id } = req.params;
       const stats = await storage.getCampaignStats(id);

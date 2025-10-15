@@ -4,13 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail } from "lucide-react";
+import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User } from "@shared/schema";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ const campaignSchema = z.object({
 type CampaignForm = z.infer<typeof campaignSchema>;
 
 export default function Campaigns() {
+  const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -401,6 +403,17 @@ export default function Campaigns() {
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </>
+                        )}
+                        {campaign.status === "sent" && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => navigate(`/campaigns/${campaign.id}/stats`)}
+                            data-testid={`button-view-stats-${campaign.id}`}
+                          >
+                            <BarChart className="h-4 w-4 mr-2" />
+                            View Stats
+                          </Button>
                         )}
                       </div>
                     </div>
