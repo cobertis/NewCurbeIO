@@ -312,7 +312,14 @@ export default function Settings() {
                 </div>
                 <Switch
                   id="invoiceAlerts"
-                  defaultChecked={true}
+                  checked={preferencesData?.preferences?.invoiceAlerts ?? true}
+                  onCheckedChange={(checked) => {
+                    updatePreferencesMutation.mutate({
+                      ...preferencesData?.preferences,
+                      invoiceAlerts: checked,
+                    });
+                  }}
+                  disabled={updatePreferencesMutation.isPending}
                   data-testid="switch-invoice-alerts"
                 />
               </div>
@@ -463,7 +470,14 @@ export default function Settings() {
                     </div>
                     <Switch
                       id="systemNotifications"
-                      defaultChecked={true}
+                      checked={preferencesData?.preferences?.systemNotifications ?? true}
+                      onCheckedChange={(checked) => {
+                        updatePreferencesMutation.mutate({
+                          ...preferencesData?.preferences,
+                          systemNotifications: checked,
+                        });
+                      }}
+                      disabled={updatePreferencesMutation.isPending}
                       data-testid="switch-system-notifications"
                     />
                   </div>
@@ -478,7 +492,14 @@ export default function Settings() {
                     </div>
                     <Switch
                       id="batchNotifications"
-                      defaultChecked={false}
+                      checked={preferencesData?.preferences?.batchNotifications ?? false}
+                      onCheckedChange={(checked) => {
+                        updatePreferencesMutation.mutate({
+                          ...preferencesData?.preferences,
+                          batchNotifications: checked,
+                        });
+                      }}
+                      disabled={updatePreferencesMutation.isPending}
                       data-testid="switch-batch-notifications"
                     />
                   </div>
