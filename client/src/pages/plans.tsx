@@ -237,7 +237,7 @@ export default function PlansPage() {
                   <div className="space-y-1">
                     <p className="text-sm font-medium">Features:</p>
                     <ul className="text-sm text-muted-foreground space-y-1">
-                      {Object.entries(plan.features as Record<string, string | number | boolean>).map(([key, value]) => (
+                      {Object.entries(plan.features as Record<string, unknown>).map(([key, value]) => (
                         <li key={key} className="flex items-center gap-2">
                           <Check className="h-3 w-3" />
                           <span className="capitalize">

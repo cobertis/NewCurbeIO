@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -707,12 +707,10 @@ export default function Campaigns() {
                 <Badge variant="outline" data-testid="badge-campaign-count">
                   {campaigns.length} {campaigns.length === 1 ? "Campaign" : "Campaigns"}
                 </Badge>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-create-campaign">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Campaign
-                  </Button>
-                </DialogTrigger>
+                <Button onClick={() => setCreateOpen(true)} data-testid="button-create-campaign">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Campaign
+                </Button>
               </div>
             </CardHeader>
         <CardContent>
