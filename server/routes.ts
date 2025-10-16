@@ -966,6 +966,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user by phone number (superadmin only)
+  app.get("/api/users/by-phone/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { phoneNumber } = req.params;
+      const user = await storage.getUserByPhone(phoneNumber);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password, ...sanitizedUser } = user;
+      
+      // Include complete company information and all company users if user has a companyId
+      let companyInfo = null;
+      let companyUsers: any[] = [];
+      
+      if (user.companyId) {
+        const company = await storage.getCompany(user.companyId);
+        if (company) {
+          companyInfo = company;
+          
+          // Get all users from this company
+          const users = await storage.getUsersByCompany(user.companyId);
+          companyUsers = users.map(({ password, ...u }) => u);
+        }
+      }
+      
+      res.json({ 
+        user: {
+          ...sanitizedUser,
+          company: companyInfo,
+          companyUsers: companyUsers
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching user by phone:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   // Create user (superadmin or admin) - sends activation email
   app.post("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;

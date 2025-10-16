@@ -184,13 +184,19 @@ export default function IncomingSms() {
 
   const notes = (notesData as ChatNote[]) || [];
 
-  // Fetch contact info
+  // Fetch contact info - try by userId first, then by phone number
   const { data: contactData } = useQuery({
     queryKey: [`/api/users/${selectedConv?.userId}`],
     enabled: !!selectedConv?.userId,
   });
 
-  const contactInfo = (contactData as any)?.user as ContactInfo | undefined;
+  // If no userId but we have a selected conversation, try to find user by phone number
+  const { data: contactDataByPhone } = useQuery({
+    queryKey: [`/api/users/by-phone/${encodeURIComponent(selectedConversation || '')}`],
+    enabled: !!selectedConversation && !selectedConv?.userId,
+  });
+
+  const contactInfo = ((contactData || contactDataByPhone) as any)?.user as ContactInfo | undefined;
   
   // Company users come directly with the contact info now
   const companyUsers = (contactInfo?.companyUsers as CompanyUser[]) || [];
