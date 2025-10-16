@@ -18,7 +18,7 @@ import { useParams, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
-const userFormSchema = insertUserSchema.extend({
+const userFormSchema = insertUserSchema.omit({ password: true }).extend({
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
@@ -217,7 +217,6 @@ export default function Users() {
     resolver: zodResolver(userFormSchema),
     defaultValues: {
       email: "",
-      password: "",
       firstName: "",
       lastName: "",
       phone: "",
@@ -927,19 +926,6 @@ export default function Users() {
                       <FormLabel>Office Address (Optional)</FormLabel>
                       <FormControl>
                         <Input {...field} value={field.value || ""} placeholder="123 Main St, City, State, ZIP" data-testid="input-create-address" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="password" data-testid="input-create-password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
