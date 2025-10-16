@@ -1629,7 +1629,7 @@ export default function Campaigns() {
                             </Button>
                           </>
                         )}
-                        {smsCampaign.status === "sent" && (
+                        {(smsCampaign.status === "sent" || smsCampaign.status === "sending") && (
                           <Button
                             variant="ghost"
                             size="sm"
