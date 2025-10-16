@@ -969,16 +969,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Convert dateOfBirth string to Date if provided
-      const dateOfBirth = userData.dateOfBirth && userData.dateOfBirth !== "" 
-        ? new Date(userData.dateOfBirth) 
-        : undefined;
-
       // Create user WITHOUT password (will be set during activation)
       const newUser = await storage.createUser({ 
         ...userData, 
         password: undefined, // No password - user will set it during activation
-        dateOfBirth,
         isActive: true,
         emailVerified: false,
         emailSubscribed: true,
@@ -2608,7 +2602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get recipients (users with phone numbers)
       let recipients = [];
       if (campaign.targetListId) {
-        const listMembers = await storage.getContactListMembers(campaign.targetListId);
+        const listMembers = await storage.getListMembers(campaign.targetListId);
         recipients = listMembers.filter(u => u.phone);
       } else {
         const allUsers = await storage.getAllUsers();
@@ -2634,21 +2628,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         for (const recipient of recipients) {
           try {
-            const result = await twilioService.sendSms(
+            const result = await twilioService.sendSMS(
               recipient.phone!,
               campaign.message
             );
 
-            await storage.createCampaignSmsMessage({
-              campaignId: campaign.id,
-              userId: recipient.id,
-              phoneNumber: recipient.phone!,
-              status: "delivered",
-              twilioMessageSid: result.sid,
-              deliveredAt: new Date(),
-            });
+            if (result) {
+              await storage.createCampaignSmsMessage({
+                campaignId: campaign.id,
+                userId: recipient.id,
+                phoneNumber: recipient.phone!,
+                status: "delivered",
+                twilioMessageSid: result.sid,
+              });
 
-            delivered++;
+              delivered++;
+            }
           } catch (error: any) {
             await storage.createCampaignSmsMessage({
               campaignId: campaign.id,
@@ -2656,7 +2651,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               phoneNumber: recipient.phone!,
               status: "failed",
               errorMessage: error.message,
-              failedAt: new Date(),
             });
 
             failed++;

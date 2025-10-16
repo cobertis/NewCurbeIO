@@ -31,10 +31,10 @@ class TwilioService {
     }
   }
 
-  async sendSMS(to: string, message: string): Promise<boolean> {
+  async sendSMS(to: string, message: string): Promise<{ sid: string; status: string } | null> {
     if (!this.initialized || !this.client) {
       console.error("Twilio service not initialized. Cannot send SMS.");
-      return false;
+      throw new Error("Twilio service not initialized");
     }
 
     try {
@@ -45,17 +45,22 @@ class TwilioService {
       });
 
       console.log(`SMS sent successfully to ${to}. SID: ${result.sid}`);
-      return true;
+      return { sid: result.sid, status: result.status };
     } catch (error) {
       console.error("Failed to send SMS:", error);
-      return false;
+      throw error;
     }
   }
 
   async sendOTPSMS(phoneNumber: string, otpCode: string): Promise<boolean> {
     const message = `Your Curbe verification code is: ${otpCode}\n\nThis code will expire in 5 minutes.\n\nIf you did not request this code, please ignore this message.`;
     
-    return this.sendSMS(phoneNumber, message);
+    try {
+      await this.sendSMS(phoneNumber, message);
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 
   isInitialized(): boolean {
