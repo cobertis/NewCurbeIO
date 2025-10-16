@@ -7,6 +7,7 @@ import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
+import twilio from "twilio";
 import { 
   insertUserSchema, 
   loginSchema, 
@@ -3288,7 +3289,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const url = `${protocol}://${host}${req.originalUrl}`;
 
     try {
-      const twilio = require('twilio');
       const isValid = twilio.validateRequest(
         authToken,
         twilioSignature,
