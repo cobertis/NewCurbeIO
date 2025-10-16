@@ -277,9 +277,9 @@ export default function IncomingSms() {
                     <h3 className="font-semibold">
                       {selectedConv?.userName || formatPhoneDisplay(selectedConversation)}
                     </h3>
-                    {selectedConv?.userEmail && (
-                      <p className="text-sm text-muted-foreground">{selectedConv.userEmail}</p>
-                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {formatPhoneDisplay(selectedConversation)}
+                    </p>
                   </div>
                 </div>
               </div>
