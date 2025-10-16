@@ -111,12 +111,6 @@ export default function CampaignStats() {
         </Badge>
       </div>
 
-      {campaign.sentAt && (
-        <p className="text-sm text-muted-foreground" data-testid="text-sent-at">
-          Sent {formatDistanceToNow(new Date(campaign.sentAt), { addSuffix: true })}
-        </p>
-      )}
-
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
