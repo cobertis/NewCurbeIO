@@ -326,6 +326,7 @@ export interface IStorage {
   
   // Delete conversation
   deleteConversation(phoneNumber: string, companyId: string): Promise<void>;
+  deleteConversationAll(phoneNumber: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1746,6 +1747,20 @@ export class DbStorage implements IStorage {
         eq(smsChatNotes.phoneNumber, phoneNumber),
         eq(smsChatNotes.companyId, companyId)
       ));
+  }
+  
+  async deleteConversationAll(phoneNumber: string): Promise<void> {
+    // Delete all incoming messages from this phone number (all companies)
+    await db.delete(incomingSmsMessages)
+      .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
+    
+    // Delete all outgoing messages to this phone number (all companies)
+    await db.delete(outgoingSmsMessages)
+      .where(eq(outgoingSmsMessages.toPhone, phoneNumber));
+    
+    // Delete all notes for this conversation (all companies)
+    await db.delete(smsChatNotes)
+      .where(eq(smsChatNotes.phoneNumber, phoneNumber));
   }
 }
 

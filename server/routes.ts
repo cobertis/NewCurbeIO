@@ -3591,7 +3591,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const { phoneNumber } = req.params;
-      await storage.deleteConversation(phoneNumber, currentUser.companyId!);
+      
+      // Superadmins can optionally filter by companyId via query param
+      // If no companyId provided, delete from all companies (superadmin privilege)
+      const companyId = req.query.companyId as string | undefined;
+      
+      if (companyId) {
+        await storage.deleteConversation(phoneNumber, companyId);
+      } else {
+        // Delete conversation for all companies (superadmin only)
+        await storage.deleteConversationAll(phoneNumber);
+      }
       
       // Broadcast conversation update to refresh UI
       if (req.app.get('wsService')) {
