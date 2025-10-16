@@ -31,17 +31,6 @@ export default function SmsCampaignStats() {
   if (isLoading || !stats) {
     return (
       <div className="p-8 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/campaigns")}
-            data-testid="button-back-to-campaigns"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-3xl font-semibold">SMS Campaign Statistics</h1>
-        </div>
         <Card>
           <CardContent className="p-6">
             <p className="text-muted-foreground">Loading statistics...</p>
@@ -77,15 +66,6 @@ export default function SmsCampaignStats() {
 
   return (
     <div className="p-8 space-y-6">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => navigate("/campaigns")}
-        data-testid="button-back-to-campaigns"
-      >
-        <ArrowLeft className="h-4 w-4" />
-      </Button>
-
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
