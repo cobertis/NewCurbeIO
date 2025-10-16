@@ -86,7 +86,7 @@ export default function IncomingSms() {
   const unreadCount = messages.filter(m => !m.isRead).length;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="p-8 space-y-6">
       {unreadCount > 0 && (
         <div className="flex justify-end">
           <Badge variant="destructive" className="text-lg px-4 py-2">
