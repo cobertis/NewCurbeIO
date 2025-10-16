@@ -2545,6 +2545,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single SMS campaign with stats (superadmin only)
+  app.get("/api/sms-campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const smsCampaign = await storage.getSmsCampaign(req.params.id);
+      if (!smsCampaign) {
+        return res.status(404).json({ message: "SMS campaign not found" });
+      }
+
+      const messages = await storage.getCampaignSmsMessages(req.params.id);
+      res.json({ smsCampaign, messages });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch SMS campaign" });
+    }
+  });
+
   // Delete SMS campaign (superadmin only)
   app.delete("/api/sms-campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;

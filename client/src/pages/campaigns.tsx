@@ -49,6 +49,20 @@ interface ContactList {
   memberCount?: number;
 }
 
+interface SmsCampaign {
+  id: string;
+  message: string;
+  status: string;
+  targetListId: string | null;
+  sentAt: Date | null;
+  sentBy: string | null;
+  recipientCount: number | null;
+  deliveredCount: number | null;
+  failedCount: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const campaignSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   htmlContent: z.string().min(1, "Email content is required"),
@@ -69,9 +83,15 @@ const addContactSchema = z.object({
   companyId: z.string().optional(),
 });
 
+const smsCampaignSchema = z.object({
+  message: z.string().min(1, "Message is required").max(1600, "Message too long (max 1600 characters)"),
+  targetListId: z.string().optional(),
+});
+
 type CampaignForm = z.infer<typeof campaignSchema>;
 type ContactListForm = z.infer<typeof contactListSchema>;
 type AddContactForm = z.infer<typeof addContactSchema>;
+type SmsCampaignForm = z.infer<typeof smsCampaignSchema>;
 
 export default function Campaigns() {
   const [, navigate] = useLocation();
@@ -101,6 +121,11 @@ export default function Campaigns() {
   const [uploadCsvOpen, setUploadCsvOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvImporting, setCsvImporting] = useState(false);
+  const [createSmsOpen, setCreateSmsOpen] = useState(false);
+  const [smsCampaignToSend, setSmsCampaignToSend] = useState<SmsCampaign | null>(null);
+  const [sendSmsDialogOpen, setSendSmsDialogOpen] = useState(false);
+  const [smsCampaignToDelete, setSmsCampaignToDelete] = useState<SmsCampaign | null>(null);
+  const [deleteSmsDialogOpen, setDeleteSmsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
@@ -128,6 +153,10 @@ export default function Campaigns() {
     enabled: !!selectedList?.id,
   });
 
+  const { data: smsData, isLoading: smsLoading } = useQuery<{ smsCampaigns: SmsCampaign[] }>({
+    queryKey: ["/api/sms-campaigns"],
+  });
+
   // Auto-refresh campaigns when any are in "sending" status
   useEffect(() => {
     const hasSendingCampaigns = data?.campaigns?.some(c => c.status === "sending");
@@ -140,6 +169,19 @@ export default function Campaigns() {
       return () => clearInterval(intervalId);
     }
   }, [data?.campaigns]);
+
+  // Auto-refresh SMS campaigns when any are in "sending" status
+  useEffect(() => {
+    const hasSendingSmsCampaigns = smsData?.smsCampaigns?.some(c => c.status === "sending");
+    
+    if (hasSendingSmsCampaigns) {
+      const intervalId = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/sms-campaigns"] });
+      }, 3000); // Refresh every 3 seconds
+
+      return () => clearInterval(intervalId);
+    }
+  }, [smsData?.smsCampaigns]);
 
   const toggleSubscriptionMutation = useMutation({
     mutationFn: async ({ userId, subscribed }: { userId: string; subscribed: boolean }) => {
@@ -196,6 +238,14 @@ export default function Campaigns() {
       lastName: "",
       phone: "",
       companyId: "",
+    },
+  });
+
+  const smsForm = useForm<SmsCampaignForm>({
+    resolver: zodResolver(smsCampaignSchema),
+    defaultValues: {
+      message: "",
+      targetListId: "",
     },
   });
 
@@ -455,8 +505,75 @@ export default function Campaigns() {
     },
   });
 
+  const createSmsMutation = useMutation({
+    mutationFn: async (data: SmsCampaignForm) => {
+      return apiRequest("POST", "/api/sms-campaigns", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sms-campaigns"] });
+      setCreateSmsOpen(false);
+      smsForm.reset();
+      toast({
+        title: "SMS Campaign Created",
+        description: "The SMS campaign has been created successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to create SMS campaign.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendSmsMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/sms-campaigns/${id}/send`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sms-campaigns"] });
+      setSendSmsDialogOpen(false);
+      setSmsCampaignToSend(null);
+      toast({
+        title: "SMS Campaign Sending",
+        description: "Your SMS campaign is being sent in the background.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to send SMS campaign.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSmsMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/sms-campaigns/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sms-campaigns"] });
+      setDeleteSmsDialogOpen(false);
+      setSmsCampaignToDelete(null);
+      toast({
+        title: "SMS Campaign Deleted",
+        description: "The SMS campaign has been deleted successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete SMS campaign.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const currentUser = sessionData?.user;
   const campaigns = data?.campaigns || [];
+  const smsCampaigns = smsData?.smsCampaigns || [];
   const contacts = contactsData?.contacts || [];
   const companies = companiesData?.companies || [];
   const lists = listsData?.lists || [];
