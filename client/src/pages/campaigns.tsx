@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog, Phone, Building, UserCheck, UserX, MoveRight, Upload, Download, MessageSquare, MoreHorizontal } from "lucide-react";
+import { Search, Plus, Send, Trash2, Edit, Calendar, Users, Mail, BarChart, UserCog, Phone, Building, UserCheck, UserX, MoveRight, Upload, Download, MessageSquare, MessageSquareOff, MoreHorizontal } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -786,6 +786,8 @@ export default function Campaigns() {
       return filtered;
     } else if (selectedView === "unsubscribed") {
       return contacts.filter(c => !c.emailSubscribed);
+    } else if (selectedView === "sms-unsubscribed") {
+      return contacts.filter(c => !c.smsSubscribed);
     } else if (selectedList) {
       return membersData?.members || [];
     }
@@ -1364,6 +1366,25 @@ export default function Campaigns() {
                   <Badge variant="outline" className="text-xs">{contacts.filter(c => !c.emailSubscribed).length}</Badge>
                 </div>
 
+                {/* SMS Unsubscribed */}
+                <div
+                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover-elevate ${
+                    selectedView === "sms-unsubscribed" ? 'bg-accent' : ''
+                  }`}
+                  onClick={() => {
+                    setSelectedView("sms-unsubscribed");
+                    setSelectedList(null);
+                    setSelectedMembers([]);
+                  }}
+                  data-testid="view-sms-unsubscribed"
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageSquareOff className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-medium">SMS Unsubscribed</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">{contacts.filter(c => !c.smsSubscribed).length}</Badge>
+                </div>
+
                 {/* Divider */}
                 {lists.length > 0 && <div className="border-t my-3" />}
 
@@ -1409,6 +1430,7 @@ export default function Campaigns() {
                     <CardTitle className="text-base font-semibold">
                       {selectedView === "all" ? "All Contacts" : 
                        selectedView === "unsubscribed" ? "Unsubscribed" : 
+                       selectedView === "sms-unsubscribed" ? "SMS Unsubscribed" :
                        selectedList?.name || "Contacts"}
                     </CardTitle>
                     <Badge variant="outline" data-testid="text-contact-count">{viewContacts.length}</Badge>
