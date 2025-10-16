@@ -94,16 +94,14 @@ export default function CampaignStats() {
 
   return (
     <div className="p-8 space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/campaigns")}
-          data-testid="button-back-to-campaigns"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => navigate("/campaigns")}
+        data-testid="button-back-to-campaigns"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Button>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card>
