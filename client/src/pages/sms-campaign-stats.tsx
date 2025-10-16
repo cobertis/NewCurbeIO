@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, MessageSquare, Users, CheckCircle, XCircle, BarChart, Search } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { formatPhoneDisplay } from "@/lib/phone-formatter";
 import type { SmsCampaign, CampaignSmsMessage } from "@shared/schema";
 
 interface SmsCampaignStats {
@@ -211,7 +212,7 @@ export default function SmsCampaignStats() {
                         <p className="text-sm text-muted-foreground">{msg.userEmail}</p>
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-sm">{msg.phoneNumber}</TableCell>
+                    <TableCell className="font-mono text-sm">{formatPhoneDisplay(msg.phoneNumber)}</TableCell>
                     <TableCell>
                       <Badge
                         variant={msg.status === "delivered" ? "default" : "destructive"}
