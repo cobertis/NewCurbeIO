@@ -19,7 +19,8 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
 
 **Feature Specifications:**
 - **User Management:** CRUD operations for users with role-based access and phone number support for 2FA. Superadmins can manage company associations. Users can edit their profile picture by clicking on their avatar in the profile page, allowing them to paste an image URL or remove their current avatar. All contact/user displays consistently use the `avatar` field from the users table with Avatar/AvatarImage/AvatarFallback components showing profile pictures when available or initials as fallback.
-- **Company Management (Superadmin-only):** CRUD operations, visual cards, and feature management. Company creation includes admin user setup with email-based activation.
+  - **User Creation & Activation:** Users are created WITHOUT passwords. System automatically sends activation email with secure one-time token (32-byte hex, 7-day expiration). Users set their own password during activation. Shared helper function `sendActivationEmail()` handles token generation, storage, and email delivery for both user and company creation. Function never throws exceptions - returns boolean to allow user/company creation to succeed even if email fails. Frontend omits password field from user creation form.
+- **Company Management (Superadmin-only):** CRUD operations, visual cards, and feature management. Company creation includes admin user setup with email-based activation using the same shared activation flow as regular user creation.
 - **Plans & Features (Superadmin-only):** CRUD interfaces for subscription plans and system features, allowing categorization and selective assignment to companies.
 - **Authentication & Security:**
     - Password hashing (Bcrypt) with strong requirements and real-time strength indicators.
