@@ -182,26 +182,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
       });
 
-      // Save session before responding to ensure pendingUserId is persisted
-      return req.session.save((err) => {
-        if (err) {
-          console.error("Error saving session:", err);
-          return res.status(500).json({ message: "Failed to save session" });
-        }
+      console.log(`✓ Session configured for ${user.email}. pendingUserId: ${req.session.pendingUserId}, sessionID: ${req.sessionID}`);
 
-        console.log(`✓ Session saved successfully for ${user.email}. pendingUserId: ${req.session.pendingUserId}, sessionID: ${req.sessionID}`);
-        console.log(`[LOGIN] Response headers will include Set-Cookie:`, res.getHeader('Set-Cookie'));
-
-        res.json({
-          success: true,
-          user: {
-            id: user.id,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-            companyId: user.companyId,
-          },
-        });
+      // Don't manually save - let express-session middleware handle it automatically
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          companyId: user.companyId,
+        },
       });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
