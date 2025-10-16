@@ -51,7 +51,7 @@ export default function IncomingSms() {
 
   // Fetch messages for selected conversation
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
-    queryKey: ["/api/chat/conversations", selectedConversation, "messages"],
+    queryKey: [`/api/chat/conversations/${encodeURIComponent(selectedConversation || '')}/messages`],
     enabled: !!selectedConversation,
     refetchInterval: 3000, // Auto-refresh every 3 seconds when conversation is open
   });
@@ -65,7 +65,11 @@ export default function IncomingSms() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations", selectedConversation, "messages"] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/chat/conversations/${encodeURIComponent(selectedConversation)}/messages`] 
+        });
+      }
       setMessageInput("");
       toast({
         title: "Message sent",
