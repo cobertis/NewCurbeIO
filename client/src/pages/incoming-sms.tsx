@@ -87,19 +87,13 @@ export default function IncomingSms() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Incoming SMS Messages</h1>
-          <p className="text-muted-foreground mt-1">
-            View and manage SMS replies from contacts
-          </p>
-        </div>
-        {unreadCount > 0 && (
+      {unreadCount > 0 && (
+        <div className="flex justify-end">
           <Badge variant="destructive" className="text-lg px-4 py-2">
             {unreadCount} Unread
           </Badge>
-        )}
-      </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
