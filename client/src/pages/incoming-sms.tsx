@@ -8,11 +8,12 @@ import { Separator } from "@/components/ui/separator";
 import { Search, Send, MessageSquare, Loader2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import { formatPhoneDisplay } from "@/lib/phone-formatter";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 interface Conversation {
   phoneNumber: string;
@@ -41,10 +42,26 @@ export default function IncomingSms() {
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch conversations
+  // WebSocket for real-time updates
+  const handleWebSocketMessage = useCallback((message: any) => {
+    if (message.type === 'conversation_update') {
+      // Refetch conversations when there's an update
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
+      
+      // If a conversation is selected, also refetch messages
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/chat/conversations/${encodeURIComponent(selectedConversation)}/messages`] 
+        });
+      }
+    }
+  }, [selectedConversation]);
+
+  useWebSocket(handleWebSocketMessage);
+
+  // Fetch conversations (no more polling - uses WebSocket for updates)
   const { data: conversationsData, isLoading: conversationsLoading, error: conversationsError } = useQuery({
     queryKey: ["/api/chat/conversations"],
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   const conversations = ((conversationsData as any)?.conversations || []) as Conversation[];
@@ -52,11 +69,10 @@ export default function IncomingSms() {
   // Check for authentication error
   const isAuthError = conversationsError && String(conversationsError).includes("401");
 
-  // Fetch messages for selected conversation
+  // Fetch messages for selected conversation (no more polling - uses WebSocket for updates)
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
     queryKey: [`/api/chat/conversations/${encodeURIComponent(selectedConversation || '')}/messages`],
     enabled: !!selectedConversation,
-    refetchInterval: 3000, // Auto-refresh every 3 seconds when conversation is open
   });
 
   const messages = ((messagesData as any)?.messages || []) as Message[];
