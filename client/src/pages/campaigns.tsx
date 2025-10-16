@@ -96,6 +96,7 @@ type SmsCampaignForm = z.infer<typeof smsCampaignSchema>;
 export default function Campaigns() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [smsSearchQuery, setSmsSearchQuery] = useState("");
   const [contactSearchQuery, setContactSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -581,6 +582,11 @@ export default function Campaigns() {
   const filteredCampaigns = campaigns.filter(campaign => {
     const query = searchQuery.toLowerCase();
     return campaign.subject.toLowerCase().includes(query);
+  });
+
+  const filteredSmsCampaigns = smsCampaigns.filter(smsCampaign => {
+    const query = smsSearchQuery.toLowerCase();
+    return smsCampaign.message.toLowerCase().includes(query);
   });
 
   const filteredContacts = contacts.filter(contact => {
@@ -1517,12 +1523,22 @@ export default function Campaigns() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search SMS campaigns by message..."
+                value={smsSearchQuery}
+                onChange={(e) => setSmsSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-sms"
+              />
+            </div>
             <Badge variant="outline" data-testid="badge-sms-count">
               {smsCampaigns.length} {smsCampaigns.length === 1 ? "Campaign" : "Campaigns"}
             </Badge>
             <Button onClick={() => setCreateSmsOpen(true)} data-testid="button-create-sms">
               <Plus className="h-4 w-4 mr-2" />
-              Create SMS Campaign
+              Create Campaign
             </Button>
           </div>
         </CardHeader>
@@ -1531,16 +1547,16 @@ export default function Campaigns() {
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : smsCampaigns.length === 0 ? (
+          ) : filteredSmsCampaigns.length === 0 ? (
             <div className="text-center py-8">
               <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
               <p className="text-muted-foreground" data-testid="text-no-sms">
-                No SMS campaigns yet. Create your first SMS campaign to get started.
+                {smsSearchQuery ? "No SMS campaigns found matching your search." : "No SMS campaigns yet. Create your first SMS campaign to get started."}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {smsCampaigns.map((smsCampaign) => (
+              {filteredSmsCampaigns.map((smsCampaign) => (
                 <Card key={smsCampaign.id} className="hover-elevate" data-testid={`card-sms-${smsCampaign.id}`}>
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
