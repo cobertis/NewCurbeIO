@@ -966,3 +966,27 @@ export const insertIncomingSmsMessageSchema = createInsertSchema(incomingSmsMess
 
 export type IncomingSmsMessage = typeof incomingSmsMessages.$inferSelect;
 export type InsertIncomingSmsMessage = z.infer<typeof insertIncomingSmsMessageSchema>;
+
+// Outgoing SMS Messages (Manual Replies)
+export const outgoingSmsMessages = pgTable("outgoing_sms_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  twilioMessageSid: text("twilio_message_sid").unique(), // Twilio Message SID
+  toPhone: text("to_phone").notNull(), // Recipient phone number
+  fromPhone: text("from_phone").notNull(), // Our Twilio number
+  messageBody: text("message_body").notNull(), // Message content
+  status: text("status").notNull().default("sending"), // sending, sent, delivered, failed
+  sentBy: varchar("sent_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who sent it
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }), // Recipient user if matched
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+  deliveredAt: timestamp("delivered_at"),
+  errorCode: text("error_code"), // Twilio error code if failed
+  errorMessage: text("error_message"), // Error details if failed
+});
+
+export const insertOutgoingSmsMessageSchema = createInsertSchema(outgoingSmsMessages).omit({
+  id: true,
+  sentAt: true,
+});
+
+export type OutgoingSmsMessage = typeof outgoingSmsMessages.$inferSelect;
+export type InsertOutgoingSmsMessage = z.infer<typeof insertOutgoingSmsMessageSchema>;
