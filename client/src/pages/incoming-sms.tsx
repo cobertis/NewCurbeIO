@@ -602,7 +602,7 @@ export default function IncomingSms() {
                         <AvatarFallback>
                           {contactInfo.firstName && contactInfo.lastName
                             ? `${contactInfo.firstName[0]}${contactInfo.lastName[0]}`.toUpperCase()
-                            : contactInfo.email[0].toUpperCase()}
+                            : (contactInfo.email?.[0] || '?').toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div>
@@ -656,7 +656,7 @@ export default function IncomingSms() {
                               <AvatarFallback className="text-xs">
                                 {user.firstName && user.lastName
                                   ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-                                  : user.email[0].toUpperCase()}
+                                  : (user.email?.[0] || '?').toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
