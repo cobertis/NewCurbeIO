@@ -403,8 +403,6 @@ export default function IncomingSms() {
     );
   });
 
-  const totalUnread = displayConversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
-
   return (
     <div className="p-8">
       <div className="flex gap-6 h-[calc(100vh-8rem)]">
@@ -412,12 +410,7 @@ export default function IncomingSms() {
         <Card className="w-96 flex flex-col">
           <div className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold">Messages</h2>
-                {totalUnread > 0 && (
-                  <Badge variant="destructive">{totalUnread}</Badge>
-                )}
-              </div>
+              <h2 className="text-xl font-semibold">Messages</h2>
               <Button
                 data-testid="button-new-chat"
                 size="icon"
