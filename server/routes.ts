@@ -29,6 +29,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize email campaign service
   const emailCampaignService = new EmailCampaignService(storage);
 
+  // Middleware to check authentication only
+  const requireAuth = async (req: Request, res: Response, next: Function) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    req.user = user;
+    next();
+  };
+
   // Middleware to check authentication and company active status
   const requireActiveCompany = async (req: Request, res: Response, next: Function) => {
     if (!req.session.userId) {
@@ -911,7 +927,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...sanitizedUser } = newUser;
       res.json({ user: sanitizedUser });
     } catch (error) {
-      res.status(400).json({ message: "Invalid request" });
+      console.error("Error creating user:", error);
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: "Invalid request" });
+      }
     }
   });
 
