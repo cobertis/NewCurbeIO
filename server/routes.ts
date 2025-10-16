@@ -1857,8 +1857,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user notifications
-  app.get("/api/notifications", requireActiveCompany, async (req: Request, res: Response) => {
+  // Get user notifications (all authenticated users)
+  app.get("/api/notifications", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
 
     try {
@@ -1871,7 +1871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark notification as read (with ownership verification)
-  app.patch("/api/notifications/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
+  app.patch("/api/notifications/:id/read", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!;
 
     try {
@@ -1895,7 +1895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark all notifications as read
-  app.patch("/api/notifications/read-all", requireActiveCompany, async (req: Request, res: Response) => {
+  app.patch("/api/notifications/read-all", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!;
 
     try {
