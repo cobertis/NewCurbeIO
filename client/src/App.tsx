@@ -100,7 +100,31 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     : companyData?.company?.name || "Loading...";
   
   const notifications = notificationsData?.notifications || [];
-  const unreadCount = notifications.filter((n: any) => !n.read).length;
+  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
+
+  // Mark notification as read
+  const markAsRead = async (notificationId: string) => {
+    try {
+      await fetch(`/api/notifications/${notificationId}/read`, {
+        method: "PATCH",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllAsRead = async () => {
+    try {
+      await fetch("/api/notifications/read-all", {
+        method: "PATCH",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
+  };
   const pageTitle = getPageTitle(location);
 
   const handleLogout = async () => {
@@ -244,8 +268,18 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Notifications Sidebar */}
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
         <SheetContent side="right" className="w-96">
-          <SheetHeader>
+          <SheetHeader className="flex flex-row items-center justify-between">
             <SheetTitle>Notifications</SheetTitle>
+            {unreadCount > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={markAllAsRead}
+                data-testid="button-mark-all-read"
+              >
+                Mark all as read
+              </Button>
+            )}
           </SheetHeader>
           <div className="mt-6 space-y-4">
             {isLoadingNotifications ? (
@@ -264,12 +298,21 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               notifications.map((notification: any) => (
                 <div 
                   key={notification.id}
+                  onClick={() => {
+                    if (!notification.isRead) {
+                      markAsRead(notification.id);
+                    }
+                    if (notification.link) {
+                      setLocation(notification.link);
+                      setNotificationsOpen(false);
+                    }
+                  }}
                   className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
                   data-testid={`notification-item-${notification.id}`}
                 >
                   <div className="font-medium text-sm mb-1">{notification.title}</div>
                   <div className="text-sm text-muted-foreground">{notification.message}</div>
-                  {!notification.read && (
+                  {!notification.isRead && (
                     <div className="mt-2">
                       <Badge variant="destructive" className="text-xs">New</Badge>
                     </div>

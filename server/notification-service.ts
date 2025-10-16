@@ -7,17 +7,31 @@ import type { InsertNotification } from "@shared/schema";
 class NotificationService {
   /**
    * Create a notification for when a new company is created
+   * Notifies both the creator (superadmin) and the new company admin
    */
   async notifyCompanyCreated(companyName: string, adminUserId: string, superadminUserId: string) {
-    const notification: InsertNotification = {
-      userId: superadminUserId,
-      type: "company_created",
-      title: "New Company Created",
-      message: `Company "${companyName}" has been successfully created.`,
-      link: "/companies",
-      isRead: false,
-    };
-    return await storage.createNotification(notification);
+    const notifications: InsertNotification[] = [
+      // Notify the superadmin who created the company
+      {
+        userId: superadminUserId,
+        type: "company_created",
+        title: "New Company Created",
+        message: `Company "${companyName}" has been successfully created.`,
+        link: "/companies",
+        isRead: false,
+      },
+      // Notify the new company admin
+      {
+        userId: adminUserId,
+        type: "company_created",
+        title: "Welcome to Your New Company",
+        message: `Your company "${companyName}" has been created. Please activate your account to get started.`,
+        link: "/companies",
+        isRead: false,
+      },
+    ];
+    
+    return await Promise.all(notifications.map(n => storage.createNotification(n)));
   }
 
   /**

@@ -901,6 +901,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: currentUser.email,
         },
       });
+
+      // Create notification for user creation
+      const { notificationService } = await import("./notification-service");
+      const superadminIds = await notificationService.getSuperadminUserIds();
+      const userName = `${newUser.firstName || ''} ${newUser.lastName || ''}`.trim() || newUser.email;
+      await notificationService.notifyUserCreated(userName, newUser.email, currentUser.id, superadminIds);
       
       const { password, ...sanitizedUser } = newUser;
       res.json({ user: sanitizedUser });
@@ -1211,6 +1217,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: currentUser.email,
         },
       });
+
+      // Create notification for company creation
+      const { notificationService } = await import("./notification-service");
+      await notificationService.notifyCompanyCreated(newCompany.name, adminUser.id, currentUser.id);
       
       res.json({ 
         company: newCompany,
@@ -1857,6 +1867,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ notifications });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read (with ownership verification)
+  app.patch("/api/notifications/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user!;
+
+    try {
+      // First verify that the notification belongs to the current user
+      const notifications = await storage.getNotificationsByUser(user.id, 100);
+      const notification = notifications.find(n => n.id === req.params.id);
+      
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      const success = await storage.markNotificationAsRead(req.params.id);
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ message: "Notification not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.patch("/api/notifications/read-all", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user!;
+
+    try {
+      const success = await storage.markAllNotificationsAsRead(user.id);
+      res.json({ success });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
     }
   });
 

@@ -155,6 +155,17 @@ export class EmailCampaignService {
           recipientCount: result.totalSent,
         });
         result.success = true;
+
+        // Create notification for successful campaign send
+        if (campaign.sentBy) {
+          const { notificationService } = await import("./notification-service");
+          await notificationService.notifyCampaignSent(
+            campaign.subject,
+            result.totalSent,
+            campaign.sentBy,
+            campaignId
+          );
+        }
       } else {
         // All emails failed - mark as failed and record the attempt
         await this.storage.updateCampaign(campaignId, {
@@ -163,6 +174,20 @@ export class EmailCampaignService {
           recipientCount: 0, // No successful deliveries
         });
         result.success = false;
+
+        // Create notification for failed campaign
+        if (campaign.sentBy) {
+          const { notificationService } = await import("./notification-service");
+          const errorSummary = result.errors.length > 0 
+            ? result.errors[0].error 
+            : "Unknown error";
+          await notificationService.notifyCampaignFailed(
+            campaign.subject,
+            errorSummary,
+            campaign.sentBy,
+            campaignId
+          );
+        }
       }
 
       return result;
