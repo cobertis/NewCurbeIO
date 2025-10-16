@@ -53,7 +53,7 @@ const getPageTitle = (path: string): string => {
     '/audit-logs': 'Audit Logs',
     '/support': 'Support',
     '/contacts': 'Email Contacts',
-    '/campaigns': 'Email Campaigns',
+    '/campaigns': 'Campaigns',
   };
   
   if (path.startsWith('/campaigns/') && path.includes('/stats')) {

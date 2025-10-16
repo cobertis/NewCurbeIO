@@ -207,7 +207,7 @@ export interface IStorage {
   removeTrustedDevice(deviceToken: string): Promise<boolean>;
   removeExpiredTrustedDevices(): Promise<boolean>;
   
-  // Email Campaigns
+  // Campaigns (Email)
   getAllCampaigns(): Promise<EmailCampaign[]>;
   getCampaign(id: string): Promise<EmailCampaign | undefined>;
   createCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign>;

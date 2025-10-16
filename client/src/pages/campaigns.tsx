@@ -949,7 +949,7 @@ export default function Campaigns() {
           </TabsTrigger>
           <TabsTrigger value="campaigns" data-testid="tab-campaigns">
             <Mail className="h-4 w-4 mr-2" />
-            Email Campaigns
+            Campaigns
           </TabsTrigger>
           <TabsTrigger value="sms" data-testid="tab-sms">
             <MessageSquare className="h-4 w-4 mr-2" />

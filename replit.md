@@ -33,8 +33,8 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
 - **Phone Number Formatting:** Standardized formatting (`+1 (415) 555-2671`) across the system, with functions for input, display, and E.164 conversion for backend/Twilio.
 - **Audit Logging:** Centralized `LoggingService` tracks critical actions with metadata, supporting role-based access for viewing logs.
 - **Company Activation/Deactivation:** Superadmins can activate/deactivate companies, immediately logging out all users of that company on their next API request, enforced by `requireActiveCompany` middleware.
-- **Email Campaign System (Superadmin-only):**
-    - **Unified Interface with Tabs:** Reports, Email Campaigns, SMS Campaigns, and Contact Lists integrated in a single page using Shadcn Tabs component for seamless navigation.
+- **Campaign System (Superadmin-only):**
+    - **Unified Interface with Tabs:** Reports, Campaigns (email), SMS Campaigns, and Contact Lists integrated in a single page using Shadcn Tabs component for seamless navigation.
     - **Reports Dashboard:** Comprehensive overview showing total campaigns (draft/sent), total recipients, total contacts (subscribed), contact lists count, recent campaigns (last 5), and contact lists overview (first 5).
     - **Contact Management:** View and manage all subscribed users in a table format with search functionality, toggle subscription status per user with instant feedback.
     - **Advanced Contact List Management:**
@@ -65,7 +65,7 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
         - **Error Handling:** Graceful handling of unique constraint violations returns existing record
     - **Email Analytics:** Unique open tracking (1 per user), link click tracking, campaign-specific unsubscribe tracking, comprehensive statistics dashboard with charts and detailed metrics.
 - **SMS Campaign System (Superadmin-only):**
-    - **Tabbed Interface:** Dedicated SMS Campaigns tab integrated with Email Campaigns and Contact Lists for unified campaign management
+    - **Tabbed Interface:** Dedicated SMS Campaigns tab integrated with Campaigns (email) and Contact Lists for unified campaign management
     - **Backend Infrastructure:** Complete API endpoints for SMS campaign CRUD operations (`/api/sms-campaigns`) with Twilio integration for SMS delivery
     - **Database Schema:** `sms_campaigns` and `campaign_sms_messages` tables for campaign management and individual message tracking
     - **Message Management:** Create SMS campaigns with message validation (max 1600 characters for long SMS support), draft/sent status tracking
