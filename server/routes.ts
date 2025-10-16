@@ -29,6 +29,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize email campaign service
   const emailCampaignService = new EmailCampaignService(storage);
 
+  // Helper function to generate and send activation email
+  async function sendActivationEmail(
+    user: { id: string; email: string; firstName?: string | null; lastName?: string | null },
+    companyName: string,
+    req: Request
+  ) {
+    const crypto = await import('crypto');
+    const activationToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Save activation token
+    await storage.createActivationToken({
+      userId: user.id,
+      token: activationToken,
+      expiresAt,
+      used: false,
+    });
+
+    // Send activation email using template
+    const activationLink = `${req.protocol}://${req.get('host')}/activate-account?token=${activationToken}`;
+    
+    // Get activation email template from database
+    const template = await storage.getEmailTemplateBySlug("account-activation");
+    if (!template) {
+      throw new Error("Activation email template not found");
+    }
+    
+    // Replace variables in template
+    let htmlContent = template.htmlContent
+      .replace(/\{\{firstName\}\}/g, user.firstName || 'there')
+      .replace(/\{\{company_name\}\}/g, companyName)
+      .replace(/\{\{activation_link\}\}/g, activationLink);
+    
+    let textContent = template.textContent
+      ?.replace(/\{\{firstName\}\}/g, user.firstName || 'there')
+      .replace(/\{\{company_name\}\}/g, companyName)
+      .replace(/\{\{activation_link\}\}/g, activationLink);
+    
+    const success = await emailService.sendEmail(
+      user.email,
+      template.subject.replace(/\{\{company_name\}\}/g, companyName),
+      textContent || `Please activate your account by clicking this link: ${activationLink}`,
+      htmlContent
+    );
+
+    if (!success) {
+      throw new Error("Failed to send activation email");
+    }
+
+    return activationToken;
+  }
+
   // Middleware to check authentication only
   const requireAuth = async (req: Request, res: Response, next: Function) => {
     if (!req.session.userId) {
@@ -879,7 +931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create user (superadmin or admin)
+  // Create user (superadmin or admin) - sends activation email
   app.post("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
@@ -889,6 +941,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const userData = insertUserSchema.parse(req.body);
+      
+      // Check if user email already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
       
       // admin can only create users in their company
       if (currentUser.role === "admin") {
@@ -901,10 +959,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Hash password before creating user (if provided)
-      const hashedPassword = userData.password ? await hashPassword(userData.password) : undefined;
-      const newUser = await storage.createUser({ ...userData, password: hashedPassword });
+      // Convert dateOfBirth string to Date if provided
+      const dateOfBirth = userData.dateOfBirth && userData.dateOfBirth !== "" 
+        ? new Date(userData.dateOfBirth) 
+        : undefined;
+
+      // Create user WITHOUT password (will be set during activation)
+      const newUser = await storage.createUser({ 
+        ...userData, 
+        password: undefined, // No password - user will set it during activation
+        dateOfBirth,
+        isActive: true,
+        emailVerified: false,
+        emailSubscribed: true,
+        emailNotifications: true,
+        invoiceAlerts: true,
+      });
       
+      // Get company name for the activation email
+      let companyName = "Curbe";
+      if (newUser.companyId) {
+        const company = await storage.getCompany(newUser.companyId);
+        if (company) {
+          companyName = company.name;
+        }
+      }
+
+      // Send activation email
+      try {
+        await sendActivationEmail(newUser, companyName, req);
+      } catch (emailError) {
+        console.error("Failed to send activation email:", emailError);
+        // Don't fail user creation if email fails, but log it
+      }
+
       await logger.logCrud({
         req,
         operation: "create",
@@ -925,7 +1013,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await notificationService.notifyUserCreated(userName, newUser.email, currentUser.id, superadminIds);
       
       const { password, ...sanitizedUser } = newUser;
-      res.json({ user: sanitizedUser });
+      res.json({ 
+        user: sanitizedUser,
+        message: "User created successfully. Activation email sent."
+      });
     } catch (error) {
       console.error("Error creating user:", error);
       if (error instanceof Error) {
@@ -1177,48 +1268,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceAlerts: true,
       });
 
-      // Generate secure activation token (random 32-byte hex string)
-      const crypto = await import('crypto');
-      const activationToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-      // Save activation token
-      await storage.createActivationToken({
-        userId: adminUser.id,
-        token: activationToken,
-        expiresAt,
-        used: false,
-      });
-
-      // Send activation email using template
-      const activationLink = `${req.protocol}://${req.get('host')}/activate-account?token=${activationToken}`;
-      
+      // Send activation email using shared helper
       try {
-        // Get activation email template from database
-        const template = await storage.getEmailTemplateBySlug("account-activation");
-        if (!template) {
-          throw new Error("Activation email template not found");
-        }
-        
-        // Replace variables in template
-        let htmlContent = template.htmlContent
-          .replace(/\{\{firstName\}\}/g, adminData.firstName || 'there')
-          .replace(/\{\{company_name\}\}/g, newCompany.name)
-          .replace(/\{\{activation_link\}\}/g, activationLink);
-        
-        let textContent = template.textContent
-          ?.replace(/\{\{firstName\}\}/g, adminData.firstName || 'there')
-          ?.replace(/\{\{company_name\}\}/g, newCompany.name)
-          ?.replace(/\{\{activation_link\}\}/g, activationLink);
-        
-        await emailService.sendEmail({
-          to: adminData.email,
-          subject: template.subject,
-          html: htmlContent,
-          text: textContent,
-        });
-        
-        console.log(`Email sent successfully to ${adminData.email}`);
+        await sendActivationEmail(adminUser, newCompany.name, req);
+        console.log(`Activation email sent successfully to ${adminData.email}`);
       } catch (emailError) {
         console.error('Failed to send activation email:', emailError);
         // Continue anyway - user can request a new activation link later
