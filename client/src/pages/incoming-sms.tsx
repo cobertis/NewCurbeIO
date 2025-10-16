@@ -33,19 +33,6 @@ import { formatPhoneDisplay, formatPhoneInput, formatPhoneE164 } from "@/lib/pho
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useWebSocket } from "@/hooks/use-websocket";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 interface Conversation {
   phoneNumber: string;
@@ -109,7 +96,6 @@ export default function IncomingSms() {
   const [messageInput, setMessageInput] = useState("");
   const [newChatDialogOpen, setNewChatDialogOpen] = useState(false);
   const [newChatPhone, setNewChatPhone] = useState("");
-  const [userSearchQuery, setUserSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newNoteInput, setNewNoteInput] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -213,14 +199,6 @@ export default function IncomingSms() {
   });
 
   const contactInfo = ((contactData || contactDataByPhone) as any)?.user as ContactInfo | undefined;
-  
-  // Search users for new chat dialog
-  const { data: searchUsersData } = useQuery({
-    queryKey: [`/api/users/search?q=${userSearchQuery}`],
-    enabled: userSearchQuery.length >= 2,
-  });
-  
-  const searchedUsers = ((searchUsersData as any)?.users || []) as ContactInfo[];
   
   // If we have a selected conversation but it's not in the list (new chat without messages),
   // add it as a temporary conversation using contactInfo
@@ -878,7 +856,6 @@ export default function IncomingSms() {
       <Dialog open={newChatDialogOpen} onOpenChange={(open) => {
         setNewChatDialogOpen(open);
         if (!open) {
-          setUserSearchQuery("");
           setNewChatPhone("");
         }
       }}>
@@ -886,79 +863,48 @@ export default function IncomingSms() {
           <DialogHeader>
             <DialogTitle>Start New Chat</DialogTitle>
             <DialogDescription>
-              Search for a contact by name, email, or phone number
+              Enter a phone number to start a new SMS conversation
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Command className="rounded-lg border">
-              <CommandInput
-                data-testid="input-new-chat-search"
-                placeholder="Search contacts..."
-                value={userSearchQuery}
-                onValueChange={setUserSearchQuery}
-              />
-              <CommandList>
-                {userSearchQuery.length < 2 ? (
-                  <CommandEmpty>Type at least 2 characters to search</CommandEmpty>
-                ) : searchedUsers.length === 0 ? (
-                  <CommandEmpty>No contacts found</CommandEmpty>
-                ) : (
-                  <CommandGroup heading="Contacts">
-                    {searchedUsers.map((user) => (
-                      <CommandItem
-                        key={user.id}
-                        data-testid={`user-result-${user.id}`}
-                        onSelect={() => {
-                          if (user.phoneNumber) {
-                            const e164Phone = formatPhoneE164(user.phoneNumber);
-                            setSelectedConversation(e164Phone);
-                            setNewChatDialogOpen(false);
-                            setUserSearchQuery("");
-                            setNewChatPhone("");
-                          }
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={user.avatar || undefined} />
-                            <AvatarFallback>
-                              {user.firstName && user.lastName
-                                ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-                                : user.email[0].toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">
-                              {user.firstName && user.lastName
-                                ? `${user.firstName} ${user.lastName}`
-                                : user.email}
-                            </div>
-                            <div className="text-sm text-muted-foreground truncate">
-                              {user.phoneNumber && formatPhoneDisplay(user.phoneNumber)}
-                              {user.companyName && (
-                                <span className="ml-1">• {user.companyName}</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
+            <Input
+              data-testid="input-new-chat-phone"
+              placeholder="Enter phone number"
+              value={newChatPhone}
+              onChange={(e) => setNewChatPhone(formatPhoneInput(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newChatPhone.trim()) {
+                  const e164Phone = formatPhoneE164(newChatPhone);
+                  setSelectedConversation(e164Phone);
+                  setNewChatDialogOpen(false);
+                  setNewChatPhone("");
+                }
+              }}
+            />
           </div>
           <DialogFooter>
             <Button
               variant="ghost"
               onClick={() => {
                 setNewChatDialogOpen(false);
-                setUserSearchQuery("");
                 setNewChatPhone("");
               }}
             >
               Cancel
+            </Button>
+            <Button
+              data-testid="button-start-chat"
+              onClick={() => {
+                if (newChatPhone.trim()) {
+                  const e164Phone = formatPhoneE164(newChatPhone);
+                  setSelectedConversation(e164Phone);
+                  setNewChatDialogOpen(false);
+                  setNewChatPhone("");
+                }
+              }}
+              disabled={!newChatPhone.trim()}
+            >
+              Start Chat
             </Button>
           </DialogFooter>
         </DialogContent>
