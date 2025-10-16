@@ -614,7 +614,7 @@ export default function Campaigns() {
       }
 
       // Import contacts
-      const response = await apiRequest("POST", "/api/contacts/import", { contacts: contactsToImport });
+      const response = await apiRequest<{ imported: number; skipped: number }>("POST", "/api/contacts/import", { contacts: contactsToImport });
       
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -828,7 +828,11 @@ export default function Campaigns() {
         <TabsList className="mb-4">
           <TabsTrigger value="campaigns" data-testid="tab-campaigns">
             <Mail className="h-4 w-4 mr-2" />
-            Campaigns
+            Email Campaigns
+          </TabsTrigger>
+          <TabsTrigger value="sms" data-testid="tab-sms">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            SMS Campaigns
           </TabsTrigger>
           <TabsTrigger value="lists" data-testid="tab-lists">
             <UserCog className="h-4 w-4 mr-2" />
@@ -1260,6 +1264,29 @@ export default function Campaigns() {
           </Card>
         </div>
       </div>
+    </TabsContent>
+
+    <TabsContent value="sms">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>SMS Campaigns</CardTitle>
+            <Button onClick={() => toast({ title: "Coming Soon", description: "SMS Campaigns feature is coming soon!" })} data-testid="button-create-sms">
+              <Plus className="h-4 w-4 mr-2" />
+              Create SMS Campaign
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <MessageSquare className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">SMS Campaigns</h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Send SMS messages to your contacts using Twilio. Create targeted campaigns and track delivery status in real-time.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </TabsContent>
   </Tabs>
 

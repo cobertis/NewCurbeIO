@@ -63,6 +63,18 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
         - **Statistics Display:** Campaign stats show "Unsubscribed from this campaign" count (not total system unsubscribes)
         - **Error Handling:** Graceful handling of unique constraint violations returns existing record
     - **Email Analytics:** Unique open tracking (1 per user), link click tracking, campaign-specific unsubscribe tracking, comprehensive statistics dashboard with charts and detailed metrics.
+- **SMS Campaign System (Superadmin-only):**
+    - **Tabbed Interface:** Dedicated SMS Campaigns tab integrated with Email Campaigns and Contact Lists for unified campaign management
+    - **Backend Infrastructure:** Complete API endpoints for SMS campaign CRUD operations (`/api/sms-campaigns`) with Twilio integration for SMS delivery
+    - **Database Schema:** `sms_campaigns` and `campaign_sms_messages` tables for campaign management and individual message tracking
+    - **Message Management:** Create SMS campaigns with message validation (max 1600 characters for long SMS support), draft/sent status tracking
+    - **Targeted Delivery:** Send to all contacts with phone numbers or specific contact lists, automatic filtering for recipients with valid phone numbers
+    - **Twilio Integration:** Real-time SMS delivery via Twilio API with message SID tracking, delivery status updates, and error handling
+    - **Delivery Tracking:** Individual SMS message status (sent/delivered/failed), Twilio Message SID for each SMS, error codes and messages for failed deliveries
+    - **Campaign Statistics:** Track delivered count, failed count, recipient count per campaign with detailed per-message delivery status
+    - **Background Processing:** Asynchronous SMS sending with status updates, non-blocking campaign sends that return immediately
+    - **User Notifications:** Superadmins receive notifications when users activate accounts, providing real-time awareness of system activity
+    - **Frontend UI:** Dedicated SMS tab with campaign overview, creation button, and coming soon placeholder for full SMS campaign management interface
 
 ### System Design Choices
 The system employs a clear separation of concerns between frontend and backend. Data models are designed for multi-tenancy in PostgreSQL using Drizzle ORM, ensuring strict data isolation. Security is paramount, with comprehensive measures for password management, account activation, and 2FA. The modular feature system provides flexibility for customizing tenant functionalities.

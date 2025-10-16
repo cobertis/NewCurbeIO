@@ -2496,6 +2496,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== SMS CAMPAIGNS ENDPOINTS ====================
+
+  // Get all SMS campaigns (superadmin only)
+  app.get("/api/sms-campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const smsCampaigns = await storage.getAllSmsCampaigns();
+      res.json({ smsCampaigns });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch SMS campaigns" });
+    }
+  });
+
+  // Create a new SMS campaign (superadmin only)
+  app.post("/api/sms-campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { message, targetListId } = req.body;
+
+      if (!message || message.trim() === "") {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      if (message.length > 1600) {
+        return res.status(400).json({ message: "Message is too long. Maximum 1600 characters." });
+      }
+
+      const smsCampaign = await storage.createSmsCampaign({
+        message,
+        targetListId: targetListId || null,
+        status: "draft",
+      });
+
+      res.json({ smsCampaign });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create SMS campaign" });
+    }
+  });
+
+  // Delete SMS campaign (superadmin only)
+  app.delete("/api/sms-campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const campaign = await storage.getSmsCampaign(req.params.id);
+      if (!campaign) {
+        return res.status(404).json({ message: "SMS campaign not found" });
+      }
+
+      await storage.deleteSmsCampaign(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete SMS campaign" });
+    }
+  });
+
+  // Send SMS campaign (superadmin only)
+  app.post("/api/sms-campaigns/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const campaign = await storage.getSmsCampaign(req.params.id);
+      if (!campaign) {
+        return res.status(404).json({ message: "SMS campaign not found" });
+      }
+
+      if (campaign.status === "sent") {
+        return res.status(400).json({ message: "Campaign has already been sent" });
+      }
+
+      // Get recipients (users with phone numbers)
+      let recipients = [];
+      if (campaign.targetListId) {
+        const listMembers = await storage.getContactListMembers(campaign.targetListId);
+        recipients = listMembers.filter(u => u.phone);
+      } else {
+        const allUsers = await storage.getAllUsers();
+        recipients = allUsers.filter(u => u.phone);
+      }
+
+      if (recipients.length === 0) {
+        return res.status(400).json({ message: "No recipients with phone numbers found" });
+      }
+
+      // Update campaign status to sending
+      await storage.updateSmsCampaign(req.params.id, {
+        status: "sending",
+        sentBy: currentUser.id,
+        sentAt: new Date(),
+        recipientCount: recipients.length,
+      });
+
+      // Send SMS to each recipient (fire and forget - background process)
+      (async () => {
+        let delivered = 0;
+        let failed = 0;
+
+        for (const recipient of recipients) {
+          try {
+            const result = await twilioService.sendSms(
+              recipient.phone!,
+              campaign.message
+            );
+
+            await storage.createCampaignSmsMessage({
+              campaignId: campaign.id,
+              userId: recipient.id,
+              phoneNumber: recipient.phone!,
+              status: "delivered",
+              twilioMessageSid: result.sid,
+              deliveredAt: new Date(),
+            });
+
+            delivered++;
+          } catch (error: any) {
+            await storage.createCampaignSmsMessage({
+              campaignId: campaign.id,
+              userId: recipient.id,
+              phoneNumber: recipient.phone!,
+              status: "failed",
+              errorMessage: error.message,
+              failedAt: new Date(),
+            });
+
+            failed++;
+          }
+        }
+
+        // Update final stats
+        await storage.updateSmsCampaign(campaign.id, {
+          status: "sent",
+          deliveredCount: delivered,
+          failedCount: failed,
+        });
+      })();
+
+      const updatedCampaign = await storage.getSmsCampaign(req.params.id);
+      res.json({ 
+        smsCampaign: updatedCampaign, 
+        message: "SMS campaign is being sent in the background"
+      });
+    } catch (error) {
+      console.error(`[SMS CAMPAIGN SEND] Exception:`, error);
+      res.status(500).json({ message: "Failed to send SMS campaign" });
+    }
+  });
+
   // ==================== EMAIL CONTACTS/SUBSCRIPTIONS ENDPOINTS ====================
 
   // Get all users (contacts) - superadmin only

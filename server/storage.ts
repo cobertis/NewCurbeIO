@@ -48,7 +48,11 @@ import {
   type ContactList,
   type InsertContactList,
   type ContactListMember,
-  type InsertContactListMember
+  type InsertContactListMember,
+  type SmsCampaign,
+  type InsertSmsCampaign,
+  type CampaignSmsMessage,
+  type InsertCampaignSmsMessage
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -76,7 +80,9 @@ import {
   activationTokens,
   trustedDevices,
   contactLists,
-  contactListMembers
+  contactListMembers,
+  smsCampaigns,
+  campaignSmsMessages
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -259,6 +265,17 @@ export interface IStorage {
   addMemberToList(listId: string, userId: string): Promise<ContactListMember>;
   removeMemberFromList(listId: string, userId: string): Promise<boolean>;
   getListsForUser(userId: string): Promise<ContactList[]>;
+  
+  // SMS Campaigns
+  getAllSmsCampaigns(): Promise<SmsCampaign[]>;
+  getSmsCampaign(id: string): Promise<SmsCampaign | undefined>;
+  createSmsCampaign(campaign: InsertSmsCampaign): Promise<SmsCampaign>;
+  updateSmsCampaign(id: string, data: Partial<InsertSmsCampaign>): Promise<SmsCampaign | undefined>;
+  deleteSmsCampaign(id: string): Promise<boolean>;
+  
+  // Campaign SMS Messages - Individual SMS Tracking
+  createCampaignSmsMessage(sms: InsertCampaignSmsMessage): Promise<CampaignSmsMessage>;
+  getCampaignSmsMessages(campaignId: string): Promise<CampaignSmsMessage[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -1253,6 +1270,46 @@ export class DbStorage implements IStorage {
       clicksByUrl,
       campaignUnsubscribes
     };
+  }
+  
+  // ==================== SMS CAMPAIGNS ====================
+  
+  async getAllSmsCampaigns(): Promise<SmsCampaign[]> {
+    return db.select().from(smsCampaigns).orderBy(desc(smsCampaigns.createdAt));
+  }
+  
+  async getSmsCampaign(id: string): Promise<SmsCampaign | undefined> {
+    const result = await db.select().from(smsCampaigns).where(eq(smsCampaigns.id, id));
+    return result[0];
+  }
+  
+  async createSmsCampaign(campaign: InsertSmsCampaign): Promise<SmsCampaign> {
+    const result = await db.insert(smsCampaigns).values(campaign).returning();
+    return result[0];
+  }
+  
+  async updateSmsCampaign(id: string, data: Partial<InsertSmsCampaign>): Promise<SmsCampaign | undefined> {
+    const result = await db.update(smsCampaigns)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(smsCampaigns.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  async deleteSmsCampaign(id: string): Promise<boolean> {
+    const result = await db.delete(smsCampaigns).where(eq(smsCampaigns.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+  
+  async createCampaignSmsMessage(sms: InsertCampaignSmsMessage): Promise<CampaignSmsMessage> {
+    const result = await db.insert(campaignSmsMessages).values(sms).returning();
+    return result[0];
+  }
+  
+  async getCampaignSmsMessages(campaignId: string): Promise<CampaignSmsMessage[]> {
+    return db.select().from(campaignSmsMessages)
+      .where(eq(campaignSmsMessages.campaignId, campaignId))
+      .orderBy(desc(campaignSmsMessages.sentAt));
   }
   
   // ==================== CONTACT LISTS ====================
