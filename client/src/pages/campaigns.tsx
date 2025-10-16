@@ -812,15 +812,25 @@ export default function Campaigns() {
                           </>
                         )}
                         {campaign.status === "sent" && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => navigate(`/campaigns/${campaign.id}/stats`)}
-                            data-testid={`button-view-stats-${campaign.id}`}
-                          >
-                            <BarChart className="h-4 w-4 mr-2" />
-                            View Stats
-                          </Button>
+                          <>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => navigate(`/campaigns/${campaign.id}/stats`)}
+                              data-testid={`button-view-stats-${campaign.id}`}
+                            >
+                              <BarChart className="h-4 w-4 mr-2" />
+                              View Stats
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(campaign)}
+                              data-testid={`button-delete-sent-campaign-${campaign.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>

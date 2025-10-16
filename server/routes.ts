@@ -182,15 +182,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
       });
 
-      res.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          companyId: user.companyId,
-        },
+      // Save session before responding to ensure pendingUserId is persisted
+      return req.session.save((err) => {
+        if (err) {
+          console.error("Error saving session:", err);
+          return res.status(500).json({ message: "Failed to save session" });
+        }
+
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            companyId: user.companyId,
+          },
+        });
       });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
@@ -2308,10 +2316,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(req.params.id);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
-      }
-
-      if (campaign.status === "sent") {
-        return res.status(400).json({ message: "Cannot delete a campaign that has already been sent" });
       }
 
       const success = await storage.deleteCampaign(req.params.id);
