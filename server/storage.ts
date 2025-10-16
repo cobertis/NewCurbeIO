@@ -1470,7 +1470,9 @@ export class DbStorage implements IStorage {
         if (conv.userId) {
           const user = await this.getUser(conv.userId);
           if (user) {
-            userName = user.name;
+            userName = user.firstName && user.lastName 
+              ? `${user.firstName} ${user.lastName}`.trim()
+              : user.firstName || user.lastName || null;
             userEmail = user.email;
           }
         }
@@ -1517,7 +1519,8 @@ export class DbStorage implements IStorage {
         timestamp: outgoingSmsMessages.sentAt,
         status: outgoingSmsMessages.status,
         sentBy: outgoingSmsMessages.sentBy,
-        senderName: users.name,
+        senderFirstName: users.firstName,
+        senderLastName: users.lastName,
       })
       .from(outgoingSmsMessages)
       .leftJoin(users, eq(outgoingSmsMessages.sentBy, users.id))
@@ -1538,7 +1541,9 @@ export class DbStorage implements IStorage {
         timestamp: msg.timestamp,
         status: msg.status || undefined,
         sentBy: msg.sentBy || undefined,
-        sentByName: msg.senderName || undefined,
+        sentByName: msg.senderFirstName && msg.senderLastName 
+          ? `${msg.senderFirstName} ${msg.senderLastName}`.trim()
+          : msg.senderFirstName || msg.senderLastName || undefined,
       })),
     ].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     
