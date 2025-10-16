@@ -29,7 +29,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { formatPhoneDisplay } from "@/lib/phone-formatter";
+import { formatPhoneDisplay, formatPhoneInput, formatPhoneE164 } from "@/lib/phone-formatter";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -833,9 +833,12 @@ export default function IncomingSms() {
           <div className="space-y-4">
             <Input
               data-testid="input-new-chat-phone"
-              placeholder="+1234567890"
+              placeholder="+1 (555) 555-5555"
               value={newChatPhone}
-              onChange={(e) => setNewChatPhone(e.target.value)}
+              onChange={(e) => {
+                const formatted = formatPhoneInput(e.target.value);
+                setNewChatPhone(formatted);
+              }}
             />
           </div>
           <DialogFooter>
@@ -852,8 +855,9 @@ export default function IncomingSms() {
               data-testid="button-start-chat"
               onClick={() => {
                 if (newChatPhone.trim()) {
-                  // Simply select the conversation without sending a message
-                  setSelectedConversation(newChatPhone.trim());
+                  // Convert to E.164 format to match contacts in database
+                  const e164Phone = formatPhoneE164(newChatPhone.trim());
+                  setSelectedConversation(e164Phone);
                   setNewChatDialogOpen(false);
                   setNewChatPhone("");
                 }
