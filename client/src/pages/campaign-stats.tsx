@@ -29,6 +29,7 @@ export default function CampaignStats() {
 
   const { data: stats, isLoading } = useQuery<CampaignStats>({
     queryKey: ["/api/campaigns", id, "stats"],
+    refetchInterval: 5000, // Auto-refresh every 5 seconds for live tracking
   });
 
   const { data: emailsData } = useQuery<{ emails: CampaignEmail[] }>({
@@ -43,6 +44,7 @@ export default function CampaignStats() {
       return response.json();
     },
     enabled: !!id,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds for live tracking
   });
 
   const emails = emailsData?.emails || [];
