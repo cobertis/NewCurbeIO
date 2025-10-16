@@ -768,7 +768,7 @@ export default function IncomingSms() {
                               <p className="text-sm whitespace-pre-wrap">{note.note}</p>
                               <div className="flex items-center justify-between">
                                 <p className="text-xs text-muted-foreground">
-                                  {format(new Date(note.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                                  {note.createdAt ? format(new Date(note.createdAt), "MMM d, yyyy 'at' h:mm a") : ''}
                                 </p>
                                 <div className="flex gap-1">
                                   <Button
