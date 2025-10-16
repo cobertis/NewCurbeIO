@@ -45,8 +45,9 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
     - **Contact Integration:** Displays contact name and profile picture from users table when phone number matches a registered contact; shows initials as fallback for contacts, phone digits for non-contacts.
     - **Message Display:** Chronological messages with timestamps, auto-scroll, instant updates via WebSocket events.
     - **Management:** Send SMS, mark as read, search conversations.
-    - **Backend Integration:** APIs for retrieving conversations with contact enrichment (name, email, avatar), message history, sending SMS, and marking as read.
-    - **Database:** `outgoing_sms_messages` table for manual replies; conversations built from incoming and outgoing messages.
+    - **Multi-Tenancy:** Both `incoming_sms_messages` and `outgoing_sms_messages` tables include `companyId` for strict data isolation; all queries filter by company to prevent cross-tenant data access.
+    - **Backend Integration:** APIs for retrieving conversations with contact enrichment (name, email, avatar), message history, sending SMS, and marking as read; superadmins can optionally filter by `companyId` query parameter.
+    - **Database:** `outgoing_sms_messages` table for manual replies; conversations built from incoming and outgoing messages; both tables enforce company-level isolation.
     - **WebSocket Service:** Broadcasts `conversation_update` events when Twilio receives messages or when SMS is sent, triggering frontend cache invalidation.
 - **SMS Subscription Management:**
     - **User Field:** `smsSubscribed` boolean field (default true) tracks SMS subscription status independently from email subscriptions.
