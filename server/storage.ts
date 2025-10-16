@@ -54,7 +54,9 @@ import {
   type CampaignSmsMessage,
   type InsertCampaignSmsMessage,
   type IncomingSmsMessage,
-  type InsertIncomingSmsMessage
+  type InsertIncomingSmsMessage,
+  type OutgoingSmsMessage,
+  type InsertOutgoingSmsMessage
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -85,7 +87,8 @@ import {
   contactListMembers,
   smsCampaigns,
   campaignSmsMessages,
-  incomingSmsMessages
+  incomingSmsMessages,
+  outgoingSmsMessages
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -286,6 +289,31 @@ export interface IStorage {
   createIncomingSmsMessage(sms: InsertIncomingSmsMessage): Promise<IncomingSmsMessage>;
   getAllIncomingSmsMessages(): Promise<IncomingSmsMessage[]>;
   markSmsAsRead(id: string): Promise<void>;
+  
+  // Outgoing SMS Messages (Chat)
+  createOutgoingSmsMessage(sms: InsertOutgoingSmsMessage): Promise<OutgoingSmsMessage>;
+  updateOutgoingSmsMessageStatus(id: string, status: string, twilioSid?: string, errorCode?: string, errorMessage?: string): Promise<void>;
+  
+  // Chat Conversations
+  getChatConversations(): Promise<Array<{
+    phoneNumber: string;
+    userId: string | null;
+    userName: string | null;
+    userEmail: string | null;
+    lastMessage: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+  }>>;
+  getConversationMessages(phoneNumber: string): Promise<Array<{
+    id: string;
+    type: 'incoming' | 'outgoing';
+    message: string;
+    timestamp: Date;
+    status?: string;
+    sentBy?: string;
+    sentByName?: string;
+  }>>;
+  markConversationAsRead(phoneNumber: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1359,6 +1387,158 @@ export class DbStorage implements IStorage {
     await db.update(incomingSmsMessages)
       .set({ isRead: true })
       .where(eq(incomingSmsMessages.id, id));
+  }
+  
+  // ==================== OUTGOING SMS MESSAGES (CHAT) ====================
+  
+  async createOutgoingSmsMessage(sms: InsertOutgoingSmsMessage): Promise<OutgoingSmsMessage> {
+    const result = await db.insert(outgoingSmsMessages).values(sms).returning();
+    return result[0];
+  }
+  
+  async updateOutgoingSmsMessageStatus(
+    id: string, 
+    status: string, 
+    twilioSid?: string, 
+    errorCode?: string, 
+    errorMessage?: string
+  ): Promise<void> {
+    const updateData: any = { status };
+    
+    if (twilioSid) updateData.twilioMessageSid = twilioSid;
+    if (status === 'delivered') updateData.deliveredAt = new Date();
+    if (errorCode) updateData.errorCode = errorCode;
+    if (errorMessage) updateData.errorMessage = errorMessage;
+    
+    await db.update(outgoingSmsMessages)
+      .set(updateData)
+      .where(eq(outgoingSmsMessages.id, id));
+  }
+  
+  // ==================== CHAT CONVERSATIONS ====================
+  
+  async getChatConversations(): Promise<Array<{
+    phoneNumber: string;
+    userId: string | null;
+    userName: string | null;
+    userEmail: string | null;
+    lastMessage: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+  }>> {
+    // Get all unique phone numbers from incoming messages
+    const conversations = await db
+      .select({
+        phoneNumber: incomingSmsMessages.fromPhone,
+        userId: incomingSmsMessages.userId,
+        lastMessage: sql<string>`
+          COALESCE(
+            (SELECT message_body FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} ORDER BY received_at DESC LIMIT 1),
+            (SELECT message_body FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone} ORDER BY sent_at DESC LIMIT 1)
+          )
+        `.as('lastMessage'),
+        lastMessageAt: sql<Date>`
+          GREATEST(
+            COALESCE((SELECT MAX(received_at) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone}), '1970-01-01'),
+            COALESCE((SELECT MAX(sent_at) FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone}), '1970-01-01')
+          )
+        `.as('lastMessageAt'),
+        unreadCount: sql<number>`
+          (SELECT COUNT(*) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND i.is_read = false)
+        `.as('unreadCount'),
+      })
+      .from(incomingSmsMessages)
+      .groupBy(incomingSmsMessages.fromPhone, incomingSmsMessages.userId)
+      .orderBy(desc(sql`lastMessageAt`));
+    
+    // Enrich with user data
+    const enriched = await Promise.all(
+      conversations.map(async (conv) => {
+        let userName: string | null = null;
+        let userEmail: string | null = null;
+        
+        if (conv.userId) {
+          const user = await this.getUser(conv.userId);
+          if (user) {
+            userName = user.name;
+            userEmail = user.email;
+          }
+        }
+        
+        return {
+          phoneNumber: conv.phoneNumber,
+          userId: conv.userId,
+          userName,
+          userEmail,
+          lastMessage: conv.lastMessage || '',
+          lastMessageAt: conv.lastMessageAt,
+          unreadCount: conv.unreadCount,
+        };
+      })
+    );
+    
+    return enriched;
+  }
+  
+  async getConversationMessages(phoneNumber: string): Promise<Array<{
+    id: string;
+    type: 'incoming' | 'outgoing';
+    message: string;
+    timestamp: Date;
+    status?: string;
+    sentBy?: string;
+    sentByName?: string;
+  }>> {
+    // Get incoming messages
+    const incoming = await db
+      .select({
+        id: incomingSmsMessages.id,
+        message: incomingSmsMessages.messageBody,
+        timestamp: incomingSmsMessages.receivedAt,
+      })
+      .from(incomingSmsMessages)
+      .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
+    
+    // Get outgoing messages with sender info
+    const outgoing = await db
+      .select({
+        id: outgoingSmsMessages.id,
+        message: outgoingSmsMessages.messageBody,
+        timestamp: outgoingSmsMessages.sentAt,
+        status: outgoingSmsMessages.status,
+        sentBy: outgoingSmsMessages.sentBy,
+        senderName: users.name,
+      })
+      .from(outgoingSmsMessages)
+      .leftJoin(users, eq(outgoingSmsMessages.sentBy, users.id))
+      .where(eq(outgoingSmsMessages.toPhone, phoneNumber));
+    
+    // Combine and sort
+    const allMessages = [
+      ...incoming.map(msg => ({
+        id: msg.id,
+        type: 'incoming' as const,
+        message: msg.message,
+        timestamp: msg.timestamp,
+      })),
+      ...outgoing.map(msg => ({
+        id: msg.id,
+        type: 'outgoing' as const,
+        message: msg.message,
+        timestamp: msg.timestamp,
+        status: msg.status || undefined,
+        sentBy: msg.sentBy || undefined,
+        sentByName: msg.senderName || undefined,
+      })),
+    ].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    
+    return allMessages;
+  }
+  
+  async markConversationAsRead(phoneNumber: string): Promise<void> {
+    await db.update(incomingSmsMessages)
+      .set({ isRead: true })
+      .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
   }
   
   // ==================== CONTACT LISTS ====================

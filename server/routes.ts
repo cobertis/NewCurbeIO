@@ -3267,6 +3267,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ==================== SMS CHAT ====================
+  
+  // Get all chat conversations (superadmin only)
+  app.get("/api/chat/conversations", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const conversations = await storage.getChatConversations();
+      res.json({ conversations });
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+  
+  // Get messages for a specific conversation (superadmin only)
+  app.get("/api/chat/conversations/:phoneNumber/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { phoneNumber } = req.params;
+      const messages = await storage.getConversationMessages(phoneNumber);
+      res.json({ messages });
+    } catch (error) {
+      console.error("Error fetching conversation messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+  
+  // Send SMS message (superadmin only)
+  app.post("/api/chat/send", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { toPhone, message } = req.body;
+      
+      if (!toPhone || !message) {
+        return res.status(400).json({ message: "Phone number and message are required" });
+      }
+      
+      // Find user by phone number
+      const recipientUser = await storage.getUserByPhone(toPhone);
+      
+      // Get Twilio phone number
+      const fromPhone = process.env.TWILIO_PHONE_NUMBER || "";
+      
+      // Create outgoing message record
+      const outgoingMessage = await storage.createOutgoingSmsMessage({
+        toPhone,
+        fromPhone,
+        messageBody: message,
+        status: "sending",
+        sentBy: currentUser.id,
+        userId: recipientUser?.id || null,
+      });
+      
+      // Send SMS via Twilio
+      try {
+        const twilioResult = await twilioService.sendSMS(toPhone, message);
+        
+        if (twilioResult) {
+          // Update with Twilio SID and status
+          await storage.updateOutgoingSmsMessageStatus(
+            outgoingMessage.id,
+            "sent",
+            twilioResult.sid
+          );
+          
+          res.json({ 
+            message: "SMS sent successfully",
+            messageId: outgoingMessage.id,
+            twilioSid: twilioResult.sid
+          });
+        } else {
+          throw new Error("Failed to send SMS");
+        }
+      } catch (twilioError) {
+        // Update status to failed
+        await storage.updateOutgoingSmsMessageStatus(
+          outgoingMessage.id,
+          "failed",
+          undefined,
+          "TWILIO_ERROR",
+          twilioError instanceof Error ? twilioError.message : "Unknown error"
+        );
+        
+        throw twilioError;
+      }
+    } catch (error) {
+      console.error("Error sending SMS:", error);
+      res.status(500).json({ 
+        message: "Failed to send SMS",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Mark conversation as read (superadmin only)
+  app.post("/api/chat/conversations/:phoneNumber/read", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { phoneNumber } = req.params;
+      await storage.markConversationAsRead(phoneNumber);
+      res.json({ message: "Conversation marked as read" });
+    } catch (error) {
+      console.error("Error marking conversation as read:", error);
+      res.status(500).json({ message: "Failed to mark conversation as read" });
+    }
+  });
+  
   // ==================== TWILIO WEBHOOKS ====================
   
   // Helper function to validate Twilio signature
