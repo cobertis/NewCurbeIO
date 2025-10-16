@@ -123,22 +123,25 @@ export default function IncomingSms() {
 
   useWebSocket(handleWebSocketMessage);
 
-  // Mark all conversations as read when this page loads
+  // Mark conversation as read when user opens it
   useEffect(() => {
-    const markAllAsRead = async () => {
+    if (!selectedConversation) return;
+
+    const markConversationAsRead = async () => {
       try {
-        await fetch("/api/chat/mark-all-read", {
+        await fetch(`/api/chat/conversations/${encodeURIComponent(selectedConversation)}/read`, {
           method: "POST",
           credentials: "include",
         });
-        // Invalidate unread count in sidebar
+        // Invalidate queries to update UI
+        queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
         queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
       } catch (error) {
-        console.error("Failed to mark all as read:", error);
+        console.error("Failed to mark conversation as read:", error);
       }
     };
-    markAllAsRead();
-  }, []); // Run once on mount
+    markConversationAsRead();
+  }, [selectedConversation]); // Run when conversation changes
 
   // Fetch conversations (no more polling - uses WebSocket for updates)
   const { data: conversationsData, isLoading: conversationsLoading, error: conversationsError } = useQuery({
