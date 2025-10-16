@@ -96,6 +96,8 @@ export default function Campaigns() {
   const [targetMoveListId, setTargetMoveListId] = useState("");
   const [selectedView, setSelectedView] = useState<"all" | "unsubscribed" | string>("all");
   const [addContactOpen, setAddContactOpen] = useState(false);
+  const [allContactsSearchQuery, setAllContactsSearchQuery] = useState("");
+  const [allContactsStatusFilter, setAllContactsStatusFilter] = useState<"all" | "subscribed" | "unsubscribed">("all");
   const { toast } = useToast();
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
@@ -513,8 +515,29 @@ export default function Campaigns() {
   };
 
   const getViewContacts = () => {
+    let filtered = [];
+    
     if (selectedView === "all") {
-      return contacts;
+      filtered = contacts;
+      
+      // Apply search filter
+      if (allContactsSearchQuery) {
+        const query = allContactsSearchQuery.toLowerCase();
+        filtered = filtered.filter(c => 
+          c.email.toLowerCase().includes(query) ||
+          c.firstName?.toLowerCase().includes(query) ||
+          c.lastName?.toLowerCase().includes(query)
+        );
+      }
+      
+      // Apply status filter
+      if (allContactsStatusFilter === "subscribed") {
+        filtered = filtered.filter(c => c.emailSubscribed);
+      } else if (allContactsStatusFilter === "unsubscribed") {
+        filtered = filtered.filter(c => !c.emailSubscribed);
+      }
+      
+      return filtered;
     } else if (selectedView === "unsubscribed") {
       return contacts.filter(c => !c.emailSubscribed);
     } else if (selectedList) {
@@ -677,17 +700,10 @@ export default function Campaigns() {
           <TabsTrigger value="campaigns" data-testid="tab-campaigns">
             <Mail className="h-4 w-4 mr-2" />
             Campaigns
-            <Badge variant="secondary" className="ml-2">{campaigns.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="contacts" data-testid="tab-contacts">
-            <Users className="h-4 w-4 mr-2" />
-            Contacts
-            <Badge variant="secondary" className="ml-2">{contacts.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="lists" data-testid="tab-lists">
             <UserCog className="h-4 w-4 mr-2" />
             Contact Lists
-            <Badge variant="secondary" className="ml-2">{lists.length}</Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -817,115 +833,6 @@ export default function Campaigns() {
       </Card>
     </TabsContent>
 
-    <TabsContent value="contacts">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search contacts by name, email, or phone..."
-                value={contactSearchQuery}
-                onChange={(e) => setContactSearchQuery(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-contacts"
-              />
-            </div>
-            <Badge variant="outline" data-testid="badge-contact-count">
-              {contacts.length} {contacts.length === 1 ? "Contact" : "Contacts"}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {contactsLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : filteredContacts.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground" data-testid="text-no-contacts">
-                {contactSearchQuery ? "No contacts found matching your search." : "No contacts yet."}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Subscription</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredContacts.map((contact) => (
-                  <TableRow key={contact.id} data-testid={`row-contact-${contact.id}`}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={contact.avatar || undefined} />
-                          <AvatarFallback>{getInitials(contact)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium" data-testid={`text-contact-name-${contact.id}`}>
-                            {contact.firstName && contact.lastName
-                              ? `${contact.firstName} ${contact.lastName}`
-                              : contact.email}
-                          </p>
-                          <p className="text-sm text-muted-foreground capitalize">
-                            {contact.role}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell data-testid={`text-contact-email-${contact.id}`}>
-                      {contact.email}
-                    </TableCell>
-                    <TableCell data-testid={`text-contact-phone-${contact.id}`}>
-                      {contact.phone ? formatPhoneDisplay(contact.phone) : "-"}
-                    </TableCell>
-                    <TableCell data-testid={`text-contact-company-${contact.id}`}>
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        <span>{getCompanyName(contact)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant={contact.emailSubscribed ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleSubscriptionMutation.mutate({
-                          userId: contact.id,
-                          subscribed: !contact.emailSubscribed
-                        })}
-                        disabled={toggleSubscriptionMutation.isPending}
-                        data-testid={`button-toggle-subscription-${contact.id}`}
-                        className="gap-2"
-                      >
-                        {contact.emailSubscribed ? (
-                          <>
-                            <UserCheck className="h-4 w-4" />
-                            Subscribed
-                          </>
-                        ) : (
-                          <>
-                            <UserX className="h-4 w-4" />
-                            Unsubscribed
-                          </>
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </TabsContent>
-
     <TabsContent value="lists" className="space-y-4">
       {/* Header with action buttons */}
       <Card>
@@ -1045,40 +952,79 @@ export default function Campaigns() {
         <div className="col-span-9">
           <Card className="h-full">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CardTitle className="text-base font-semibold">
-                    {selectedView === "all" ? "All Contacts" : 
-                     selectedView === "unsubscribed" ? "Unsubscribed" : 
-                     selectedList?.name || "Contacts"}
-                  </CardTitle>
-                  <Badge variant="outline" data-testid="text-contact-count">{viewContacts.length}</Badge>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-base font-semibold">
+                      {selectedView === "all" ? "All Contacts" : 
+                       selectedView === "unsubscribed" ? "Unsubscribed" : 
+                       selectedList?.name || "Contacts"}
+                    </CardTitle>
+                    <Badge variant="outline" data-testid="text-contact-count">{viewContacts.length}</Badge>
+                  </div>
+                  {selectedList && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingList(selectedList);
+                          editListForm.reset({ name: selectedList.name, description: selectedList.description || "" });
+                          setEditListOpen(true);
+                        }}
+                        data-testid={`button-edit-list-${selectedList.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setListToDelete(selectedList);
+                          setDeleteListOpen(true);
+                        }}
+                        data-testid={`button-delete-list-${selectedList.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                {selectedList && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingList(selectedList);
-                        editListForm.reset({ name: selectedList.name, description: selectedList.description || "" });
-                        setEditListOpen(true);
-                      }}
-                      data-testid={`button-edit-list-${selectedList.id}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setListToDelete(selectedList);
-                        setDeleteListOpen(true);
-                      }}
-                      data-testid={`button-delete-list-${selectedList.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                
+                {/* Filters for All Contacts view */}
+                {selectedView === "all" && (
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1 max-w-sm">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by name or email..."
+                        value={allContactsSearchQuery}
+                        onChange={(e) => setAllContactsSearchQuery(e.target.value)}
+                        className="pl-9"
+                        data-testid="input-all-contacts-search"
+                      />
+                    </div>
+                    <Select value={allContactsStatusFilter} onValueChange={(value: any) => setAllContactsStatusFilter(value)}>
+                      <SelectTrigger className="w-[180px]" data-testid="select-status-filter">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="subscribed">Subscribed</SelectItem>
+                        <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {selectedMembers.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMoveToListOpen(true)}
+                        data-testid="button-move-selected"
+                      >
+                        <MoveRight className="h-4 w-4 mr-2" />
+                        Move to List ({selectedMembers.length})
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1093,6 +1039,21 @@ export default function Campaigns() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {selectedView === "all" && (
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={viewContacts.length > 0 && selectedMembers.length === viewContacts.length}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedMembers(viewContacts.map(c => c.id));
+                              } else {
+                                setSelectedMembers([]);
+                              }
+                            }}
+                            data-testid="checkbox-select-all"
+                          />
+                        </TableHead>
+                      )}
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Phone</TableHead>
@@ -1104,6 +1065,21 @@ export default function Campaigns() {
                   <TableBody>
                     {viewContacts.map((contact) => (
                       <TableRow key={contact.id} data-testid={`contact-row-${contact.id}`}>
+                        {selectedView === "all" && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedMembers.includes(contact.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedMembers([...selectedMembers, contact.id]);
+                                } else {
+                                  setSelectedMembers(selectedMembers.filter(id => id !== contact.id));
+                                }
+                              }}
+                              data-testid={`checkbox-select-${contact.id}`}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
