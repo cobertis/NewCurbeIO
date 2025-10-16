@@ -710,6 +710,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: { method: "activation_token" },
       });
 
+      // Notify superadmins that user has activated their account
+      const { notificationService } = await import("./notification-service");
+      const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      await notificationService.notifyUserActivated(userName, user.email, user.id);
+
       res.json({ 
         success: true,
         message: "Account activated successfully"

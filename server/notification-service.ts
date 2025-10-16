@@ -128,6 +128,25 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for when a user activates their account
+   * Notifies superadmins that a user has completed activation
+   */
+  async notifyUserActivated(userName: string, userEmail: string, userId: string) {
+    const superadminUserIds = await this.getSuperadminUserIds();
+    
+    const notifications = superadminUserIds.map(adminId => ({
+      userId: adminId,
+      type: "user_activated",
+      title: "User Account Activated",
+      message: `${userName} (${userEmail}) has successfully activated their account and is ready to use the system.`,
+      link: `/users/${userId}`,
+      isRead: false,
+    }));
+
+    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {
