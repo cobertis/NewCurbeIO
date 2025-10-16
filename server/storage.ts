@@ -1466,6 +1466,7 @@ export class DbStorage implements IStorage {
       conversations.map(async (conv) => {
         let userName: string | null = null;
         let userEmail: string | null = null;
+        let userAvatar: string | null = null;
         
         if (conv.userId) {
           const user = await this.getUser(conv.userId);
@@ -1474,6 +1475,7 @@ export class DbStorage implements IStorage {
               ? `${user.firstName} ${user.lastName}`.trim()
               : user.firstName || user.lastName || null;
             userEmail = user.email;
+            userAvatar = user.avatar || null;
           }
         }
         
@@ -1482,6 +1484,7 @@ export class DbStorage implements IStorage {
           userId: conv.userId,
           userName,
           userEmail,
+          userAvatar,
           lastMessage: conv.lastMessage || '',
           lastMessageAt: conv.lastMessageAt,
           unreadCount: conv.unreadCount,

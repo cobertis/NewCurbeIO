@@ -20,6 +20,7 @@ interface Conversation {
   userId: string | null;
   userName: string | null;
   userEmail: string | null;
+  userAvatar: string | null;
   lastMessage: string;
   lastMessageAt: Date;
   unreadCount: number;
@@ -220,7 +221,7 @@ export default function IncomingSms() {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={undefined} />
+                        <AvatarImage src={conv.userAvatar || undefined} />
                         <AvatarFallback>
                           {conv.userName
                             ? conv.userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -265,7 +266,7 @@ export default function IncomingSms() {
               <div className="p-4 border-b">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={undefined} />
+                    <AvatarImage src={selectedConv?.userAvatar || undefined} />
                     <AvatarFallback>
                       {selectedConv?.userName
                         ? selectedConv.userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()

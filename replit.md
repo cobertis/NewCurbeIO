@@ -42,9 +42,10 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
 - **SMS Chat Application (`/incoming-sms`):**
     - **Full Chat Interface:** Bidirectional SMS chat with two-column layout (conversations list, chat area).
     - **Real-Time Updates:** WebSocket-based notifications (path: `/ws/chat`) eliminate inefficient polling, updating UI only when messages arrive or are sent.
+    - **Contact Integration:** Displays contact name and profile picture from users table when phone number matches a registered contact; shows initials as fallback for contacts, phone digits for non-contacts.
     - **Message Display:** Chronological messages with timestamps, auto-scroll, instant updates via WebSocket events.
     - **Management:** Send SMS, mark as read, search conversations.
-    - **Backend Integration:** APIs for retrieving conversations, message history, sending SMS, and marking as read.
+    - **Backend Integration:** APIs for retrieving conversations with contact enrichment (name, email, avatar), message history, sending SMS, and marking as read.
     - **Database:** `outgoing_sms_messages` table for manual replies; conversations built from incoming and outgoing messages.
     - **WebSocket Service:** Broadcasts `conversation_update` events when Twilio receives messages or when SMS is sent, triggering frontend cache invalidation.
 - **SMS Subscription Management:**
