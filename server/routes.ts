@@ -923,6 +923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const query = (req.query.q as string || '').toLowerCase().trim();
+      console.log('[SEARCH] Query:', query);
       
       if (!query || query.length < 2) {
         return res.json({ users: [] });
@@ -930,6 +931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all users
       const allUsers = await storage.getAllUsers();
+      console.log('[SEARCH] Total users:', allUsers.length, 'Users with phone:', allUsers.filter(u => u.phone).length);
       
       // Get all companies for company name search
       const allCompanies = await storage.getAllCompanies();
@@ -953,7 +955,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             companyName.toLowerCase()
           ];
           
-          return searchableFields.some(field => field.includes(query));
+          const matches = searchableFields.some(field => field.includes(query));
+          if (matches) {
+            console.log('[SEARCH] Match found:', user.firstName, user.lastName, user.phone);
+          }
+          return matches;
         })
         .slice(0, 10) // Limit to 10 results
         .map(({ password, ...user }) => ({
@@ -962,6 +968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyName: user.companyId ? companyMap.get(user.companyId) : null
         }));
       
+      console.log('[SEARCH] Returning', matchedUsers.length, 'users');
       return res.json({ users: matchedUsers });
     } catch (error: any) {
       console.error("Error searching users:", error);
