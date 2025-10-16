@@ -103,12 +103,6 @@ export default function CampaignStats() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Badge
-          variant={campaign.status === "sent" ? "default" : "secondary"}
-          data-testid={`badge-status-${campaign.id}`}
-        >
-          {campaign.status}
-        </Badge>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
