@@ -40,14 +40,16 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
     - **Campaign Statistics:** Detailed metrics for sent campaigns with real-time updates and message details.
     - **Twilio Webhooks:** Status callback webhook for delivery updates and incoming message webhook for SMS replies, with automatic URL configuration.
 - **SMS Chat Application (`/incoming-sms`):**
-    - **Full Chat Interface:** Bidirectional SMS chat with two-column layout (conversations list, chat area).
+    - **Full Chat Interface:** Bidirectional SMS chat with three-column layout (conversations list | chat area | contact info panel).
     - **Real-Time Updates:** WebSocket-based notifications (path: `/ws/chat`) eliminate inefficient polling, updating UI only when messages arrive or are sent.
     - **Contact Integration:** Displays contact name and profile picture from users table when phone number matches a registered contact; shows initials as fallback for contacts, phone digits for non-contacts.
     - **Message Display:** Chronological messages with timestamps, auto-scroll, instant updates via WebSocket events.
-    - **Management:** Send SMS, mark as read, search conversations.
-    - **Multi-Tenancy:** Both `incoming_sms_messages` and `outgoing_sms_messages` tables include `companyId` for strict data isolation; all queries filter by company to prevent cross-tenant data access.
-    - **Backend Integration:** APIs for retrieving conversations with contact enrichment (name, email, avatar), message history, sending SMS, and marking as read; superadmins can optionally filter by `companyId` query parameter.
-    - **Database:** `outgoing_sms_messages` table for manual replies; conversations built from incoming and outgoing messages; both tables enforce company-level isolation.
+    - **Conversation Management:** Send SMS, mark as read, search conversations, delete conversations (with confirmation), create new conversations with any phone number.
+    - **Contact Information Panel:** Right sidebar displaying contact details (name, email, phone, company), company users list (first 5), and internal notes section.
+    - **Internal Notes System:** Complete CRUD for conversation-specific notes visible only to internal users; stored in `sms_chat_notes` table with `companyId`, `phoneNumber`, `note`, `createdBy`, and timestamps; superadmin-only access.
+    - **Multi-Tenancy:** All tables (`incoming_sms_messages`, `outgoing_sms_messages`, `sms_chat_notes`) include `companyId` for strict data isolation; all queries filter by company to prevent cross-tenant data access.
+    - **Backend Integration:** APIs for retrieving conversations with contact enrichment (name, email, avatar), message history, sending SMS, marking as read, conversation deletion, and notes CRUD; superadmins can optionally filter by `companyId` query parameter.
+    - **Database:** `outgoing_sms_messages` table for manual replies; `sms_chat_notes` table for internal notes; conversations built from incoming and outgoing messages; all tables enforce company-level isolation.
     - **WebSocket Service:** Broadcasts `conversation_update` events when Twilio receives messages or when SMS is sent, triggering frontend cache invalidation.
 - **SMS Subscription Management:**
     - **User Field:** `smsSubscribed` boolean field (default true) tracks SMS subscription status independently from email subscriptions.
