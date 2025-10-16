@@ -65,17 +65,21 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
         - **Error Handling:** Graceful handling of unique constraint violations returns existing record
     - **Email Analytics:** Unique open tracking (1 per user), link click tracking, campaign-specific unsubscribe tracking, comprehensive statistics dashboard with charts and detailed metrics.
 - **SMS Campaign System (Superadmin-only):**
-    - **Tabbed Interface:** Dedicated SMS Campaigns tab integrated with Campaigns (email) and Contact Lists for unified campaign management
+    - **Tabbed Interface:** Dedicated SMS Campaigns tab integrated with Email Campaigns and Contact Lists for unified campaign management. Tabs: Reports, Email Campaigns, SMS Campaigns, Contact Lists
     - **Backend Infrastructure:** Complete API endpoints for SMS campaign CRUD operations (`/api/sms-campaigns`) with Twilio integration for SMS delivery
     - **Database Schema:** `sms_campaigns` and `campaign_sms_messages` tables for campaign management and individual message tracking
-    - **Message Management:** Create SMS campaigns with message validation (max 1600 characters for long SMS support), draft/sent status tracking
+    - **Message Management:** Create SMS campaigns with message validation (max 1600 characters for long SMS support), draft/sending/sent status tracking with delete capabilities for all states
     - **Targeted Delivery:** Send to all contacts with phone numbers or specific contact lists, automatic filtering for recipients with valid phone numbers
-    - **Twilio Integration:** Real-time SMS delivery via Twilio API with message SID tracking, delivery status updates, and error handling
-    - **Delivery Tracking:** Individual SMS message status (sent/delivered/failed), Twilio Message SID for each SMS, error codes and messages for failed deliveries
-    - **Campaign Statistics:** Track delivered count, failed count, recipient count per campaign with detailed per-message delivery status
+    - **Twilio Integration:** Real-time SMS delivery via Twilio API with message SID tracking, delivery status updates, and error handling. Service returns { sid, status } for each sent message
+    - **Delivery Tracking:** Individual SMS message status (delivered/failed), Twilio Message SID for each SMS, error codes and messages for failed deliveries
+    - **Campaign Statistics Page (sms-campaigns/:id/stats):**
+        - **Metrics Dashboard:** Recipients count, delivered count (with delivery rate %), failed count (with failure rate %), time since sent
+        - **Message Details Table:** Displays all messages with recipient name, email, phone number, delivery status (badge), Twilio SID, sent timestamp, and error details for failed messages
+        - **Filters & Search:** Status filter (all/delivered/failed), search by name/email/phone
+        - **Real-time Updates:** Auto-refresh every 5 seconds for live tracking
+        - **User Enrichment:** Messages enriched with user names and emails from users table
     - **Background Processing:** Asynchronous SMS sending with status updates, non-blocking campaign sends that return immediately
-    - **User Notifications:** Superadmins receive notifications when users activate accounts, providing real-time awareness of system activity
-    - **Frontend UI:** Dedicated SMS tab with campaign overview, creation button, and coming soon placeholder for full SMS campaign management interface
+    - **Frontend UI:** Complete SMS campaign management with search, badge counters, consistent card layout matching email campaigns, and View Stats button for sent campaigns
 
 ### System Design Choices
 The system employs a clear separation of concerns between frontend and backend. Data models are designed for multi-tenancy in PostgreSQL using Drizzle ORM, ensuring strict data isolation. Security is paramount, with comprehensive measures for password management, account activation, and 2FA. The modular feature system provides flexibility for customizing tenant functionalities.

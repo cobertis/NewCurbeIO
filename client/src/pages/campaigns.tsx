@@ -737,7 +737,7 @@ export default function Campaigns() {
       }
 
       // Import contacts
-      const response = await apiRequest<{ imported: number; skipped: number }>("POST", "/api/contacts/import", { contacts: contactsToImport });
+      const response = await apiRequest("POST", "/api/contacts/import", { contacts: contactsToImport }) as unknown as { imported: number; skipped: number };
       
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -1630,17 +1630,30 @@ export default function Campaigns() {
                           </>
                         )}
                         {(smsCampaign.status === "sent" || smsCampaign.status === "sending") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSmsCampaignToDelete(smsCampaign);
-                              setDeleteSmsDialogOpen(true);
-                            }}
-                            data-testid={`button-delete-sent-sms-${smsCampaign.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <>
+                            {smsCampaign.status === "sent" && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => navigate(`/sms-campaigns/${smsCampaign.id}/stats`)}
+                                data-testid={`button-view-sms-stats-${smsCampaign.id}`}
+                              >
+                                <BarChart className="h-4 w-4 mr-2" />
+                                View Stats
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSmsCampaignToDelete(smsCampaign);
+                                setDeleteSmsDialogOpen(true);
+                              }}
+                              data-testid={`button-delete-sent-sms-${smsCampaign.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>

@@ -2560,6 +2560,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get SMS campaign statistics (superadmin only)
+  app.get("/api/sms-campaigns/:id/stats", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const campaign = await storage.getSmsCampaign(req.params.id);
+      if (!campaign) {
+        return res.status(404).json({ message: "SMS campaign not found" });
+      }
+
+      // Get all messages for this campaign
+      const messages = await storage.getCampaignSmsMessages(req.params.id);
+      
+      // Enrich messages with user info
+      const enrichedMessages = await Promise.all(
+        messages.map(async (msg) => {
+          const user = await storage.getUser(msg.userId);
+          return {
+            ...msg,
+            userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'N/A' : 'N/A',
+            userEmail: user?.email || 'N/A',
+          };
+        })
+      );
+
+      res.json({
+        campaign,
+        messages: enrichedMessages,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch SMS campaign statistics" });
+    }
+  });
+
   // Delete SMS campaign (superadmin only)
   app.delete("/api/sms-campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
