@@ -42,12 +42,15 @@ export default function IncomingSms() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch conversations
-  const { data: conversationsData, isLoading: conversationsLoading } = useQuery({
+  const { data: conversationsData, isLoading: conversationsLoading, error: conversationsError } = useQuery({
     queryKey: ["/api/chat/conversations"],
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   const conversations = ((conversationsData as any)?.conversations || []) as Conversation[];
+  
+  // Check for authentication error
+  const isAuthError = conversationsError && String(conversationsError).includes("401");
 
   // Fetch messages for selected conversation
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
@@ -171,6 +174,14 @@ export default function IncomingSms() {
             {conversationsLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : isAuthError ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <MessageSquare className="h-12 w-12 text-destructive mb-3" />
+                <p className="text-destructive font-medium mb-2">Access Denied</p>
+                <p className="text-sm text-muted-foreground">
+                  You need to be logged in as a superadmin to access SMS messages
+                </p>
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
