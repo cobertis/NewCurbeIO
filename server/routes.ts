@@ -189,6 +189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: "Failed to save session" });
         }
 
+        console.log(`✓ Session saved successfully for ${user.email}. pendingUserId: ${req.session.pendingUserId}, sessionID: ${req.sessionID}`);
+
         res.json({
           success: true,
           user: {
@@ -255,8 +257,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { method } = req.body;
 
+      console.log(`[SEND-OTP] Session check - pendingUserId: ${req.session.pendingUserId}, sessionID: ${req.sessionID}`);
+
       // Check if user has pending authentication
       if (!req.session.pendingUserId) {
+        console.log(`[SEND-OTP] ERROR: No pendingUserId in session. Full session:`, req.session);
         return res.status(401).json({ message: "Please login first" });
       }
 
