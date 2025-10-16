@@ -267,7 +267,14 @@ export default function IncomingSms() {
       return apiRequest("DELETE", `/api/chat/conversations/${encodeURIComponent(phoneNumber)}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
+      // Force refetch by invalidating and refetching immediately
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/chat/conversations"],
+        refetchType: 'active'
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ["/api/chat/conversations"] 
+      });
       setSelectedConversation(null);
       setDeleteDialogOpen(false);
       toast({

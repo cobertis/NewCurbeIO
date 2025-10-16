@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { randomBytes } from "crypto";
+import { z } from "zod";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
@@ -939,7 +940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Include complete company information and all company users if user has a companyId
       let companyInfo = null;
-      let companyUsers = [];
+      let companyUsers: any[] = [];
       
       if (user.companyId) {
         const company = await storage.getCompany(user.companyId);
@@ -2798,6 +2799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: Math.random().toString(36).slice(-12), // Random password
           role: "viewer" as const,
           emailSubscribed: true, // Auto-subscribe imported contacts
+          smsSubscribed: true, // Auto-subscribe imported contacts to SMS
           emailNotifications: false,
           invoiceAlerts: false,
           language: "en" as const,
@@ -3343,6 +3345,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Superadmins can optionally filter by companyId via query param
       const companyId = req.query.companyId as string | undefined;
       const conversations = await storage.getChatConversations(companyId);
+      
+      // Prevent caching to avoid 304 responses after DELETE operations
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.removeHeader('ETag');
+      
       res.json({ conversations });
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -3363,6 +3372,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Superadmins can optionally filter by companyId via query param
       const companyId = req.query.companyId as string | undefined;
       const messages = await storage.getConversationMessages(phoneNumber, companyId);
+      
+      // Prevent caching to ensure real-time message updates
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.removeHeader('ETag');
+      
       res.json({ messages });
     } catch (error) {
       console.error("Error fetching conversation messages:", error);
