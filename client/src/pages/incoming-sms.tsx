@@ -852,19 +852,15 @@ export default function IncomingSms() {
               data-testid="button-start-chat"
               onClick={() => {
                 if (newChatPhone.trim()) {
-                  createChatMutation.mutate({
-                    toPhone: newChatPhone.trim(),
-                    message: "Hello"
-                  });
+                  // Simply select the conversation without sending a message
+                  setSelectedConversation(newChatPhone.trim());
+                  setNewChatDialogOpen(false);
+                  setNewChatPhone("");
                 }
               }}
-              disabled={!newChatPhone.trim() || createChatMutation.isPending}
+              disabled={!newChatPhone.trim()}
             >
-              {createChatMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Start Chat"
-              )}
+              Start Chat
             </Button>
           </DialogFooter>
         </DialogContent>
