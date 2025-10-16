@@ -43,13 +43,15 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
     - **Full Chat Interface:** Bidirectional SMS chat with three-column layout (conversations list | chat area | contact info panel).
     - **Real-Time Updates:** WebSocket-based notifications (path: `/ws/chat`) eliminate inefficient polling, updating UI only when messages arrive or are sent.
     - **Contact Integration:** Displays contact name and profile picture from users table when phone number matches a registered contact; shows initials as fallback for contacts, phone digits for non-contacts.
-    - **Message Display:** Chronological messages with timestamps, auto-scroll, instant updates via WebSocket events.
+    - **Message Display:** Chronological messages with timestamps (right-aligned), auto-scroll, instant updates via WebSocket events.
     - **Conversation Management:** Send SMS, mark as read, search conversations, delete conversations (with confirmation), create new conversations with any phone number.
-    - **Contact Information Panel:** Right sidebar displaying contact details (name, email, phone, company), company users list (first 5), and internal notes section.
+    - **Contact Information Panel:** Right sidebar displaying contact details (name, email, phone, company), company users list, and internal notes section.
     - **Internal Notes System:** Complete CRUD for conversation-specific notes visible only to internal users; stored in `sms_chat_notes` table with `companyId`, `phoneNumber`, `note`, `createdBy`, and timestamps; superadmin-only access.
     - **Multi-Tenancy:** All tables (`incoming_sms_messages`, `outgoing_sms_messages`, `sms_chat_notes`) include `companyId` for strict data isolation; all queries filter by company to prevent cross-tenant data access.
     - **Backend Integration:** APIs for retrieving conversations with contact enrichment (name, email, avatar), message history, sending SMS, marking as read, conversation deletion, and notes CRUD; superadmins can optionally filter by `companyId` query parameter.
-    - **Database:** `outgoing_sms_messages` table for manual replies; `sms_chat_notes` table for internal notes; conversations built from incoming and outgoing messages; all tables enforce company-level isolation.
+    - **Database:** `outgoing_sms_messages` table for manual replies; `sms_chat_notes` table for internal notes; conversations built from UNION of incoming and outgoing messages using optimized CTE-based SQL query that preserves contact userId, deduplicates conversations, and includes outgoing-initiated threads; all tables enforce company-level isolation.
+    - **Conversation Retrieval:** `getChatConversations()` method uses CTE to UNION incoming and outgoing messages, groups by phone number, derives contact userId from incoming messages only (not agent userId from outgoing), computes last message and unread count in single optimized query, supports optional companyId filtering for superadmins.
+    - **Deletion Support:** `deleteConversation()` for company-specific deletion and `deleteConversationAll()` for superadmins (who have companyId=null) to delete conversations across all companies.
     - **WebSocket Service:** Broadcasts `conversation_update` events when Twilio receives messages or when SMS is sent, triggering frontend cache invalidation.
     - **SMS Notifications:** Incoming SMS messages automatically create in-app notifications for all superadmins, displayed in the header notification bell with sender name (or phone number), message preview, and direct link to SMS chat.
 - **SMS Subscription Management:**
