@@ -125,6 +125,9 @@ export default function IncomingSms() {
 
   const conversations = ((conversationsData as any)?.conversations || []) as Conversation[];
   
+  // Find selected conversation
+  const selectedConv = conversations.find(c => c.phoneNumber === selectedConversation);
+  
   // Check for authentication error
   const isAuthError = conversationsError && String(conversationsError).includes("401");
 
@@ -350,8 +353,6 @@ export default function IncomingSms() {
       conv.lastMessage.toLowerCase().includes(query)
     );
   });
-
-  const selectedConv = conversations.find(c => c.phoneNumber === selectedConversation);
 
   const totalUnread = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
 
