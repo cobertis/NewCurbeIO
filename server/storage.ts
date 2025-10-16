@@ -1378,6 +1378,7 @@ export class DbStorage implements IStorage {
   async addMemberToList(listId: string, userId: string): Promise<ContactListMember> {
     const result = await db.insert(contactListMembers)
       .values({ listId, userId })
+      .onConflictDoNothing()
       .returning();
     return result[0];
   }

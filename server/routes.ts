@@ -3180,17 +3180,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Target list ID is required" });
       }
 
-      // Add users to target list
+      // Add users to target list (onConflictDoNothing handles duplicates)
+      let movedCount = 0;
       for (const userId of userIds) {
-        await storage.addMemberToList(targetListId, userId);
+        const result = await storage.addMemberToList(targetListId, userId);
+        if (result) {
+          movedCount++;
+        }
       }
 
       res.json({ 
-        message: "Contacts moved successfully",
-        movedCount: userIds.length
+        message: `${movedCount} contacts moved successfully`,
+        movedCount,
+        totalRequested: userIds.length
       });
     } catch (error) {
-      res.status(500).json({ message: "Failed to move contacts" });
+      console.error("Error moving contacts:", error);
+      res.status(500).json({ message: "Failed to move contacts", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 

@@ -761,7 +761,9 @@ export const contactListMembers = pgTable("contact_list_members", {
   listId: varchar("list_id").notNull().references(() => contactLists.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   addedAt: timestamp("added_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  uniqueListUser: unique().on(table.listId, table.userId),
+}));
 
 export const contactListMemberSchema = createInsertSchema(contactListMembers).omit({
   id: true,
