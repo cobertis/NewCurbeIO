@@ -77,22 +77,14 @@ export default function SmsCampaignStats() {
 
   return (
     <div className="p-8 space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/campaigns")}
-          data-testid="button-back-to-campaigns"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <Badge
-          variant={campaign.status === "sent" ? "default" : "secondary"}
-          data-testid={`badge-status-${campaign.id}`}
-        >
-          {campaign.status}
-        </Badge>
-      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => navigate("/campaigns")}
+        data-testid="button-back-to-campaigns"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Button>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
