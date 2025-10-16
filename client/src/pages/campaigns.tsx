@@ -1516,22 +1516,123 @@ export default function Campaigns() {
     <TabsContent value="sms">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>SMS Campaigns</CardTitle>
-            <Button onClick={() => toast({ title: "Coming Soon", description: "SMS Campaigns feature is coming soon!" })} data-testid="button-create-sms">
+          <div className="flex items-center gap-4">
+            <Badge variant="outline" data-testid="badge-sms-count">
+              {smsCampaigns.length} {smsCampaigns.length === 1 ? "Campaign" : "Campaigns"}
+            </Badge>
+            <Button onClick={() => setCreateSmsOpen(true)} data-testid="button-create-sms">
               <Plus className="h-4 w-4 mr-2" />
               Create SMS Campaign
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <MessageSquare className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">SMS Campaigns</h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Send SMS messages to your contacts using Twilio. Create targeted campaigns and track delivery status in real-time.
-            </p>
-          </div>
+          {smsLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : smsCampaigns.length === 0 ? (
+            <div className="text-center py-8">
+              <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground" data-testid="text-no-sms">
+                No SMS campaigns yet. Create your first SMS campaign to get started.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {smsCampaigns.map((smsCampaign) => (
+                <Card key={smsCampaign.id} className="hover-elevate" data-testid={`card-sms-${smsCampaign.id}`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-medium" data-testid={`text-sms-message-${smsCampaign.id}`}>
+                            {smsCampaign.message.length > 100 ? `${smsCampaign.message.substring(0, 100)}...` : smsCampaign.message}
+                          </h3>
+                          <Badge variant={smsCampaign.status === "sent" ? "default" : smsCampaign.status === "sending" ? "secondary" : "outline"}>
+                            {smsCampaign.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>Created {formatDistanceToNow(new Date(smsCampaign.createdAt))} ago</span>
+                          </div>
+                          {smsCampaign.status === "sent" && smsCampaign.sentAt && (
+                            <div className="flex items-center gap-2">
+                              <Send className="h-4 w-4" />
+                              <span>Sent {formatDistanceToNow(new Date(smsCampaign.sentAt))} ago</span>
+                            </div>
+                          )}
+                          {smsCampaign.status === "sent" && smsCampaign.recipientCount !== null && (
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              <span>{smsCampaign.recipientCount} {smsCampaign.recipientCount === 1 ? "recipient" : "recipients"}</span>
+                            </div>
+                          )}
+                          {smsCampaign.deliveredCount !== null && smsCampaign.deliveredCount > 0 && (
+                            <div className="flex items-center gap-2">
+                              <UserCheck className="h-4 w-4 text-green-600" />
+                              <span>{smsCampaign.deliveredCount} delivered</span>
+                            </div>
+                          )}
+                          {smsCampaign.failedCount !== null && smsCampaign.failedCount > 0 && (
+                            <div className="flex items-center gap-2">
+                              <UserX className="h-4 w-4 text-destructive" />
+                              <span>{smsCampaign.failedCount} failed</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {smsCampaign.status === "draft" && (
+                          <>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => {
+                                setSmsCampaignToSend(smsCampaign);
+                                setSendSmsDialogOpen(true);
+                              }}
+                              disabled={contacts.filter(c => c.phone).length === 0}
+                              data-testid={`button-send-sms-${smsCampaign.id}`}
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Send
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSmsCampaignToDelete(smsCampaign);
+                                setDeleteSmsDialogOpen(true);
+                              }}
+                              data-testid={`button-delete-sms-${smsCampaign.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
+                        {smsCampaign.status === "sent" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSmsCampaignToDelete(smsCampaign);
+                              setDeleteSmsDialogOpen(true);
+                            }}
+                            data-testid={`button-delete-sent-sms-${smsCampaign.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </TabsContent>
@@ -2047,6 +2148,141 @@ export default function Campaigns() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Create SMS Campaign Dialog */}
+      <Dialog open={createSmsOpen} onOpenChange={setCreateSmsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create SMS Campaign</DialogTitle>
+            <DialogDescription>
+              Create a new SMS campaign to send text messages to your contacts via Twilio.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...smsForm}>
+            <form onSubmit={smsForm.handleSubmit((data) => createSmsMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={smsForm.control}
+                name="message"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Message</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Your SMS message here..."
+                        className="min-h-[120px]"
+                        {...field}
+                        data-testid="textarea-sms-message"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Maximum 1600 characters. {field.value?.length || 0}/1600
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={smsForm.control}
+                name="targetListId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Audience (Optional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-sms-target">
+                          <SelectValue placeholder="Send to all contacts with phone numbers" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">All contacts with phone numbers</SelectItem>
+                        {lists.map((list) => (
+                          <SelectItem key={list.id} value={list.id}>
+                            {list.name} ({list.memberCount || 0} members)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Select a specific contact list or send to all contacts with phone numbers
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" disabled={createSmsMutation.isPending} data-testid="button-submit-sms">
+                  {createSmsMutation.isPending ? "Creating..." : "Create SMS Campaign"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send SMS Campaign Confirmation Dialog */}
+      <Dialog open={sendSmsDialogOpen} onOpenChange={setSendSmsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send SMS Campaign</DialogTitle>
+            <DialogDescription>
+              {(() => {
+                if (!smsCampaignToSend) return null;
+                
+                const recipientsWithPhone = smsCampaignToSend.targetListId
+                  ? contacts.filter(c => c.phone && lists.find(l => l.id === smsCampaignToSend.targetListId))
+                  : contacts.filter(c => c.phone);
+                
+                const targetDesc = smsCampaignToSend.targetListId
+                  ? lists.find(l => l.id === smsCampaignToSend.targetListId)?.name || "selected list"
+                  : "all contacts with phone numbers";
+
+                return (
+                  <>
+                    <p>Are you sure you want to send this SMS campaign to {targetDesc}?</p>
+                    <p className="mt-2 font-semibold">{recipientsWithPhone.length} {recipientsWithPhone.length === 1 ? "recipient" : "recipients"} will receive this message</p>
+                    <p className="mt-3 text-sm text-muted-foreground">This action cannot be undone.</p>
+                  </>
+                );
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendSmsDialogOpen(false)} data-testid="button-cancel-send-sms">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => smsCampaignToSend && sendSmsMutation.mutate(smsCampaignToSend.id)}
+              disabled={sendSmsMutation.isPending}
+              data-testid="button-confirm-send-sms"
+            >
+              {sendSmsMutation.isPending ? "Sending..." : "Send SMS"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete SMS Campaign Confirmation Dialog */}
+      <AlertDialog open={deleteSmsDialogOpen} onOpenChange={setDeleteSmsDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete SMS Campaign?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The SMS campaign will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-sms">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => smsCampaignToDelete && deleteSmsMutation.mutate(smsCampaignToDelete.id)}
+              disabled={deleteSmsMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-sms"
+            >
+              {deleteSmsMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
