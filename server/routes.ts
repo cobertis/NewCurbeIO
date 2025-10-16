@@ -30,55 +30,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const emailCampaignService = new EmailCampaignService(storage);
 
   // Helper function to generate and send activation email
+  // Returns true if email sent successfully, false otherwise
+  // NEVER throws - handles all errors internally
   async function sendActivationEmail(
     user: { id: string; email: string; firstName?: string | null; lastName?: string | null },
     companyName: string,
     req: Request
-  ) {
-    const crypto = await import('crypto');
-    const activationToken = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  ): Promise<boolean> {
+    try {
+      const crypto = await import('crypto');
+      const activationToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    // Save activation token
-    await storage.createActivationToken({
-      userId: user.id,
-      token: activationToken,
-      expiresAt,
-      used: false,
-    });
+      // Save activation token
+      await storage.createActivationToken({
+        userId: user.id,
+        token: activationToken,
+        expiresAt,
+        used: false,
+      });
 
-    // Send activation email using template
-    const activationLink = `${req.protocol}://${req.get('host')}/activate-account?token=${activationToken}`;
-    
-    // Get activation email template from database
-    const template = await storage.getEmailTemplateBySlug("account-activation");
-    if (!template) {
-      throw new Error("Activation email template not found");
+      // Send activation email using template
+      const activationLink = `${req.protocol}://${req.get('host')}/activate-account?token=${activationToken}`;
+      
+      // Get activation email template from database
+      const template = await storage.getEmailTemplateBySlug("account-activation");
+      if (!template) {
+        console.error("Activation email template not found");
+        return false;
+      }
+      
+      // Replace variables in template
+      let htmlContent = template.htmlContent
+        .replace(/\{\{firstName\}\}/g, user.firstName || 'there')
+        .replace(/\{\{company_name\}\}/g, companyName)
+        .replace(/\{\{activation_link\}\}/g, activationLink);
+      
+      let textContent = template.textContent
+        ?.replace(/\{\{firstName\}\}/g, user.firstName || 'there')
+        .replace(/\{\{company_name\}\}/g, companyName)
+        .replace(/\{\{activation_link\}\}/g, activationLink);
+      
+      // Send email using object format (consistent with rest of codebase)
+      const emailSent = await emailService.sendEmail({
+        to: user.email,
+        subject: template.subject.replace(/\{\{company_name\}\}/g, companyName),
+        html: htmlContent,
+        text: textContent || `Please activate your account by clicking this link: ${activationLink}`,
+      });
+
+      return emailSent;
+    } catch (error) {
+      console.error("Error in sendActivationEmail:", error);
+      return false;
     }
-    
-    // Replace variables in template
-    let htmlContent = template.htmlContent
-      .replace(/\{\{firstName\}\}/g, user.firstName || 'there')
-      .replace(/\{\{company_name\}\}/g, companyName)
-      .replace(/\{\{activation_link\}\}/g, activationLink);
-    
-    let textContent = template.textContent
-      ?.replace(/\{\{firstName\}\}/g, user.firstName || 'there')
-      .replace(/\{\{company_name\}\}/g, companyName)
-      .replace(/\{\{activation_link\}\}/g, activationLink);
-    
-    const success = await emailService.sendEmail(
-      user.email,
-      template.subject.replace(/\{\{company_name\}\}/g, companyName),
-      textContent || `Please activate your account by clicking this link: ${activationLink}`,
-      htmlContent
-    );
-
-    if (!success) {
-      throw new Error("Failed to send activation email");
-    }
-
-    return activationToken;
   }
 
   // Middleware to check authentication only
@@ -985,12 +990,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Send activation email
-      try {
-        await sendActivationEmail(newUser, companyName, req);
-      } catch (emailError) {
-        console.error("Failed to send activation email:", emailError);
-        // Don't fail user creation if email fails, but log it
+      // Send activation email (helper never throws, returns boolean)
+      const emailSent = await sendActivationEmail(newUser, companyName, req);
+      if (emailSent) {
+        console.log(`Activation email sent successfully to ${newUser.email}`);
+      } else {
+        console.error(`Failed to send activation email to ${newUser.email}`);
       }
 
       await logger.logCrud({
@@ -1015,7 +1020,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...sanitizedUser } = newUser;
       res.json({ 
         user: sanitizedUser,
-        message: "User created successfully. Activation email sent."
+        message: emailSent 
+          ? "User created successfully. Activation email sent."
+          : "User created successfully. Failed to send activation email - user can request a new link."
       });
     } catch (error) {
       console.error("Error creating user:", error);
@@ -1268,13 +1275,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceAlerts: true,
       });
 
-      // Send activation email using shared helper
-      try {
-        await sendActivationEmail(adminUser, newCompany.name, req);
+      // Send activation email (helper never throws, returns boolean)
+      const emailSent = await sendActivationEmail(adminUser, newCompany.name, req);
+      if (emailSent) {
         console.log(`Activation email sent successfully to ${adminData.email}`);
-      } catch (emailError) {
-        console.error('Failed to send activation email:', emailError);
-        // Continue anyway - user can request a new activation link later
+      } else {
+        console.error(`Failed to send activation email to ${adminData.email}`);
       }
 
       const { password, ...sanitizedAdmin } = adminUser;
