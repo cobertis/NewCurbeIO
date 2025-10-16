@@ -98,6 +98,9 @@ export default function Campaigns() {
   const [addContactOpen, setAddContactOpen] = useState(false);
   const [allContactsSearchQuery, setAllContactsSearchQuery] = useState("");
   const [allContactsStatusFilter, setAllContactsStatusFilter] = useState<"all" | "subscribed" | "unsubscribed">("all");
+  const [uploadCsvOpen, setUploadCsvOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvImporting, setCsvImporting] = useState(false);
   const { toast } = useToast();
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: User }>({
@@ -518,6 +521,122 @@ export default function Campaigns() {
     });
   };
 
+  const handleUploadCSV = async () => {
+    if (!csvFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select a CSV file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCsvImporting(true);
+
+    try {
+      const text = await csvFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        throw new Error("CSV file is empty or has no data rows");
+      }
+
+      // Parse CSV (simple parser - assumes comma-separated, quotes-optional)
+      const parseCsvLine = (line: string) => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+
+      const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/"/g, ''));
+      const rows = lines.slice(1).map(line => parseCsvLine(line));
+
+      // Map CSV columns to our fields
+      const emailIdx = headers.findIndex(h => h.includes('email') || h === 'e-mail');
+      const nameIdx = headers.findIndex(h => h.includes('name') && !h.includes('first') && !h.includes('last'));
+      const firstNameIdx = headers.findIndex(h => h.includes('first'));
+      const lastNameIdx = headers.findIndex(h => h.includes('last'));
+      const phoneIdx = headers.findIndex(h => h.includes('phone') || h.includes('tel'));
+
+      if (emailIdx === -1) {
+        throw new Error("CSV must have an 'Email' column");
+      }
+
+      // Prepare contacts for import
+      const contactsToImport = rows
+        .filter(row => row[emailIdx]?.trim()) // Must have email
+        .map(row => {
+          const email = row[emailIdx].replace(/"/g, '').trim();
+          let firstName = '';
+          let lastName = '';
+
+          if (firstNameIdx !== -1) {
+            firstName = row[firstNameIdx]?.replace(/"/g, '').trim() || '';
+          }
+          if (lastNameIdx !== -1) {
+            lastName = row[lastNameIdx]?.replace(/"/g, '').trim() || '';
+          }
+          
+          // If no first/last name columns, try to split from name column
+          if (!firstName && !lastName && nameIdx !== -1) {
+            const fullName = row[nameIdx]?.replace(/"/g, '').trim() || '';
+            const nameParts = fullName.split(' ');
+            if (nameParts.length > 0) firstName = nameParts[0];
+            if (nameParts.length > 1) lastName = nameParts.slice(1).join(' ');
+          }
+
+          const phone = phoneIdx !== -1 ? row[phoneIdx]?.replace(/"/g, '').trim() : undefined;
+
+          return {
+            email,
+            firstName: firstName || undefined,
+            lastName: lastName || undefined,
+            phone: phone || undefined,
+          };
+        });
+
+      if (contactsToImport.length === 0) {
+        throw new Error("No valid contacts found in CSV");
+      }
+
+      // Import contacts
+      const response = await apiRequest("POST", "/api/contacts/import", { contacts: contactsToImport });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      
+      setUploadCsvOpen(false);
+      setCsvFile(null);
+      
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${response.imported} contacts. ${response.skipped} duplicates skipped.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import CSV file",
+        variant: "destructive",
+      });
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
   const getViewContacts = () => {
     let filtered = [];
     
@@ -863,7 +982,7 @@ export default function Campaigns() {
               <h2 className="text-lg font-semibold">Contact Management</h2>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" data-testid="button-upload-csv" onClick={() => toast({ title: "Upload CSV", description: "CSV upload coming soon" })}>
+              <Button variant="outline" size="sm" data-testid="button-upload-csv" onClick={() => setUploadCsvOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Upload CSV
               </Button>
@@ -1490,6 +1609,64 @@ export default function Campaigns() {
               data-testid="button-confirm-move"
             >
               {moveContactsMutation.isPending ? "Moving..." : "Move Contacts"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload CSV Dialog */}
+      <Dialog open={uploadCsvOpen} onOpenChange={setUploadCsvOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload CSV</DialogTitle>
+            <DialogDescription>
+              Upload a CSV file to import contacts. The file must have an "Email" column.
+              Optional columns: Name, First Name, Last Name, Phone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="border-2 border-dashed border-border rounded-lg p-6">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                className="hidden"
+                id="csv-upload"
+                data-testid="input-csv-file"
+              />
+              <label htmlFor="csv-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                {csvFile ? (
+                  <div className="text-center">
+                    <p className="font-medium">{csvFile.name}</p>
+                    <p className="text-sm text-muted-foreground">{(csvFile.size / 1024).toFixed(2)} KB</p>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="font-medium">Click to select CSV file</p>
+                    <p className="text-sm text-muted-foreground">or drag and drop</p>
+                  </div>
+                )}
+              </label>
+            </div>
+            <div className="bg-muted p-3 rounded-md text-sm">
+              <p className="font-medium mb-1">CSV Format Example:</p>
+              <code className="text-xs">Email, First Name, Last Name, Phone<br/>john@example.com, John, Doe, +1234567890</code>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setUploadCsvOpen(false);
+              setCsvFile(null);
+            }} data-testid="button-cancel-upload">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadCSV}
+              disabled={!csvFile || csvImporting}
+              data-testid="button-confirm-upload"
+            >
+              {csvImporting ? "Importing..." : "Import Contacts"}
             </Button>
           </DialogFooter>
         </DialogContent>

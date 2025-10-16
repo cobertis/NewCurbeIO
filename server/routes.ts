@@ -2383,6 +2383,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import contacts from CSV (superadmin only)
+  app.post("/api/contacts/import", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { contacts } = req.body;
+
+      if (!Array.isArray(contacts) || contacts.length === 0) {
+        return res.status(400).json({ message: "Contacts array is required" });
+      }
+
+      let imported = 0;
+      let skipped = 0;
+
+      for (const contact of contacts) {
+        if (!contact.email) {
+          skipped++;
+          continue;
+        }
+
+        // Check if user with this email already exists
+        const existing = await storage.getUserByEmail(contact.email);
+        if (existing) {
+          skipped++;
+          continue;
+        }
+
+        // Create new user with default settings
+        const userData = {
+          email: contact.email,
+          username: contact.email,
+          firstName: contact.firstName || null,
+          lastName: contact.lastName || null,
+          phone: contact.phone || null,
+          password: Math.random().toString(36).slice(-12), // Random password
+          role: "viewer" as const,
+          emailSubscribed: true, // Auto-subscribe imported contacts
+          language: "en" as const,
+          companyId: contact.companyId || null,
+        };
+
+        await storage.createUser(userData);
+        imported++;
+      }
+
+      res.json({ imported, skipped, total: contacts.length });
+    } catch (error) {
+      console.error("[IMPORT CONTACTS] Error:", error);
+      res.status(500).json({ message: "Failed to import contacts" });
+    }
+  });
+
   // Update user email subscription
   app.patch("/api/users/:id/subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
