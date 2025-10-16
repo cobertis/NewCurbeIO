@@ -499,7 +499,11 @@ export default function IncomingSms() {
                             {conv.lastMessage}
                           </p>
                           {conv.unreadCount > 0 && (
-                            <Badge variant="default" className="shrink-0">
+                            <Badge 
+                              variant="destructive" 
+                              className="shrink-0 h-5 min-w-5 px-1.5 text-xs font-semibold"
+                              data-testid={`badge-unread-${conv.phoneNumber}`}
+                            >
                               {conv.unreadCount}
                             </Badge>
                           )}
