@@ -2350,7 +2350,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send campaign using EmailCampaignService
       const result = await emailCampaignService.sendCampaign(req.params.id, campaign.targetListId || undefined);
 
+      console.log(`[CAMPAIGN SEND] Result:`, result);
+
       if (!result.success) {
+        console.error(`[CAMPAIGN SEND] Failed - totalSent: ${result.totalSent}, totalFailed: ${result.totalFailed}`);
         return res.status(500).json({ 
           message: "Failed to send campaign", 
           totalSent: result.totalSent,
@@ -2370,6 +2373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
+      console.error(`[CAMPAIGN SEND] Exception:`, error);
       res.status(500).json({ message: "Failed to send campaign" });
     }
   });
