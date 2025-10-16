@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -110,6 +110,47 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
+
+  // Track previous unread count to detect new notifications
+  const prevUnreadCountRef = useRef(unreadCount);
+
+  // Play notification sound
+  const playNotificationSound = useCallback(() => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Create a pleasant "ding" sound
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Higher pitch
+      oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+
+      // Clean up
+      setTimeout(() => {
+        audioContext.close();
+      }, 500);
+    } catch (error) {
+      console.error('Failed to play notification sound:', error);
+    }
+  }, []);
+
+  // Detect new notifications and play sound
+  useEffect(() => {
+    if (prevUnreadCountRef.current !== undefined && unreadCount > prevUnreadCountRef.current) {
+      playNotificationSound();
+    }
+    prevUnreadCountRef.current = unreadCount;
+  }, [unreadCount, playNotificationSound]);
 
   // WebSocket listener for real-time notification updates
   const handleWebSocketMessage = useCallback((message: any) => {

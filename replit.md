@@ -55,6 +55,7 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
     - **Deletion Support:** `deleteConversation()` for company-specific deletion and `deleteConversationAll()` for superadmins (who have companyId=null) to delete conversations across all companies.
     - **WebSocket Service:** Broadcasts `conversation_update` events when Twilio receives messages or when SMS is sent, triggering cache invalidation for both conversations (in chat page) and notifications (in App.tsx header).
     - **SMS Notifications:** Incoming SMS messages automatically create in-app notifications for all superadmins, displayed in the header notification bell with sender name (or phone number), message preview, and direct link to SMS chat. WebSocket integration in App.tsx ensures real-time notification updates without page refresh.
+    - **Notification UI:** Modern notification panel with gradient header, intelligent icons (SMS, Email, User), relative timestamps, visual states for read/unread, and pleasant notification sound using Web Audio API that plays automatically when new notifications arrive.
 - **SMS Subscription Management:**
     - **User Field:** `smsSubscribed` boolean field (default true) tracks SMS subscription status independently from email subscriptions.
     - **Automatic Unsubscribe:** Twilio webhook processes STOP keywords (STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT) from incoming messages and automatically unsubscribes users.
