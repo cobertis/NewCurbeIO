@@ -24,7 +24,7 @@ interface CampaignStats {
 export default function CampaignStats() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   const { data: stats, isLoading } = useQuery<CampaignStats>({
@@ -35,7 +35,7 @@ export default function CampaignStats() {
     queryKey: ["/api/campaigns", id, "emails", statusFilter, searchTerm],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (statusFilter) params.append("status", statusFilter);
+      if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
       if (searchTerm) params.append("search", searchTerm);
       const url = `/api/campaigns/${id}/emails${params.toString() ? `?${params.toString()}` : ""}`;
       const response = await fetch(url);
@@ -367,7 +367,7 @@ export default function CampaignStats() {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="sent">Sent</SelectItem>
                   <SelectItem value="delivered">Delivered</SelectItem>
                   <SelectItem value="opened">Opened</SelectItem>
