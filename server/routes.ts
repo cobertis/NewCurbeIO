@@ -966,6 +966,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search users with phone numbers (superadmin only)
+  app.get("/api/users/search", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const query = (req.query.q as string || '').toLowerCase();
+      
+      if (!query || query.length < 2) {
+        return res.json({ users: [] });
+      }
+      
+      // Get all users with phone numbers
+      const allUsers = await storage.getAllUsers();
+      
+      // Filter users that have phone numbers and match the query
+      const matchedUsers = allUsers
+        .filter(user => {
+          // Only include users with phone numbers
+          if (!user.phoneNumber) return false;
+          
+          const searchableFields = [
+            user.firstName?.toLowerCase() || '',
+            user.lastName?.toLowerCase() || '',
+            `${user.firstName} ${user.lastName}`.toLowerCase(),
+            user.email?.toLowerCase() || '',
+            user.phoneNumber?.toLowerCase() || ''
+          ];
+          
+          return searchableFields.some(field => field.includes(query));
+        })
+        .slice(0, 10) // Limit to 10 results
+        .map(({ password, ...user }) => user);
+      
+      return res.json({ users: matchedUsers });
+    } catch (error: any) {
+      console.error("Error searching users:", error);
+      return res.status(500).json({ message: error.message || "Failed to search users" });
+    }
+  });
+
   // Get user by phone number (superadmin only)
   app.get("/api/users/by-phone/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
