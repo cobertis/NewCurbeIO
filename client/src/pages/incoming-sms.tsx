@@ -191,14 +191,9 @@ export default function IncomingSms() {
   });
 
   const contactInfo = (contactData as any)?.user as ContactInfo | undefined;
-
-  // Fetch company users
-  const { data: companyUsersData } = useQuery({
-    queryKey: [`/api/companies/${contactInfo?.companyId}/users`],
-    enabled: !!contactInfo?.companyId,
-  });
-
-  const companyUsers = (companyUsersData as CompanyUser[]) || [];
+  
+  // Company users come directly with the contact info now
+  const companyUsers = (contactInfo?.companyUsers as CompanyUser[]) || [];
 
   // Create note mutation
   const createNoteMutation = useMutation({
@@ -623,12 +618,33 @@ export default function IncomingSms() {
                     )}
                     
                     {contactInfo.company && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Company</p>
+                          <p className="text-xs text-muted-foreground">Company Information</p>
                         </div>
-                        <p className="text-sm font-medium">{contactInfo.company.name}</p>
+                        <div className="pl-6 space-y-1">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Name</p>
+                            <p className="text-sm font-medium">{contactInfo.company.name}</p>
+                          </div>
+                          {contactInfo.company.slug && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Slug</p>
+                              <p className="text-sm">{contactInfo.company.slug}</p>
+                            </div>
+                          )}
+                          {contactInfo.company.stripeCustomerId && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Stripe Customer</p>
+                              <p className="text-sm font-mono text-xs">{contactInfo.company.stripeCustomerId}</p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs text-muted-foreground">Status</p>
+                            <p className="text-sm capitalize">{contactInfo.company.isActive ? 'Active' : 'Inactive'}</p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -646,10 +662,10 @@ export default function IncomingSms() {
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <Users className="h-4 w-4 text-muted-foreground" />
-                        <h4 className="font-semibold">Company Users ({companyUsers.length})</h4>
+                        <h4 className="font-semibold">All Company Users ({companyUsers.length})</h4>
                       </div>
                       <div className="space-y-2">
-                        {companyUsers.slice(0, 5).map((user) => (
+                        {companyUsers.map((user) => (
                           <div key={user.id} className="flex items-center gap-2 p-2 rounded-lg hover-elevate">
                             <Avatar className="h-8 w-8">
                               <AvatarImage src={user.avatar || undefined} />
@@ -669,11 +685,6 @@ export default function IncomingSms() {
                             </div>
                           </div>
                         ))}
-                        {companyUsers.length > 5 && (
-                          <p className="text-xs text-muted-foreground text-center pt-2">
-                            +{companyUsers.length - 5} more users
-                          </p>
-                        )}
                       </div>
                     </div>
                     <Separator />

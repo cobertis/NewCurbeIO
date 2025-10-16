@@ -937,23 +937,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { password, ...sanitizedUser } = user;
       
-      // Include company information if user has a companyId
+      // Include complete company information and all company users if user has a companyId
       let companyInfo = null;
+      let companyUsers = [];
+      
       if (user.companyId) {
         const company = await storage.getCompany(user.companyId);
         if (company) {
-          companyInfo = {
-            id: company.id,
-            name: company.name,
-            slug: company.slug
-          };
+          companyInfo = company; // Return complete company data
+          
+          // Get all users from this company
+          const users = await storage.getUsersByCompany(user.companyId);
+          companyUsers = users.map(({ password, ...u }) => u); // Remove passwords
         }
       }
       
       res.json({ 
         user: {
           ...sanitizedUser,
-          company: companyInfo
+          company: companyInfo,
+          companyUsers: companyUsers
         }
       });
     } catch (error) {
