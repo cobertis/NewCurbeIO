@@ -967,7 +967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search users with phone numbers (superadmin only)
-  app.get("/api/users/search", requireActiveCompany, async (req: Request, res: Response) => {
+  app.get("/api/users/search", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     
     if (currentUser.role !== "superadmin") {
@@ -975,33 +975,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      const query = (req.query.q as string || '').toLowerCase();
+      const query = (req.query.q as string || '').toLowerCase().trim();
       
       if (!query || query.length < 2) {
         return res.json({ users: [] });
       }
       
-      // Get all users with phone numbers
+      // Get all users
       const allUsers = await storage.getAllUsers();
+      
+      // Get all companies for company name search
+      const allCompanies = await storage.getAllCompanies();
+      const companyMap = new Map(allCompanies.map(c => [c.id, c.name]));
       
       // Filter users that have phone numbers and match the query
       const matchedUsers = allUsers
         .filter(user => {
           // Only include users with phone numbers
-          if (!user.phoneNumber) return false;
+          if (!user.phone) return false;
+          
+          // Get company name if user has companyId
+          const companyName = user.companyId ? (companyMap.get(user.companyId) || '') : '';
           
           const searchableFields = [
             user.firstName?.toLowerCase() || '',
             user.lastName?.toLowerCase() || '',
-            `${user.firstName} ${user.lastName}`.toLowerCase(),
+            `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().trim(),
             user.email?.toLowerCase() || '',
-            user.phoneNumber?.toLowerCase() || ''
+            user.phone?.replace(/\D/g, '') || '', // Remove non-digits for number search
+            companyName.toLowerCase()
           ];
           
           return searchableFields.some(field => field.includes(query));
         })
         .slice(0, 10) // Limit to 10 results
-        .map(({ password, ...user }) => user);
+        .map(({ password, ...user }) => ({
+          ...user,
+          phoneNumber: user.phone, // Add phoneNumber for frontend compatibility
+          companyName: user.companyId ? companyMap.get(user.companyId) : null
+        }));
       
       return res.json({ users: matchedUsers });
     } catch (error: any) {

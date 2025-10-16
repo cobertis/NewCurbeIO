@@ -83,9 +83,11 @@ interface ContactInfo {
   firstName: string | null;
   lastName: string | null;
   email: string;
+  phoneNumber?: string | null;
   phone: string | null;
   avatar: string | null;
   companyId: string | null;
+  companyName?: string | null;
   company?: {
     id: string;
     name: string;
@@ -933,7 +935,10 @@ export default function IncomingSms() {
                                 : user.email}
                             </div>
                             <div className="text-sm text-muted-foreground truncate">
-                              {user.phoneNumber ? formatPhoneDisplay(user.phoneNumber) : user.email}
+                              {user.phoneNumber && formatPhoneDisplay(user.phoneNumber)}
+                              {user.companyName && (
+                                <span className="ml-1">• {user.companyName}</span>
+                              )}
                             </div>
                           </div>
                         </div>
