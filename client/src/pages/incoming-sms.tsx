@@ -540,11 +540,6 @@ export default function IncomingSms() {
                             <span>
                               {format(new Date(msg.timestamp), "h:mm a")}
                             </span>
-                            {msg.type === 'outgoing' && msg.status && (
-                              <Badge variant="secondary" className="text-xs py-0 px-1">
-                                {msg.status}
-                              </Badge>
-                            )}
                           </div>
                         </div>
                       </div>

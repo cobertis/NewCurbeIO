@@ -277,9 +277,26 @@ export default function Users() {
     setEditOpen(true);
   };
 
-  const filteredUsers = data?.users.filter(user => 
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredUsers = data?.users.filter(user => {
+    const query = searchQuery.toLowerCase();
+    const firstName = user.firstName?.toLowerCase() || '';
+    const lastName = user.lastName?.toLowerCase() || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    const email = user.email.toLowerCase();
+    const phone = user.phone?.toLowerCase() || '';
+    const companyName = user.companyId 
+      ? companies.find(c => c.id === user.companyId)?.name?.toLowerCase() || ''
+      : '';
+    
+    return (
+      fullName.includes(query) ||
+      firstName.includes(query) ||
+      lastName.includes(query) ||
+      email.includes(query) ||
+      phone.includes(query) ||
+      companyName.includes(query)
+    );
+  }) || [];
 
   // Profile view JSX
   const renderProfileView = () => {
