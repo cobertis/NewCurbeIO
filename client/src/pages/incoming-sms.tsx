@@ -190,7 +190,7 @@ export default function IncomingSms() {
     enabled: !!selectedConv?.userId,
   });
 
-  const contactInfo = contactData as ContactInfo | undefined;
+  const contactInfo = (contactData as any)?.user as ContactInfo | undefined;
 
   // Fetch company users
   const { data: companyUsersData } = useQuery({
