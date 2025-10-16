@@ -54,7 +54,15 @@ export class EmailCampaignService {
 
       const appUrl = process.env.APP_URL || "http://localhost:5000";
 
-      for (const user of recipientsToSend) {
+      // Send emails with 5-second delay between each
+      for (let i = 0; i < recipientsToSend.length; i++) {
+        const user = recipientsToSend[i];
+        
+        // Add 5-second delay between emails (except for the first one)
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+
         try {
           let personalizedHtml = this.personalizeContent(
             campaign.htmlContent,
@@ -89,6 +97,7 @@ export class EmailCampaignService {
               status: "sent",
             });
             result.totalSent++;
+            console.log(`[CAMPAIGN] Sent ${i + 1}/${recipientsToSend.length} to ${user.email}`);
           } else {
             // Create failed email tracking record
             await this.storage.createCampaignEmail({
