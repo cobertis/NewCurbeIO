@@ -1111,6 +1111,11 @@ export class DbStorage implements IStorage {
     return result[0];
   }
   
+  async updateUserSmsSubscription(userId: string, subscribed: boolean): Promise<User | undefined> {
+    const result = await db.update(users).set({ smsSubscribed: subscribed }).where(eq(users.id, userId)).returning();
+    return result[0];
+  }
+  
   // ==================== EMAIL TRACKING - OPENS ====================
   
   async recordEmailOpen(campaignId: string, userId: string, userAgent?: string, ipAddress?: string): Promise<EmailOpen> {

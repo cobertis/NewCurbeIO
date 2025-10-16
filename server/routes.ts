@@ -3491,6 +3491,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try to find user by phone number (optimized with direct query)
       const matchedUser = await storage.getUserByPhone(From);
       
+      // Check for unsubscribe keywords (STOP, UNSUBSCRIBE, etc.)
+      const unsubscribeKeywords = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'];
+      const messageUpper = Body.trim().toUpperCase();
+      const isUnsubscribeRequest = unsubscribeKeywords.includes(messageUpper);
+      
+      // If user wants to unsubscribe and we found them
+      if (isUnsubscribeRequest && matchedUser) {
+        await storage.updateUserSmsSubscription(matchedUser.id, false);
+        console.log(`[TWILIO INCOMING] User ${matchedUser.id} unsubscribed from SMS`);
+      }
+      
       // Store incoming message
       await storage.createIncomingSmsMessage({
         twilioMessageSid: MessageSid,
