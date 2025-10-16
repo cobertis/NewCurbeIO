@@ -37,7 +37,7 @@ app.use(
       httpOnly: true,
       // maxAge is set dynamically in /api/auth/verify-otp based on "remember device" preference
       // Default: 7 days, Extended: 30 days when user selects "Remember this device"
-      sameSite: "lax",
+      sameSite: "strict", // Changed to "strict" for Safari compatibility
     },
   })
 );
