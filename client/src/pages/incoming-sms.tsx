@@ -534,7 +534,7 @@ export default function IncomingSms() {
                         >
                           <p className="text-sm break-words whitespace-pre-wrap">{msg.message}</p>
                           <div className={cn(
-                            "flex items-center gap-2 mt-1 text-xs",
+                            "flex items-center justify-end gap-2 mt-1 text-xs",
                             msg.type === 'outgoing' ? "text-primary-foreground/70" : "text-muted-foreground"
                           )}>
                             <span>
