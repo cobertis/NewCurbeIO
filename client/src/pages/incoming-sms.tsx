@@ -5,7 +5,26 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Search, Send, MessageSquare, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Search, Send, MessageSquare, Loader2, Plus, Trash2, Building2, Users, StickyNote, X, Edit } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -36,10 +55,49 @@ interface Message {
   sentByName?: string;
 }
 
+interface ChatNote {
+  id: string;
+  phoneNumber: string;
+  note: string;
+  companyId: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ContactInfo {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  phone: string | null;
+  avatar: string | null;
+  companyId: string | null;
+  company?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface CompanyUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  role: string;
+  avatar: string | null;
+}
+
 export default function IncomingSms() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState("");
+  const [newChatDialogOpen, setNewChatDialogOpen] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [newNoteInput, setNewNoteInput] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState("");
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +173,143 @@ export default function IncomingSms() {
     },
   });
 
+  // Fetch notes for selected conversation
+  const { data: notesData } = useQuery({
+    queryKey: [`/api/chat/conversations/${encodeURIComponent(selectedConversation || '')}/notes`],
+    enabled: !!selectedConversation,
+  });
+
+  const notes = (notesData as ChatNote[]) || [];
+
+  // Fetch contact info
+  const { data: contactData } = useQuery({
+    queryKey: [`/api/users/${selectedConv?.userId}`],
+    enabled: !!selectedConv?.userId,
+  });
+
+  const contactInfo = contactData as ContactInfo | undefined;
+
+  // Fetch company users
+  const { data: companyUsersData } = useQuery({
+    queryKey: [`/api/companies/${contactInfo?.companyId}/users`],
+    enabled: !!contactInfo?.companyId,
+  });
+
+  const companyUsers = (companyUsersData as CompanyUser[]) || [];
+
+  // Create note mutation
+  const createNoteMutation = useMutation({
+    mutationFn: async ({ phoneNumber, note }: { phoneNumber: string; note: string }) => {
+      return apiRequest("POST", `/api/chat/conversations/${encodeURIComponent(phoneNumber)}/notes`, { note });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/chat/conversations/${encodeURIComponent(selectedConversation || '')}/notes`] });
+      setNewNoteInput("");
+      toast({
+        title: "Note created",
+        description: "Internal note has been saved successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create note",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update note mutation
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ id, note }: { id: string; note: string }) => {
+      return apiRequest("PATCH", `/api/chat/notes/${id}`, { note });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/chat/conversations/${encodeURIComponent(selectedConversation || '')}/notes`] });
+      setEditingNoteId(null);
+      setEditingNoteContent("");
+      toast({
+        title: "Note updated",
+        description: "Internal note has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update note",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete note mutation
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/chat/notes/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/chat/conversations/${encodeURIComponent(selectedConversation || '')}/notes`] });
+      toast({
+        title: "Note deleted",
+        description: "Internal note has been deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete note",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete conversation mutation
+  const deleteConversationMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      return apiRequest("DELETE", `/api/chat/conversations/${encodeURIComponent(phoneNumber)}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
+      setSelectedConversation(null);
+      setDeleteDialogOpen(false);
+      toast({
+        title: "Conversation deleted",
+        description: "The conversation has been permanently deleted",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create new chat mutation
+  const createChatMutation = useMutation({
+    mutationFn: async ({ toPhone, message }: { toPhone: string; message: string }) => {
+      return apiRequest("POST", "/api/chat/send", { toPhone, message });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
+      setNewChatDialogOpen(false);
+      setNewChatPhone("");
+      setSelectedConversation(variables.toPhone);
+      toast({
+        title: "Chat started",
+        description: "New conversation has been created",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start chat",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -166,11 +361,21 @@ export default function IncomingSms() {
         {/* Conversations List */}
         <Card className="w-96 flex flex-col">
           <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Messages</h2>
-              {totalUnread > 0 && (
-                <Badge variant="destructive">{totalUnread}</Badge>
-              )}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">Messages</h2>
+                {totalUnread > 0 && (
+                  <Badge variant="destructive">{totalUnread}</Badge>
+                )}
+              </div>
+              <Button
+                data-testid="button-new-chat"
+                size="icon"
+                variant="outline"
+                onClick={() => setNewChatDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
             
             <div className="relative">
@@ -264,23 +469,33 @@ export default function IncomingSms() {
             <>
               {/* Chat Header */}
               <div className="p-4 border-b">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={selectedConv?.userAvatar || undefined} />
-                    <AvatarFallback>
-                      {selectedConv?.userName
-                        ? selectedConv.userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                        : formatPhoneDisplay(selectedConversation).slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-semibold">
-                      {selectedConv?.userName || formatPhoneDisplay(selectedConversation)}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {formatPhoneDisplay(selectedConversation)}
-                    </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={selectedConv?.userAvatar || undefined} />
+                      <AvatarFallback>
+                        {selectedConv?.userName
+                          ? selectedConv.userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                          : formatPhoneDisplay(selectedConversation).slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold">
+                        {selectedConv?.userName || formatPhoneDisplay(selectedConversation)}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {formatPhoneDisplay(selectedConversation)}
+                      </p>
+                    </div>
                   </div>
+                  <Button
+                    data-testid="button-delete-chat"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               </div>
 
@@ -371,7 +586,306 @@ export default function IncomingSms() {
             </div>
           )}
         </Card>
+
+        {/* Contact Info Panel */}
+        {selectedConversation && (
+          <Card className="w-96 flex flex-col">
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-6">
+                {/* Contact Details */}
+                {contactInfo ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={contactInfo.avatar || undefined} />
+                        <AvatarFallback>
+                          {contactInfo.firstName && contactInfo.lastName
+                            ? `${contactInfo.firstName[0]}${contactInfo.lastName[0]}`.toUpperCase()
+                            : contactInfo.email[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-semibold">
+                          {contactInfo.firstName && contactInfo.lastName
+                            ? `${contactInfo.firstName} ${contactInfo.lastName}`
+                            : contactInfo.email}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{contactInfo.email}</p>
+                      </div>
+                    </div>
+                    
+                    {contactInfo.phone && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Phone</p>
+                        <p className="text-sm">{formatPhoneDisplay(contactInfo.phone)}</p>
+                      </div>
+                    )}
+                    
+                    {contactInfo.company && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Company</p>
+                        </div>
+                        <p className="text-sm font-medium">{contactInfo.company.name}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">No contact information available</p>
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* Company Users */}
+                {companyUsers.length > 0 && (
+                  <>
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <h4 className="font-semibold">Company Users ({companyUsers.length})</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {companyUsers.slice(0, 5).map((user) => (
+                          <div key={user.id} className="flex items-center gap-2 p-2 rounded-lg hover-elevate">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={user.avatar || undefined} />
+                              <AvatarFallback className="text-xs">
+                                {user.firstName && user.lastName
+                                  ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+                                  : user.email[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {user.firstName && user.lastName
+                                  ? `${user.firstName} ${user.lastName}`
+                                  : user.email}
+                              </p>
+                              <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {companyUsers.length > 5 && (
+                          <p className="text-xs text-muted-foreground text-center pt-2">
+                            +{companyUsers.length - 5} more users
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Separator />
+                  </>
+                )}
+
+                {/* Internal Notes */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <StickyNote className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="font-semibold">Internal Notes</h4>
+                  </div>
+
+                  {/* Add Note Form */}
+                  <div className="space-y-2 mb-4">
+                    <Textarea
+                      data-testid="input-new-note"
+                      placeholder="Add an internal note..."
+                      value={newNoteInput}
+                      onChange={(e) => setNewNoteInput(e.target.value)}
+                      className="resize-none"
+                      rows={3}
+                    />
+                    <Button
+                      data-testid="button-create-note"
+                      size="sm"
+                      onClick={() => {
+                        if (newNoteInput.trim() && selectedConversation) {
+                          createNoteMutation.mutate({
+                            phoneNumber: selectedConversation,
+                            note: newNoteInput.trim()
+                          });
+                        }
+                      }}
+                      disabled={!newNoteInput.trim() || createNoteMutation.isPending}
+                      className="w-full"
+                    >
+                      {createNoteMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Add Note"
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Notes List */}
+                  <div className="space-y-2">
+                    {notes.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">No notes yet</p>
+                    ) : (
+                      notes.map((note) => (
+                        <div key={note.id} className="p-3 rounded-lg bg-muted space-y-2">
+                          {editingNoteId === note.id ? (
+                            <>
+                              <Textarea
+                                data-testid={`input-edit-note-${note.id}`}
+                                value={editingNoteContent}
+                                onChange={(e) => setEditingNoteContent(e.target.value)}
+                                className="resize-none"
+                                rows={3}
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  data-testid={`button-save-note-${note.id}`}
+                                  size="sm"
+                                  onClick={() => {
+                                    if (editingNoteContent.trim()) {
+                                      updateNoteMutation.mutate({
+                                        id: note.id,
+                                        note: editingNoteContent.trim()
+                                      });
+                                    }
+                                  }}
+                                  disabled={!editingNoteContent.trim() || updateNoteMutation.isPending}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingNoteId(null);
+                                    setEditingNoteContent("");
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm whitespace-pre-wrap">{note.note}</p>
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(note.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                                </p>
+                                <div className="flex gap-1">
+                                  <Button
+                                    data-testid={`button-edit-note-${note.id}`}
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => {
+                                      setEditingNoteId(note.id);
+                                      setEditingNoteContent(note.note);
+                                    }}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    data-testid={`button-delete-note-${note.id}`}
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => deleteNoteMutation.mutate(note.id)}
+                                    disabled={deleteNoteMutation.isPending}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          </Card>
+        )}
       </div>
+
+      {/* New Chat Dialog */}
+      <Dialog open={newChatDialogOpen} onOpenChange={setNewChatDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start New Chat</DialogTitle>
+            <DialogDescription>
+              Enter a phone number to start a new SMS conversation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              data-testid="input-new-chat-phone"
+              placeholder="+1234567890"
+              value={newChatPhone}
+              onChange={(e) => setNewChatPhone(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setNewChatDialogOpen(false);
+                setNewChatPhone("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              data-testid="button-start-chat"
+              onClick={() => {
+                if (newChatPhone.trim()) {
+                  createChatMutation.mutate({
+                    toPhone: newChatPhone.trim(),
+                    message: "Hello"
+                  });
+                }
+              }}
+              disabled={!newChatPhone.trim() || createChatMutation.isPending}
+            >
+              {createChatMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Start Chat"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Conversation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this conversation? This action cannot be undone.
+              All messages and notes will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-delete"
+              onClick={() => {
+                if (selectedConversation) {
+                  deleteConversationMutation.mutate(selectedConversation);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteConversationMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
