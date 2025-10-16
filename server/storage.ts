@@ -56,7 +56,9 @@ import {
   type IncomingSmsMessage,
   type InsertIncomingSmsMessage,
   type OutgoingSmsMessage,
-  type InsertOutgoingSmsMessage
+  type InsertOutgoingSmsMessage,
+  type SmsChatNote,
+  type InsertSmsChatNote
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -88,7 +90,8 @@ import {
   smsCampaigns,
   campaignSmsMessages,
   incomingSmsMessages,
-  outgoingSmsMessages
+  outgoingSmsMessages,
+  smsChatNotes
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -314,6 +317,15 @@ export interface IStorage {
     sentByName?: string;
   }>>;
   markConversationAsRead(phoneNumber: string): Promise<void>;
+  
+  // SMS Chat Notes
+  createChatNote(note: InsertSmsChatNote): Promise<SmsChatNote>;
+  getChatNotes(phoneNumber: string, companyId: string): Promise<SmsChatNote[]>;
+  updateChatNote(id: string, note: string, companyId: string): Promise<SmsChatNote | undefined>;
+  deleteChatNote(id: string, companyId: string): Promise<void>;
+  
+  // Delete conversation
+  deleteConversation(phoneNumber: string, companyId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1671,6 +1683,69 @@ export class DbStorage implements IStorage {
       .innerJoin(contactLists, eq(contactListMembers.listId, contactLists.id))
       .where(eq(contactListMembers.userId, userId));
     return lists.map(l => l.list);
+  }
+  
+  // ==================== SMS CHAT NOTES ====================
+  
+  async createChatNote(note: InsertSmsChatNote): Promise<SmsChatNote> {
+    const result = await db.insert(smsChatNotes).values(note).returning();
+    return result[0];
+  }
+  
+  async getChatNotes(phoneNumber: string, companyId: string): Promise<SmsChatNote[]> {
+    return db.select().from(smsChatNotes)
+      .where(and(
+        eq(smsChatNotes.phoneNumber, phoneNumber),
+        eq(smsChatNotes.companyId, companyId)
+      ))
+      .orderBy(desc(smsChatNotes.createdAt));
+  }
+  
+  async updateChatNote(id: string, note: string, companyId: string): Promise<SmsChatNote | undefined> {
+    const result = await db.update(smsChatNotes)
+      .set({ 
+        note,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(smsChatNotes.id, id),
+        eq(smsChatNotes.companyId, companyId)
+      ))
+      .returning();
+    return result[0];
+  }
+  
+  async deleteChatNote(id: string, companyId: string): Promise<void> {
+    await db.delete(smsChatNotes)
+      .where(and(
+        eq(smsChatNotes.id, id),
+        eq(smsChatNotes.companyId, companyId)
+      ));
+  }
+  
+  // ==================== DELETE CONVERSATION ====================
+  
+  async deleteConversation(phoneNumber: string, companyId: string): Promise<void> {
+    // Delete all incoming messages
+    await db.delete(incomingSmsMessages)
+      .where(and(
+        eq(incomingSmsMessages.fromPhone, phoneNumber),
+        eq(incomingSmsMessages.companyId, companyId)
+      ));
+    
+    // Delete all outgoing messages
+    await db.delete(outgoingSmsMessages)
+      .where(and(
+        eq(outgoingSmsMessages.toPhone, phoneNumber),
+        eq(outgoingSmsMessages.companyId, companyId)
+      ));
+    
+    // Delete all notes for this conversation
+    await db.delete(smsChatNotes)
+      .where(and(
+        eq(smsChatNotes.phoneNumber, phoneNumber),
+        eq(smsChatNotes.companyId, companyId)
+      ));
   }
 }
 
