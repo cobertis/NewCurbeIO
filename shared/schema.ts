@@ -886,3 +886,58 @@ export const campaignUnsubscribeSchema = createInsertSchema(campaignUnsubscribes
 
 export type CampaignUnsubscribe = typeof campaignUnsubscribes.$inferSelect;
 export type InsertCampaignUnsubscribe = z.infer<typeof campaignUnsubscribeSchema>;
+
+// =====================================================
+// SMS CAMPAIGNS
+// =====================================================
+
+export const smsCampaigns = pgTable("sms_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  message: text("message").notNull(), // SMS message content (max 1600 characters for long SMS)
+  status: text("status").notNull().default("draft"), // draft, sending, sent, failed
+  targetListId: varchar("target_list_id").references(() => contactLists.id, { onDelete: "set null" }), // Optional: specific contact list
+  sentAt: timestamp("sent_at"),
+  sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }),
+  recipientCount: integer("recipient_count"), // Total recipients
+  deliveredCount: integer("delivered_count").default(0), // Successfully delivered
+  failedCount: integer("failed_count").default(0), // Failed deliveries
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertSmsCampaignSchema = createInsertSchema(smsCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SmsCampaign = typeof smsCampaigns.$inferSelect;
+export type InsertSmsCampaign = z.infer<typeof insertSmsCampaignSchema>;
+
+// =====================================================
+// CAMPAIGN SMS MESSAGES - Individual SMS Tracking
+// =====================================================
+
+export const campaignSmsMessages = pgTable("campaign_sms_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => smsCampaigns.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  phoneNumber: text("phone_number").notNull(), // Phone number at time of sending
+  status: text("status").notNull().default("sent"), // sent, delivered, failed
+  twilioMessageSid: text("twilio_message_sid"), // Twilio Message SID for tracking
+  errorCode: text("error_code"), // Error code if failed
+  errorMessage: text("error_message"), // Error message if failed
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+  deliveredAt: timestamp("delivered_at"),
+  failedAt: timestamp("failed_at"),
+});
+
+export const campaignSmsMessageSchema = createInsertSchema(campaignSmsMessages).omit({
+  id: true,
+  sentAt: true,
+  deliveredAt: true,
+  failedAt: true,
+});
+
+export type CampaignSmsMessage = typeof campaignSmsMessages.$inferSelect;
+export type InsertCampaignSmsMessage = z.infer<typeof campaignSmsMessageSchema>;
