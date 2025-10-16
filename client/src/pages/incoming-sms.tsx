@@ -109,6 +109,9 @@ export default function IncomingSms() {
       // Refetch conversations when there's an update
       queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
       
+      // Update unread count in sidebar
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
+      
       // If a conversation is selected, also refetch messages
       if (selectedConversation) {
         queryClient.invalidateQueries({ 
@@ -119,6 +122,23 @@ export default function IncomingSms() {
   }, [selectedConversation]);
 
   useWebSocket(handleWebSocketMessage);
+
+  // Mark all conversations as read when this page loads
+  useEffect(() => {
+    const markAllAsRead = async () => {
+      try {
+        await fetch("/api/chat/mark-all-read", {
+          method: "POST",
+          credentials: "include",
+        });
+        // Invalidate unread count in sidebar
+        queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
+      } catch (error) {
+        console.error("Failed to mark all as read:", error);
+      }
+    };
+    markAllAsRead();
+  }, []); // Run once on mount
 
   // Fetch conversations (no more polling - uses WebSocket for updates)
   const { data: conversationsData, isLoading: conversationsLoading, error: conversationsError } = useQuery({

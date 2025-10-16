@@ -3404,6 +3404,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch conversations" });
     }
   });
+
+  // Get unread conversations count (superadmin only)
+  app.get("/api/chat/unread-count", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const companyId = req.query.companyId as string | undefined;
+      const conversations = await storage.getChatConversations(companyId);
+      
+      // Count conversations (unique users) with unread messages
+      const unreadCount = conversations.filter(c => c.unreadCount > 0).length;
+      
+      res.json({ unreadCount });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  // Mark all conversations as read (superadmin only)
+  app.post("/api/chat/mark-all-read", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const companyId = req.query.companyId as string | undefined;
+      const conversations = await storage.getChatConversations(companyId);
+      
+      // Mark each conversation as read
+      await Promise.all(
+        conversations.map(conv => storage.markConversationAsRead(conv.phoneNumber))
+      );
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      res.status(500).json({ message: "Failed to mark all as read" });
+    }
+  });
   
   // Get messages for a specific conversation (superadmin only)
   app.get("/api/chat/conversations/:phoneNumber/messages", requireActiveCompany, async (req: Request, res: Response) => {

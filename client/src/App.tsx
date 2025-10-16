@@ -115,6 +115,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (message.type === 'conversation_update') {
       // When a new SMS arrives, invalidate notifications to show the new notification
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      // Also invalidate unread count for sidebar badge
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
     }
   }, []);
 

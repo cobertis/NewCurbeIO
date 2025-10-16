@@ -12,6 +12,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import type { User } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 
@@ -90,6 +91,12 @@ export function AppSidebar() {
     queryKey: ["/api/session"],
   });
 
+  // Get unread SMS count for badge
+  const { data: unreadData } = useQuery<{ unreadCount: number }>({
+    queryKey: ["/api/chat/unread-count"],
+    enabled: userData?.user?.role === "superadmin",
+  });
+
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/logout", {
@@ -106,6 +113,7 @@ export function AppSidebar() {
 
   const user = userData?.user;
   const isSuperAdmin = user?.role === "superadmin";
+  const unreadCount = unreadData?.unreadCount || 0;
 
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.superAdminOnly) {
@@ -144,9 +152,18 @@ export function AppSidebar() {
                       }
                     `}
                   >
-                    <Link href={item.url} className="flex items-center gap-3 px-3">
+                    <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
                       <item.icon className="h-5 w-5 shrink-0" />
-                      <span>{item.title}</span>
+                      <span className="flex-1">{item.title}</span>
+                      {item.url === "/incoming-sms" && unreadCount > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="ml-auto h-5 min-w-5 px-1.5 text-xs font-semibold"
+                          data-testid="badge-unread-sms"
+                        >
+                          {unreadCount}
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
