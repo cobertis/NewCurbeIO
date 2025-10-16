@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
+import { setupWebSocket, broadcastConversationUpdate } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import twilio from "twilio";
@@ -3385,6 +3386,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             twilioResult.sid
           );
           
+          // Broadcast update to WebSocket clients for real-time updates
+          broadcastConversationUpdate();
+          
           res.json({ 
             message: "SMS sent successfully",
             messageId: outgoingMessage.id,
@@ -3550,6 +3554,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isRead: false
       });
       
+      // Broadcast update to WebSocket clients for real-time updates
+      broadcastConversationUpdate();
+      
       // Respond to Twilio with TwiML (empty response = no auto-reply)
       res.type("text/xml");
       res.send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
@@ -3560,6 +3567,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+
+  // Setup WebSocket for real-time chat updates
+  setupWebSocket(httpServer);
 
   return httpServer;
 }
