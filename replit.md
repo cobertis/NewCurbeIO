@@ -45,6 +45,11 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
     - **Management:** Send SMS, mark as read, search conversations.
     - **Backend Integration:** APIs for retrieving conversations, message history, sending SMS, and marking as read.
     - **Database:** `outgoing_sms_messages` table for manual replies; conversations built from incoming and outgoing messages.
+- **SMS Subscription Management:**
+    - **User Field:** `smsSubscribed` boolean field (default true) tracks SMS subscription status independently from email subscriptions.
+    - **Automatic Unsubscribe:** Twilio webhook processes STOP keywords (STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT) from incoming messages and automatically unsubscribes users.
+    - **Contact List View:** "SMS Unsubscribed" view in Contact Lists displays users who opted out of SMS communications.
+    - **Manual Toggle:** Superadmin endpoint (PATCH `/api/users/:userId/sms-subscription`) allows manual subscription management with Zod validation.
 
 ### System Design Choices
 The system maintains a clear separation of concerns. Data models use PostgreSQL with Drizzle ORM for multi-tenancy and strict data isolation. Security measures include password management, account activation, and 2FA. The modular feature system offers flexibility.

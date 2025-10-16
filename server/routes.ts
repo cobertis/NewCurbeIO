@@ -2869,6 +2869,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to unsubscribe" });
     }
   });
+  
+  // Toggle SMS subscription (authenticated endpoint)
+  app.patch("/api/users/:userId/sms-subscription", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { userId } = req.params;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    // Validate request body
+    const smsSubscriptionSchema = z.object({
+      subscribed: z.boolean()
+    });
+    
+    const validation = smsSubscriptionSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ message: "subscribed must be a boolean" });
+    }
+    
+    const { subscribed } = validation.data;
+    
+    try {
+      const updatedUser = await storage.updateUserSmsSubscription(userId, subscribed);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: subscribed ? "User subscribed to SMS" : "User unsubscribed from SMS",
+        user: updatedUser 
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update SMS subscription" });
+    }
+  });
 
   // ==================== EMAIL TRACKING (Public endpoints) ====================
 

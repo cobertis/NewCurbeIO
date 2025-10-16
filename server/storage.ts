@@ -1454,7 +1454,12 @@ export class DbStorage implements IStorage {
       })
       .from(incomingSmsMessages)
       .groupBy(incomingSmsMessages.fromPhone, incomingSmsMessages.userId)
-      .orderBy(desc(sql`lastMessageAt`));
+      .orderBy(desc(sql`
+        GREATEST(
+          COALESCE((SELECT MAX(received_at) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone}), '1970-01-01'),
+          COALESCE((SELECT MAX(sent_at) FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone}), '1970-01-01')
+        )
+      `));
     
     // Enrich with user data
     const enriched = await Promise.all(
