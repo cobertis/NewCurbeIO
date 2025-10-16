@@ -41,10 +41,12 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
     - **Twilio Webhooks:** Status callback webhook for delivery updates and incoming message webhook for SMS replies, with automatic URL configuration.
 - **SMS Chat Application (`/incoming-sms`):**
     - **Full Chat Interface:** Bidirectional SMS chat with two-column layout (conversations list, chat area).
-    - **Message Display:** Chronological messages with timestamps, auto-scroll, real-time updates for conversations and messages.
+    - **Real-Time Updates:** WebSocket-based notifications (path: `/ws/chat`) eliminate inefficient polling, updating UI only when messages arrive or are sent.
+    - **Message Display:** Chronological messages with timestamps, auto-scroll, instant updates via WebSocket events.
     - **Management:** Send SMS, mark as read, search conversations.
     - **Backend Integration:** APIs for retrieving conversations, message history, sending SMS, and marking as read.
     - **Database:** `outgoing_sms_messages` table for manual replies; conversations built from incoming and outgoing messages.
+    - **WebSocket Service:** Broadcasts `conversation_update` events when Twilio receives messages or when SMS is sent, triggering frontend cache invalidation.
 - **SMS Subscription Management:**
     - **User Field:** `smsSubscribed` boolean field (default true) tracks SMS subscription status independently from email subscriptions.
     - **Automatic Unsubscribe:** Twilio webhook processes STOP keywords (STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT) from incoming messages and automatically unsubscribes users.

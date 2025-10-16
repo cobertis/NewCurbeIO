@@ -1272,6 +1272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
         emailVerified: false,
         emailSubscribed: true,
+        smsSubscribed: true,
         emailNotifications: true,
         invoiceAlerts: true,
       });
