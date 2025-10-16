@@ -2187,14 +2187,17 @@ export default function Campaigns() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Target Audience (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "all" ? undefined : value)} 
+                      value={field.value || "all"}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-sms-target">
                           <SelectValue placeholder="Send to all contacts with phone numbers" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">All contacts with phone numbers</SelectItem>
+                        <SelectItem value="all">All contacts with phone numbers</SelectItem>
                         {lists.map((list) => (
                           <SelectItem key={list.id} value={list.id}>
                             {list.name} ({list.memberCount || 0} members)
