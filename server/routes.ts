@@ -190,6 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         console.log(`✓ Session saved successfully for ${user.email}. pendingUserId: ${req.session.pendingUserId}, sessionID: ${req.sessionID}`);
+        console.log(`[LOGIN] Response headers will include Set-Cookie:`, res.getHeader('Set-Cookie'));
 
         res.json({
           success: true,
