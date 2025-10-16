@@ -51,6 +51,7 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
     - **Backend Integration:** APIs for retrieving conversations with contact enrichment (name, email, avatar), message history, sending SMS, marking as read, conversation deletion, and notes CRUD; superadmins can optionally filter by `companyId` query parameter.
     - **Database:** `outgoing_sms_messages` table for manual replies; `sms_chat_notes` table for internal notes; conversations built from incoming and outgoing messages; all tables enforce company-level isolation.
     - **WebSocket Service:** Broadcasts `conversation_update` events when Twilio receives messages or when SMS is sent, triggering frontend cache invalidation.
+    - **SMS Notifications:** Incoming SMS messages automatically create in-app notifications for all superadmins, displayed in the header notification bell with sender name (or phone number), message preview, and direct link to SMS chat.
 - **SMS Subscription Management:**
     - **User Field:** `smsSubscribed` boolean field (default true) tracks SMS subscription status independently from email subscriptions.
     - **Automatic Unsubscribe:** Twilio webhook processes STOP keywords (STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT) from incoming messages and automatically unsubscribes users.
