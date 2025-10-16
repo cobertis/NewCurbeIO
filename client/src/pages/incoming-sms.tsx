@@ -198,6 +198,25 @@ export default function IncomingSms() {
 
   const contactInfo = ((contactData || contactDataByPhone) as any)?.user as ContactInfo | undefined;
   
+  // If we have a selected conversation but it's not in the list (new chat without messages),
+  // add it as a temporary conversation using contactInfo
+  let displayConversations = conversations;
+  if (selectedConversation && !selectedConv && contactInfo) {
+    const tempConv: Conversation = {
+      phoneNumber: selectedConversation,
+      userId: contactInfo.id,
+      userName: contactInfo.firstName && contactInfo.lastName 
+        ? `${contactInfo.firstName} ${contactInfo.lastName}`
+        : null,
+      userEmail: contactInfo.email,
+      userAvatar: contactInfo.avatar,
+      lastMessage: "No messages yet",
+      lastMessageAt: new Date(),
+      unreadCount: 0,
+    };
+    displayConversations = [tempConv, ...conversations];
+  }
+  
   // Company users come directly with the contact info now
   const companyUsers = (contactInfo?.companyUsers as CompanyUser[]) || [];
 
@@ -329,12 +348,12 @@ export default function IncomingSms() {
   // Mark conversation as read when selected
   useEffect(() => {
     if (selectedConversation) {
-      const conv = conversations.find(c => c.phoneNumber === selectedConversation);
+      const conv = displayConversations.find(c => c.phoneNumber === selectedConversation);
       if (conv && conv.unreadCount > 0) {
         markAsReadMutation.mutate(selectedConversation);
       }
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, displayConversations]);
 
   const handleSendMessage = () => {
     if (!selectedConversation || !messageInput.trim()) return;
@@ -352,7 +371,7 @@ export default function IncomingSms() {
     }
   };
 
-  const filteredConversations = conversations.filter((conv) => {
+  const filteredConversations = displayConversations.filter((conv) => {
     const query = searchQuery.toLowerCase();
     return (
       conv.phoneNumber.toLowerCase().includes(query) ||
@@ -362,7 +381,7 @@ export default function IncomingSms() {
     );
   });
 
-  const totalUnread = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+  const totalUnread = displayConversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
 
   return (
     <div className="p-8">
@@ -481,16 +500,20 @@ export default function IncomingSms() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedConv?.userAvatar || undefined} />
+                      <AvatarImage src={contactInfo?.avatar || selectedConv?.userAvatar || undefined} />
                       <AvatarFallback>
-                        {selectedConv?.userName
+                        {contactInfo?.firstName && contactInfo?.lastName
+                          ? `${contactInfo.firstName[0]}${contactInfo.lastName[0]}`.toUpperCase()
+                          : selectedConv?.userName
                           ? selectedConv.userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
                           : formatPhoneDisplay(selectedConversation).slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <h3 className="font-semibold">
-                        {selectedConv?.userName || formatPhoneDisplay(selectedConversation)}
+                        {contactInfo?.firstName && contactInfo?.lastName
+                          ? `${contactInfo.firstName} ${contactInfo.lastName}`
+                          : selectedConv?.userName || formatPhoneDisplay(selectedConversation)}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {formatPhoneDisplay(selectedConversation)}
