@@ -2424,6 +2424,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: Math.random().toString(36).slice(-12), // Random password
           role: "viewer" as const,
           emailSubscribed: true, // Auto-subscribe imported contacts
+          emailNotifications: false,
+          invoiceAlerts: false,
           language: "en" as const,
           companyId: contact.companyId || null,
         };

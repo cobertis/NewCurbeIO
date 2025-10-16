@@ -13,8 +13,8 @@ import type { EmailCampaign, EmailOpen, LinkClick, CampaignEmail } from "@shared
 
 interface CampaignStats {
   campaign: EmailCampaign;
-  opens: EmailOpen[];
-  clicks: LinkClick[];
+  opens: (EmailOpen & { userName?: string; userEmail?: string })[];
+  clicks: (LinkClick & { userName?: string; userEmail?: string })[];
   uniqueOpeners: string[];
   uniqueClickers: string[];
   clicksByUrl: { url: string; clickCount: number; uniqueClickCount: number }[];
@@ -273,6 +273,9 @@ export default function CampaignStats() {
                         <div className="flex-1">
                           <p className="font-medium">
                             {isOpen ? 'Email opened' : 'Link clicked'}
+                            {activity.userName && (
+                              <span className="text-muted-foreground font-normal"> by {activity.userName}</span>
+                            )}
                           </p>
                           {!isOpen && (
                             <p className="text-xs text-muted-foreground truncate" title={(activity as LinkClick).url}>

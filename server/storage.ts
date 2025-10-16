@@ -1066,8 +1066,23 @@ export class DbStorage implements IStorage {
     return result[0];
   }
   
-  async getEmailOpens(campaignId: string): Promise<EmailOpen[]> {
-    return db.select().from(emailOpens).where(eq(emailOpens.campaignId, campaignId)).orderBy(desc(emailOpens.openedAt));
+  async getEmailOpens(campaignId: string): Promise<any[]> {
+    const results = await db.select({
+      id: emailOpens.id,
+      campaignId: emailOpens.campaignId,
+      userId: emailOpens.userId,
+      openedAt: emailOpens.openedAt,
+      userAgent: emailOpens.userAgent,
+      ipAddress: emailOpens.ipAddress,
+      userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
+      userEmail: users.email
+    })
+    .from(emailOpens)
+    .innerJoin(users, eq(emailOpens.userId, users.id))
+    .where(eq(emailOpens.campaignId, campaignId))
+    .orderBy(desc(emailOpens.openedAt));
+    
+    return results;
   }
   
   async getUniqueOpeners(campaignId: string): Promise<string[]> {
@@ -1105,8 +1120,24 @@ export class DbStorage implements IStorage {
     return result[0];
   }
   
-  async getLinkClicks(campaignId: string): Promise<LinkClick[]> {
-    return db.select().from(linkClicks).where(eq(linkClicks.campaignId, campaignId)).orderBy(desc(linkClicks.clickedAt));
+  async getLinkClicks(campaignId: string): Promise<any[]> {
+    const results = await db.select({
+      id: linkClicks.id,
+      campaignId: linkClicks.campaignId,
+      userId: linkClicks.userId,
+      url: linkClicks.url,
+      clickedAt: linkClicks.clickedAt,
+      userAgent: linkClicks.userAgent,
+      ipAddress: linkClicks.ipAddress,
+      userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
+      userEmail: users.email
+    })
+    .from(linkClicks)
+    .innerJoin(users, eq(linkClicks.userId, users.id))
+    .where(eq(linkClicks.campaignId, campaignId))
+    .orderBy(desc(linkClicks.clickedAt));
+    
+    return results;
   }
   
   async getUniqueClickers(campaignId: string): Promise<string[]> {
@@ -1132,7 +1163,7 @@ export class DbStorage implements IStorage {
       return acc;
     }, {} as Record<string, {url: string, clickCount: number, uniqueUserIds: Set<string>}>);
     
-    return Object.values(urlStats).map(stat => ({
+    return Object.values(urlStats).map((stat: any) => ({
       url: stat.url,
       clickCount: stat.clickCount,
       uniqueClickCount: stat.uniqueUserIds.size
