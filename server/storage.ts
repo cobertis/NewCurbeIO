@@ -1422,42 +1422,50 @@ export class DbStorage implements IStorage {
   
   // ==================== CHAT CONVERSATIONS ====================
   
-  async getChatConversations(): Promise<Array<{
+  async getChatConversations(companyId?: string): Promise<Array<{
     phoneNumber: string;
     userId: string | null;
     userName: string | null;
     userEmail: string | null;
+    userAvatar: string | null;
     lastMessage: string;
     lastMessageAt: Date;
     unreadCount: number;
   }>> {
-    // Get all unique phone numbers from incoming messages
-    const conversations = await db
+    // Build base query with optional companyId filter
+    let query = db
       .select({
         phoneNumber: incomingSmsMessages.fromPhone,
         userId: incomingSmsMessages.userId,
         lastMessage: sql<string>`
           COALESCE(
-            (SELECT message_body FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} ORDER BY received_at DESC LIMIT 1),
-            (SELECT message_body FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone} ORDER BY sent_at DESC LIMIT 1)
+            (SELECT message_body FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`i.company_id = ${companyId}` : sql`1=1`} ORDER BY received_at DESC LIMIT 1),
+            (SELECT message_body FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`o.company_id = ${companyId}` : sql`1=1`} ORDER BY sent_at DESC LIMIT 1)
           )
         `.as('lastMessage'),
         lastMessageAt: sql<Date>`
           GREATEST(
-            COALESCE((SELECT MAX(received_at) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone}), '1970-01-01'),
-            COALESCE((SELECT MAX(sent_at) FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone}), '1970-01-01')
+            COALESCE((SELECT MAX(received_at) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`i.company_id = ${companyId}` : sql`1=1`}), '1970-01-01'),
+            COALESCE((SELECT MAX(sent_at) FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`o.company_id = ${companyId}` : sql`1=1`}), '1970-01-01')
           )
         `.as('lastMessageAt'),
         unreadCount: sql<number>`
-          (SELECT COUNT(*) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND i.is_read = false)
+          (SELECT COUNT(*) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND i.is_read = false AND ${companyId ? sql`i.company_id = ${companyId}` : sql`1=1`})
         `.as('unreadCount'),
       })
-      .from(incomingSmsMessages)
+      .from(incomingSmsMessages);
+    
+    // Add WHERE clause for companyId filtering
+    if (companyId) {
+      query = query.where(eq(incomingSmsMessages.companyId, companyId));
+    }
+    
+    const conversations = await query
       .groupBy(incomingSmsMessages.fromPhone, incomingSmsMessages.userId)
       .orderBy(desc(sql`
         GREATEST(
-          COALESCE((SELECT MAX(received_at) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone}), '1970-01-01'),
-          COALESCE((SELECT MAX(sent_at) FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone}), '1970-01-01')
+          COALESCE((SELECT MAX(received_at) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`i.company_id = ${companyId}` : sql`1=1`}), '1970-01-01'),
+          COALESCE((SELECT MAX(sent_at) FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`o.company_id = ${companyId}` : sql`1=1`}), '1970-01-01')
         )
       `));
     
@@ -1495,7 +1503,7 @@ export class DbStorage implements IStorage {
     return enriched;
   }
   
-  async getConversationMessages(phoneNumber: string): Promise<Array<{
+  async getConversationMessages(phoneNumber: string, companyId?: string): Promise<Array<{
     id: string;
     type: 'incoming' | 'outgoing';
     message: string;
@@ -1504,8 +1512,8 @@ export class DbStorage implements IStorage {
     sentBy?: string;
     sentByName?: string;
   }>> {
-    // Get incoming messages
-    const incoming = await db
+    // Get incoming messages with optional companyId filter
+    let incomingQuery = db
       .select({
         id: incomingSmsMessages.id,
         message: incomingSmsMessages.messageBody,
@@ -1514,8 +1522,14 @@ export class DbStorage implements IStorage {
       .from(incomingSmsMessages)
       .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
     
-    // Get outgoing messages with sender info
-    const outgoing = await db
+    if (companyId) {
+      incomingQuery = incomingQuery.where(eq(incomingSmsMessages.companyId, companyId));
+    }
+    
+    const incoming = await incomingQuery;
+    
+    // Get outgoing messages with sender info and optional companyId filter
+    let outgoingQuery = db
       .select({
         id: outgoingSmsMessages.id,
         message: outgoingSmsMessages.messageBody,
@@ -1528,6 +1542,12 @@ export class DbStorage implements IStorage {
       .from(outgoingSmsMessages)
       .leftJoin(users, eq(outgoingSmsMessages.sentBy, users.id))
       .where(eq(outgoingSmsMessages.toPhone, phoneNumber));
+    
+    if (companyId) {
+      outgoingQuery = outgoingQuery.where(eq(outgoingSmsMessages.companyId, companyId));
+    }
+    
+    const outgoing = await outgoingQuery;
     
     // Combine and sort
     const allMessages = [
@@ -1553,10 +1573,16 @@ export class DbStorage implements IStorage {
     return allMessages;
   }
   
-  async markConversationAsRead(phoneNumber: string): Promise<void> {
-    await db.update(incomingSmsMessages)
+  async markConversationAsRead(phoneNumber: string, companyId?: string): Promise<void> {
+    let query = db.update(incomingSmsMessages)
       .set({ isRead: true })
       .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
+    
+    if (companyId) {
+      query = query.where(eq(incomingSmsMessages.companyId, companyId));
+    }
+    
+    await query;
   }
   
   // ==================== CONTACT LISTS ====================

@@ -3318,7 +3318,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      const conversations = await storage.getChatConversations();
+      // Superadmins can optionally filter by companyId via query param
+      const companyId = req.query.companyId as string | undefined;
+      const conversations = await storage.getChatConversations(companyId);
       res.json({ conversations });
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -3336,7 +3338,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const { phoneNumber } = req.params;
-      const messages = await storage.getConversationMessages(phoneNumber);
+      // Superadmins can optionally filter by companyId via query param
+      const companyId = req.query.companyId as string | undefined;
+      const messages = await storage.getConversationMessages(phoneNumber, companyId);
       res.json({ messages });
     } catch (error) {
       console.error("Error fetching conversation messages:", error);
@@ -3365,6 +3369,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get Twilio phone number
       const fromPhone = process.env.TWILIO_PHONE_NUMBER || "";
       
+      // Determine companyId: use currentUser's companyId or recipient's if available
+      const companyId = currentUser.companyId || recipientUser?.companyId || null;
+      
       // Create outgoing message record
       const outgoingMessage = await storage.createOutgoingSmsMessage({
         toPhone,
@@ -3373,6 +3380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "sending",
         sentBy: currentUser.id,
         userId: recipientUser?.id || null,
+        companyId,
       });
       
       // Send SMS via Twilio
@@ -3429,7 +3437,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const { phoneNumber } = req.params;
-      await storage.markConversationAsRead(phoneNumber);
+      // Superadmins can optionally filter by companyId via query param
+      const companyId = req.query.companyId as string | undefined;
+      await storage.markConversationAsRead(phoneNumber, companyId);
       res.json({ message: "Conversation marked as read" });
     } catch (error) {
       console.error("Error marking conversation as read:", error);
@@ -3552,6 +3562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toPhone: To,
         messageBody: Body,
         userId: matchedUser?.id,
+        companyId: matchedUser?.companyId || null,
         isRead: false
       });
       
