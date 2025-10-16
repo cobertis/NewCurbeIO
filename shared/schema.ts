@@ -128,6 +128,9 @@ export const users = pgTable("users", {
   // Email marketing subscription
   emailSubscribed: boolean("email_subscribed").notNull().default(true), // Subscribed to marketing emails
   
+  // SMS marketing subscription
+  smsSubscribed: boolean("sms_subscribed").notNull().default(true), // Subscribed to marketing SMS
+  
   // Email preferences
   emailNotifications: boolean("email_notifications").notNull().default(true), // General email notifications
   invoiceAlerts: boolean("invoice_alerts").notNull().default(true), // Invoice notification emails
@@ -532,6 +535,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")), // Accept string from frontend
   emailSubscribed: z.boolean().optional().default(true), // Default to true for marketing emails
+  smsSubscribed: z.boolean().optional().default(true), // Default to true for marketing SMS
   emailNotifications: z.boolean().optional().default(true), // Default to true for notifications
   invoiceAlerts: z.boolean().optional().default(true), // Default to true for invoice alerts
 });
