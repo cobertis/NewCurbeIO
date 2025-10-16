@@ -15,10 +15,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown, MessageSquare, Sun } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { formatDistanceToNow } from "date-fns";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
 import VerifyOTP from "@/pages/verify-otp";
@@ -287,58 +288,136 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Notifications Sidebar */}
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <SheetContent side="right" className="w-96">
-          <SheetHeader className="flex flex-row items-center justify-between">
-            <SheetTitle>Notifications</SheetTitle>
+        <SheetContent side="right" className="w-[420px] p-0 flex flex-col">
+          {/* Header with gradient */}
+          <div className="p-6 pb-4 border-b bg-gradient-to-br from-primary/5 to-transparent">
+            <div className="flex items-center justify-between mb-1">
+              <SheetTitle className="text-2xl font-bold">Notifications</SheetTitle>
+              {unreadCount > 0 && (
+                <Badge variant="default" className="h-6 px-2">
+                  {unreadCount} new
+                </Badge>
+              )}
+            </div>
             {unreadCount > 0 && (
               <Button 
                 variant="ghost" 
-                size="sm" 
+                size="sm"
                 onClick={markAllAsRead}
                 data-testid="button-mark-all-read"
+                className="h-8 px-2 text-xs -ml-2 mt-1"
               >
+                <Check className="h-3 w-3 mr-1" />
                 Mark all as read
               </Button>
             )}
-          </SheetHeader>
-          <div className="mt-6 space-y-4">
+          </div>
+
+          {/* Notifications list with custom scrollbar */}
+          <div className="flex-1 overflow-y-auto p-3">
             {isLoadingNotifications ? (
-              <div className="py-6 text-center text-sm text-muted-foreground" data-testid="notifications-loading">
-                Loading notifications...
+              <div className="flex items-center justify-center py-20" data-testid="notifications-loading">
+                <div className="text-center">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent mb-3"></div>
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                </div>
               </div>
             ) : isErrorNotifications ? (
-              <div className="py-6 text-center text-sm text-destructive" data-testid="notifications-error">
-                Failed to load notifications
+              <div className="flex items-center justify-center py-20" data-testid="notifications-error">
+                <div className="text-center">
+                  <div className="rounded-full bg-destructive/10 p-3 inline-block mb-3">
+                    <Bell className="h-6 w-6 text-destructive" />
+                  </div>
+                  <p className="text-sm text-destructive font-medium">Failed to load</p>
+                </div>
               </div>
             ) : notifications.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground" data-testid="notifications-empty">
-                No notifications
+              <div className="flex items-center justify-center py-20" data-testid="notifications-empty">
+                <div className="text-center">
+                  <div className="rounded-full bg-muted p-4 inline-block mb-3">
+                    <Bell className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium mb-1">All caught up!</p>
+                  <p className="text-xs text-muted-foreground">No notifications to show</p>
+                </div>
               </div>
             ) : (
-              notifications.map((notification: any) => (
-                <div 
-                  key={notification.id}
-                  onClick={() => {
-                    if (!notification.isRead) {
-                      markAsRead(notification.id);
-                    }
-                    if (notification.link) {
-                      setLocation(notification.link);
-                      setNotificationsOpen(false);
-                    }
-                  }}
-                  className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
-                  data-testid={`notification-item-${notification.id}`}
-                >
-                  <div className="font-medium text-sm mb-1">{notification.title}</div>
-                  <div className="text-sm text-muted-foreground">{notification.message}</div>
-                  {!notification.isRead && (
-                    <div className="mt-2">
-                      <Badge variant="destructive" className="text-xs">New</Badge>
+              <div className="space-y-1">
+                {notifications.map((notification: any) => {
+                  const getNotificationIcon = () => {
+                    if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
+                    if (notification.title.toLowerCase().includes('email')) return Mail;
+                    if (notification.title.toLowerCase().includes('user')) return UserPlus;
+                    return Bell;
+                  };
+                  
+                  const Icon = getNotificationIcon();
+                  const timeAgo = notification.createdAt 
+                    ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+                    : '';
+
+                  return (
+                    <div 
+                      key={notification.id}
+                      onClick={() => {
+                        if (!notification.isRead) {
+                          markAsRead(notification.id);
+                        }
+                        if (notification.link) {
+                          setLocation(notification.link);
+                          setNotificationsOpen(false);
+                        }
+                      }}
+                      className={`
+                        group relative p-3 rounded-lg transition-all cursor-pointer
+                        ${!notification.isRead 
+                          ? 'bg-primary/5 hover:bg-primary/10 border-l-2 border-primary' 
+                          : 'hover:bg-accent/50'
+                        }
+                      `}
+                      data-testid={`notification-item-${notification.id}`}
+                    >
+                      <div className="flex gap-3">
+                        {/* Icon with colored background */}
+                        <div className={`
+                          shrink-0 rounded-full p-2 h-9 w-9 flex items-center justify-center
+                          ${!notification.isRead 
+                            ? 'bg-primary/10 text-primary' 
+                            : 'bg-muted text-muted-foreground'
+                          }
+                        `}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h4 className={`
+                              text-sm font-semibold line-clamp-1
+                              ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}
+                            `}>
+                              {notification.title}
+                            </h4>
+                            {!notification.isRead && (
+                              <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1"></div>
+                            )}
+                          </div>
+                          
+                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                            {notification.message}
+                          </p>
+                          
+                          {timeAgo && (
+                            <p className="text-xs text-muted-foreground/70">
+                              {timeAgo}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))
+                  );
+                })}
+              </div>
             )}
           </div>
         </SheetContent>
