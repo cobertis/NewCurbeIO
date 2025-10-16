@@ -3447,6 +3447,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get notes for a conversation (superadmin only)
+  app.get("/api/chat/conversations/:phoneNumber/notes", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { phoneNumber } = req.params;
+      const companyId = currentUser.companyId!;
+      const notes = await storage.getChatNotes(phoneNumber, companyId);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching chat notes:", error);
+      res.status(500).json({ message: "Failed to fetch notes" });
+    }
+  });
+  
+  // Create a note for a conversation (superadmin only)
+  app.post("/api/chat/conversations/:phoneNumber/notes", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { phoneNumber } = req.params;
+      const { note } = req.body;
+      
+      if (!note || typeof note !== 'string' || note.trim().length === 0) {
+        return res.status(400).json({ message: "Note content is required" });
+      }
+      
+      const newNote = await storage.createChatNote({
+        phoneNumber,
+        note: note.trim(),
+        companyId: currentUser.companyId!,
+        createdBy: currentUser.id
+      });
+      
+      res.json(newNote);
+    } catch (error) {
+      console.error("Error creating chat note:", error);
+      res.status(500).json({ message: "Failed to create note" });
+    }
+  });
+  
+  // Update a note (superadmin only)
+  app.patch("/api/chat/notes/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { id } = req.params;
+      const { note } = req.body;
+      
+      if (!note || typeof note !== 'string' || note.trim().length === 0) {
+        return res.status(400).json({ message: "Note content is required" });
+      }
+      
+      const updatedNote = await storage.updateChatNote(id, note.trim(), currentUser.companyId!);
+      
+      if (!updatedNote) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      res.json(updatedNote);
+    } catch (error) {
+      console.error("Error updating chat note:", error);
+      res.status(500).json({ message: "Failed to update note" });
+    }
+  });
+  
+  // Delete a note (superadmin only)
+  app.delete("/api/chat/notes/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { id } = req.params;
+      await storage.deleteChatNote(id, currentUser.companyId!);
+      res.json({ message: "Note deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting chat note:", error);
+      res.status(500).json({ message: "Failed to delete note" });
+    }
+  });
+  
+  // Delete entire conversation (superadmin only)
+  app.delete("/api/chat/conversations/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const { phoneNumber } = req.params;
+      await storage.deleteConversation(phoneNumber, currentUser.companyId!);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ message: "Conversation deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+  
   // ==================== TWILIO WEBHOOKS ====================
   
   // Helper function to validate Twilio signature
