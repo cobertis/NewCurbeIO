@@ -1445,52 +1445,83 @@ export class DbStorage implements IStorage {
     lastMessageAt: Date;
     unreadCount: number;
   }>> {
-    // Build base query with optional companyId filter
-    let query = db
-      .select({
-        phoneNumber: incomingSmsMessages.fromPhone,
-        userId: incomingSmsMessages.userId,
-        lastMessage: sql<string>`
-          COALESCE(
-            (SELECT message_body FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`i.company_id = ${companyId}` : sql`1=1`} ORDER BY received_at DESC LIMIT 1),
-            (SELECT message_body FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`o.company_id = ${companyId}` : sql`1=1`} ORDER BY sent_at DESC LIMIT 1)
-          )
-        `.as('lastMessage'),
-        lastMessageAt: sql<Date>`
-          GREATEST(
-            COALESCE((SELECT MAX(received_at) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`i.company_id = ${companyId}` : sql`1=1`}), '1970-01-01'),
-            COALESCE((SELECT MAX(sent_at) FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`o.company_id = ${companyId}` : sql`1=1`}), '1970-01-01')
-          )
-        `.as('lastMessageAt'),
-        unreadCount: sql<number>`
-          (SELECT COUNT(*) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND i.is_read = false AND ${companyId ? sql`i.company_id = ${companyId}` : sql`1=1`})
-        `.as('unreadCount'),
-      })
-      .from(incomingSmsMessages);
+    // Build a single SQL query that unions incoming and outgoing, then aggregates
+    const companyFilter = companyId ? sql`company_id = ${companyId}` : sql`TRUE`;
     
-    // Add WHERE clause for companyId filtering
-    if (companyId) {
-      query = query.where(eq(incomingSmsMessages.companyId, companyId));
-    }
-    
-    const conversations = await query
-      .groupBy(incomingSmsMessages.fromPhone, incomingSmsMessages.userId)
-      .orderBy(desc(sql`
-        GREATEST(
-          COALESCE((SELECT MAX(received_at) FROM incoming_sms_messages i WHERE i.from_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`i.company_id = ${companyId}` : sql`1=1`}), '1970-01-01'),
-          COALESCE((SELECT MAX(sent_at) FROM outgoing_sms_messages o WHERE o.to_phone = ${incomingSmsMessages.fromPhone} AND ${companyId ? sql`o.company_id = ${companyId}` : sql`1=1`}), '1970-01-01')
-        )
-      `));
+    const conversations = await db.execute<{
+      phone_number: string;
+      user_id: string | null;
+      last_message: string;
+      last_message_at: Date;
+      unread_count: number;
+    }>(sql`
+      WITH all_messages AS (
+        SELECT 
+          from_phone as phone_number,
+          message_body,
+          received_at as timestamp,
+          'incoming' as type
+        FROM incoming_sms_messages
+        WHERE ${companyFilter}
+        
+        UNION ALL
+        
+        SELECT 
+          to_phone as phone_number,
+          message_body,
+          sent_at as timestamp,
+          'outgoing' as type
+        FROM outgoing_sms_messages
+        WHERE ${companyFilter}
+      ),
+      conversation_summary AS (
+        SELECT 
+          phone_number,
+          (
+            SELECT user_id 
+            FROM incoming_sms_messages 
+            WHERE from_phone = all_messages.phone_number 
+              AND ${companyFilter}
+            ORDER BY received_at DESC 
+            LIMIT 1
+          ) as user_id,
+          MAX(timestamp) as last_message_at,
+          (
+            SELECT message_body 
+            FROM all_messages a2 
+            WHERE a2.phone_number = all_messages.phone_number 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+          ) as last_message,
+          (
+            SELECT COUNT(*) 
+            FROM incoming_sms_messages 
+            WHERE from_phone = all_messages.phone_number 
+              AND is_read = false 
+              AND ${companyFilter}
+          ) as unread_count
+        FROM all_messages
+        GROUP BY phone_number
+      )
+      SELECT 
+        phone_number,
+        user_id,
+        last_message,
+        last_message_at,
+        unread_count::integer
+      FROM conversation_summary
+      ORDER BY last_message_at DESC
+    `);
     
     // Enrich with user data
     const enriched = await Promise.all(
-      conversations.map(async (conv) => {
+      conversations.rows.map(async (conv) => {
         let userName: string | null = null;
         let userEmail: string | null = null;
         let userAvatar: string | null = null;
         
-        if (conv.userId) {
-          const user = await this.getUser(conv.userId);
+        if (conv.user_id) {
+          const user = await this.getUser(conv.user_id);
           if (user) {
             userName = user.firstName && user.lastName 
               ? `${user.firstName} ${user.lastName}`.trim()
@@ -1501,14 +1532,14 @@ export class DbStorage implements IStorage {
         }
         
         return {
-          phoneNumber: conv.phoneNumber,
-          userId: conv.userId,
+          phoneNumber: conv.phone_number,
+          userId: conv.user_id,
           userName,
           userEmail,
           userAvatar,
-          lastMessage: conv.lastMessage || '',
-          lastMessageAt: conv.lastMessageAt,
-          unreadCount: conv.unreadCount,
+          lastMessage: conv.last_message || '',
+          lastMessageAt: conv.last_message_at,
+          unreadCount: Number(conv.unread_count || 0),
         };
       })
     );
