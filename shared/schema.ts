@@ -996,3 +996,26 @@ export const insertOutgoingSmsMessageSchema = createInsertSchema(outgoingSmsMess
 
 export type OutgoingSmsMessage = typeof outgoingSmsMessages.$inferSelect;
 export type InsertOutgoingSmsMessage = z.infer<typeof insertOutgoingSmsMessageSchema>;
+
+// =====================================================
+// SMS CHAT NOTES (Internal notes for SMS conversations)
+// =====================================================
+
+export const smsChatNotes = pgTable("sms_chat_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phoneNumber: text("phone_number").notNull(), // The phone number this note is about
+  note: text("note").notNull(), // The actual note content
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }), // Multi-tenant reference
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who created the note
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertSmsChatNoteSchema = createInsertSchema(smsChatNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SmsChatNote = typeof smsChatNotes.$inferSelect;
+export type InsertSmsChatNote = z.infer<typeof insertSmsChatNoteSchema>;
