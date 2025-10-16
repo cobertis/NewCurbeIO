@@ -84,7 +84,7 @@ export default function Campaigns() {
   const [campaignToSend, setCampaignToSend] = useState<EmailCampaign | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<EmailCampaign | null>(null);
-  const [activeTab, setActiveTab] = useState("campaigns");
+  const [activeTab, setActiveTab] = useState("reports");
   const [createListOpen, setCreateListOpen] = useState(false);
   const [editListOpen, setEditListOpen] = useState(false);
   const [editingList, setEditingList] = useState<ContactList | null>(null);
@@ -826,6 +826,10 @@ export default function Campaigns() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
+          <TabsTrigger value="reports" data-testid="tab-reports">
+            <BarChart className="h-4 w-4 mr-2" />
+            Reports
+          </TabsTrigger>
           <TabsTrigger value="campaigns" data-testid="tab-campaigns">
             <Mail className="h-4 w-4 mr-2" />
             Email Campaigns
@@ -839,6 +843,132 @@ export default function Campaigns() {
             Contact Lists
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="reports">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
+                <Mail className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="text-total-campaigns">
+                  {campaigns.length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {campaigns.filter(c => c.status === 'sent').length} sent, {campaigns.filter(c => c.status === 'draft').length} draft{campaigns.filter(c => !['sent', 'draft'].includes(c.status)).length > 0 && `, ${campaigns.filter(c => !['sent', 'draft'].includes(c.status)).length} other`}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Recipients</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="text-total-recipients">
+                  {campaigns.filter(c => c.status === 'sent').reduce((sum, c) => sum + (c.recipientCount || 0), 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Across all sent campaigns
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="text-total-contacts">
+                  {contacts.length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {contacts.filter(c => c.emailSubscribed).length} subscribed
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Contact Lists</CardTitle>
+                <UserCog className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="text-total-lists">
+                  {lists.length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Custom contact segments
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Campaigns</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {campaigns.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No campaigns yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {campaigns.slice(0, 5).map((campaign) => (
+                      <div key={campaign.id} className="flex items-center justify-between p-3 rounded-lg border hover-elevate" data-testid={`report-campaign-${campaign.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{campaign.subject}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {campaign.status === 'sent' ? `Sent ${formatDistanceToNow(new Date(campaign.sentAt!))} ago` : 'Draft'}
+                          </p>
+                        </div>
+                        <Badge variant={campaign.status === 'sent' ? 'default' : 'outline'}>
+                          {campaign.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Lists Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {lists.length === 0 ? (
+                  <div className="text-center py-8">
+                    <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No contact lists yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {lists.slice(0, 5).map((list) => (
+                      <div key={list.id} className="flex items-center justify-between p-3 rounded-lg border hover-elevate" data-testid={`report-list-${list.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{list.name}</p>
+                          {list.description && (
+                            <p className="text-xs text-muted-foreground truncate">{list.description}</p>
+                          )}
+                        </div>
+                        <Badge variant="outline">
+                          {list.memberCount || 0}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="campaigns">
           <Card>

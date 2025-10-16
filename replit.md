@@ -34,7 +34,8 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
 - **Audit Logging:** Centralized `LoggingService` tracks critical actions with metadata, supporting role-based access for viewing logs.
 - **Company Activation/Deactivation:** Superadmins can activate/deactivate companies, immediately logging out all users of that company on their next API request, enforced by `requireActiveCompany` middleware.
 - **Email Campaign System (Superadmin-only):**
-    - **Unified Interface with Tabs:** Campaigns, Contacts, and Lists integrated in a single page using Shadcn Tabs component for seamless navigation.
+    - **Unified Interface with Tabs:** Reports, Email Campaigns, SMS Campaigns, and Contact Lists integrated in a single page using Shadcn Tabs component for seamless navigation.
+    - **Reports Dashboard:** Comprehensive overview showing total campaigns (draft/sent), total recipients, total contacts (subscribed), contact lists count, recent campaigns (last 5), and contact lists overview (first 5).
     - **Contact Management:** View and manage all subscribed users in a table format with search functionality, toggle subscription status per user with instant feedback.
     - **Advanced Contact List Management:**
         - **Smart Views:** "All Contacts" shows entire contact database, "Unsubscribed" filters non-subscribed users
