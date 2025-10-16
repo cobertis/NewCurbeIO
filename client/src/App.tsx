@@ -36,6 +36,7 @@ import Contacts from "@/pages/contacts";
 import Campaigns from "@/pages/campaigns";
 import CampaignStats from "@/pages/campaign-stats";
 import SmsCampaignStats from "@/pages/sms-campaign-stats";
+import IncomingSms from "@/pages/incoming-sms";
 import Unsubscribe from "@/pages/unsubscribe";
 import NotFound from "@/pages/not-found";
 
@@ -55,6 +56,7 @@ const getPageTitle = (path: string): string => {
     '/support': 'Support',
     '/contacts': 'Email Contacts',
     '/campaigns': 'Campaigns',
+    '/incoming-sms': 'Incoming SMS',
   };
   
   if (path.startsWith('/campaigns/') && path.includes('/stats')) {
@@ -447,6 +449,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SmsCampaignStats />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/incoming-sms">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <IncomingSms />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

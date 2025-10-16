@@ -52,7 +52,9 @@ import {
   type SmsCampaign,
   type InsertSmsCampaign,
   type CampaignSmsMessage,
-  type InsertCampaignSmsMessage
+  type InsertCampaignSmsMessage,
+  type IncomingSmsMessage,
+  type InsertIncomingSmsMessage
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -82,7 +84,8 @@ import {
   contactLists,
   contactListMembers,
   smsCampaigns,
-  campaignSmsMessages
+  campaignSmsMessages,
+  incomingSmsMessages
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -90,6 +93,7 @@ export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByPhone(phone: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
   getUsersByCompany(companyId: string): Promise<User[]>;
@@ -276,6 +280,12 @@ export interface IStorage {
   // Campaign SMS Messages - Individual SMS Tracking
   createCampaignSmsMessage(sms: InsertCampaignSmsMessage): Promise<CampaignSmsMessage>;
   getCampaignSmsMessages(campaignId: string): Promise<CampaignSmsMessage[]>;
+  updateCampaignSmsMessageStatus(twilioSid: string, status: string, errorCode?: string, errorMessage?: string): Promise<void>;
+  
+  // Incoming SMS Messages
+  createIncomingSmsMessage(sms: InsertIncomingSmsMessage): Promise<IncomingSmsMessage>;
+  getAllIncomingSmsMessages(): Promise<IncomingSmsMessage[]>;
+  markSmsAsRead(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -288,6 +298,11 @@ export class DbStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.email, email));
+    return result[0];
+  }
+
+  async getUserByPhone(phone: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.phone, phone));
     return result[0];
   }
 
@@ -1310,6 +1325,40 @@ export class DbStorage implements IStorage {
     return db.select().from(campaignSmsMessages)
       .where(eq(campaignSmsMessages.campaignId, campaignId))
       .orderBy(desc(campaignSmsMessages.sentAt));
+  }
+  
+  async updateCampaignSmsMessageStatus(twilioSid: string, status: string, errorCode?: string, errorMessage?: string): Promise<void> {
+    const updateData: any = { status };
+    
+    if (status === 'delivered') {
+      updateData.deliveredAt = new Date();
+    } else if (status === 'failed') {
+      updateData.failedAt = new Date();
+      if (errorCode) updateData.errorCode = errorCode;
+      if (errorMessage) updateData.errorMessage = errorMessage;
+    }
+    
+    await db.update(campaignSmsMessages)
+      .set(updateData)
+      .where(eq(campaignSmsMessages.twilioMessageSid, twilioSid));
+  }
+  
+  // ==================== INCOMING SMS MESSAGES ====================
+  
+  async createIncomingSmsMessage(sms: InsertIncomingSmsMessage): Promise<IncomingSmsMessage> {
+    const result = await db.insert(incomingSmsMessages).values(sms).returning();
+    return result[0];
+  }
+  
+  async getAllIncomingSmsMessages(): Promise<IncomingSmsMessage[]> {
+    return db.select().from(incomingSmsMessages)
+      .orderBy(desc(incomingSmsMessages.receivedAt));
+  }
+  
+  async markSmsAsRead(id: string): Promise<void> {
+    await db.update(incomingSmsMessages)
+      .set({ isRead: true })
+      .where(eq(incomingSmsMessages.id, id));
   }
   
   // ==================== CONTACT LISTS ====================

@@ -3232,6 +3232,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== INCOMING SMS MESSAGES ====================
+  
+  // Get all incoming SMS messages (superadmin only)
+  app.get("/api/incoming-sms", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      const messages = await storage.getAllIncomingSmsMessages();
+      res.json({ incomingSmsMessages: messages });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch incoming SMS messages" });
+    }
+  });
+  
+  // Mark incoming SMS as read (superadmin only)
+  app.patch("/api/incoming-sms/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    try {
+      await storage.markSmsAsRead(req.params.id);
+      res.json({ message: "Message marked as read" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark message as read" });
+    }
+  });
+  
+  // ==================== TWILIO WEBHOOKS ====================
+  
+  // Helper function to validate Twilio signature
+  function validateTwilioSignature(req: Request): boolean {
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (!authToken) {
+      console.error("[TWILIO WEBHOOK] TWILIO_AUTH_TOKEN not configured");
+      return false;
+    }
+
+    const twilioSignature = req.headers['x-twilio-signature'] as string;
+    if (!twilioSignature) {
+      console.error("[TWILIO WEBHOOK] Missing X-Twilio-Signature header");
+      return false;
+    }
+
+    // Get the full URL (protocol + host + path)
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const url = `${protocol}://${host}${req.originalUrl}`;
+
+    try {
+      const twilio = require('twilio');
+      const isValid = twilio.validateRequest(
+        authToken,
+        twilioSignature,
+        url,
+        req.body
+      );
+      
+      if (!isValid) {
+        console.error("[TWILIO WEBHOOK] Invalid signature");
+      }
+      
+      return isValid;
+    } catch (error) {
+      console.error("[TWILIO WEBHOOK] Signature validation error:", error);
+      return false;
+    }
+  }
+  
+  // Twilio Status Callback - Update message delivery status
+  app.post("/api/webhooks/twilio/status", async (req: Request, res: Response) => {
+    try {
+      // Validate Twilio signature
+      if (!validateTwilioSignature(req)) {
+        console.warn("[TWILIO STATUS] Rejected unauthorized webhook request");
+        return res.status(403).send("Forbidden");
+      }
+
+      const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = req.body;
+      
+      console.log(`[TWILIO STATUS] SID: ${MessageSid}, Status: ${MessageStatus}`);
+      
+      if (!MessageSid || !MessageStatus) {
+        return res.status(400).send("Missing required fields");
+      }
+      
+      // Update message status in database
+      await storage.updateCampaignSmsMessageStatus(
+        MessageSid, 
+        MessageStatus,
+        ErrorCode,
+        ErrorMessage
+      );
+      
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("[TWILIO STATUS WEBHOOK] Error:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+  
+  // Twilio Incoming Message - Receive SMS replies
+  app.post("/api/webhooks/twilio/incoming", async (req: Request, res: Response) => {
+    try {
+      // Validate Twilio signature
+      if (!validateTwilioSignature(req)) {
+        console.warn("[TWILIO INCOMING] Rejected unauthorized webhook request");
+        return res.status(403).send("Forbidden");
+      }
+
+      const { MessageSid, From, To, Body } = req.body;
+      
+      console.log(`[TWILIO INCOMING] From: ${From}, Body: ${Body}`);
+      
+      if (!MessageSid || !From || !To || !Body) {
+        return res.status(400).send("Missing required fields");
+      }
+      
+      // Try to find user by phone number (optimized with direct query)
+      const matchedUser = await storage.getUserByPhone(From);
+      
+      // Store incoming message
+      await storage.createIncomingSmsMessage({
+        twilioMessageSid: MessageSid,
+        fromPhone: From,
+        toPhone: To,
+        messageBody: Body,
+        userId: matchedUser?.id,
+        isRead: false
+      });
+      
+      // Respond to Twilio with TwiML (empty response = no auto-reply)
+      res.type("text/xml");
+      res.send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
+    } catch (error) {
+      console.error("[TWILIO INCOMING WEBHOOK] Error:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

@@ -80,6 +80,16 @@ The frontend, built with React 18, TypeScript, and Vite, uses Shadcn/ui (New Yor
         - **User Enrichment:** Messages enriched with user names and emails from users table
     - **Background Processing:** Asynchronous SMS sending with status updates, non-blocking campaign sends that return immediately
     - **Frontend UI:** Complete SMS campaign management with search, badge counters, consistent card layout matching email campaigns, and View Stats button for sent campaigns
+    - **Twilio Webhooks Integration:**
+        - **Status Callback Webhook (`/api/webhooks/twilio/status`):** Receives delivery status updates from Twilio (delivered/failed), updates `campaign_sms_messages` table with status, error codes, and timestamps
+        - **Incoming Message Webhook (`/api/webhooks/twilio/incoming`):** Receives SMS replies from contacts, stores in `incoming_sms_messages` table with automatic user matching by phone number
+        - **Automatic URL Configuration:** Service automatically includes statusCallback URL in all outbound SMS messages using REPLIT_DEV_DOMAIN or localhost
+        - **Incoming SMS Management Page (`/incoming-sms`):** Superadmin-only interface to view and manage SMS replies with search, user enrichment, read/unread status, and mark as read functionality
+        - **Database Tables:** `incoming_sms_messages` (twilio_message_sid, from_phone, to_phone, message_body, user_id, received_at, is_read)
+        - **Twilio Console Setup Required:**
+            1. Navigate to your Twilio Phone Number settings
+            2. Set "A MESSAGE COMES IN" webhook to: `https://your-domain.repl.co/api/webhooks/twilio/incoming`
+            3. Status callbacks are automatically configured per message (no console setup needed)
 
 ### System Design Choices
 The system employs a clear separation of concerns between frontend and backend. Data models are designed for multi-tenancy in PostgreSQL using Drizzle ORM, ensuring strict data isolation. Security is paramount, with comprehensive measures for password management, account activation, and 2FA. The modular feature system provides flexibility for customizing tenant functionalities.

@@ -38,13 +38,20 @@ class TwilioService {
     }
 
     try {
+      // Build status callback URL
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : 'http://localhost:5000';
+      const statusCallbackUrl = `${baseUrl}/api/webhooks/twilio/status`;
+      
       const result = await this.client.messages.create({
         body: message,
         from: this.fromNumber,
         to: to,
+        statusCallback: statusCallbackUrl,
       });
 
-      console.log(`SMS sent successfully to ${to}. SID: ${result.sid}`);
+      console.log(`SMS sent successfully to ${to}. SID: ${result.sid}, StatusCallback: ${statusCallbackUrl}`);
       return { sid: result.sid, status: result.status };
     } catch (error) {
       console.error("Failed to send SMS:", error);

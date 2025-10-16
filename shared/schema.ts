@@ -943,3 +943,26 @@ export const campaignSmsMessageSchema = createInsertSchema(campaignSmsMessages).
 
 export type CampaignSmsMessage = typeof campaignSmsMessages.$inferSelect;
 export type InsertCampaignSmsMessage = z.infer<typeof campaignSmsMessageSchema>;
+
+// =====================================================
+// INCOMING SMS MESSAGES - User Replies
+// =====================================================
+
+export const incomingSmsMessages = pgTable("incoming_sms_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  twilioMessageSid: text("twilio_message_sid").notNull().unique(), // Twilio Message SID
+  fromPhone: text("from_phone").notNull(), // Sender phone number
+  toPhone: text("to_phone").notNull(), // Our Twilio number
+  messageBody: text("message_body").notNull(), // Message content
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }), // Matched user if found
+  receivedAt: timestamp("received_at").notNull().defaultNow(),
+  isRead: boolean("is_read").notNull().default(false), // Mark as read/unread
+});
+
+export const insertIncomingSmsMessageSchema = createInsertSchema(incomingSmsMessages).omit({
+  id: true,
+  receivedAt: true,
+});
+
+export type IncomingSmsMessage = typeof incomingSmsMessages.$inferSelect;
+export type InsertIncomingSmsMessage = z.infer<typeof insertIncomingSmsMessageSchema>;
