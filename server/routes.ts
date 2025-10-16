@@ -936,7 +936,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { password, ...sanitizedUser } = user;
-      res.json({ user: sanitizedUser });
+      
+      // Include company information if user has a companyId
+      let companyInfo = null;
+      if (user.companyId) {
+        const company = await storage.getCompany(user.companyId);
+        if (company) {
+          companyInfo = {
+            id: company.id,
+            name: company.name,
+            slug: company.slug
+          };
+        }
+      }
+      
+      res.json({ 
+        user: {
+          ...sanitizedUser,
+          company: companyInfo
+        }
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
