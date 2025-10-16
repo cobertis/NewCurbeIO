@@ -3687,6 +3687,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isRead: false
       });
       
+      // Create notifications for superadmins
+      try {
+        const allUsers = await storage.getAllUsers();
+        const superadmins = allUsers.filter(user => user.role === 'superadmin');
+        
+        if (superadmins.length === 0) {
+          console.log("[TWILIO INCOMING] No superadmins found for notifications");
+        } else {
+          // Get sender name or format phone number
+          const senderName = matchedUser && matchedUser.firstName && matchedUser.lastName
+            ? `${matchedUser.firstName} ${matchedUser.lastName}` 
+            : From;
+          
+          // Create notification for each superadmin
+          const notificationPromises = superadmins.map(admin => 
+            storage.createNotification({
+              userId: admin.id,
+              type: 'info',
+              title: 'New SMS Message',
+              message: `${senderName}: ${Body.substring(0, 50)}${Body.length > 50 ? '...' : ''}`,
+              link: '/incoming-sms'
+            })
+          );
+          
+          await Promise.all(notificationPromises);
+          console.log(`[TWILIO INCOMING] Created ${superadmins.length} notification(s) for incoming SMS`);
+        }
+      } catch (error) {
+        console.error("[TWILIO INCOMING] Failed to create notifications:", error);
+        // Don't fail the webhook if notifications fail
+      }
+      
       // Broadcast update to WebSocket clients for real-time updates
       broadcastConversationUpdate();
       
