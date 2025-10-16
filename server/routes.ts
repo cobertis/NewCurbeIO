@@ -257,6 +257,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { method } = req.body;
 
+      console.log(`[SEND-OTP] Cookies received:`, req.cookies);
+      console.log(`[SEND-OTP] Session ID from cookie:`, req.cookies['connect.sid']);
       console.log(`[SEND-OTP] Session check - pendingUserId: ${req.session.pendingUserId}, sessionID: ${req.sessionID}`);
 
       // Check if user has pending authentication
