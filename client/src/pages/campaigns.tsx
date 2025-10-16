@@ -16,7 +16,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User } from "@shared/schema";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
@@ -124,6 +124,19 @@ export default function Campaigns() {
     queryKey: [`/api/contact-lists/${selectedList?.id}/members`],
     enabled: !!selectedList?.id,
   });
+
+  // Auto-refresh campaigns when any are in "sending" status
+  useEffect(() => {
+    const hasSendingCampaigns = data?.campaigns?.some(c => c.status === "sending");
+    
+    if (hasSendingCampaigns) {
+      const intervalId = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      }, 3000); // Refresh every 3 seconds
+
+      return () => clearInterval(intervalId);
+    }
+  }, [data?.campaigns]);
 
   const toggleSubscriptionMutation = useMutation({
     mutationFn: async ({ userId, subscribed }: { userId: string; subscribed: boolean }) => {
@@ -260,19 +273,10 @@ export default function Campaigns() {
       setSendDialogOpen(false);
       setCampaignToSend(null);
       
-      const result = response.result;
-      if (result.totalFailed > 0) {
-        toast({
-          title: "Campaign Sent (with errors)",
-          description: `Sent to ${result.totalSent} users. Failed to send to ${result.totalFailed} users.`,
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Campaign Sent Successfully",
-          description: `Successfully sent to ${result.totalSent} ${result.totalSent === 1 ? 'subscriber' : 'subscribers'}.`,
-        });
-      }
+      toast({
+        title: "Campaign Sending Started",
+        description: "Your campaign is being sent in the background. This may take a few minutes.",
+      });
     },
     onError: (error: any) => {
       const errorMessage = error?.message || "Failed to send campaign. Please try again.";
@@ -591,6 +595,12 @@ export default function Campaigns() {
   const getStatusBadge = (campaign: EmailCampaign) => {
     if (campaign.status === "sent") {
       return <Badge variant="default">Sent</Badge>;
+    }
+    if (campaign.status === "sending") {
+      return <Badge variant="outline">Sending...</Badge>;
+    }
+    if (campaign.status === "failed") {
+      return <Badge variant="destructive">Failed</Badge>;
     }
     return <Badge variant="secondary">Draft</Badge>;
   };

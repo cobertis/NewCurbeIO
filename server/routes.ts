@@ -2347,30 +2347,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Campaign has already been sent" });
       }
 
-      // Send campaign using EmailCampaignService
-      const result = await emailCampaignService.sendCampaign(req.params.id, campaign.targetListId || undefined);
+      // Start sending campaign asynchronously (returns immediately)
+      await emailCampaignService.sendCampaignAsync(req.params.id, campaign.targetListId || undefined);
 
-      console.log(`[CAMPAIGN SEND] Result:`, result);
+      console.log(`[CAMPAIGN SEND] Started sending campaign ${req.params.id} in background`);
 
-      if (!result.success) {
-        console.error(`[CAMPAIGN SEND] Failed - totalSent: ${result.totalSent}, totalFailed: ${result.totalFailed}`);
-        return res.status(500).json({ 
-          message: "Failed to send campaign", 
-          totalSent: result.totalSent,
-          totalFailed: result.totalFailed,
-          errors: result.errors 
-        });
-      }
-
+      // Get updated campaign with "sending" status
       const updatedCampaign = await storage.getCampaign(req.params.id);
 
       res.json({ 
         campaign: updatedCampaign, 
-        result: {
-          totalSent: result.totalSent,
-          totalFailed: result.totalFailed,
-          errors: result.errors
-        }
+        message: "Campaign is being sent in the background"
       });
     } catch (error) {
       console.error(`[CAMPAIGN SEND] Exception:`, error);

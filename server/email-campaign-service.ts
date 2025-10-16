@@ -15,9 +15,24 @@ export class EmailCampaignService {
   constructor(private storage: IStorage) {}
 
   /**
-   * Send a campaign to all subscribed users or to a specific list
+   * Start sending a campaign asynchronously (returns immediately)
    */
-  async sendCampaign(campaignId: string, targetListId?: string): Promise<CampaignResult> {
+  async sendCampaignAsync(campaignId: string, targetListId?: string): Promise<void> {
+    // Update campaign status to "sending" immediately
+    await this.storage.updateCampaign(campaignId, { status: "sending" });
+
+    // Start the actual sending process in the background (don't await)
+    this.sendCampaign(campaignId, targetListId).catch((error) => {
+      console.error(`[CAMPAIGN SEND] Background error:`, error);
+      // Update campaign status to "failed" if background process fails
+      this.storage.updateCampaign(campaignId, { status: "failed" }).catch(console.error);
+    });
+  }
+
+  /**
+   * Send a campaign to all subscribed users or to a specific list (internal method)
+   */
+  private async sendCampaign(campaignId: string, targetListId?: string): Promise<CampaignResult> {
     const result: CampaignResult = {
       success: false,
       totalSent: 0,
