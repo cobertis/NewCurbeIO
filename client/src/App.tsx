@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown, MessageSquare, Sun } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/use-websocket";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
 import VerifyOTP from "@/pages/verify-otp";
@@ -108,6 +109,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
+
+  // WebSocket listener for real-time notification updates
+  const handleWebSocketMessage = useCallback((message: any) => {
+    if (message.type === 'conversation_update') {
+      // When a new SMS arrives, invalidate notifications to show the new notification
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    }
+  }, []);
+
+  useWebSocket(handleWebSocketMessage);
 
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {
