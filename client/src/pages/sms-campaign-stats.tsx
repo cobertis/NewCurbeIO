@@ -85,10 +85,6 @@ export default function SmsCampaignStats() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-semibold">SMS Campaign Statistics</h1>
-          <p className="text-muted-foreground mt-1 truncate max-w-2xl">{campaign.message}</p>
-        </div>
         <Badge
           variant={campaign.status === "sent" ? "default" : "secondary"}
           data-testid={`badge-status-${campaign.id}`}

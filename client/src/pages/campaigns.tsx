@@ -972,14 +972,14 @@ export default function Campaigns() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
-                <Mail className="h-4 w-4 text-muted-foreground" />
+                <Send className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-total-campaigns">
-                  {campaigns.length}
+                  {campaigns.length + smsCampaigns.length}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {campaigns.filter(c => c.status === 'sent').length} sent, {campaigns.filter(c => c.status === 'draft').length} draft{campaigns.filter(c => !['sent', 'draft'].includes(c.status)).length > 0 && `, ${campaigns.filter(c => !['sent', 'draft'].includes(c.status)).length} other`}
+                  {campaigns.length} email, {smsCampaigns.length} SMS
                 </p>
               </CardContent>
             </Card>
@@ -991,7 +991,8 @@ export default function Campaigns() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-total-recipients">
-                  {campaigns.filter(c => c.status === 'sent').reduce((sum, c) => sum + (c.recipientCount || 0), 0)}
+                  {campaigns.filter(c => c.status === 'sent').reduce((sum, c) => sum + (c.recipientCount || 0), 0) + 
+                   smsCampaigns.filter(c => c.status === 'sent').reduce((sum, c) => sum + (c.recipientCount || 0), 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Across all sent campaigns
@@ -1036,58 +1037,112 @@ export default function Campaigns() {
                 <CardTitle>Recent Campaigns</CardTitle>
               </CardHeader>
               <CardContent>
-                {campaigns.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No campaigns yet</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {campaigns.slice(0, 5).map((campaign) => (
-                      <div key={campaign.id} className="flex items-center justify-between p-3 rounded-lg border hover-elevate" data-testid={`report-campaign-${campaign.id}`}>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{campaign.subject}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {campaign.status === 'sent' ? `Sent ${formatDistanceToNow(new Date(campaign.sentAt!))} ago` : 'Draft'}
-                          </p>
+                {(() => {
+                  const allCampaigns = [
+                    ...campaigns.map(c => ({ ...c, type: 'email' as const })),
+                    ...smsCampaigns.map(c => ({ ...c, type: 'sms' as const }))
+                  ].sort((a, b) => {
+                    const dateA = a.sentAt ? new Date(a.sentAt).getTime() : new Date(a.createdAt).getTime();
+                    const dateB = b.sentAt ? new Date(b.sentAt).getTime() : new Date(b.createdAt).getTime();
+                    return dateB - dateA;
+                  });
+
+                  return allCampaigns.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Send className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground">No campaigns yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {allCampaigns.slice(0, 5).map((campaign) => (
+                        <div 
+                          key={`${campaign.type}-${campaign.id}`} 
+                          className="flex items-center justify-between p-3 rounded-lg border hover-elevate cursor-pointer" 
+                          data-testid={`report-campaign-${campaign.id}`}
+                          onClick={() => {
+                            if (campaign.type === 'email' && campaign.status === 'sent') {
+                              navigate(`/campaigns/${campaign.id}/stats`);
+                            } else if (campaign.type === 'sms' && campaign.status === 'sent') {
+                              navigate(`/sms-campaigns/${campaign.id}/stats`);
+                            }
+                          }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              {campaign.type === 'email' ? (
+                                <Mail className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <p className="font-medium truncate">
+                                {campaign.type === 'email' ? (campaign as any).subject : (campaign as any).message.substring(0, 50) + '...'}
+                              </p>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {campaign.status === 'sent' 
+                                ? `Sent ${formatDistanceToNow(new Date(campaign.sentAt!))} ago` 
+                                : 'Draft'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {campaign.type === 'email' ? 'Email' : 'SMS'}
+                            </Badge>
+                            <Badge variant={campaign.status === 'sent' ? 'default' : 'outline'}>
+                              {campaign.status}
+                            </Badge>
+                          </div>
                         </div>
-                        <Badge variant={campaign.status === 'sent' ? 'default' : 'outline'}>
-                          {campaign.status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Contact Lists Overview</CardTitle>
+                <CardTitle>Campaign Statistics</CardTitle>
               </CardHeader>
               <CardContent>
-                {lists.length === 0 ? (
-                  <div className="text-center py-8">
-                    <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No contact lists yet</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium">Email Campaigns</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold">{campaigns.filter(c => c.status === 'sent').length}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {campaigns.filter(c => c.status === 'sent').reduce((sum, c) => sum + (c.recipientCount || 0), 0)} recipients
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {lists.slice(0, 5).map((list) => (
-                      <div key={list.id} className="flex items-center justify-between p-3 rounded-lg border hover-elevate" data-testid={`report-list-${list.id}`}>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{list.name}</p>
-                          {list.description && (
-                            <p className="text-xs text-muted-foreground truncate">{list.description}</p>
-                          )}
-                        </div>
-                        <Badge variant="outline">
-                          {list.memberCount || 0}
-                        </Badge>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-green-500" />
+                      <span className="text-sm font-medium">SMS Campaigns</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold">{smsCampaigns.filter(c => c.status === 'sent').length}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {smsCampaigns.filter(c => c.status === 'sent').reduce((sum, c) => sum + (c.recipientCount || 0), 0)} recipients
+                      </p>
+                    </div>
                   </div>
-                )}
+                  <div className="pt-3 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">SMS Delivery Rate</span>
+                      <span className="text-sm font-bold">
+                        {(() => {
+                          const totalSent = smsCampaigns.filter(c => c.status === 'sent').reduce((sum, c) => sum + (c.recipientCount || 0), 0);
+                          const totalDelivered = smsCampaigns.filter(c => c.status === 'sent').reduce((sum, c) => sum + (c.deliveredCount || 0), 0);
+                          return totalSent > 0 ? `${((totalDelivered / totalSent) * 100).toFixed(1)}%` : 'N/A';
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
