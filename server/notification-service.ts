@@ -174,8 +174,8 @@ class NotificationService {
     const notification: InsertNotification = {
       userId,
       type: "user_login",
-      title: "Login Exitoso",
-      message: `Acceso desde IP: ${ip} • ${deviceInfo}`,
+      title: "Successful Login",
+      message: `Login from IP: ${ip} • ${deviceInfo}`,
       link: "/settings",
       isRead: false,
     };
