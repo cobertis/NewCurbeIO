@@ -422,13 +422,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     ? formatTime(new Date(notification.createdAt))
                     : '';
 
-                  // Extract sender name from message (e.g., "Jason Fonseca: texto" -> "Jason Fonseca")
-                  const getSenderName = () => {
+                  // Extract first name only from message (e.g., "Jason Fonseca: texto" -> "Jason")
+                  const getDisplayText = () => {
                     if (notification.title.toLowerCase().includes('sms')) {
                       const parts = notification.message.split(':');
-                      return parts[0] || 'Unknown';
+                      const fullName = parts[0] || 'Unknown';
+                      const firstName = fullName.split(' ')[0];
+                      return firstName;
                     }
-                    return notification.title.replace('New SMS Message', '').replace('New ', '').trim();
+                    return notification.title.replace('New ', '').trim();
                   };
 
                   return (
@@ -444,29 +446,27 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         }
                       }}
                       className={`
-                        p-3 transition-colors cursor-pointer hover-elevate
-                        ${!notification.isRead ? 'bg-muted/40' : ''}
+                        px-4 py-3 transition-colors cursor-pointer hover-elevate
+                        ${!notification.isRead ? 'bg-muted/50' : ''}
                       `}
                       data-testid={`notification-item-${notification.id}`}
                     >
-                      <div className="flex gap-3 items-start">
-                        <Icon className={`h-4 w-4 shrink-0 mt-1 ${!notification.isRead ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="flex items-center gap-3">
+                        <Icon className={`h-4 w-4 shrink-0 ${!notification.isRead ? 'text-primary' : 'text-muted-foreground'}`} />
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className={`text-sm truncate ${!notification.isRead ? 'font-semibold' : 'text-muted-foreground'}`}>
-                              {notification.title.toLowerCase().includes('sms') 
-                                ? `SMS from ${getSenderName()}`
-                                : notification.title}
-                            </p>
-                            {!notification.isRead && (
-                              <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0"></div>
-                            )}
-                          </div>
-                          
+                          <p className={`text-sm truncate ${!notification.isRead ? 'font-semibold' : 'text-muted-foreground'}`}>
+                            {getDisplayText()}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 shrink-0">
                           <p className="text-xs text-muted-foreground">
                             {timeStr}
                           </p>
+                          {!notification.isRead && (
+                            <div className="h-2 w-2 rounded-full bg-primary"></div>
+                          )}
                         </div>
                       </div>
                     </div>
