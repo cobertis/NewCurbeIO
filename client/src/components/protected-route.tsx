@@ -22,22 +22,25 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
           const data = await response.json();
           setIsAuthenticated(true);
           
-          // Check if user needs to select a plan (non-superadmin without subscription)
+          // Check if user needs to select a plan (non-superadmin without active subscription)
           if (data.user && data.user.role !== "superadmin" && location !== "/select-plan") {
-            // Check if user's company has a subscription
+            // Check if user's company has an active subscription
             try {
               const subscriptionResponse = await fetch("/api/billing/subscription", {
                 credentials: "include",
               });
               
-              // If response is not OK (404, 500, etc) or subscription doesn't exist, redirect to plan selection
+              // If response is not OK (404, 500, etc), redirect to plan selection
               if (!subscriptionResponse.ok) {
                 setLocation("/select-plan");
                 return;
               }
               
               const subscriptionData = await subscriptionResponse.json();
-              if (!subscriptionData?.subscription) {
+              const subscription = subscriptionData?.subscription;
+              
+              // Redirect if no subscription or if subscription is cancelled
+              if (!subscription || subscription.status === 'cancelled') {
                 setLocation("/select-plan");
                 return;
               }
