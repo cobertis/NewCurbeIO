@@ -92,6 +92,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [timezoneDialogOpen, setTimezoneDialogOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState<string>("");
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const { data: userData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -247,6 +248,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     setSelectedTimezone(user?.timezone || "");
   }, [user?.timezone]);
 
+  // Update current time every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Update user timezone
   const handleTimezoneUpdate = async () => {
     if (!selectedTimezone) return;
@@ -380,23 +389,34 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                       className="py-2.5 px-3 cursor-pointer rounded-md"
                     >
                       <Globe className="mr-3 h-5 w-5 text-muted-foreground shrink-0" />
-                      <div className="flex items-center justify-between flex-1 min-w-0">
+                      <div className="flex items-center justify-between flex-1 min-w-0 gap-2">
                         <span className="text-sm font-medium">Timezone</span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {selectedTimezone 
-                            ? selectedTimezone.includes('New_York') ? 'EST'
-                            : selectedTimezone.includes('Chicago') ? 'CST'
-                            : selectedTimezone.includes('Denver') ? 'MST'
-                            : selectedTimezone.includes('Los_Angeles') ? 'PST'
-                            : selectedTimezone.includes('London') ? 'GMT'
-                            : selectedTimezone.includes('Paris') ? 'CET'
-                            : selectedTimezone.includes('Tokyo') ? 'JST'
-                            : selectedTimezone.includes('Sydney') ? 'AEST'
-                            : selectedTimezone.includes('Dubai') ? 'GST'
-                            : selectedTimezone.includes('Singapore') ? 'SGT'
-                            : selectedTimezone.includes('Hong_Kong') ? 'HKT'
-                            : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'
-                            : 'Not set'}
+                        <span className="text-xs text-muted-foreground">
+                          {selectedTimezone ? (
+                            <>
+                              {currentTime.toLocaleTimeString('en-US', {
+                                timeZone: selectedTimezone,
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                              })}
+                              {' '}
+                              {selectedTimezone.includes('New_York') ? 'EST'
+                                : selectedTimezone.includes('Chicago') ? 'CST'
+                                : selectedTimezone.includes('Denver') ? 'MST'
+                                : selectedTimezone.includes('Los_Angeles') ? 'PST'
+                                : selectedTimezone.includes('London') ? 'GMT'
+                                : selectedTimezone.includes('Paris') ? 'CET'
+                                : selectedTimezone.includes('Tokyo') ? 'JST'
+                                : selectedTimezone.includes('Sydney') ? 'AEST'
+                                : selectedTimezone.includes('Dubai') ? 'GST'
+                                : selectedTimezone.includes('Singapore') ? 'SGT'
+                                : selectedTimezone.includes('Hong_Kong') ? 'HKT'
+                                : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'}
+                            </>
+                          ) : (
+                            'Not set'
+                          )}
                         </span>
                       </div>
                     </DropdownMenuItem>
