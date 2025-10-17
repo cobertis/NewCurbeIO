@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, Search, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Search, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -434,6 +434,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                             if (notification.type) {
                               switch (notification.type) {
                                 case 'sms_received': return MessageSquare;
+                                case 'user_login': return LogIn;
                                 case 'success': return CheckCircle;
                                 case 'warning': return AlertTriangle;
                                 case 'error': return AlertCircle;
@@ -441,6 +442,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                               }
                             }
                             // Fallback to title-based detection
+                            if (notification.title.toLowerCase().includes('login')) return LogIn;
                             if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
                             if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return Mail;
                             if (notification.title.toLowerCase().includes('user') || notification.title.toLowerCase().includes('subscriber')) return UserPlus;
@@ -454,6 +456,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                             if (notification.type) {
                               switch (notification.type) {
                                 case 'sms_received': return 'text-blue-600 dark:text-blue-400';
+                                case 'user_login': return 'text-purple-600 dark:text-purple-400';
                                 case 'success': return 'text-green-600 dark:text-green-400';
                                 case 'warning': return 'text-orange-600 dark:text-orange-400';
                                 case 'error': return 'text-red-600 dark:text-red-400';
@@ -461,6 +464,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                               }
                             }
                             // Colors based on icon type for legacy notifications
+                            if (notification.title.toLowerCase().includes('login')) return 'text-purple-600 dark:text-purple-400';
                             if (notification.title.toLowerCase().includes('sms')) return 'text-blue-600 dark:text-blue-400';
                             if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return 'text-green-600 dark:text-green-400';
                             if (notification.title.toLowerCase().includes('user') || notification.title.toLowerCase().includes('subscriber')) return 'text-indigo-600 dark:text-indigo-400';

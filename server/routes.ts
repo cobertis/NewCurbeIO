@@ -9,6 +9,7 @@ import { emailService } from "./email";
 import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
+import { notificationService } from "./notification-service";
 import twilio from "twilio";
 import { 
   insertUserSchema, 
@@ -222,6 +223,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: user.email,
             metadata: { trustedDevice: true },
           });
+          
+          // Create login notification with IP address
+          const ipAddress = req.ip || req.connection.remoteAddress || null;
+          const userAgent = req.get("user-agent") || null;
+          const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+          await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
           
           console.log(`✓ Trusted device login for ${user.email} - skipping OTP`);
           
@@ -487,6 +494,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           trustedDeviceCreated: !!deviceToken
         },
       });
+
+      // Create login notification with IP address
+      const ipAddress = req.ip || req.connection.remoteAddress || null;
+      const userAgent = req.get("user-agent") || null;
+      const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
 
       // Force save session with new cookie settings
       req.session.save((err) => {

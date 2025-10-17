@@ -147,6 +147,43 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for successful login
+   * Shows IP address and device information
+   */
+  async notifyLogin(userId: string, userName: string, ipAddress: string | null, userAgent: string | null) {
+    // Format IP display
+    const ip = ipAddress || 'Unknown IP';
+    
+    // Extract browser info from user agent
+    let deviceInfo = 'Unknown device';
+    if (userAgent) {
+      // Simple browser detection - check Edge before Chrome since Edge UA contains 'Chrome'
+      if (userAgent.includes('Edg')) deviceInfo = 'Edge';
+      else if (userAgent.includes('Chrome')) deviceInfo = 'Chrome';
+      else if (userAgent.includes('Firefox')) deviceInfo = 'Firefox';
+      else if (userAgent.includes('Safari')) deviceInfo = 'Safari';
+      
+      // Add OS info if available
+      if (userAgent.includes('Windows')) deviceInfo += ' on Windows';
+      else if (userAgent.includes('Mac')) deviceInfo += ' on Mac';
+      else if (userAgent.includes('Linux')) deviceInfo += ' on Linux';
+      else if (userAgent.includes('Android')) deviceInfo += ' on Android';
+      else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) deviceInfo += ' on iOS';
+    }
+    
+    const notification: InsertNotification = {
+      userId,
+      type: "user_login",
+      title: "Login Exitoso",
+      message: `Acceso desde IP: ${ip} • ${deviceInfo}`,
+      link: "/settings",
+      isRead: false,
+    };
+    
+    return await storage.createNotification(notification);
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {
