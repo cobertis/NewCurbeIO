@@ -396,9 +396,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                             <>
                               {currentTime.toLocaleTimeString('en-US', {
                                 timeZone: selectedTimezone,
-                                hour: '2-digit',
+                                hour: 'numeric',
                                 minute: '2-digit',
-                                hour12: false
+                                hour12: true
                               })}
                               {' '}
                               {selectedTimezone.includes('New_York') ? 'EST'
