@@ -16,8 +16,8 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
 **Backend:** Express.js and TypeScript, providing a RESTful API with session-based authentication and role-based access control (RBAC).
 
 **Feature Specifications:**
-- **User Management:** CRUD operations with role-based access, 2FA, and profile picture management. User creation involves an email-based activation flow where users set their own passwords.
-- **Company Management (Superadmin-only):** CRUD operations for companies and feature management, including admin user setup with email-based activation.
+- **User Management:** CRUD operations with role-based access, 2FA, and profile picture management. User creation involves an email-based activation flow where users set their own passwords. Full-screen detail pages at `/users/:id` display comprehensive user information, contact details, personal information, and account details with inline editing capabilities.
+- **Company Management (Superadmin-only):** CRUD operations for companies and feature management, including admin user setup with email-based activation. Full-screen detail pages at `/companies/:id` display company information, associated users, and management actions with inline editing and user creation capabilities.
 - **Plans & Features (Superadmin-only):** CRUD interfaces for subscription plans and system features, allowing categorization and assignment to companies.
 - **Authentication & Security:** Bcrypt password hashing, secure email-based activation, OTP-based 2FA with trusted device functionality, and session-based authentication.
 - **Multi-tenancy:** Strict data isolation using `companyId` for non-superadmin access; superadmins have cross-company access.

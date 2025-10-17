@@ -27,6 +27,7 @@ import ActivateAccount from "@/pages/activate-account";
 import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Users from "@/pages/users";
+import UserDetail from "@/pages/user-detail";
 import Companies from "@/pages/companies";
 import CompanyDetail from "@/pages/company-detail";
 import Plans from "@/pages/plans";
@@ -578,14 +579,14 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/users">
+      <Route path="/users/:id">
         <ProtectedRoute>
           <DashboardLayout>
-            <Users />
+            <UserDetail />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/users/:id">
+      <Route path="/users">
         <ProtectedRoute>
           <DashboardLayout>
             <Users />

@@ -39,6 +39,13 @@ export default function CompanyDetail() {
 
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: Company }>({
     queryKey: ["/api/companies", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/companies/${companyId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch company");
+      return res.json();
+    },
   });
 
   const { data: usersData, isLoading: isLoadingUsers } = useQuery<{ users: User[] }>({
@@ -69,10 +76,7 @@ export default function CompanyDetail() {
   const createUserMutation = useMutation({
     mutationFn: async (data: UserForm) => {
       const phoneE164 = data.phone ? formatPhoneE164(data.phone) : null;
-      return apiRequest("/api/users", {
-        method: "POST",
-        body: JSON.stringify({ ...data, phone: phoneE164 }),
-      });
+      return apiRequest("POST", "/api/users", { ...data, phone: phoneE164 });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -94,9 +98,7 @@ export default function CompanyDetail() {
 
   const toggleUserStatusMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return apiRequest(`/api/users/${userId}/toggle-status`, {
-        method: "PATCH",
-      });
+      return apiRequest("PATCH", `/api/users/${userId}/toggle-status`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -109,9 +111,7 @@ export default function CompanyDetail() {
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return apiRequest(`/api/users/${userId}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/users/${userId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
