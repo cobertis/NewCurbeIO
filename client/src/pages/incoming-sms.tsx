@@ -604,7 +604,7 @@ export default function IncomingSms() {
                               : "bg-muted"
                           )}
                         >
-                          <p className="text-sm break-words whitespace-pre-wrap">{msg.message}</p>
+                          <p className="text-sm truncate">{msg.message}</p>
                           <div className={cn(
                             "flex items-center justify-end gap-2 mt-1 text-xs",
                             msg.type === 'outgoing' ? "text-primary-foreground/70" : "text-muted-foreground"
