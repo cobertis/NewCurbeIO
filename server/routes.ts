@@ -2037,19 +2037,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      const subscriptionData = {
+      const subscriptionData: any = {
         planId,
         status: mapStatus(stripeSubscription.status),
         currentPeriodStart,
         currentPeriodEnd,
-        trialStart,
-        trialEnd,
         stripeCustomerId,
         stripeSubscriptionId: stripeSubscription.id,
         stripeLatestInvoiceId: typeof stripeSubscription.latest_invoice === 'string' 
           ? stripeSubscription.latest_invoice 
           : stripeSubscription.latest_invoice?.id || undefined,
       };
+
+      // Only include trial dates if they exist
+      if (trialStart) subscriptionData.trialStart = trialStart;
+      if (trialEnd) subscriptionData.trialEnd = trialEnd;
 
       if (existingSubscription) {
         // Update existing subscription
@@ -2205,19 +2207,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      const subscriptionData = {
+      const subscriptionData: any = {
         planId,
         status: mapStatus(stripeSubscription.status),
         currentPeriodStart,
         currentPeriodEnd,
-        trialStart,
-        trialEnd,
         stripeCustomerId,
         stripeSubscriptionId: stripeSubscription.id,
         stripeLatestInvoiceId: typeof stripeSubscription.latest_invoice === 'string' 
           ? stripeSubscription.latest_invoice 
           : stripeSubscription.latest_invoice?.id || undefined,
       };
+
+      // Only include trial dates if they exist
+      if (trialStart) subscriptionData.trialStart = trialStart;
+      if (trialEnd) subscriptionData.trialEnd = trialEnd;
 
       if (existingSubscription) {
         // Update existing subscription
