@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare } from "lucide-react";
+import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare, Bell } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -80,6 +80,12 @@ const menuItems = [
     title: "Incoming SMS",
     url: "/incoming-sms",
     icon: MessageSquare,
+    superAdminOnly: true,
+  },
+  {
+    title: "System Alerts",
+    url: "/system-alerts",
+    icon: Bell,
     superAdminOnly: true,
   },
 ];

@@ -39,6 +39,7 @@ import Campaigns from "@/pages/campaigns";
 import CampaignStats from "@/pages/campaign-stats";
 import SmsCampaignStats from "@/pages/sms-campaign-stats";
 import IncomingSms from "@/pages/incoming-sms";
+import SystemAlerts from "@/pages/system-alerts";
 import Unsubscribe from "@/pages/unsubscribe";
 import NotFound from "@/pages/not-found";
 
@@ -644,6 +645,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <IncomingSms />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/system-alerts">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SystemAlerts />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
