@@ -2142,9 +2142,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Cancel existing Stripe subscription if exists
       if (existingSubscription?.stripeSubscriptionId) {
-        console.log('[SELECT-PLAN] Canceling existing Stripe subscription:', existingSubscription.stripeSubscriptionId);
-        const { cancelStripeSubscription } = await import("./stripe");
-        await cancelStripeSubscription(existingSubscription.stripeSubscriptionId);
+        try {
+          console.log('[SELECT-PLAN] Canceling existing Stripe subscription:', existingSubscription.stripeSubscriptionId);
+          const { cancelStripeSubscription } = await import("./stripe");
+          await cancelStripeSubscription(existingSubscription.stripeSubscriptionId);
+        } catch (cancelError: any) {
+          // If subscription doesn't exist in Stripe (already canceled), continue
+          if (cancelError.code === 'resource_missing') {
+            console.log('[SELECT-PLAN] Subscription already canceled in Stripe, continuing...');
+          } else {
+            throw cancelError; // Re-throw if it's a different error
+          }
+        }
       }
 
       // Create NEW Stripe subscription
