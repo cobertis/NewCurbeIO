@@ -340,7 +340,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 data-testid="button-messages"
                 className="rounded-md hover-elevate active-elevate-2"
               >
-                <MessageSquare className="h-5 w-5 text-blue-500" />
+                <MessageSquare className="h-8 w-8 text-blue-500" />
               </Button>
 
               {/* Theme Toggle */}
@@ -354,7 +354,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 data-testid="button-notifications" 
                 className="rounded-md relative hover-elevate active-elevate-2"
               >
-                <Bell className="h-5 w-5 text-blue-500" />
+                <Bell className="h-8 w-8 text-blue-500" />
                 {unreadCount > 0 && (
                   <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center notification-badge">
                     <span className="text-white text-xs font-semibold">!</span>
