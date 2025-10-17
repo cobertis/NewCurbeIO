@@ -1,49 +1,60 @@
+import { useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, User as UserIcon, Mail, Phone, MapPin, Calendar, Building2, Edit, Shield, Power, Trash2 } from "lucide-react";
-import { formatPhoneDisplay } from "@/lib/phone-formatter";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ArrowLeft, User as UserIcon, MapPin, Building2, Bell, Loader2 } from "lucide-react";
+import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
-import { formatPhoneInput, formatPhoneE164 } from "@/lib/phone-formatter";
-import { useState, useEffect } from "react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-const editUserFormSchema = insertUserSchema.omit({ password: true, companyId: true }).extend({
-  role: z.enum(["admin", "member", "viewer"]),
+// Validation schemas for each form section
+const personalInfoSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  phone: z.string().optional().or(z.literal("")),
-  address: z.string().optional().or(z.literal("")),
-  dateOfBirth: z.string().optional().or(z.literal("")),
-  preferredLanguage: z.string().optional().or(z.literal("")),
-  emailSubscribed: z.boolean().default(true),
-  smsSubscribed: z.boolean().default(true),
-  emailNotifications: z.boolean().default(true),
-  invoiceAlerts: z.boolean().default(true),
-  emailVerified: z.boolean().optional(),
+  email: z.string().email("Please enter a valid email address").optional(),
+  avatar: z.union([
+    z.string().url("Please enter a valid URL"),
+    z.string().regex(/^data:image\/(png|jpg|jpeg|gif|webp);base64,/, "Avatar must be a valid URL or base64 image"),
+    z.literal(""),
+    z.null()
+  ]).optional(),
 });
 
-type EditUserForm = z.infer<typeof editUserFormSchema>;
+const contactInfoSchema = z.object({
+  phone: z.string().optional().or(z.literal("")),
+  address: z.string().optional(),
+  timezone: z.string().optional(),
+  preferredLanguage: z.string().optional(),
+  dateOfBirth: z.string().optional().or(z.literal("")),
+});
+
+const accountDetailsSchema = z.object({
+  role: z.enum(["admin", "member", "viewer"]).optional(),
+});
+
+const notificationPreferencesSchema = z.object({
+  emailSubscribed: z.boolean().optional(),
+  smsSubscribed: z.boolean().optional(),
+  emailNotifications: z.boolean().optional(),
+  invoiceAlerts: z.boolean().optional(),
+});
 
 export default function UserDetail() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const userId = params.id;
 
   const { data: userData, isLoading: isLoadingUser } = useQuery<{ user: User }>({
@@ -57,50 +68,105 @@ export default function UserDetail() {
     },
   });
 
-  const { data: companiesData } = useQuery<{ companies: Company[] }>({
-    queryKey: ["/api/companies"],
-  });
-
   const { data: sessionData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
   });
 
-  const user = userData?.user;
-  const companies = companiesData?.companies || [];
   const currentUser = sessionData?.user;
   const isSuperAdmin = currentUser?.role === "superadmin";
 
-  const editForm = useForm<EditUserForm>({
-    resolver: zodResolver(editUserFormSchema),
+  // Gate companies query to only run for superadmin users
+  const { data: companiesData } = useQuery<{ companies: Company[] }>({
+    queryKey: ["/api/companies"],
+    enabled: isSuperAdmin,
+  });
+
+  const user = userData?.user;
+  const companies = companiesData?.companies || [];
+  const isViewingOwnProfile = currentUser?.id === userId;
+
+  // Initialize forms with react-hook-form
+  const personalForm = useForm({
+    resolver: zodResolver(personalInfoSchema),
     defaultValues: {
-      email: user?.email || "",
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      phone: user?.phone || "",
-      role: (user?.role === "admin" || user?.role === "member" || user?.role === "viewer") ? user.role : "member",
-      address: user?.address || "",
-      dateOfBirth: user?.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
-      preferredLanguage: user?.preferredLanguage || "",
-      emailSubscribed: user?.emailSubscribed ?? true,
-      smsSubscribed: user?.smsSubscribed ?? true,
-      emailNotifications: user?.emailNotifications ?? true,
-      invoiceAlerts: user?.invoiceAlerts ?? true,
-      emailVerified: user?.emailVerified ?? false,
+      firstName: "",
+      lastName: "",
+      email: "",
+      avatar: "",
     },
   });
 
-  const editUserMutation = useMutation({
-    mutationFn: async (data: EditUserForm) => {
-      const phoneE164 = data.phone ? formatPhoneE164(data.phone) : null;
-      return apiRequest("PATCH", `/api/users/${userId}`, { ...data, phone: phoneE164 });
+  const contactForm = useForm({
+    resolver: zodResolver(contactInfoSchema),
+    defaultValues: {
+      phone: "",
+      address: "",
+      timezone: "",
+      preferredLanguage: "",
+      dateOfBirth: "",
+    },
+  });
+
+  const accountForm = useForm({
+    resolver: zodResolver(accountDetailsSchema),
+    defaultValues: {
+      role: "member" as "admin" | "member" | "viewer",
+    },
+  });
+
+  const notificationForm = useForm({
+    resolver: zodResolver(notificationPreferencesSchema),
+    defaultValues: {
+      emailSubscribed: true,
+      smsSubscribed: true,
+      emailNotifications: true,
+      invoiceAlerts: true,
+    },
+  });
+
+  // Update forms when user data changes - using useEffect to prevent infinite re-renders
+  useEffect(() => {
+    if (user) {
+      personalForm.reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        avatar: user.avatar || "",
+      });
+
+      contactForm.reset({
+        phone: user.phone ? formatPhoneDisplay(user.phone) : "",
+        address: user.address || "",
+        timezone: user.timezone || "",
+        preferredLanguage: user.preferredLanguage || "",
+        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
+      });
+
+      accountForm.reset({
+        role: (user.role === "admin" || user.role === "member" || user.role === "viewer") ? user.role : "member",
+      });
+
+      notificationForm.reset({
+        emailSubscribed: user.emailSubscribed ?? true,
+        smsSubscribed: user.smsSubscribed ?? true,
+        emailNotifications: user.emailNotifications ?? true,
+        invoiceAlerts: user.invoiceAlerts ?? true,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Update Personal Information Mutation
+  const updatePersonalMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof personalInfoSchema>) => {
+      return apiRequest("PATCH", `/api/users/${userId}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      setEditOpen(false);
       toast({
-        title: "User Updated",
-        description: "User information has been updated successfully",
+        title: "Personal Information Updated",
+        description: "Personal information has been updated successfully",
       });
     },
     onError: (error: Error) => {
@@ -112,54 +178,83 @@ export default function UserDetail() {
     },
   });
 
-  const toggleUserStatusMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("PATCH", `/api/users/${userId}/toggle-status`);
+  // Update Contact & Location Mutation
+  const updateContactMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof contactInfoSchema>) => {
+      const phoneE164 = data.phone ? formatPhoneE164(data.phone) : "";
+      return apiRequest("PATCH", `/api/users/${userId}`, { 
+        ...data, 
+        phone: phoneE164,
+        dateOfBirth: data.dateOfBirth || null,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
-        title: "Status Updated",
-        description: "User status has been updated successfully",
+        title: "Contact Information Updated",
+        description: "Contact information has been updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
 
-  const deleteUserMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("DELETE", `/api/users/${userId}`);
+  // Update Account Details Mutation
+  const updateAccountMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof accountDetailsSchema>) => {
+      return apiRequest("PATCH", `/api/users/${userId}`, data);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
-        title: "User Deleted",
-        description: "User has been deleted successfully",
+        title: "Account Details Updated",
+        description: "Account details have been updated successfully",
       });
-      setLocation("/users");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
-  // Reset form when user data is loaded
-  useEffect(() => {
-    if (user) {
-      editForm.reset({
-        email: user.email,
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        phone: user.phone || "",
-        role: (user.role === "admin" || user.role === "member" || user.role === "viewer") ? user.role : "member",
-        address: user.address || "",
-        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
-        preferredLanguage: user.preferredLanguage || "",
-        emailSubscribed: user.emailSubscribed ?? true,
-        smsSubscribed: user.smsSubscribed ?? true,
-        emailNotifications: user.emailNotifications ?? true,
-        invoiceAlerts: user.invoiceAlerts ?? true,
-        emailVerified: user.emailVerified ?? false,
+  // Update Notification Preferences Mutation
+  const updateNotificationMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof notificationPreferencesSchema>) => {
+      return apiRequest("PATCH", `/api/users/${userId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Notification Preferences Updated",
+        description: "Notification preferences have been updated successfully",
       });
-    }
-  }, [user, editForm]);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Check if any mutation is pending to disable all save buttons
+  const isAnyMutationPending = 
+    updatePersonalMutation.isPending || 
+    updateContactMutation.isPending || 
+    updateAccountMutation.isPending || 
+    updateNotificationMutation.isPending;
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -177,7 +272,8 @@ export default function UserDetail() {
   };
 
   const getStatusInfo = () => {
-    const userCompany = user?.companyId ? companies.find(c => c.id === user.companyId) : null;
+    // Gracefully handle missing company data for non-superadmin users
+    const userCompany = user?.companyId && isSuperAdmin ? companies.find(c => c.id === user.companyId) : null;
     const isCompanySuspended = userCompany && !userCompany.isActive;
     const isUserInactive = user?.isActive === false;
 
@@ -204,7 +300,7 @@ export default function UserDetail() {
 
   if (isLoadingUser) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen" data-testid="loading-user">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -214,7 +310,7 @@ export default function UserDetail() {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <h2 className="text-2xl font-bold">User Not Found</h2>
-        <Button onClick={() => setLocation("/users")}>
+        <Button onClick={() => setLocation("/users")} data-testid="button-back-to-users">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Users
         </Button>
@@ -224,13 +320,13 @@ export default function UserDetail() {
 
   const roleBadge = getRoleBadge(user.role);
   const statusInfo = getStatusInfo();
-  const userCompany = user.companyId ? companies.find(c => c.id === user.companyId) : null;
+  const userCompany = user.companyId && isSuperAdmin ? companies.find(c => c.id === user.companyId) : null;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setLocation("/users")} data-testid="button-back-to-users">
+        <Button variant="ghost" size="icon" onClick={() => setLocation("/users")} data-testid="button-back">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <Avatar className="h-16 w-16">
@@ -242,363 +338,531 @@ export default function UserDetail() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold">
             {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className={roleBadge.className}>
+          <Badge className={roleBadge.className} data-testid="badge-role">
             {roleBadge.label}
           </Badge>
-          <Badge variant={statusInfo.variant}>
+          <Badge variant={statusInfo.variant} data-testid="badge-status">
             {statusInfo.label}
           </Badge>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Contact Information */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Contact Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-start gap-3">
-                <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</p>
-                  <p className="text-sm text-gray-900 dark:text-white">{user.email}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</p>
-                  <p className="text-sm text-gray-900 dark:text-white">
-                    {user.phone ? formatPhoneDisplay(user.phone) : "Not provided"}
-                  </p>
-                </div>
-              </div>
-              {user.address && (
-                <div className="flex items-start gap-3 md:col-span-2">
-                  <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</p>
-                    <p className="text-sm text-gray-900 dark:text-white">{user.address}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button 
-              variant="outline" 
-              className="w-full justify-start" 
-              onClick={() => {
-                editForm.reset({
-                  email: user.email,
-                  firstName: user.firstName || "",
-                  lastName: user.lastName || "",
-                  phone: user.phone || "",
-                  role: (user.role === "admin" || user.role === "member" || user.role === "viewer") ? user.role : "member",
-                  address: user.address || "",
-                  dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
-                  preferredLanguage: user.preferredLanguage || "",
-                  emailSubscribed: user.emailSubscribed ?? true,
-                  smsSubscribed: user.smsSubscribed ?? true,
-                  emailNotifications: user.emailNotifications ?? true,
-                  invoiceAlerts: user.invoiceAlerts ?? true,
-                  emailVerified: user.emailVerified ?? false,
-                });
-                setEditOpen(true);
-              }}
-              data-testid="button-edit-user"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit User
-            </Button>
-            {user.role !== "superadmin" && (
-              <>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => toggleUserStatusMutation.mutate()}
-                  disabled={toggleUserStatusMutation.isPending}
-                  data-testid="button-toggle-status"
-                >
-                  <Power className="h-4 w-4 mr-2" />
-                  {user.isActive ? "Deactivate" : "Activate"} User
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-destructive hover:text-destructive"
-                  onClick={() => setDeleteDialogOpen(true)}
-                  data-testid="button-delete-user"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete User
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Personal Information */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserIcon className="h-5 w-5" />
               Personal Information
             </CardTitle>
+            <CardDescription>
+              Update your personal details and profile picture
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {user.dateOfBirth && (
-                <div className="flex items-start gap-3">
-                  <Calendar className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Date of Birth</p>
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      {new Date(user.dateOfBirth).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
-                    </p>
+          <CardContent>
+            <Form {...personalForm}>
+              <form onSubmit={personalForm.handleSubmit((data) => updatePersonalMutation.mutate(data))} className="space-y-4">
+                <div className="flex items-center gap-4 pb-4">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={personalForm.watch("avatar") || undefined} />
+                    <AvatarFallback className="text-lg">
+                      {personalForm.watch("firstName") && personalForm.watch("lastName")
+                        ? `${personalForm.watch("firstName")[0]}${personalForm.watch("lastName")[0]}`
+                        : user.email[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <FormField
+                      control={personalForm.control}
+                      name="avatar"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Avatar URL</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://example.com/avatar.jpg"
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-avatar"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
-              )}
-              {user.preferredLanguage && (
-                <div className="flex items-start gap-3">
-                  <Shield className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Preferred Language</p>
-                    <p className="text-sm text-gray-900 dark:text-white">{user.preferredLanguage}</p>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={personalForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-firstName"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={personalForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-lastName"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-              )}
-              {isSuperAdmin && user.companyId && userCompany && (
-                <div className="flex items-start gap-3">
-                  <Building2 className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Company</p>
-                    <button
-                      className="h-auto p-0 text-sm text-primary hover:underline font-medium"
-                      onClick={() => setLocation(`/companies/${userCompany.id}`)}
-                    >
-                      {userCompany.name}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+                <FormField
+                  control={personalForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-email"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  disabled={isAnyMutationPending}
+                  data-testid="button-save-personal"
+                >
+                  {updatePersonalMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {/* Contact & Location */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Contact & Location
+            </CardTitle>
+            <CardDescription>
+              Manage your contact details and location preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...contactForm}>
+              <form onSubmit={contactForm.handleSubmit((data) => updateContactMutation.mutate(data))} className="space-y-4">
+                <FormField
+                  control={contactForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          placeholder="+1 (415) 555-2671"
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => {
+                            const formatted = formatPhoneInput(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          data-testid="input-phone"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contactForm.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-address"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contactForm.control}
+                  name="timezone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Timezone</FormLabel>
+                      <Select 
+                        value={field.value || ""} 
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-timezone">
+                            <SelectValue placeholder="Select timezone" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-[300px]">
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">America - USA</div>
+                          <SelectItem value="America/New_York">(UTC-05:00) EST, New York, Toronto</SelectItem>
+                          <SelectItem value="America/Chicago">(UTC-06:00) CST, Chicago, Mexico City</SelectItem>
+                          <SelectItem value="America/Denver">(UTC-07:00) MST, Denver, Phoenix</SelectItem>
+                          <SelectItem value="America/Los_Angeles">(UTC-08:00) PST, Los Angeles, Vancouver</SelectItem>
+                          <SelectItem value="America/Anchorage">(UTC-09:00) AKST, Anchorage</SelectItem>
+                          <SelectItem value="Pacific/Honolulu">(UTC-10:00) HST, Honolulu</SelectItem>
+                          
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Europe</div>
+                          <SelectItem value="Europe/London">(UTC+00:00) GMT, London, Dublin</SelectItem>
+                          <SelectItem value="Europe/Paris">(UTC+01:00) CET, Paris, Madrid, Berlin</SelectItem>
+                          <SelectItem value="Europe/Istanbul">(UTC+02:00) EET, Istanbul, Athens</SelectItem>
+                          
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Asia</div>
+                          <SelectItem value="Asia/Tokyo">(UTC+09:00) JST, Tokyo, Osaka</SelectItem>
+                          <SelectItem value="Asia/Shanghai">(UTC+08:00) CST, Shanghai, Beijing</SelectItem>
+                          <SelectItem value="Asia/Kolkata">(UTC+05:30) IST, Kolkata, Mumbai</SelectItem>
+                          
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">UTC</div>
+                          <SelectItem value="UTC">(UTC+00:00) UTC, Greenwich</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contactForm.control}
+                  name="preferredLanguage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Language</FormLabel>
+                      <Select 
+                        value={field.value || ""} 
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-language">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="es">Spanish</SelectItem>
+                          <SelectItem value="fr">French</SelectItem>
+                          <SelectItem value="de">German</SelectItem>
+                          <SelectItem value="pt">Portuguese</SelectItem>
+                          <SelectItem value="zh">Chinese</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contactForm.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-dateOfBirth"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  disabled={isAnyMutationPending}
+                  data-testid="button-save-contact"
+                >
+                  {updateContactMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
 
         {/* Account Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Account Details</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Account Details
+            </CardTitle>
+            <CardDescription>
+              View and manage account settings
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Created At</p>
-              <p className="text-sm text-gray-900 dark:text-white">
-                {new Date(user.createdAt).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Account Status</p>
-              <p className="text-sm text-gray-900 dark:text-white">{statusInfo.description}</p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Role</Label>
+                {isViewingOwnProfile || user.role === "superadmin" ? (
+                  <Input
+                    value={roleBadge.label}
+                    disabled
+                    className="bg-muted"
+                    data-testid="input-role-disabled"
+                  />
+                ) : (
+                  <Form {...accountForm}>
+                    <form onSubmit={accountForm.handleSubmit((data) => updateAccountMutation.mutate(data))}>
+                      <div className="space-y-4">
+                        <FormField
+                          control={accountForm.control}
+                          name="role"
+                          render={({ field }) => (
+                            <FormItem>
+                              <Select 
+                                value={field.value || ""} 
+                                onValueChange={field.onChange}
+                              >
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-role">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="member">Member</SelectItem>
+                                  <SelectItem value="viewer">Viewer</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="submit"
+                          disabled={isAnyMutationPending}
+                          data-testid="button-save-role"
+                        >
+                          {updateAccountMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Save Changes"
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                )}
+              </div>
+              {isSuperAdmin && user.companyId && userCompany && (
+                <div className="space-y-2">
+                  <Label>Company</Label>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => setLocation(`/companies/${userCompany.id}`)}
+                    data-testid="button-view-company"
+                  >
+                    <Building2 className="h-4 w-4 mr-2" />
+                    {userCompany.name}
+                  </Button>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Account Status</Label>
+                <div className="flex items-center gap-2">
+                  <Badge variant={statusInfo.variant} data-testid="text-account-status">
+                    {statusInfo.label}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">{statusInfo.description}</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Created At</Label>
+                <p className="text-sm" data-testid="text-created-at">
+                  {new Date(user.createdAt).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Notification Preferences */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Notification Preferences
+            </CardTitle>
+            <CardDescription>
+              Manage how you receive notifications
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...notificationForm}>
+              <form onSubmit={notificationForm.handleSubmit((data) => updateNotificationMutation.mutate(data))} className="space-y-6">
+                <FormField
+                  control={notificationForm.control}
+                  name="emailSubscribed"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Email Subscriptions
+                        </FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Receive marketing and promotional emails
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-emailSubscribed"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={notificationForm.control}
+                  name="smsSubscribed"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          SMS Subscriptions
+                        </FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Receive marketing and promotional SMS
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-smsSubscribed"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={notificationForm.control}
+                  name="emailNotifications"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Email Notifications
+                        </FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Receive email notifications about your account
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-emailNotifications"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={notificationForm.control}
+                  name="invoiceAlerts"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Invoice Alerts
+                        </FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Get notified about invoices and billing
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-invoiceAlerts"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  disabled={isAnyMutationPending}
+                  data-testid="button-save-notifications"
+                >
+                  {updateNotificationMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Edit User Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>Update user information</DialogDescription>
-          </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((data) => editUserMutation.mutate(data))} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={editForm.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-edit-firstName" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-edit-lastName" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={editForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="email" data-testid="input-edit-email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="tel"
-                        placeholder="(123) 456-7890"
-                        onChange={(e) => {
-                          const formatted = formatPhoneInput(e.target.value);
-                          field.onChange(formatted);
-                        }}
-                        data-testid="input-edit-phone"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-edit-role">
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-edit-address" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="dateOfBirth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date of Birth</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="date" data-testid="input-edit-dateOfBirth" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="preferredLanguage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Preferred Language</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-edit-preferredLanguage" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={editUserMutation.isPending} data-testid="button-save-user">
-                  {editUserMutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this user? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteUserMutation.mutate()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-delete"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
