@@ -292,7 +292,7 @@ export default function BusinessProfile() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 min-h-full">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
         {/* Section 1: General Information */}
         <Card>
         <CardHeader>
