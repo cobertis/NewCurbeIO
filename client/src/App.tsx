@@ -320,12 +320,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               {/* Timezone Button */}
               <Button 
                 variant="ghost" 
-                size="icon"
                 onClick={() => setTimezoneDialogOpen(true)}
                 data-testid="button-timezone"
-                className="rounded-md"
+                className="rounded-md h-9 px-3 gap-2 hidden sm:flex"
               >
-                <Globe className="h-6 w-6 text-blue-500" />
+                <Globe className="h-4 w-4" />
+                <span className="text-sm">
+                  {selectedTimezone 
+                    ? selectedTimezone.includes('New_York') ? '(UTC-05:00) EST'
+                    : selectedTimezone.includes('Chicago') ? '(UTC-06:00) CST'
+                    : selectedTimezone.includes('Denver') ? '(UTC-07:00) MST'
+                    : selectedTimezone.includes('Los_Angeles') ? '(UTC-08:00) PST'
+                    : selectedTimezone.includes('London') ? '(UTC+00:00) GMT'
+                    : selectedTimezone.includes('Paris') ? '(UTC+01:00) CET'
+                    : selectedTimezone.includes('Tokyo') ? '(UTC+09:00) JST'
+                    : selectedTimezone.includes('Sydney') ? '(UTC+10:00) AEST'
+                    : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'
+                    : 'Select timezone'}
+                </span>
               </Button>
 
               {/* Notifications Button */}
