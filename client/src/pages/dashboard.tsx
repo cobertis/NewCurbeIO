@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 
 const recentActivity = [
   { name: "User Created", code: "admin@company.com", amount: "$1,250.00", count: "ID 4188", change: "+5.0%", status: "success" },
@@ -24,6 +25,8 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
+  
   const { data: statsData } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard-stats"],
   });
@@ -42,6 +45,7 @@ export default function Dashboard() {
       subtitle: `${totalUsers} active users`,
       icon: Users,
       color: "bg-blue-500",
+      link: "/users",
     },
     {
       title: "Admins",
@@ -66,6 +70,7 @@ export default function Dashboard() {
       subtitle: `${companyCount} active companies`,
       icon: Building2,
       color: "bg-blue-400",
+      link: "/companies",
     }] : []),
     {
       title: "Members",
@@ -94,7 +99,14 @@ export default function Dashboard() {
     <div className="flex flex-col gap-6 p-6">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {quickStats.map((stat, index) => (
-          <Card key={index} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow" data-testid={`card-quick-stat-${index}`}>
+          <Card 
+            key={index} 
+            className={`bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow ${
+              stat.link ? 'cursor-pointer hover-elevate active-elevate-2' : ''
+            }`}
+            onClick={stat.link ? () => setLocation(stat.link) : undefined}
+            data-testid={`card-quick-stat-${index}`}
+          >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <div className={`w-10 h-10 rounded-full ${stat.color} flex items-center justify-center flex-shrink-0`}>

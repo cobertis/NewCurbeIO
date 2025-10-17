@@ -446,6 +446,20 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                           
                           const Icon = getNotificationIcon();
                           
+                          // Get icon color based on type
+                          const getIconColor = () => {
+                            if (notification.type) {
+                              switch (notification.type) {
+                                case 'success': return 'text-green-600 dark:text-green-400';
+                                case 'warning': return 'text-orange-600 dark:text-orange-400';
+                                case 'error': return 'text-red-600 dark:text-red-400';
+                                case 'info': return 'text-blue-600 dark:text-blue-400';
+                              }
+                            }
+                            // Default color for other notifications
+                            return 'text-muted-foreground';
+                          };
+                          
                           // Calculate time ago
                           const getTimeAgo = (date: Date) => {
                             const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -497,7 +511,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                             >
                               <div className="flex gap-3">
                                 <div className="shrink-0 h-9 w-9 rounded-full bg-muted flex items-center justify-center">
-                                  <Icon className="h-4 w-4 text-muted-foreground" />
+                                  <Icon className={`h-4 w-4 ${getIconColor()}`} />
                                 </div>
                                 
                                 <div className="flex-1 min-w-0">
