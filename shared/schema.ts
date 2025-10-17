@@ -49,6 +49,11 @@ export const companies = pgTable("companies", {
   representativePosition: text("representative_position"), // Job position
   representativePhone: text("representative_phone"), // Representative phone
   
+  // Stripe Billing Information
+  stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID
+  stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID
+  stripePaymentMethodId: text("stripe_payment_method_id"), // Stripe default payment method ID
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
