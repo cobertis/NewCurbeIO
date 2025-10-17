@@ -58,6 +58,8 @@ export default function Users() {
   const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewingUser, setViewingUser] = useState<User | null>(null);
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
