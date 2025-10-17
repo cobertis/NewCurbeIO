@@ -1501,31 +1501,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    // Get company details before deletion for logging
-    const company = await storage.getCompany(req.params.id);
-    if (!company) {
-      return res.status(404).json({ message: "Company not found" });
+    try {
+      // Get company details before deletion for logging
+      const company = await storage.getCompany(req.params.id);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Delete Stripe customer if exists
+      if (company.stripeCustomerId) {
+        console.log('[DELETE-COMPANY] Deleting Stripe customer:', company.stripeCustomerId);
+        const { deleteStripeCustomer } = await import("./stripe");
+        await deleteStripeCustomer(company.stripeCustomerId);
+      }
+
+      // Delete company from database
+      const success = await storage.deleteCompany(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Log without companyId since the company itself is being deleted (would fail FK constraint)
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "company",
+        entityId: company.id,
+        companyId: undefined, // Don't reference the deleted company
+        metadata: {
+          name: company.name,
+          deletedBy: currentUser.email,
+          stripeCustomerDeleted: !!company.stripeCustomerId,
+        },
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting company:', error);
+      res.status(500).json({ 
+        message: "Failed to delete company",
+        error: error.message 
+      });
     }
-
-    const success = await storage.deleteCompany(req.params.id);
-    if (!success) {
-      return res.status(404).json({ message: "Company not found" });
-    }
-
-    // Log without companyId since the company itself is being deleted (would fail FK constraint)
-    await logger.logCrud({
-      req,
-      operation: "delete",
-      entity: "company",
-      entityId: company.id,
-      companyId: undefined, // Don't reference the deleted company
-      metadata: {
-        name: company.name,
-        deletedBy: currentUser.email,
-      },
-    });
-
-    res.json({ success: true });
   });
 
   // Toggle company active status (enable/disable)

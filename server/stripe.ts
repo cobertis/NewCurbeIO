@@ -87,6 +87,23 @@ export async function createStripeCustomer(company: {
   return customer;
 }
 
+export async function deleteStripeCustomer(customerId: string) {
+  try {
+    console.log('[STRIPE] Deleting customer:', customerId);
+    const deleted = await stripe.customers.del(customerId);
+    console.log('[STRIPE] Customer deleted successfully:', deleted.id);
+    return deleted;
+  } catch (error: any) {
+    // If customer doesn't exist in Stripe, log but don't throw
+    if (error.code === 'resource_missing') {
+      console.log('[STRIPE] Customer already deleted or does not exist:', customerId);
+      return null;
+    }
+    // For other errors, throw to prevent company deletion
+    throw error;
+  }
+}
+
 export async function createSubscriptionCheckout(
   companyId: string,
   planId: string,
