@@ -356,6 +356,10 @@ export async function syncPlanWithStripe(plan: {
   stripeSetupFeePriceId?: string | null;
 }) {
   try {
+    console.log('[STRIPE SYNC] Starting sync for plan:', plan.name, 'ID:', plan.id);
+    console.log('[STRIPE SYNC] Existing Stripe Product ID:', plan.stripeProductId);
+    console.log('[STRIPE SYNC] Existing Stripe Price ID:', plan.stripePriceId);
+    
     // Convert billingCycle to Stripe interval format
     const stripeInterval = plan.billingCycle === 'monthly' ? 'month' 
                           : plan.billingCycle === 'yearly' ? 'year'
@@ -365,15 +369,39 @@ export async function syncPlanWithStripe(plan: {
     let product: Stripe.Product;
     
     if (plan.stripeProductId) {
-      // Update existing product
-      product = await stripe.products.update(plan.stripeProductId, {
-        name: plan.name,
-        description: plan.description || undefined,
-        metadata: {
-          localPlanId: plan.id,
-        },
-      });
+      console.log('[STRIPE SYNC] Updating existing product:', plan.stripeProductId);
+      try {
+        // Verify product exists before updating
+        product = await stripe.products.retrieve(plan.stripeProductId);
+        
+        // Update existing product
+        product = await stripe.products.update(plan.stripeProductId, {
+          name: plan.name,
+          description: plan.description || undefined,
+          active: true,
+          metadata: {
+            localPlanId: plan.id,
+          },
+        });
+        console.log('[STRIPE SYNC] Successfully updated product:', product.id);
+      } catch (error: any) {
+        if (error.code === 'resource_missing') {
+          console.log('[STRIPE SYNC] Product not found in Stripe, creating new one');
+          // Product doesn't exist, create new one
+          product = await stripe.products.create({
+            name: plan.name,
+            description: plan.description || undefined,
+            metadata: {
+              localPlanId: plan.id,
+            },
+          });
+          console.log('[STRIPE SYNC] Created new product:', product.id);
+        } else {
+          throw error;
+        }
+      }
     } else {
+      console.log('[STRIPE SYNC] Creating new product for:', plan.name);
       // Create new product
       product = await stripe.products.create({
         name: plan.name,
@@ -382,6 +410,7 @@ export async function syncPlanWithStripe(plan: {
           localPlanId: plan.id,
         },
       });
+      console.log('[STRIPE SYNC] Created new product:', product.id);
     }
 
     // Step 2: Create or update recurring Price
