@@ -399,6 +399,8 @@ export class DbStorage implements IStorage {
     if (data.emailSubscribed !== undefined) mappedData.emailSubscribed = data.emailSubscribed;
     if (data.emailNotifications !== undefined) mappedData.emailNotifications = data.emailNotifications;
     if (data.invoiceAlerts !== undefined) mappedData.invoiceAlerts = data.invoiceAlerts;
+    // Timezone preference
+    if (data.timezone !== undefined) mappedData.timezone = data.timezone;
     
     const result = await db.update(users).set(mappedData).where(eq(users.id, id)).returning();
     return result[0];

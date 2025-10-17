@@ -499,7 +499,7 @@ export default function IncomingSms() {
                         </div>
                         
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm text-muted-foreground break-words">
+                          <p className="text-sm text-muted-foreground truncate">
                             {conv.lastMessage}
                           </p>
                           {conv.unreadCount > 0 && (
