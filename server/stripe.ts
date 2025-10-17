@@ -158,6 +158,58 @@ export async function createSubscriptionCheckout(
   return session;
 }
 
+/**
+ * Create a real Stripe subscription for manual plan assignment
+ * This creates a subscription that will auto-bill the customer
+ */
+export async function createStripeSubscription(
+  customerId: string,
+  stripePriceId: string,
+  companyId: string,
+  planId: string,
+  trialDays?: number
+) {
+  console.log('[STRIPE] Creating subscription:', {
+    customerId,
+    stripePriceId,
+    companyId,
+    planId,
+    trialDays,
+  });
+
+  const subscriptionData: Stripe.SubscriptionCreateParams = {
+    customer: customerId,
+    items: [
+      {
+        price: stripePriceId,
+      },
+    ],
+    metadata: {
+      companyId,
+      planId,
+    },
+    // Automatically collect payment
+    payment_behavior: 'default_incomplete',
+    payment_settings: {
+      save_default_payment_method: 'on_subscription',
+    },
+    // Expand to get full invoice and payment intent details
+    expand: ['latest_invoice.payment_intent'],
+  };
+
+  // Add trial if specified
+  if (trialDays && trialDays > 0) {
+    subscriptionData.trial_period_days = trialDays;
+  }
+
+  const subscription = await stripe.subscriptions.create(subscriptionData);
+  
+  console.log('[STRIPE] Subscription created:', subscription.id);
+  console.log('[STRIPE] Status:', subscription.status);
+  
+  return subscription;
+}
+
 export async function cancelStripeSubscription(stripeSubscriptionId: string, cancelAtPeriodEnd: boolean = false) {
   if (cancelAtPeriodEnd) {
     return await stripe.subscriptions.update(stripeSubscriptionId, {
@@ -175,7 +227,7 @@ export async function cancelStripeSubscription(stripeSubscriptionId: string, can
 export async function syncInvoiceFromStripe(stripeInvoiceId: string) {
   const stripeInvoice = await stripe.invoices.retrieve(stripeInvoiceId, {
     expand: ['lines']
-  });
+  }) as any;
   
   // Find company by subscription
   let subscription: any = null;
@@ -197,7 +249,7 @@ export async function syncInvoiceFromStripe(stripeInvoiceId: string) {
     invoiceNumber: stripeInvoice.number || `INV-${Date.now()}`,
     status: mapStripeInvoiceStatus(stripeInvoice.status),
     subtotal: stripeInvoice.subtotal_excluding_tax || stripeInvoice.subtotal || 0,
-    tax: stripeInvoice.total_tax_amounts?.reduce((sum, t) => sum + t.amount, 0) || 0,
+    tax: stripeInvoice.total_tax_amounts?.reduce((sum: number, t: any) => sum + t.amount, 0) || 0,
     total: stripeInvoice.total || 0,
     amountPaid: stripeInvoice.amount_paid || 0,
     amountDue: stripeInvoice.amount_due || 0,
@@ -258,7 +310,7 @@ export async function recordPayment(
   status: string,
   paymentMethod: string | null
 ) {
-  const paymentData: InsertPayment = {
+  const paymentData: any = {
     companyId,
     invoiceId: invoiceId || undefined,
     amount,
@@ -328,7 +380,7 @@ export async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subsc
     return;
   }
 
-  const updateData: Partial<InsertSubscription> = {
+  const updateData: any = {
     status: mapStripeSubscriptionStatus(stripeSubscription.status),
     cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
   };
@@ -347,7 +399,7 @@ export async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subsc
     return;
   }
 
-  const updateData: Partial<InsertSubscription> = {
+  const updateData: any = {
     status: "cancelled",
     cancelledAt: new Date(),
   };

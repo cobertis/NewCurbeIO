@@ -1933,6 +1933,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      // Verify plan has Stripe price configured
+      if (!plan.stripePriceId) {
+        return res.status(400).json({ 
+          message: "Plan must be synced with Stripe before assigning. Please sync the plan first." 
+        });
+      }
+
       // Create or get Stripe customer with complete company information
       let stripeCustomerId = company.stripeCustomerId;
       
@@ -1952,15 +1959,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if company already has a subscription
       const existingSubscription = await storage.getSubscriptionByCompany(companyId);
 
+      // Cancel existing Stripe subscription if exists
+      if (existingSubscription?.stripeSubscriptionId) {
+        console.log('[SUBSCRIPTION] Canceling existing Stripe subscription:', existingSubscription.stripeSubscriptionId);
+        const { cancelStripeSubscription } = await import("./stripe");
+        await cancelStripeSubscription(existingSubscription.stripeSubscriptionId);
+      }
+
+      // Create NEW Stripe subscription
+      console.log('[SUBSCRIPTION] Creating new Stripe subscription...');
+      const { createStripeSubscription } = await import("./stripe");
+      const stripeSubscription = await createStripeSubscription(
+        stripeCustomerId,
+        plan.stripePriceId,
+        companyId,
+        planId,
+        plan.trialDays
+      );
+
+      // Extract subscription data from Stripe
+      const stripeSubData = stripeSubscription as any;
+      const currentPeriodStart = new Date(stripeSubData.current_period_start * 1000);
+      const currentPeriodEnd = new Date(stripeSubData.current_period_end * 1000);
+      const trialStart = stripeSubData.trial_start ? new Date(stripeSubData.trial_start * 1000) : undefined;
+      const trialEnd = stripeSubData.trial_end ? new Date(stripeSubData.trial_end * 1000) : undefined;
+
+      // Map Stripe status to our enum, preserving actual subscription state
+      const mapStatus = (stripeStatus: string): string => {
+        switch (stripeStatus) {
+          case 'active': return 'active';
+          case 'trialing': return 'trialing';
+          case 'past_due': return 'past_due';
+          case 'unpaid': return 'unpaid';
+          case 'incomplete': return 'active'; // incomplete means waiting for first payment
+          case 'incomplete_expired': return 'cancelled';
+          case 'canceled': return 'cancelled';
+          default: return 'active';
+        }
+      };
+
+      const subscriptionData = {
+        planId,
+        status: mapStatus(stripeSubscription.status),
+        currentPeriodStart,
+        currentPeriodEnd,
+        trialStart,
+        trialEnd,
+        stripeCustomerId,
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeLatestInvoiceId: typeof stripeSubscription.latest_invoice === 'string' 
+          ? stripeSubscription.latest_invoice 
+          : stripeSubscription.latest_invoice?.id || undefined,
+      };
+
       if (existingSubscription) {
         // Update existing subscription
-        const updatedSubscription = await storage.updateSubscription(existingSubscription.id, {
-          planId,
-          status: "active",
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          stripeCustomerId, // Update with Stripe customer ID
-        });
+        const updatedSubscription = await storage.updateSubscription(
+          existingSubscription.id,
+          subscriptionData
+        );
 
         await logger.log({
           req,
@@ -1972,6 +2029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             planId,
             planName: plan.name,
             stripeCustomerId,
+            stripeSubscriptionId: stripeSubscription.id,
           },
         });
 
@@ -1980,11 +2038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create new subscription
         const newSubscription = await storage.createSubscription({
           companyId,
-          planId,
-          status: "active",
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          stripeCustomerId, // Add Stripe customer ID
+          ...subscriptionData,
         });
 
         await logger.log({
@@ -1997,6 +2051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             planId,
             planName: plan.name,
             stripeCustomerId,
+            stripeSubscriptionId: stripeSubscription.id,
           },
         });
 
@@ -2163,6 +2218,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get billing payments
+  app.get("/api/billing/payments", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can view payments
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company payments" });
+    }
+
+    try {
+      const payments = await storage.getPaymentsByCompany(companyId);
+      res.json({ payments });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get billing subscription details from Stripe
   app.get("/api/billing/subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -2244,7 +2329,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         handleSubscriptionUpdated,
         handleSubscriptionDeleted,
         syncInvoiceFromStripe,
+        recordPayment,
       } = await import("./stripe");
+
+      console.log(`[WEBHOOK] Processing event: ${event.type}`);
 
       switch (event.type) {
         case 'customer.subscription.created':
@@ -2258,10 +2346,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         case 'invoice.paid':
         case 'invoice.payment_succeeded':
-          await syncInvoiceFromStripe((event.data.object as any).id);
+          {
+            const stripeInvoice = event.data.object as any;
+            console.log('[WEBHOOK] Invoice paid:', stripeInvoice.id);
+            
+            // Sync invoice from Stripe
+            const invoice = await syncInvoiceFromStripe(stripeInvoice.id);
+            
+            // Create payment record if payment intent exists
+            if (invoice && stripeInvoice.payment_intent) {
+              console.log('[WEBHOOK] Creating payment record for payment intent:', stripeInvoice.payment_intent);
+              await recordPayment(
+                stripeInvoice.payment_intent,
+                invoice.companyId,
+                invoice.id,
+                stripeInvoice.amount_paid || stripeInvoice.total,
+                stripeInvoice.currency,
+                'succeeded',
+                stripeInvoice.payment_method_types?.[0] || 'card'
+              );
+            }
+          }
+          break;
+        case 'invoice.payment_failed':
+          {
+            const stripeInvoice = event.data.object as any;
+            console.log('[WEBHOOK] Invoice payment failed:', stripeInvoice.id);
+            
+            // Sync invoice to update status
+            await syncInvoiceFromStripe(stripeInvoice.id);
+          }
+          break;
+        case 'payment_intent.succeeded':
+          {
+            const paymentIntent = event.data.object as any;
+            console.log('[WEBHOOK] Payment succeeded:', paymentIntent.id);
+            // Payment is already recorded via invoice.paid event
+          }
           break;
         default:
-          console.log(`Unhandled event type: ${event.type}`);
+          console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
       }
 
       res.json({ received: true });

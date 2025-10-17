@@ -50,6 +50,17 @@ interface Invoice {
   stripeInvoicePdf?: string;
 }
 
+interface Payment {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentMethod?: string;
+  stripePaymentIntentId?: string;
+  processedAt?: string;
+  createdAt: string;
+}
+
 export default function Billing() {
   const { toast } = useToast();
 
@@ -61,6 +72,11 @@ export default function Billing() {
   // Fetch invoices
   const { data: invoicesData, isLoading: isLoadingInvoices } = useQuery({
     queryKey: ['/api/billing/invoices'],
+  });
+
+  // Fetch payments
+  const { data: paymentsData, isLoading: isLoadingPayments } = useQuery({
+    queryKey: ['/api/billing/payments'],
   });
 
   // Create customer portal session
@@ -86,6 +102,7 @@ export default function Billing() {
 
   const subscription: Subscription | null = (subscriptionData as any)?.subscription || null;
   const invoices: Invoice[] = (invoicesData as any)?.invoices || [];
+  const payments: Payment[] = (paymentsData as any)?.payments || [];
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -125,6 +142,25 @@ export default function Billing() {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount / 100);
+  };
+
+  const getPaymentStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
+      succeeded: { label: "Succeeded", icon: CheckCircle2, className: "text-green-600 dark:text-green-400" },
+      pending: { label: "Pending", icon: AlertCircle, className: "text-yellow-600 dark:text-yellow-400" },
+      failed: { label: "Failed", icon: AlertCircle, className: "text-red-600 dark:text-red-400" },
+      refunded: { label: "Refunded", icon: AlertCircle, className: "text-gray-600 dark:text-gray-400" },
+    };
+
+    const config = statusConfig[status] || { label: status, icon: AlertCircle, className: "text-gray-600" };
+    const Icon = config.icon;
+    
+    return (
+      <div className="flex items-center gap-1.5">
+        <Icon className={`h-4 w-4 ${config.className}`} />
+        <span className="text-sm font-medium">{config.label}</span>
+      </div>
+    );
   };
 
   return (
@@ -349,6 +385,64 @@ export default function Billing() {
               <h3 className="text-lg font-semibold mb-2">No Invoices Yet</h3>
               <p className="text-sm text-muted-foreground">
                 Your billing history will appear here once you have an active subscription.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payment History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Payment History
+          </CardTitle>
+          <CardDescription>Complete history of all payments processed</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingPayments ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
+            </div>
+          ) : payments.length > 0 ? (
+            <div className="space-y-4">
+              {payments.map((payment) => (
+                <div
+                  key={payment.id}
+                  className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                  data-testid={`payment-${payment.id}`}
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <p className="font-medium">Payment</p>
+                        {getPaymentStatusBadge(payment.status)}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(new Date(payment.createdAt))}
+                        {payment.processedAt && ` • Processed on ${formatDate(new Date(payment.processedAt))}`}
+                        {payment.paymentMethod && ` • ${payment.paymentMethod}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-lg">
+                        {formatCurrency(payment.amount, payment.currency)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Payments Yet</h3>
+              <p className="text-sm text-muted-foreground">
+                Your payment history will appear here once payments are processed.
               </p>
             </div>
           )}

@@ -7,7 +7,20 @@ import { setupVite, serveStatic, log } from "./vite";
 import "./stripe"; // Force Stripe initialization to show which mode we're using
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
+
+// Stripe webhook needs raw body for signature verification
+// We parse all other routes as JSON
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/webhooks/stripe') {
+    next();
+  } else {
+    express.json({ limit: '10mb' })(req, res, next);
+  }
+});
+
+// Raw body for Stripe webhook only
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
+
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser()); // Required to read cookies like 'trusted_device'
 

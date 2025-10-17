@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system integrating iMessage/SMS/RCS via BlueBubbles for enterprise messaging, offering a WhatsApp Business-like experience. This admin dashboard enables superadmins to manage multiple companies (tenants) with role-assigned users. Key features include efficient multi-tenant management, Stripe-based billing, custom SMTP email notifications, and a scalable full-stack architecture.
+Curbe is a multi-tenant CRM system that integrates iMessage/SMS/RCS via BlueBubbles for enterprise messaging, aiming for a WhatsApp Business-like experience. This admin dashboard empowers superadmins to manage multiple companies (tenants) and their role-assigned users. Its core capabilities include efficient multi-tenant management, Stripe-based billing, custom SMTP email notifications, and a scalable full-stack architecture. The project aims to provide a robust and flexible platform for enterprise-grade messaging and customer relationship management.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,89 +9,35 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, featuring a custom theming system (light/dark modes). Authentication pages share a cohesive design. Navigation context is provided solely through the sidebar, removing redundant page titles.
-
-**Responsive Design:** The application is fully responsive across all pages and devices using a mobile-first approach:
-- **Mobile (< 640px):** Single-column layouts, progressive disclosure with hidden secondary elements, full-width components, responsive padding `p-4`
-- **Tablet (640px - 1024px):** Two-column layouts where appropriate, progressive element visibility, padding `p-6`
-- **Desktop (> 1024px):** Full multi-column layouts with all features visible, padding `p-8`
-- **Header Adaptations:** Search bar hidden on mobile, page title hidden on small screens, user profile text hidden on mobile
-- **SMS Chat Responsive Layout:** Mobile shows conversations OR chat (with back button), tablet shows conversations + chat, desktop shows all 3 columns (conversations + chat + contact panel)
-- **Grid Systems:** All grids use responsive breakpoints like `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
+The frontend is built with React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, featuring a custom theming system (light/dark modes). It employs a mobile-first responsive design, adapting layouts and element visibility across mobile, tablet, and desktop breakpoints. Navigation is primarily handled by a sidebar, eliminating redundant page titles. The SMS chat application features a dynamic three-column layout that adjusts based on screen size, optimizing conversation and contact information display.
 
 ### Technical Implementations
-**Frontend:** React 18, TypeScript, Vite, Wouter for routing, TanStack Query for state management.
-**Backend:** Express.js and TypeScript, providing a RESTful API with session-based authentication and role-based access control (RBAC).
+The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Query for state management. The backend is built with Express.js and TypeScript, providing a RESTful API with session-based authentication and role-based access control (RBAC).
 
-**Feature Specifications:**
-- **User Management:** CRUD operations with role-based access, 2FA, and profile picture management. User creation involves an email-based activation flow where users set their own passwords. Full-screen detail pages at `/users/:id` display comprehensive user information, contact details, personal information, and account details with inline editing capabilities. Each user can select their own timezone preference from 35+ global timezones grouped by region (Americas, Europe, Asia, Africa, Australia, Middle East), accessible via Globe icon in header.
-- **Timezone System:** User timezone preferences persist across sessions and page reloads. Date formatting utilities in `client/src/lib/date-formatter.ts` provide intelligent fallback: uses user's saved timezone → browser's detected timezone → UTC. All date displays throughout the system respect user timezone preferences.
-- **Company Management (Superadmin-only):** CRUD operations for companies and feature management, including admin user setup with email-based activation. Full-screen detail pages at `/companies/:id` display company information, associated users, and management actions with inline editing and user creation capabilities. Company detail page includes subscription plan management where superadmins can view the current plan and assign/change plans directly.
-- **Plans & Features (Superadmin-only):** CRUD interfaces for subscription plans and system features, allowing categorization and assignment to companies.
-- **Subscription Management (Superadmin-only):** Direct plan assignment to companies via POST `/api/companies/:companyId/subscription` endpoint. Superadmins can assign or update subscription plans without requiring Stripe checkout, useful for manual configurations and internal management. Creates or updates subscription records with 30-day billing periods and active status. All subscription changes are logged via audit system.
-- **Authentication & Security:** Bcrypt password hashing, secure email-based activation, OTP-based 2FA with trusted device functionality, and session-based authentication. Login notifications automatically created for all users showing IP address and device information (browser, OS) for security monitoring. Failed login attempts automatically trigger notifications to all superadmins, displaying the attempted email, IP address, browser, and operating system for security tracking.
-- **Multi-tenancy:** Strict data isolation using `companyId` for non-superadmin access; superadmins have cross-company access.
-- **Email System:** Global SMTP configuration, database-driven templates with variable replacement, and automated sending for events.
-- **Modular Feature System:** Superadmins define and assign features to companies.
-- **Phone Number Formatting:** Standardized formatting across the system with E.164 conversion.
-- **Audit Logging:** Centralized `LoggingService` tracks critical actions with metadata.
-- **Company Activation/Deactivation:** Superadmins can activate/deactivate companies, immediately logging out users.
-- **Campaign System (Superadmin-only):**
-    - **Unified Interface:** Tabs for Reports, Email Campaigns, SMS Campaigns, and Contact Lists.
-    - **Reports Dashboard:** Overview of campaigns, recipients, and contacts.
-    - **Contact Management:** View, search, and manage subscribed users; create custom contact lists with bulk operations.
-    - **Email Campaign Creation:** CRUD for email campaigns with rich HTML editor and live preview. Targeted sending to contact lists or all subscribers with personalized content and secure unsubscribe links. Campaign-specific unsubscribe tracking and email analytics (opens, clicks).
-- **SMS Campaign System (Superadmin-only):**
-    - **Integrated Interface:** Dedicated SMS Campaigns tab.
-    - **Backend & Database:** API endpoints for CRUD operations and Twilio integration.
-    - **Message Management:** Create SMS campaigns with message validation, draft/sending/sent status tracking.
-    - **Targeted Delivery:** Send to contacts with phone numbers or specific lists, filtering for valid numbers.
-    - **Twilio Integration:** Real-time SMS delivery with message SID tracking and delivery status updates.
-    - **Campaign Statistics:** Detailed metrics for sent campaigns with real-time updates and message details.
-    - **Twilio Webhooks:** Status callback webhook for delivery updates and incoming message webhook for SMS replies, with automatic URL configuration.
-- **SMS Chat Application (`/incoming-sms`):**
-    - **Full Chat Interface:** Bidirectional SMS chat with three-column layout (conversations list | chat area | contact info panel).
-    - **Real-Time Updates:** WebSocket-based system (path: `/ws/chat`) eliminates inefficient polling, updating both conversations and global notifications instantly when messages arrive or are sent.
-    - **Contact Integration:** Displays contact name and profile picture from users table when phone number matches a registered contact; shows initials as fallback for contacts, phone digits for non-contacts.
-    - **Message Display:** Chronological messages with timestamps (right-aligned), auto-scroll, instant updates via WebSocket events. Conversation list items use flex layout with `overflow-hidden`, `flex-1 min-w-0`, and `truncate` classes to properly handle long message previews without breaking layout.
-    - **Conversation Management:** Send SMS, search conversations, delete conversations (with confirmation), create new conversations via simple phone number input (formatted automatically with E.164 validation).
-    - **Unread Badge System:** Red badges show unread message counts per conversation and total unread conversations in sidebar; messages marked as read only when user opens specific conversation (not when visiting page), ensuring badges persist until user actively views messages.
-    - **Contact Information Panel:** Right sidebar displaying contact details (name, email, phone, company), company users list, and internal notes section.
-    - **Internal Notes System:** Complete CRUD for conversation-specific notes visible only to internal users; stored in `sms_chat_notes` table with `companyId`, `phoneNumber`, `note`, `createdBy`, and timestamps; superadmin-only access.
-    - **Multi-Tenancy:** All tables (`incoming_sms_messages`, `outgoing_sms_messages`, `sms_chat_notes`) include `companyId` for strict data isolation; all queries filter by company to prevent cross-tenant data access.
-    - **Backend Integration:** APIs for retrieving conversations with contact enrichment (name, email, avatar), message history, sending SMS, marking as read (endpoint: POST `/api/chat/conversations/:phoneNumber/read`), conversation deletion, and notes CRUD; superadmins can optionally filter by `companyId` query parameter.
-    - **Database:** `outgoing_sms_messages` table for manual replies; `sms_chat_notes` table for internal notes; conversations built from UNION of incoming and outgoing messages using optimized CTE-based SQL query that preserves contact userId, deduplicates conversations, and includes outgoing-initiated threads; all tables enforce company-level isolation.
-    - **Conversation Retrieval:** `getChatConversations()` method uses CTE to UNION incoming and outgoing messages, groups by phone number, derives contact userId from incoming messages only (not agent userId from outgoing), computes last message and unread count in single optimized query, supports optional companyId filtering for superadmins.
-    - **Deletion Support:** `deleteConversation()` for company-specific deletion and `deleteConversationAll()` for superadmins (who have companyId=null) to delete conversations across all companies.
-    - **WebSocket Service:** Broadcasts `conversation_update` events when Twilio receives messages or when SMS is sent, triggering cache invalidation for both conversations (in chat page) and notifications (in App.tsx header).
-    - **SMS Notifications:** Incoming SMS messages automatically create in-app notifications for all superadmins, displayed in the header notification bell with sender name (or phone number), message preview, and direct link to SMS chat. WebSocket integration in App.tsx ensures real-time notification updates without page refresh.
-    - **Notification UI:** Modern notification panel with gradient header, intelligent icons (SMS, Email, User), relative timestamps, visual states for read/unread, and pleasant notification sound using Web Audio API that plays automatically when new notifications arrive.
-- **SMS Subscription Management:**
-    - **User Field:** `smsSubscribed` boolean field (default true) tracks SMS subscription status independently from email subscriptions.
-    - **Automatic Unsubscribe:** Twilio webhook processes STOP keywords (STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT) from incoming messages and automatically unsubscribes users.
-    - **Contact List View:** "SMS Unsubscribed" view in Contact Lists displays users who opted out of SMS communications.
-    - **Manual Toggle:** Superadmin endpoint (PATCH `/api/users/:userId/sms-subscription`) allows manual subscription management with Zod validation.
-- **Billing & Stripe Integration:**
-    - **Stripe Customer Portal:** Self-service billing portal integration accessible via "Billing" menu item in user dropdown (positioned between Timezone and Settings).
-    - **Billing Page (`/billing`):** Comprehensive subscription management interface displaying current plan details, billing period, payment methods, and invoice history with PDF download capabilities.
-    - **Database Integration:** Plans table extended with `stripeProductId`, `stripePriceId`, and `stripeSetupFeePriceId` fields; Companies table with `stripeCustomerId` and `stripeSubscriptionId` to track Stripe relationships and enable seamless sync.
-    - **Automatic Plan Synchronization:** One-click plan sync feature at `/plans` page with "Sync with Stripe" button. Endpoint POST `/api/plans/:id/sync-stripe` creates or updates Stripe Products and Prices directly from the application, eliminating manual Stripe dashboard configuration. Function `syncPlanWithStripe()` handles intelligent price updates (deactivates old prices when amounts change due to Stripe price immutability).
-    - **Webhook Support:** Stripe webhook handlers at `/api/webhooks/stripe` process subscription lifecycle events (created, updated, deleted, payment succeeded/failed) with signature verification using STRIPE_WEBHOOK_SECRET to maintain accurate subscription status.
-    - **Invoice Management:** Automatic retrieval and display of Stripe invoices with status indicators, download links, and hosted invoice URLs.
-    - **Access Control:** Billing features available to both superadmins and company admins based on role-based access control.
-    - **API Endpoints:** POST `/api/billing/create-checkout-session` for new subscriptions, POST `/api/billing/portal` for customer portal access, GET `/api/billing/subscription` for current subscription, GET `/api/billing/invoices` for invoice history, POST `/api/billing/webhook` for Stripe event processing, POST `/api/plans/:id/sync-stripe` for automatic plan synchronization.
+**Key Features:**
+-   **User & Company Management:** Comprehensive CRUD operations for users and companies, including role-based access, 2FA, profile management, and email-based activation flows. Superadmins manage companies and assign subscription plans.
+-   **Timezone System:** User-selected timezones for date displays, with intelligent fallbacks.
+-   **Authentication & Security:** Bcrypt hashing, secure email activation, OTP-based 2FA, session-based authentication, and login/failed attempt notifications for security monitoring.
+-   **Multi-tenancy:** Strict data isolation using `companyId` for all non-superadmin access, with superadmins having cross-company oversight.
+-   **Email System:** Global SMTP configuration, database-driven templates, and automated sending for system events.
+-   **Modular Feature System:** Superadmins can define and assign features to different companies.
+-   **Audit Logging:** Centralized service for tracking critical actions.
+-   **Campaign System:** Unified interface for managing Email Campaigns, SMS Campaigns, and Contact Lists. Includes detailed reports, contact management with bulk operations, rich HTML editor for emails, targeted sending, and analytics.
+-   **SMS Chat Application:** Bidirectional, real-time SMS chat with a three-column layout, WebSocket-based updates, contact integration, conversation management (search, delete, new), unread badge system, and internal notes for conversations. Includes comprehensive backend APIs for chat functionalities.
+-   **SMS Subscription Management:** `smsSubscribed` field, automatic unsubscribe via Twilio webhook (STOP keywords), and manual toggle for superadmins.
+-   **Billing & Stripe Integration:** Real Stripe subscription creation, customer management, webhook processing for various Stripe events (subscriptions, invoices, payments), invoice synchronization, and payment recording. Features a comprehensive billing page for current subscriptions, billing history, and payment history. Includes a Stripe Customer Portal for self-service and automatic plan synchronization.
 
 ### System Design Choices
-The system maintains a clear separation of concerns. Data models use PostgreSQL with Drizzle ORM for multi-tenancy and strict data isolation. Security measures include password management, account activation, and 2FA. The modular feature system offers flexibility.
+The system is built on a clear separation of concerns, utilizing PostgreSQL with Drizzle ORM for data management and strict multi-tenancy. Security is enforced through robust password management, account activation, and 2FA. The modular feature system provides high flexibility and extensibility.
 
 ## External Dependencies
 
--   **Database:** Neon PostgreSQL and Drizzle ORM.
+-   **Database:** Neon PostgreSQL, Drizzle ORM.
 -   **Email:** Nodemailer.
 -   **SMS:** Twilio.
 -   **Payments:** Stripe.
 -   **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
--   **Form Management & Validation:** React Hook Form with Zod.
--   **Session Management:** `express-session` with `connect-pg-simple`.
+-   **Form Management & Validation:** React Hook Form, Zod.
+-   **Session Management:** `express-session`, `connect-pg-simple`.
 -   **Security:** Bcrypt.
--   **Utilities:** `date-fns`, Zod.
+-   **Utilities:** `date-fns`.
