@@ -1130,7 +1130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user timezone (any authenticated user can update their own timezone)
-  app.patch("/api/users/timezone", async (req: Request, res: Response) => {
+  app.patch("/api/users/timezone", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
     try {
