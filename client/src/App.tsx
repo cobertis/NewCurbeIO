@@ -285,7 +285,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="h-16 border-b border-border bg-background flex items-center justify-between px-3 sm:px-6 sticky top-0 z-10">
+          <header className="h-16 bg-background flex items-center justify-between px-3 sm:px-6 sticky top-0 z-10">
             {/* Left: Sidebar Toggle + Page Title */}
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <SidebarTrigger data-testid="button-sidebar-toggle" className="hover-elevate active-elevate-2 rounded-md shrink-0" />
