@@ -131,7 +131,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-border bg-background">
       <SidebarHeader className="px-6 py-3 pb-2">
-        <Link href="/dashboard" className="flex items-center justify-center">
+        <Link href="/" className="flex items-center justify-center">
           <img 
             src={logo} 
             alt="Curbe.io" 
