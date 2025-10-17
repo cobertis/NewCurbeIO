@@ -33,6 +33,7 @@ import { formatPhoneDisplay, formatPhoneInput, formatPhoneE164 } from "@/lib/pho
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { Link } from "wouter";
 
 interface Conversation {
   phoneNumber: string;
@@ -739,7 +740,11 @@ export default function IncomingSms() {
                       </div>
                       <div className="space-y-2">
                         {companyUsers.map((user) => (
-                          <div key={user.id} className="flex items-center gap-2 p-2 rounded-lg hover-elevate">
+                          <Link 
+                            key={user.id} 
+                            href={`/users/${user.id}`}
+                            className="flex items-center gap-2 p-2 rounded-lg hover-elevate active-elevate-2 cursor-pointer transition-colors"
+                          >
                             <Avatar className="h-8 w-8">
                               <AvatarImage src={user.avatar || undefined} />
                               <AvatarFallback className="text-xs">
@@ -756,7 +761,7 @@ export default function IncomingSms() {
                               </p>
                               <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
                             </div>
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     </div>
