@@ -2163,7 +2163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const subscription = await storage.getSubscriptionByCompany(companyId);
       
-      if (!subscription || !subscription.stripeSubscriptionId) {
+      if (!subscription) {
         return res.json({ subscription: null });
       }
 
@@ -2172,16 +2172,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized access to subscription" });
       }
 
-      // Get detailed info from Stripe
-      const { getSubscriptionDetails } = await import("./stripe");
-      const stripeSubscription = await getSubscriptionDetails(subscription.stripeSubscriptionId);
+      // Get plan details
+      const plan = subscription.planId ? await storage.getPlan(subscription.planId) : null;
 
-      res.json({ 
-        subscription: {
-          ...subscription,
-          stripeDetails: stripeSubscription
-        }
-      });
+      // If subscription has Stripe ID, get detailed info from Stripe
+      if (subscription.stripeSubscriptionId) {
+        const { getSubscriptionDetails } = await import("./stripe");
+        const stripeSubscription = await getSubscriptionDetails(subscription.stripeSubscriptionId);
+
+        res.json({ 
+          subscription: {
+            ...subscription,
+            plan,
+            stripeDetails: stripeSubscription
+          }
+        });
+      } else {
+        // Manual subscription (no Stripe), return local data only
+        res.json({ 
+          subscription: {
+            ...subscription,
+            plan,
+            stripeDetails: null
+          }
+        });
+      }
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
