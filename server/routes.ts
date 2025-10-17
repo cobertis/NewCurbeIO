@@ -2157,12 +2157,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         io.emit('notification_update');
       }
 
-      await logger.logAction(
-        'broadcast_notification',
-        currentUser.id,
-        null,
-        `Broadcast notification sent to ${notifications.length} users: ${validatedData.title}`
-      );
+      await logger.logCrud({
+        req,
+        operation: "create",
+        resource: "broadcast_notification",
+        details: `Broadcast notification sent to ${notifications.length} users: ${validatedData.title}`,
+      });
 
       res.json({ 
         success: true, 
