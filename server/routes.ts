@@ -1774,6 +1774,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync plan with Stripe (superadmin only)
+  app.post("/api/plans/:id/sync-stripe", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const plan = await storage.getPlan(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+
+      // Sync with Stripe
+      const { syncPlanWithStripe } = await import("./stripe");
+      const stripeIds = await syncPlanWithStripe(plan);
+
+      // Update local plan with Stripe IDs
+      const updatedPlan = await storage.updatePlan(plan.id, {
+        stripeProductId: stripeIds.stripeProductId,
+        stripePriceId: stripeIds.stripePriceId,
+        stripeSetupFeePriceId: stripeIds.stripeSetupFeePriceId,
+      });
+
+      res.json({ 
+        success: true, 
+        plan: updatedPlan,
+        message: "Plan synchronized with Stripe successfully"
+      });
+    } catch (error: any) {
+      console.error("Error syncing plan with Stripe:", error);
+      res.status(500).json({ 
+        message: "Failed to sync plan with Stripe",
+        error: error.message 
+      });
+    }
+  });
+
   // Delete plan (superadmin only)
   app.delete("/api/plans/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware

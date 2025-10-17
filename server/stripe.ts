@@ -332,3 +332,144 @@ export async function getSubscriptionDetails(stripeSubscriptionId: string) {
   });
   return subscription;
 }
+
+// =====================================================
+// PLAN SYNCHRONIZATION WITH STRIPE
+// =====================================================
+
+/**
+ * Sync a local plan with Stripe
+ * Creates a Product and recurring Price in Stripe
+ * Optionally creates a one-time setup fee Price
+ * Returns the Stripe Product ID, Price ID, and Setup Fee Price ID
+ */
+export async function syncPlanWithStripe(plan: {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  currency: string;
+  billingCycle: string;
+  setupFee: number;
+  stripeProductId?: string | null;
+  stripePriceId?: string | null;
+  stripeSetupFeePriceId?: string | null;
+}) {
+  try {
+    // Convert billingCycle to Stripe interval format
+    const stripeInterval = plan.billingCycle === 'monthly' ? 'month' 
+                          : plan.billingCycle === 'yearly' ? 'year'
+                          : plan.billingCycle as 'month' | 'year';
+
+    // Step 1: Create or update Stripe Product
+    let product: Stripe.Product;
+    
+    if (plan.stripeProductId) {
+      // Update existing product
+      product = await stripe.products.update(plan.stripeProductId, {
+        name: plan.name,
+        description: plan.description || undefined,
+        metadata: {
+          localPlanId: plan.id,
+        },
+      });
+    } else {
+      // Create new product
+      product = await stripe.products.create({
+        name: plan.name,
+        description: plan.description || undefined,
+        metadata: {
+          localPlanId: plan.id,
+        },
+      });
+    }
+
+    // Step 2: Create or update recurring Price
+    let recurringPrice: Stripe.Price;
+    
+    if (plan.stripePriceId) {
+      // Note: Stripe prices are immutable, so we need to create a new one if amount changed
+      // First, get the existing price to check if it needs to be replaced
+      const existingPrice = await stripe.prices.retrieve(plan.stripePriceId);
+      
+      if (existingPrice.unit_amount !== plan.price) {
+        // Deactivate old price and create new one
+        await stripe.prices.update(plan.stripePriceId, { active: false });
+        
+        recurringPrice = await stripe.prices.create({
+          product: product.id,
+          unit_amount: plan.price,
+          currency: plan.currency,
+          recurring: {
+            interval: stripeInterval,
+          },
+          metadata: {
+            localPlanId: plan.id,
+          },
+        });
+      } else {
+        recurringPrice = existingPrice;
+      }
+    } else {
+      // Create new recurring price
+      recurringPrice = await stripe.prices.create({
+        product: product.id,
+        unit_amount: plan.price,
+        currency: plan.currency,
+        recurring: {
+          interval: stripeInterval,
+        },
+        metadata: {
+          localPlanId: plan.id,
+        },
+      });
+    }
+
+    // Step 3: Create or update setup fee Price (one-time) if needed
+    let setupFeePrice: Stripe.Price | null = null;
+    
+    if (plan.setupFee > 0) {
+      if (plan.stripeSetupFeePriceId) {
+        // Check if amount changed
+        const existingSetupPrice = await stripe.prices.retrieve(plan.stripeSetupFeePriceId);
+        
+        if (existingSetupPrice.unit_amount !== plan.setupFee) {
+          // Deactivate old price and create new one
+          await stripe.prices.update(plan.stripeSetupFeePriceId, { active: false });
+          
+          setupFeePrice = await stripe.prices.create({
+            product: product.id,
+            unit_amount: plan.setupFee,
+            currency: plan.currency,
+            metadata: {
+              localPlanId: plan.id,
+              type: 'setup_fee',
+            },
+          });
+        } else {
+          setupFeePrice = existingSetupPrice;
+        }
+      } else {
+        // Create new setup fee price
+        setupFeePrice = await stripe.prices.create({
+          product: product.id,
+          unit_amount: plan.setupFee,
+          currency: plan.currency,
+          metadata: {
+            localPlanId: plan.id,
+            type: 'setup_fee',
+          },
+        });
+      }
+    }
+
+    return {
+      stripeProductId: product.id,
+      stripePriceId: recurringPrice.id,
+      stripeSetupFeePriceId: setupFeePrice?.id || null,
+    };
+  } catch (error) {
+    console.error("Error syncing plan with Stripe:", error);
+    throw error;
+  }
+}

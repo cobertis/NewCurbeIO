@@ -74,11 +74,12 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
 - **Billing & Stripe Integration:**
     - **Stripe Customer Portal:** Self-service billing portal integration accessible via "Billing" menu item in user dropdown (positioned between Timezone and Settings).
     - **Billing Page (`/billing`):** Comprehensive subscription management interface displaying current plan details, billing period, payment methods, and invoice history with PDF download capabilities.
-    - **Database Integration:** Companies table extended with `stripeCustomerId` and `stripeSubscriptionId` fields to track Stripe relationships and enable seamless sync.
-    - **Webhook Support:** Stripe webhook handlers process subscription lifecycle events (created, updated, deleted, payment succeeded/failed) to maintain accurate subscription status.
+    - **Database Integration:** Plans table extended with `stripeProductId`, `stripePriceId`, and `stripeSetupFeePriceId` fields; Companies table with `stripeCustomerId` and `stripeSubscriptionId` to track Stripe relationships and enable seamless sync.
+    - **Automatic Plan Synchronization:** One-click plan sync feature at `/plans` page with "Sync with Stripe" button. Endpoint POST `/api/plans/:id/sync-stripe` creates or updates Stripe Products and Prices directly from the application, eliminating manual Stripe dashboard configuration. Function `syncPlanWithStripe()` handles intelligent price updates (deactivates old prices when amounts change due to Stripe price immutability).
+    - **Webhook Support:** Stripe webhook handlers at `/api/webhooks/stripe` process subscription lifecycle events (created, updated, deleted, payment succeeded/failed) with signature verification using STRIPE_WEBHOOK_SECRET to maintain accurate subscription status.
     - **Invoice Management:** Automatic retrieval and display of Stripe invoices with status indicators, download links, and hosted invoice URLs.
     - **Access Control:** Billing features available to both superadmins and company admins based on role-based access control.
-    - **API Endpoints:** POST `/api/billing/create-checkout-session` for new subscriptions, POST `/api/billing/portal` for customer portal access, GET `/api/billing/subscription` for current subscription, GET `/api/billing/invoices` for invoice history, POST `/api/billing/webhook` for Stripe event processing.
+    - **API Endpoints:** POST `/api/billing/create-checkout-session` for new subscriptions, POST `/api/billing/portal` for customer portal access, GET `/api/billing/subscription` for current subscription, GET `/api/billing/invoices` for invoice history, POST `/api/billing/webhook` for Stripe event processing, POST `/api/plans/:id/sync-stripe` for automatic plan synchronization.
 
 ### System Design Choices
 The system maintains a clear separation of concerns. Data models use PostgreSQL with Drizzle ORM for multi-tenancy and strict data isolation. Security measures include password management, account activation, and 2FA. The modular feature system offers flexibility.

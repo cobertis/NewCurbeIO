@@ -84,8 +84,8 @@ export default function Billing() {
     },
   });
 
-  const subscription: Subscription | null = subscriptionData?.subscription || null;
-  const invoices: Invoice[] = invoicesData?.invoices || [];
+  const subscription: Subscription | null = (subscriptionData as any)?.subscription || null;
+  const invoices: Invoice[] = (invoicesData as any)?.invoices || [];
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {

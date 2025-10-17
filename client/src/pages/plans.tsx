@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPlanSchema, type Plan, type InsertPlan } from "@shared/schema";
-import { Plus, Edit, Trash2, DollarSign, Clock, Check } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, Clock, Check, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 export default function PlansPage() {
@@ -100,6 +100,34 @@ export default function PlansPage() {
     },
     onError: () => {
       toast({ title: "Failed to delete plan", variant: "destructive" });
+    },
+  });
+
+  const syncStripeMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      const response = await fetch(`/api/plans/${planId}/sync-stripe`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to sync plan with Stripe");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plans"] });
+      toast({ 
+        title: "Success", 
+        description: "Plan synchronized with Stripe successfully"
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Sync Failed", 
+        description: error.message,
+        variant: "destructive" 
+      });
     },
   });
 
@@ -249,7 +277,7 @@ export default function PlansPage() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="flex gap-2">
+              <CardFooter className="flex gap-2 flex-wrap">
                 <Button
                   variant="outline"
                   size="sm"
@@ -258,6 +286,16 @@ export default function PlansPage() {
                 >
                   <Edit className="h-4 w-4 mr-1" />
                   Edit
+                </Button>
+                <Button
+                  variant={plan.stripePriceId ? "secondary" : "default"}
+                  size="sm"
+                  onClick={() => syncStripeMutation.mutate(plan.id)}
+                  disabled={syncStripeMutation.isPending}
+                  data-testid={`button-sync-stripe-${plan.id}`}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${syncStripeMutation.isPending ? 'animate-spin' : ''}`} />
+                  {plan.stripePriceId ? 'Re-sync' : 'Sync'} Stripe
                 </Button>
                 <Button
                   variant="destructive"

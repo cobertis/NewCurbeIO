@@ -244,7 +244,11 @@ export const plans = pgTable("plans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(), // Starter, Professional, Enterprise
   description: text("description"),
-  stripePriceId: text("stripe_price_id").unique(), // Stripe Price ID
+  
+  // Stripe Integration
+  stripeProductId: text("stripe_product_id").unique(), // Stripe Product ID
+  stripePriceId: text("stripe_price_id").unique(), // Stripe Price ID for recurring charge
+  stripeSetupFeePriceId: text("stripe_setup_fee_price_id"), // Stripe Price ID for one-time setup fee
   
   // Pricing
   price: integer("price").notNull(), // in cents
