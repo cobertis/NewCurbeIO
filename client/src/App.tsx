@@ -478,44 +478,30 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                                   setNotificationsOpen(false);
                                 }
                               }}
-                              className="px-4 py-3 transition-colors cursor-pointer hover-elevate"
+                              className="px-4 py-2.5 transition-colors cursor-pointer hover:bg-muted/50"
                               data-testid={`notification-item-${notification.id}`}
                             >
-                              <div className="flex gap-3 items-start">
-                                <div className={`
-                                  shrink-0 h-10 w-10 rounded-full flex items-center justify-center
-                                  ${notification.title.toLowerCase().includes('sms') 
-                                    ? 'bg-blue-500/10' 
-                                    : notification.title.toLowerCase().includes('email')
-                                    ? 'bg-orange-500/10'
-                                    : 'bg-purple-500/10'
-                                  }
-                                `}>
-                                  <Icon className={`h-5 w-5 ${
-                                    notification.title.toLowerCase().includes('sms') 
-                                      ? 'text-blue-600 dark:text-blue-400' 
-                                      : notification.title.toLowerCase().includes('email')
-                                      ? 'text-orange-600 dark:text-orange-400'
-                                      : 'text-purple-600 dark:text-purple-400'
-                                  }`} />
+                              <div className="flex gap-3">
+                                <div className="shrink-0 h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                                  <Icon className="h-4 w-4 text-muted-foreground" />
                                 </div>
                                 
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <p className="text-sm font-semibold line-clamp-1">
+                                  <div className="flex items-start justify-between gap-2 mb-0.5">
+                                    <p className="text-sm font-medium line-clamp-1">
                                       {getName()}
                                     </p>
-                                    <div className="flex items-center gap-1.5 shrink-0">
+                                    <div className="flex items-center gap-1 shrink-0">
                                       <span className="text-xs text-muted-foreground">
                                         {timeAgo}
                                       </span>
                                       {!notification.isRead && (
-                                        <div className="h-2 w-2 rounded-full bg-destructive"></div>
+                                        <div className="h-1.5 w-1.5 rounded-full bg-destructive"></div>
                                       )}
                                     </div>
                                   </div>
                                   
-                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                  <p className="text-xs text-muted-foreground line-clamp-1">
                                     {getMessagePreview()}
                                   </p>
                                 </div>
