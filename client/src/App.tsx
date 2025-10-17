@@ -388,7 +388,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             ) : (
-              <div className="divide-y">
+              <div className="p-3 space-y-2">
                 {notifications.map((notification: any) => {
                   const getNotificationIcon = () => {
                     if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
@@ -446,13 +446,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         }
                       }}
                       className={`
-                        px-4 py-3 transition-colors cursor-pointer hover-elevate
-                        ${!notification.isRead ? 'bg-muted/50' : ''}
+                        rounded-lg border p-3 transition-all cursor-pointer hover-elevate
+                        ${!notification.isRead 
+                          ? 'bg-primary/5 border-primary/20' 
+                          : 'bg-card border-border'
+                        }
                       `}
                       data-testid={`notification-item-${notification.id}`}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className={`h-4 w-4 shrink-0 ${!notification.isRead ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <div className={`
+                          rounded-full p-2 shrink-0
+                          ${!notification.isRead 
+                            ? 'bg-primary/10' 
+                            : 'bg-muted'
+                          }
+                        `}>
+                          <Icon className={`h-4 w-4 ${!notification.isRead ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </div>
                         
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm truncate ${!notification.isRead ? 'font-semibold' : 'text-muted-foreground'}`}>
