@@ -309,16 +309,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Right: Action Icons + User Profile */}
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {/* Timezone Button */}
               <Button 
                 variant="ghost" 
                 onClick={() => setTimezoneDialogOpen(true)}
                 data-testid="button-timezone"
-                className="rounded-md h-9 px-3 gap-2 hidden sm:flex"
+                className="rounded-md h-9 px-3 gap-2 hidden sm:flex items-center"
               >
-                <Globe className="h-4 w-4" />
-                <span className="text-sm">
+                <Globe className="h-4 w-4 shrink-0" />
+                <span className="text-xs font-medium">
                   {selectedTimezone 
                     ? selectedTimezone.includes('New_York') ? '(UTC-05:00) EST'
                     : selectedTimezone.includes('Chicago') ? '(UTC-06:00) CST'
@@ -338,9 +338,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 variant="ghost" 
                 size="icon"
                 data-testid="button-messages"
-                className="rounded-md"
+                className="rounded-md hover-elevate active-elevate-2"
               >
-                <MessageSquare className="h-6 w-6 text-blue-500" />
+                <MessageSquare className="h-5 w-5 text-blue-500" />
               </Button>
 
               {/* Theme Toggle */}
@@ -352,9 +352,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 size="icon" 
                 onClick={() => setNotificationsOpen(true)}
                 data-testid="button-notifications" 
-                className="rounded-md relative"
+                className="rounded-md relative hover-elevate active-elevate-2"
               >
-                <Bell className="h-6 w-6 text-blue-500" />
+                <Bell className="h-5 w-5 text-blue-500" />
                 {unreadCount > 0 && (
                   <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center notification-badge">
                     <span className="text-white text-xs font-semibold">!</span>
@@ -368,12 +368,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <Button 
                     variant="ghost" 
                     size="icon"
-                    className="rounded-full hover-elevate" 
+                    className="rounded-full" 
                     data-testid="button-user-menu"
                   >
-                    <Avatar className="h-9 w-9">
+                    <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.avatar || undefined} alt={userName} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
