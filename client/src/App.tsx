@@ -547,7 +547,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                                     </div>
                                   </div>
                                   
-                                  <p className="text-xs text-muted-foreground break-words">
+                                  <p className="text-xs text-muted-foreground truncate">
                                     {getMessagePreview()}
                                   </p>
                                 </div>
