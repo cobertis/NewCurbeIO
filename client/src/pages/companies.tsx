@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Building2, Plus, Pencil, Trash2, Search, Package, Power } from "lucide-react";
+import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -32,10 +33,9 @@ type CreateCompanyForm = z.infer<typeof createCompanyWithAdminSchema>;
 type UpdateCompanyForm = z.infer<typeof updateCompanySchema>;
 
 export default function Companies() {
+  const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [viewOpen, setViewOpen] = useState(false);
-  const [viewingCompany, setViewingCompany] = useState<Company | null>(null);
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -384,10 +384,9 @@ export default function Companies() {
                     key={company.id}
                     className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                     onClick={(e) => {
-                      // Don't open modal if clicking on action buttons
+                      // Don't navigate if clicking on action buttons
                       if ((e.target as HTMLElement).closest('button')) return;
-                      setViewingCompany(company);
-                      setViewOpen(true);
+                      setLocation(`/companies/${company.id}`);
                     }}
                     data-testid={`company-item-${company.id}`}
                   >
@@ -906,112 +905,6 @@ export default function Companies() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Company Details Modal - Full Screen */}
-      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Company Details</DialogTitle>
-            <DialogDescription>Complete information about this company</DialogDescription>
-          </DialogHeader>
-          
-          {viewingCompany && (
-            <div className="space-y-6">
-              {/* Company Header */}
-              <div className="flex items-start gap-6 p-6 bg-muted rounded-lg">
-                <div className="w-24 h-24 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Building2 className="h-12 w-12 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {viewingCompany.name}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">@{viewingCompany.slug}</p>
-                  <div className="flex items-center gap-2 mt-3">
-                    <Badge variant={viewingCompany.isActive ? "default" : "destructive"}>
-                      {viewingCompany.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Company Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{viewingCompany.email}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">
-                      {viewingCompany.phone ? formatPhoneDisplay(viewingCompany.phone) : 'Not provided'}
-                    </p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{viewingCompany.address || 'Not provided'}</p>
-                  </div>
-                  {viewingCompany.domain && (
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Domain</label>
-                      <p className="text-sm text-gray-900 dark:text-white mt-1">{viewingCompany.domain}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Account Details */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Account Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created At</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">
-                      {new Date(viewingCompany.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">
-                      {viewingCompany.isActive ? 'Active' : 'Inactive'}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => setViewOpen(false)}>
-                  Close
-                </Button>
-                <Button variant="outline" onClick={() => {
-                  setViewOpen(false);
-                  handleManageFeatures(viewingCompany);
-                }}>
-                  Manage Features
-                </Button>
-                <Button onClick={() => {
-                  setViewOpen(false);
-                  handleEdit(viewingCompany);
-                }}>
-                  Edit Company
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
