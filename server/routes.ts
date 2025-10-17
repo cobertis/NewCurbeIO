@@ -2003,8 +2003,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stripeSubData = stripeSubscription as any;
       const currentPeriodStart = new Date(stripeSubData.current_period_start * 1000);
       const currentPeriodEnd = new Date(stripeSubData.current_period_end * 1000);
-      const trialStart = stripeSubData.trial_start ? new Date(stripeSubData.trial_start * 1000) : undefined;
-      const trialEnd = stripeSubData.trial_end ? new Date(stripeSubData.trial_end * 1000) : undefined;
+      const trialStart = stripeSubData.trial_start && stripeSubData.trial_start > 0 ? new Date(stripeSubData.trial_start * 1000) : null;
+      const trialEnd = stripeSubData.trial_end && stripeSubData.trial_end > 0 ? new Date(stripeSubData.trial_end * 1000) : null;
 
       // Map Stripe status to our enum, preserving actual subscription state
       const mapStatus = (stripeStatus: string): string => {
@@ -2162,8 +2162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stripeSubData = stripeSubscription as any;
       const currentPeriodStart = new Date(stripeSubData.current_period_start * 1000);
       const currentPeriodEnd = new Date(stripeSubData.current_period_end * 1000);
-      const trialStart = stripeSubData.trial_start ? new Date(stripeSubData.trial_start * 1000) : undefined;
-      const trialEnd = stripeSubData.trial_end ? new Date(stripeSubData.trial_end * 1000) : undefined;
+      const trialStart = stripeSubData.trial_start && stripeSubData.trial_start > 0 ? new Date(stripeSubData.trial_start * 1000) : null;
+      const trialEnd = stripeSubData.trial_end && stripeSubData.trial_end > 0 ? new Date(stripeSubData.trial_end * 1000) : null;
 
       // Map Stripe status to our enum, preserving actual subscription state
       const mapStatus = (stripeStatus: string): string => {
