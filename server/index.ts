@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import "./stripe"; // Force Stripe initialization to show which mode we're using
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));

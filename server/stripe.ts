@@ -7,6 +7,15 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
 }
 
+// Log which Stripe mode we're using
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+const stripeMode = stripeKey.startsWith('sk_test_') ? 'TEST MODE' : 
+                   stripeKey.startsWith('sk_live_') ? 'LIVE/PRODUCTION MODE' : 'UNKNOWN';
+console.log('==========================================');
+console.log(`🔑 STRIPE INITIALIZED: ${stripeMode}`);
+console.log(`🔑 Key prefix: ${stripeKey.substring(0, 12)}...`);
+console.log('==========================================');
+
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-09-30.clover",
 });
