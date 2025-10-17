@@ -514,7 +514,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Notifications Sidebar */}
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <SheetContent side="right" className="w-full sm:w-[480px] p-0 flex flex-col">
+        <SheetContent side="right" className="w-full sm:w-[560px] p-0 flex flex-col">
           {/* Header */}
           <div className="p-6 space-y-4 border-b">
             <div className="flex items-center justify-between">
