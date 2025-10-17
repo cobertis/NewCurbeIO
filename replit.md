@@ -11,6 +11,14 @@ Preferred communication style: Simple, everyday language.
 ### UI/UX Decisions
 The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, featuring a custom theming system (light/dark modes). Authentication pages share a cohesive design. Navigation context is provided solely through the sidebar, removing redundant page titles.
 
+**Responsive Design:** The application is fully responsive across all pages and devices using a mobile-first approach:
+- **Mobile (< 640px):** Single-column layouts, progressive disclosure with hidden secondary elements, full-width components, responsive padding `p-4`
+- **Tablet (640px - 1024px):** Two-column layouts where appropriate, progressive element visibility, padding `p-6`
+- **Desktop (> 1024px):** Full multi-column layouts with all features visible, padding `p-8`
+- **Header Adaptations:** Search bar hidden on mobile, page title hidden on small screens, user profile text hidden on mobile
+- **SMS Chat Responsive Layout:** Mobile shows conversations OR chat (with back button), tablet shows conversations + chat, desktop shows all 3 columns (conversations + chat + contact panel)
+- **Grid Systems:** All grids use responsive breakpoints like `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
+
 ### Technical Implementations
 **Frontend:** React 18, TypeScript, Vite, Wouter for routing, TanStack Query for state management.
 **Backend:** Express.js and TypeScript, providing a RESTful API with session-based authentication and role-based access control (RBAC).

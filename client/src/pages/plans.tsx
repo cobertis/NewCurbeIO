@@ -241,7 +241,7 @@ export default function PlansPage() {
                         <li key={key} className="flex items-center gap-2">
                           <Check className="h-3 w-3" />
                           <span className="capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}: {String(value)}
+                            {key.replace(/([A-Z])/g, ' $1').trim()}: {typeof value === 'string' ? value : JSON.stringify(value)}
                           </span>
                         </li>
                       ))}

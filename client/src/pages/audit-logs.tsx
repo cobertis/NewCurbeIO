@@ -117,7 +117,7 @@ export default function AuditLogs() {
 
                         {log.metadata && Object.keys(log.metadata as object).length > 0 && (
                           <div className="mt-2 p-2 bg-muted/50 rounded text-xs font-mono">
-                            {formatMetadata(log.metadata)}
+                            <span>{formatMetadata(log.metadata)}</span>
                           </div>
                         )}
                       </div>
