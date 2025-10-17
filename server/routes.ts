@@ -1129,6 +1129,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user timezone (any authenticated user can update their own timezone)
+  app.patch("/api/users/timezone", async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    try {
+      console.log("Updating timezone for user:", currentUser.id);
+      console.log("Timezone value:", req.body.timezone);
+      
+      const { timezone } = z.object({
+        timezone: z.string().min(1, "Timezone is required")
+      }).parse(req.body);
+
+      const updatedUser = await storage.updateUser(currentUser.id, {
+        timezone,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      console.log("Timezone updated successfully for user:", currentUser.id);
+      const { password, ...sanitizedUser } = updatedUser;
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      console.error("Error updating timezone:", error);
+      return res.status(400).json({ message: "Invalid timezone", error: error.message });
+    }
+  });
+
   // Update user (superadmin or admin)
   app.patch("/api/users/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -1240,35 +1269,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error deleting user:", error);
       return res.status(500).json({ message: "Failed to delete user", error: error.message });
-    }
-  });
-
-  // Update user timezone (any authenticated user can update their own timezone)
-  app.patch("/api/users/timezone", async (req: Request, res: Response) => {
-    const currentUser = req.user!;
-
-    try {
-      console.log("Updating timezone for user:", currentUser.id);
-      console.log("Timezone value:", req.body.timezone);
-      
-      const { timezone } = z.object({
-        timezone: z.string().min(1, "Timezone is required")
-      }).parse(req.body);
-
-      const updatedUser = await storage.updateUser(currentUser.id, {
-        timezone,
-      });
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      console.log("Timezone updated successfully for user:", currentUser.id);
-      const { password, ...sanitizedUser } = updatedUser;
-      res.json({ user: sanitizedUser });
-    } catch (error: any) {
-      console.error("Error updating timezone:", error);
-      return res.status(400).json({ message: "Invalid timezone", error: error.message });
     }
   });
 
