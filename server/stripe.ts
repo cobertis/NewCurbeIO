@@ -290,3 +290,34 @@ function mapStripeSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): 
     default: return "active";
   }
 }
+
+// =====================================================
+// CUSTOMER PORTAL
+// =====================================================
+
+export async function createCustomerPortalSession(customerId: string, returnUrl: string) {
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: returnUrl,
+  });
+  return session;
+}
+
+// =====================================================
+// INVOICE RETRIEVAL
+// =====================================================
+
+export async function getInvoicesForCustomer(customerId: string, limit: number = 10) {
+  const invoices = await stripe.invoices.list({
+    customer: customerId,
+    limit,
+  });
+  return invoices.data;
+}
+
+export async function getSubscriptionDetails(stripeSubscriptionId: string) {
+  const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+    expand: ['default_payment_method', 'latest_invoice']
+  });
+  return subscription;
+}

@@ -2022,6 +2022,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===================================================================
+  // BILLING ENDPOINTS
+  // ===================================================================
+
+  // Create Stripe Customer Portal Session
+  app.post("/api/billing/portal", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can access billing portal
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Get or create Stripe customer
+      let customerId = company.stripeCustomerId;
+      if (!customerId) {
+        const { createStripeCustomer } = await import("./stripe");
+        const customer = await createStripeCustomer(companyId, company.email, company.name);
+        customerId = customer.id;
+        
+        // Update company with Stripe customer ID
+        await storage.updateCompany(companyId, { stripeCustomerId: customerId });
+      }
+
+      const { createCustomerPortalSession } = await import("./stripe");
+      const returnUrl = `${req.headers.origin}/billing`;
+      const session = await createCustomerPortalSession(customerId, returnUrl);
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get billing invoices
+  app.get("/api/billing/invoices", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can view invoices
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const invoices = await storage.getInvoicesByCompany(companyId);
+      res.json({ invoices });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get billing subscription details from Stripe
+  app.get("/api/billing/subscription", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can view subscription details
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        return res.json({ subscription: null });
+      }
+
+      // Get detailed info from Stripe
+      const { getSubscriptionDetails } = await import("./stripe");
+      const stripeSubscription = await getSubscriptionDetails(subscription.stripeSubscriptionId);
+
+      res.json({ 
+        subscription: {
+          ...subscription,
+          stripeDetails: stripeSubscription
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ===================================================================
   // STRIPE WEBHOOKS
   // ===================================================================
 
