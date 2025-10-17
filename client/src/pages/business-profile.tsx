@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Globe, FileText, User as UserIcon, Copy, RefreshCw } from "lucide-react";
+import { Building2, Globe, FileText, User as UserIcon, Copy, RefreshCw, Plus } from "lucide-react";
 import type { User, Company } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
@@ -315,10 +315,70 @@ export default function BusinessProfile() {
                 name="logo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Business Logo (URL)</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="https://example.com/logo.png" data-testid="input-logo" />
-                    </FormControl>
+                    <FormLabel>Business Logo</FormLabel>
+                    <FormDescription className="text-sm text-muted-foreground">
+                      The proposed size is 350px * 180px. No bigger than 2.5 MB
+                    </FormDescription>
+                    <div className="flex items-start gap-4 mt-2">
+                      <div className="w-[350px] h-[180px] border-2 border-dashed border-muted rounded-lg flex items-center justify-center bg-muted/20 overflow-hidden">
+                        {field.value ? (
+                          <img 
+                            src={field.value} 
+                            alt="Business Logo" 
+                            className="max-w-full max-h-full object-contain"
+                            data-testid="img-business-logo"
+                          />
+                        ) : (
+                          <Plus className="h-12 w-12 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <FormControl>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id="logo-upload"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 2.5 * 1024 * 1024) {
+                                  toast({ 
+                                    title: "Error", 
+                                    description: "File size must not exceed 2.5 MB", 
+                                    variant: "destructive" 
+                                  });
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  field.onChange(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            data-testid="input-logo-file"
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById('logo-upload')?.click()}
+                          data-testid="button-upload-logo"
+                        >
+                          Upload
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => field.onChange("")}
+                          disabled={!field.value}
+                          data-testid="button-remove-logo"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
