@@ -520,23 +520,32 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
         <SheetContent side="right" className="w-full sm:w-[480px] p-0 flex flex-col">
           {/* Header */}
-          <div className="px-4 py-3 pr-12 border-b">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-baseline gap-2">
-                <SheetTitle className="text-base font-semibold">Notifications</SheetTitle>
-                {unreadCount > 0 && (
-                  <span className="text-xs text-muted-foreground">{unreadCount} new</span>
-                )}
-              </div>
+          <div className="p-6 space-y-4 border-b">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-xl font-semibold">Notifications</SheetTitle>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <Button 
+                className="flex-1 h-11 gap-2"
+                onClick={() => {
+                  // View all functionality - could navigate to a full notifications page
+                }}
+                data-testid="button-view-all"
+              >
+                <Bell className="h-4 w-4" />
+                View all
+              </Button>
               {unreadCount > 0 && (
                 <Button 
-                  variant="ghost" 
-                  size="sm"
+                  variant="outline"
+                  className="flex-1 h-11 gap-2"
                   onClick={markAllAsRead}
                   data-testid="button-mark-all-read"
-                  className="h-7 text-xs"
                 >
-                  Mark all read
+                  <CheckCircle className="h-4 w-4" />
+                  Mark all as read
                 </Button>
               )}
             </div>
