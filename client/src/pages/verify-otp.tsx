@@ -242,11 +242,11 @@ export default function VerifyOTP() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
       {/* Logo in top left */}
-      <div className="absolute top-6 left-6">
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
         <img 
           src={logo} 
           alt="Curbe.io" 
-          className="h-10 w-auto object-contain"
+          className="h-8 sm:h-10 w-auto object-contain"
         />
       </div>
 
