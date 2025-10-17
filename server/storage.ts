@@ -321,8 +321,8 @@ export interface IStorage {
   // SMS Chat Notes
   createChatNote(note: InsertSmsChatNote): Promise<SmsChatNote>;
   getChatNotes(phoneNumber: string, companyId: string): Promise<SmsChatNote[]>;
-  updateChatNote(id: string, note: string, companyId: string): Promise<SmsChatNote | undefined>;
-  deleteChatNote(id: string, companyId: string): Promise<void>;
+  updateChatNote(id: string, note: string, companyId?: string): Promise<SmsChatNote | undefined>;
+  deleteChatNote(id: string, companyId?: string): Promise<void>;
   
   // Delete conversation
   deleteConversation(phoneNumber: string, companyId: string): Promise<void>;
@@ -1733,26 +1733,36 @@ export class DbStorage implements IStorage {
       .orderBy(desc(smsChatNotes.createdAt));
   }
   
-  async updateChatNote(id: string, note: string, companyId: string): Promise<SmsChatNote | undefined> {
+  async updateChatNote(id: string, note: string, companyId?: string): Promise<SmsChatNote | undefined> {
+    const conditions = [eq(smsChatNotes.id, id)];
+    
+    // If companyId is provided, filter by it (for regular admins)
+    // If not provided, allow superadmins to update any note
+    if (companyId) {
+      conditions.push(eq(smsChatNotes.companyId, companyId));
+    }
+    
     const result = await db.update(smsChatNotes)
       .set({ 
         note,
         updatedAt: new Date()
       })
-      .where(and(
-        eq(smsChatNotes.id, id),
-        eq(smsChatNotes.companyId, companyId)
-      ))
+      .where(and(...conditions))
       .returning();
     return result[0];
   }
   
-  async deleteChatNote(id: string, companyId: string): Promise<void> {
+  async deleteChatNote(id: string, companyId?: string): Promise<void> {
+    const conditions = [eq(smsChatNotes.id, id)];
+    
+    // If companyId is provided, filter by it (for regular admins)
+    // If not provided, allow superadmins to delete any note
+    if (companyId) {
+      conditions.push(eq(smsChatNotes.companyId, companyId));
+    }
+    
     await db.delete(smsChatNotes)
-      .where(and(
-        eq(smsChatNotes.id, id),
-        eq(smsChatNotes.companyId, companyId)
-      ));
+      .where(and(...conditions));
   }
   
   // ==================== DELETE CONVERSATION ====================

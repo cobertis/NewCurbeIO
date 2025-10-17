@@ -3587,7 +3587,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const { phoneNumber } = req.params;
-      const companyId = currentUser.companyId!;
+      
+      // Find user by phone number to get their companyId
+      const contactUser = await storage.getUserByPhone(phoneNumber);
+      
+      // Determine companyId: use currentUser's companyId or contact's if available
+      const companyId = currentUser.companyId || contactUser?.companyId;
+      
+      if (!companyId) {
+        // Return empty array if no company can be determined
+        return res.json([]);
+      }
+      
       const notes = await storage.getChatNotes(phoneNumber, companyId);
       res.json(notes);
     } catch (error) {
@@ -3612,10 +3623,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Note content is required" });
       }
       
+      // Find user by phone number to get their companyId
+      const contactUser = await storage.getUserByPhone(phoneNumber);
+      
+      // Determine companyId: use currentUser's companyId or contact's if available
+      const companyId = currentUser.companyId || contactUser?.companyId;
+      
+      if (!companyId) {
+        return res.status(400).json({ message: "Cannot determine company for this conversation" });
+      }
+      
       const newNote = await storage.createChatNote({
         phoneNumber,
         note: note.trim(),
-        companyId: currentUser.companyId!,
+        companyId,
         createdBy: currentUser.id
       });
       
@@ -3642,7 +3663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Note content is required" });
       }
       
-      const updatedNote = await storage.updateChatNote(id, note.trim(), currentUser.companyId!);
+      // For updates, companyId can be null for superadmins (they can update any note)
+      const updatedNote = await storage.updateChatNote(id, note.trim(), currentUser.companyId || undefined);
       
       if (!updatedNote) {
         return res.status(404).json({ message: "Note not found" });
@@ -3665,7 +3687,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const { id } = req.params;
-      await storage.deleteChatNote(id, currentUser.companyId!);
+      // For deletes, companyId can be null for superadmins (they can delete any note)
+      await storage.deleteChatNote(id, currentUser.companyId || undefined);
       res.json({ message: "Note deleted successfully" });
     } catch (error) {
       console.error("Error deleting chat note:", error);
