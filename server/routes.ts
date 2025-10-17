@@ -1231,6 +1231,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user timezone (any authenticated user can update their own timezone)
+  app.patch("/api/users/timezone", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    try {
+      const { timezone } = z.object({
+        timezone: z.string().min(1, "Timezone is required")
+      }).parse(req.body);
+
+      const updatedUser = await storage.updateUser(currentUser.id, {
+        timezone,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...sanitizedUser } = updatedUser;
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      console.error("Error updating timezone:", error);
+      return res.status(400).json({ message: "Invalid timezone", error: error.message });
+    }
+  });
+
   // Toggle user active status (enable/disable)
   app.patch("/api/users/:id/toggle-status", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;

@@ -15,7 +15,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Search, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Search, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -84,6 +86,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [timezoneDialogOpen, setTimezoneDialogOpen] = useState(false);
+  const [selectedTimezone, setSelectedTimezone] = useState<string>("");
 
   const { data: userData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -232,6 +236,47 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Initialize timezone when user data loads
+  useEffect(() => {
+    if (user?.timezone) {
+      setSelectedTimezone(user.timezone);
+    }
+  }, [user?.timezone]);
+
+  // Update user timezone
+  const handleTimezoneUpdate = async () => {
+    if (!selectedTimezone) return;
+    
+    try {
+      const response = await fetch("/api/users/timezone", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: selectedTimezone }),
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+        setTimezoneDialogOpen(false);
+        toast({
+          title: "Timezone updated",
+          description: "Your timezone preference has been saved.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Update failed",
+          description: "Unable to update timezone. Please try again.",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update timezone. Please try again.",
+      });
+    }
+  };
+
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
@@ -271,6 +316,17 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
               {/* Theme Toggle */}
               <ThemeToggle />
+
+              {/* Timezone Button */}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setTimezoneDialogOpen(true)}
+                data-testid="button-timezone"
+                className="rounded-md"
+              >
+                <Globe className="h-6 w-6 text-blue-500" />
+              </Button>
 
               {/* Notifications Button */}
               <Button 
@@ -339,6 +395,94 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+
+      {/* Timezone Dialog */}
+      <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Your Timezone</DialogTitle>
+            <DialogDescription>
+              Choose your timezone to display all dates and times correctly throughout the system.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
+              <SelectTrigger data-testid="select-timezone">
+                <SelectValue placeholder="Select timezone" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">America - USA</div>
+                <SelectItem value="America/New_York">(UTC-05:00) EST, New York, Toronto</SelectItem>
+                <SelectItem value="America/Chicago">(UTC-06:00) CST, Chicago, Mexico City</SelectItem>
+                <SelectItem value="America/Denver">(UTC-07:00) MST, Denver, Phoenix</SelectItem>
+                <SelectItem value="America/Los_Angeles">(UTC-08:00) PST, Los Angeles, Vancouver</SelectItem>
+                <SelectItem value="America/Anchorage">(UTC-09:00) AKST, Anchorage</SelectItem>
+                <SelectItem value="Pacific/Honolulu">(UTC-10:00) HST, Honolulu</SelectItem>
+                
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Central and South America</div>
+                <SelectItem value="America/Argentina/Buenos_Aires">(UTC-03:00) ART, Buenos Aires</SelectItem>
+                <SelectItem value="America/Sao_Paulo">(UTC-03:00) BRT, São Paulo, Rio de Janeiro</SelectItem>
+                <SelectItem value="America/Santiago">(UTC-03:00) CLT, Santiago</SelectItem>
+                <SelectItem value="America/Bogota">(UTC-05:00) COT, Bogotá</SelectItem>
+                <SelectItem value="America/Lima">(UTC-05:00) PET, Lima</SelectItem>
+                <SelectItem value="America/Caracas">(UTC-04:00) AST, Caracas</SelectItem>
+                
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Europe</div>
+                <SelectItem value="Europe/London">(UTC+00:00) GMT, London, Dublin</SelectItem>
+                <SelectItem value="Europe/Paris">(UTC+01:00) CET, Paris, Madrid, Berlin</SelectItem>
+                <SelectItem value="Europe/Istanbul">(UTC+02:00) EET, Istanbul, Athens, Cairo</SelectItem>
+                <SelectItem value="Europe/Moscow">(UTC+03:00) MSK, Moscow, Saint Petersburg</SelectItem>
+                
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Africa</div>
+                <SelectItem value="Africa/Lagos">(UTC+01:00) WAT, Lagos, Kinshasa</SelectItem>
+                <SelectItem value="Africa/Johannesburg">(UTC+02:00) SAST, Johannesburg, Cape Town</SelectItem>
+                <SelectItem value="Africa/Nairobi">(UTC+03:00) EAT, Nairobi, Addis Ababa</SelectItem>
+                
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Asia</div>
+                <SelectItem value="Asia/Kolkata">(UTC+05:30) IST, Kolkata, New Delhi, Mumbai</SelectItem>
+                <SelectItem value="Asia/Jakarta">(UTC+07:00) WIB, Jakarta, Bangkok</SelectItem>
+                <SelectItem value="Asia/Shanghai">(UTC+08:00) CST, Shanghai, Beijing, Hong Kong</SelectItem>
+                <SelectItem value="Asia/Hong_Kong">(UTC+08:00) HKT, Hong Kong</SelectItem>
+                <SelectItem value="Asia/Singapore">(UTC+08:00) SGT, Singapore</SelectItem>
+                <SelectItem value="Asia/Tokyo">(UTC+09:00) JST, Tokyo, Osaka</SelectItem>
+                <SelectItem value="Asia/Seoul">(UTC+09:00) KST, Seoul</SelectItem>
+                <SelectItem value="Asia/Manila">(UTC+08:00) PHT, Manila</SelectItem>
+                
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Australia and Pacific</div>
+                <SelectItem value="Australia/Adelaide">(UTC+09:30) ACST, Adelaide, Darwin</SelectItem>
+                <SelectItem value="Australia/Sydney">(UTC+10:00) AEST, Sydney, Melbourne</SelectItem>
+                <SelectItem value="Pacific/Auckland">(UTC+12:00) NZST, Auckland, Wellington</SelectItem>
+                <SelectItem value="Pacific/Chatham">(UTC+12:45) Chatham Islands</SelectItem>
+                <SelectItem value="Pacific/Apia">(UTC+13:00) Samoa, Apia</SelectItem>
+                <SelectItem value="Pacific/Kiritimati">(UTC+14:00) Line Islands, Kiritimati</SelectItem>
+                
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Middle East</div>
+                <SelectItem value="Asia/Riyadh">(UTC+03:00) AST, Riyadh, Kuwait, Baghdad</SelectItem>
+                <SelectItem value="Asia/Dubai">(UTC+04:00) GST, Dubai, Abu Dhabi</SelectItem>
+                
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">UTC (Coordinated Universal Time)</div>
+                <SelectItem value="UTC">(UTC+00:00) UTC, Greenwich</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setTimezoneDialogOpen(false)}
+                data-testid="button-cancel-timezone"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleTimezoneUpdate}
+                disabled={!selectedTimezone}
+                data-testid="button-save-timezone"
+              >
+                Save Timezone
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Notifications Sidebar */}
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>

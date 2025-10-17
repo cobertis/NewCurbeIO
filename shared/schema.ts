@@ -112,6 +112,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   dateOfBirth: timestamp("date_of_birth"), // Date of birth
   preferredLanguage: text("preferred_language").default("en"), // Preferred language (en, es, etc.)
+  timezone: text("timezone").default("America/New_York"), // User's timezone preference
   address: text("address"), // Office address
   
   // Role within the company
