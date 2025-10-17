@@ -520,7 +520,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
         <SheetContent side="right" className="w-full sm:w-[400px] p-0 flex flex-col">
           {/* Header */}
-          <div className="px-4 py-3 border-b">
+          <div className="px-4 py-3 pr-12 border-b">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-baseline gap-2">
                 <SheetTitle className="text-base font-semibold">Notifications</SheetTitle>
