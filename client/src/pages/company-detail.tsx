@@ -25,6 +25,9 @@ const userFormSchema = insertUserSchema.omit({ password: true }).extend({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   phone: z.string().optional().or(z.literal("")),
+  dateOfBirth: z.string().optional().or(z.literal("")),
+  preferredLanguage: z.string().optional(),
+  address: z.string().optional(),
   companyId: z.string(),
 });
 
@@ -68,6 +71,9 @@ export default function CompanyDetail() {
       firstName: "",
       lastName: "",
       phone: "",
+      dateOfBirth: "",
+      preferredLanguage: "en",
+      address: "",
       role: "member",
       companyId: companyId || "",
     },
@@ -367,28 +373,15 @@ export default function CompanyDetail() {
 
       {/* Create User Dialog */}
       <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add User to {company.name}</DialogTitle>
+            <DialogTitle>Create User</DialogTitle>
             <DialogDescription>
-              Create a new user for this company. They will receive an activation email.
+              Add a new user to the system.
             </DialogDescription>
           </DialogHeader>
           <Form {...createUserForm}>
             <form onSubmit={createUserForm.handleSubmit((data) => createUserMutation.mutate(data))} className="space-y-4">
-              <FormField
-                control={createUserForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="user@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={createUserForm.control}
@@ -397,7 +390,7 @@ export default function CompanyDetail() {
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John" {...field} />
+                        <Input {...field} value={field.value || ""} data-testid="input-create-firstName" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -410,7 +403,7 @@ export default function CompanyDetail() {
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Doe" {...field} />
+                        <Input {...field} value={field.value || ""} data-testid="input-create-lastName" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -419,20 +412,105 @@ export default function CompanyDetail() {
               </div>
               <FormField
                 control={createUserForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" data-testid="input-create-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createUserForm.control}
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone (Optional)</FormLabel>
+                    <FormLabel>Phone Number</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="+1 (415) 555-2671"
                         {...field}
+                        value={field.value || ""}
+                        type="tel"
+                        placeholder="+1 (415) 555-2671"
                         onChange={(e) => {
                           const formatted = formatPhoneInput(e.target.value);
                           field.onChange(formatted);
                         }}
+                        data-testid="input-create-phone"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={createUserForm.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} type="date" data-testid="input-create-dateOfBirth" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createUserForm.control}
+                  name="preferredLanguage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Language</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-create-language">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="es">Spanish</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={createUserForm.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Office Address (Optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} placeholder="123 Main St, City, State, ZIP" data-testid="input-create-address" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createUserForm.control}
+                name="companyId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-create-company">
+                          <SelectValue placeholder="Select a company" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={companyId || ""}>{company?.name}</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -443,9 +521,9 @@ export default function CompanyDetail() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="select-create-role">
                           <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
                       </FormControl>
@@ -463,7 +541,7 @@ export default function CompanyDetail() {
                 <Button type="button" variant="outline" onClick={() => setCreateUserOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createUserMutation.isPending}>
+                <Button type="submit" disabled={createUserMutation.isPending} data-testid="button-create-user-submit">
                   {createUserMutation.isPending ? "Creating..." : "Create User"}
                 </Button>
               </DialogFooter>
