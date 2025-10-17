@@ -488,7 +488,7 @@ export default function IncomingSms() {
                         </AvatarFallback>
                       </Avatar>
                       
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="font-medium truncate">
                             {conv.userName || formatPhoneDisplay(conv.phoneNumber)}
@@ -498,8 +498,8 @@ export default function IncomingSms() {
                           </span>
                         </div>
                         
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm text-muted-foreground truncate">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-muted-foreground truncate flex-1 min-w-0">
                             {conv.lastMessage}
                           </p>
                           {conv.unreadCount > 0 && (
