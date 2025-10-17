@@ -440,7 +440,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                       <div>
                         {notifs.map((notification: any) => {
                           const getNotificationIcon = () => {
-                            // Use notification type if available
+                            // Check title first for better detection (handles old and new formats)
+                            if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
+                            if (notification.title.toLowerCase().includes('login')) return LogIn;
+                            if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return Mail;
+                            if (notification.title.toLowerCase().includes('user') || notification.title.toLowerCase().includes('subscriber')) return UserPlus;
+                            
+                            // Then check notification type
                             if (notification.type) {
                               switch (notification.type) {
                                 case 'sms_received': return MessageSquare;
@@ -451,11 +457,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                                 case 'info': return Info;
                               }
                             }
-                            // Fallback to title-based detection
-                            if (notification.title.toLowerCase().includes('login')) return LogIn;
-                            if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
-                            if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return Mail;
-                            if (notification.title.toLowerCase().includes('user') || notification.title.toLowerCase().includes('subscriber')) return UserPlus;
                             return Bell;
                           };
                           
@@ -463,6 +464,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                           
                           // Get icon color based on type
                           const getIconColor = () => {
+                            // Check title first for better detection (handles old and new formats)
+                            if (notification.title.toLowerCase().includes('sms')) return 'text-blue-600 dark:text-blue-400';
+                            if (notification.title.toLowerCase().includes('login')) return 'text-purple-600 dark:text-purple-400';
+                            if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return 'text-green-600 dark:text-green-400';
+                            if (notification.title.toLowerCase().includes('user') || notification.title.toLowerCase().includes('subscriber')) return 'text-indigo-600 dark:text-indigo-400';
+                            
+                            // Then check notification type
                             if (notification.type) {
                               switch (notification.type) {
                                 case 'sms_received': return 'text-blue-600 dark:text-blue-400';
@@ -473,11 +481,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                                 case 'info': return 'text-blue-600 dark:text-blue-400';
                               }
                             }
-                            // Colors based on icon type for legacy notifications
-                            if (notification.title.toLowerCase().includes('login')) return 'text-purple-600 dark:text-purple-400';
-                            if (notification.title.toLowerCase().includes('sms')) return 'text-blue-600 dark:text-blue-400';
-                            if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return 'text-green-600 dark:text-green-400';
-                            if (notification.title.toLowerCase().includes('user') || notification.title.toLowerCase().includes('subscriber')) return 'text-indigo-600 dark:text-indigo-400';
                             // Default color for other notifications
                             return 'text-muted-foreground';
                           };
@@ -501,14 +504,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
                           // Extract name and message
                           const getName = () => {
+                            // For SMS notifications, use the title directly
+                            if (notification.type === 'sms_received' || notification.title.toLowerCase().includes('sms from')) {
+                              return notification.title;
+                            }
+                            // For old format SMS with "New SMS Message"
                             if (notification.title.toLowerCase().includes('sms')) {
                               const parts = notification.message.split(':');
-                              return parts[0] || 'Unknown';
+                              return `SMS from ${parts[0] || 'Unknown'}`;
                             }
                             return notification.title.replace('New ', '').replace(' Created', '');
                           };
 
                           const getMessagePreview = () => {
+                            // For new SMS format, show the message directly
+                            if (notification.type === 'sms_received' || notification.title.toLowerCase().includes('sms from')) {
+                              return notification.message;
+                            }
+                            // For old format SMS
                             if (notification.title.toLowerCase().includes('sms')) {
                               const parts = notification.message.split(':');
                               return parts.slice(1).join(':').trim();
