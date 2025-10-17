@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -117,6 +117,9 @@ export function EmailTemplatesManager() {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Email Template</DialogTitle>
+              <DialogDescription>
+                Create a new email template for automated communications
+              </DialogDescription>
             </DialogHeader>
             <TemplateForm
               onSubmit={(data) => createTemplateMutation.mutate(data)}
@@ -211,6 +214,9 @@ export function EmailTemplatesManager() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Email Template</DialogTitle>
+            <DialogDescription>
+              Update the email template content and settings
+            </DialogDescription>
           </DialogHeader>
           {selectedTemplate && (
             <TemplateForm
@@ -228,6 +234,9 @@ export function EmailTemplatesManager() {
         <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Email Preview</DialogTitle>
+            <DialogDescription>
+              Preview how your email will look to recipients
+            </DialogDescription>
           </DialogHeader>
           <div className="border rounded-lg p-4 bg-white dark:bg-gray-900 overflow-auto max-h-[70vh]">
             <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
