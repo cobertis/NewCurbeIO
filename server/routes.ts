@@ -2190,8 +2190,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stripeSubData = stripeSubscription as any;
       const currentPeriodStart = new Date(stripeSubData.current_period_start * 1000);
       const currentPeriodEnd = new Date(stripeSubData.current_period_end * 1000);
-      const trialStart = stripeSubData.trial_start && stripeSubData.trial_start > 0 ? new Date(stripeSubData.trial_start * 1000) : undefined;
-      const trialEnd = stripeSubData.trial_end && stripeSubData.trial_end > 0 ? new Date(stripeSubData.trial_end * 1000) : undefined;
 
       // Map Stripe status to our enum, preserving actual subscription state
       const mapStatus = (stripeStatus: string): string => {
@@ -2210,6 +2208,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subscriptionData: any = {
         planId,
         status: mapStatus(stripeSubscription.status),
+        trialStart: stripeSubData.trial_start ? new Date(stripeSubData.trial_start * 1000) : undefined,
+        trialEnd: stripeSubData.trial_end ? new Date(stripeSubData.trial_end * 1000) : undefined,
         currentPeriodStart,
         currentPeriodEnd,
         stripeCustomerId,
@@ -2218,10 +2218,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? stripeSubscription.latest_invoice 
           : stripeSubscription.latest_invoice?.id || undefined,
       };
-
-      // Only include trial dates if they exist
-      if (trialStart) subscriptionData.trialStart = trialStart;
-      if (trialEnd) subscriptionData.trialEnd = trialEnd;
 
       if (existingSubscription) {
         // Update existing subscription
