@@ -42,6 +42,8 @@ interface Invoice {
   invoiceNumber: string;
   status: string;
   total: number;
+  amountDue: number;
+  amountPaid: number;
   currency: string;
   invoiceDate: string;
   dueDate?: string;
@@ -103,6 +105,11 @@ export default function Billing() {
   const subscription: Subscription | null = (subscriptionData as any)?.subscription || null;
   const invoices: Invoice[] = (invoicesData as any)?.invoices || [];
   const payments: Payment[] = (paymentsData as any)?.payments || [];
+
+  // Calculate current balance from latest unpaid invoice
+  const latestUnpaidInvoice = invoices.find(inv => inv.status === 'open' || inv.status === 'draft');
+  const currentBalance = latestUnpaidInvoice ? latestUnpaidInvoice.amountDue : 0;
+  const isPaid = currentBalance === 0;
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -174,14 +181,75 @@ export default function Billing() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Current Subscription */}
+        {/* Payment Status Card - Highlighted */}
+        {subscription && (
+          <Card className="lg:col-span-3 border-2 border-primary/20 bg-gradient-to-br from-background to-muted/10">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {/* Current Balance */}
+                <div className="flex flex-col items-center justify-center text-center p-4 rounded-lg bg-background/50">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                    <DollarSign className="h-4 w-4" />
+                    Current Balance
+                  </div>
+                  <div className={`text-4xl font-bold ${isPaid ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                    {formatCurrency(currentBalance, subscription.plan.currency)}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    {isPaid ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <span className="text-sm font-medium text-green-600 dark:text-green-400">Paid</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                        <span className="text-sm font-medium text-orange-600 dark:text-orange-400">Payment Due</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Next Billing Date */}
+                <div className="flex flex-col items-center justify-center text-center p-4 rounded-lg bg-background/50">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                    <Calendar className="h-4 w-4" />
+                    Next Billing Date
+                  </div>
+                  <div className="text-2xl font-bold">
+                    {formatDate(new Date(subscription.currentPeriodEnd))}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {formatCurrency(subscription.plan.price, subscription.plan.currency)} will be charged
+                  </p>
+                </div>
+
+                {/* Current Plan */}
+                <div className="flex flex-col items-center justify-center text-center p-4 rounded-lg bg-background/50">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                    <CreditCard className="h-4 w-4" />
+                    Current Plan
+                  </div>
+                  <div className="text-2xl font-bold">
+                    {subscription.plan.name}
+                  </div>
+                  <div className="mt-2">
+                    {getStatusBadge(subscription.status)}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Current Subscription Details */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Current Subscription
+              Subscription Details
             </CardTitle>
-            <CardDescription>Your active plan and billing information</CardDescription>
+            <CardDescription>Your plan and billing information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {isLoadingSubscription ? (
@@ -223,10 +291,10 @@ export default function Billing() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <DollarSign className="h-4 w-4" />
-                      Next Billing Date
+                      Billing Cycle
                     </div>
-                    <p className="text-sm font-medium">
-                      {formatDate(new Date(subscription.currentPeriodEnd))}
+                    <p className="text-sm font-medium capitalize">
+                      {subscription.plan.billingCycle}
                     </p>
                   </div>
                 </div>

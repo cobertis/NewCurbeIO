@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation as useWouterLocation } from "wouter";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedRouteProps) {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useWouterLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -19,7 +19,35 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
         });
 
         if (response.ok) {
+          const data = await response.json();
           setIsAuthenticated(true);
+          
+          // Check if user needs to select a plan (non-superadmin without subscription)
+          if (data.user && data.user.role !== "superadmin" && location !== "/select-plan") {
+            // Check if user's company has a subscription
+            try {
+              const subscriptionResponse = await fetch("/api/billing/subscription", {
+                credentials: "include",
+              });
+              
+              // If response is not OK (404, 500, etc) or subscription doesn't exist, redirect to plan selection
+              if (!subscriptionResponse.ok) {
+                setLocation("/select-plan");
+                return;
+              }
+              
+              const subscriptionData = await subscriptionResponse.json();
+              if (!subscriptionData?.subscription) {
+                setLocation("/select-plan");
+                return;
+              }
+            } catch (error) {
+              // On any error fetching subscription, redirect to plan selection to be safe
+              console.error("Failed to check subscription:", error);
+              setLocation("/select-plan");
+              return;
+            }
+          }
         } else {
           setLocation(fallbackPath);
         }
@@ -31,7 +59,7 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
     };
 
     checkAuth();
-  }, [setLocation, fallbackPath]);
+  }, [setLocation, fallbackPath, location]);
 
   if (isChecking) {
     return (
