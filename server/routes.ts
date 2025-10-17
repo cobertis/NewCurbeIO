@@ -2157,9 +2157,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await logger.logCrud({
         req,
         operation: "create",
-        resource: "broadcast_notification",
-        entity: result.broadcast.id,
-        details: `Broadcast notification sent to ${result.notifications.length} users: ${validatedData.title}`,
+        entity: "broadcast_notification",
+        entityId: result.broadcast.id,
+        metadata: { details: `Broadcast notification sent to ${result.notifications.length} users: ${validatedData.title}` },
       });
 
       res.json({ 
@@ -2225,9 +2225,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await logger.logCrud({
         req,
         operation: "create",
-        resource: "broadcast_notification",
-        entity: result.broadcast.id,
-        details: `Resent broadcast notification to ${result.notifications.length} users: ${broadcast.title}`,
+        entity: "broadcast_notification",
+        entityId: result.broadcast.id,
+        metadata: { details: `Resent broadcast notification to ${result.notifications.length} users: ${broadcast.title}` },
       });
 
       res.json({ 
@@ -2267,9 +2267,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await logger.logCrud({
           req,
           operation: "delete",
-          resource: "broadcast_notification",
-          entity: req.params.id,
-          details: `Deleted broadcast notification: ${broadcast.title}`,
+          entity: "broadcast_notification",
+          entityId: req.params.id,
+          metadata: { details: `Deleted broadcast notification: ${broadcast.title}` },
         });
       } catch (logError) {
         console.error('Failed to log delete operation:', logError);
