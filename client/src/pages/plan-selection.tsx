@@ -42,11 +42,7 @@ export default function PlanSelection() {
 
   const selectPlanMutation = useMutation({
     mutationFn: async (planId: string) => {
-      if (!user?.companyId) {
-        throw new Error("Company ID not found");
-      }
-      
-      const result = await apiRequest("POST", `/api/companies/${user.companyId}/subscription`, {
+      const result = await apiRequest("POST", "/api/select-plan", {
         planId,
       });
       return result.json();

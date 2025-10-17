@@ -2085,6 +2085,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Select plan for own company (any authenticated user)
+  app.post("/api/select-plan", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!; // User is guaranteed by middleware
+
+    // Users can only select plan for their own company
+    if (!currentUser.companyId) {
+      return res.status(400).json({ message: "User must belong to a company" });
+    }
+
+    const companyId = currentUser.companyId;
+    const { planId } = req.body;
+
+    if (!planId) {
+      return res.status(400).json({ message: "Plan ID required" });
+    }
+
+    // Verify company exists
+    const company = await storage.getCompany(companyId);
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    // Verify plan exists
+    const plan = await storage.getPlan(planId);
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found" });
+    }
+
+    try {
+      // Verify plan has Stripe price configured
+      if (!plan.stripePriceId) {
+        return res.status(400).json({ 
+          message: "Plan must be synced with Stripe before selecting. Please contact support." 
+        });
+      }
+
+      // Create or get Stripe customer with complete company information
+      let stripeCustomerId = company.stripeCustomerId;
+      
+      if (!stripeCustomerId) {
+        console.log('[SELECT-PLAN] Creating Stripe customer for company:', company.name);
+        const { createStripeCustomer } = await import("./stripe");
+        const stripeCustomer = await createStripeCustomer(company);
+        stripeCustomerId = stripeCustomer.id;
+        
+        // Update company with Stripe customer ID
+        await storage.updateCompany(companyId, { stripeCustomerId });
+        console.log('[SELECT-PLAN] Stripe customer created:', stripeCustomerId);
+      } else {
+        console.log('[SELECT-PLAN] Using existing Stripe customer:', stripeCustomerId);
+      }
+
+      // Check if company already has a subscription
+      const existingSubscription = await storage.getSubscriptionByCompany(companyId);
+
+      // Cancel existing Stripe subscription if exists
+      if (existingSubscription?.stripeSubscriptionId) {
+        console.log('[SELECT-PLAN] Canceling existing Stripe subscription:', existingSubscription.stripeSubscriptionId);
+        const { cancelStripeSubscription } = await import("./stripe");
+        await cancelStripeSubscription(existingSubscription.stripeSubscriptionId);
+      }
+
+      // Create NEW Stripe subscription
+      console.log('[SELECT-PLAN] Creating new Stripe subscription...');
+      const { createStripeSubscription } = await import("./stripe");
+      const stripeSubscription = await createStripeSubscription(
+        stripeCustomerId,
+        plan.stripePriceId,
+        companyId,
+        planId,
+        plan.trialDays
+      );
+
+      // Extract subscription data from Stripe
+      const stripeSubData = stripeSubscription as any;
+      const currentPeriodStart = new Date(stripeSubData.current_period_start * 1000);
+      const currentPeriodEnd = new Date(stripeSubData.current_period_end * 1000);
+      const trialStart = stripeSubData.trial_start ? new Date(stripeSubData.trial_start * 1000) : undefined;
+      const trialEnd = stripeSubData.trial_end ? new Date(stripeSubData.trial_end * 1000) : undefined;
+
+      // Map Stripe status to our enum, preserving actual subscription state
+      const mapStatus = (stripeStatus: string): string => {
+        switch (stripeStatus) {
+          case 'active': return 'active';
+          case 'trialing': return 'trialing';
+          case 'past_due': return 'past_due';
+          case 'unpaid': return 'unpaid';
+          case 'incomplete': return 'active'; // incomplete means waiting for first payment
+          case 'incomplete_expired': return 'cancelled';
+          case 'canceled': return 'cancelled';
+          default: return 'active';
+        }
+      };
+
+      const subscriptionData = {
+        planId,
+        status: mapStatus(stripeSubscription.status),
+        currentPeriodStart,
+        currentPeriodEnd,
+        trialStart,
+        trialEnd,
+        stripeCustomerId,
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeLatestInvoiceId: typeof stripeSubscription.latest_invoice === 'string' 
+          ? stripeSubscription.latest_invoice 
+          : stripeSubscription.latest_invoice?.id || undefined,
+      };
+
+      if (existingSubscription) {
+        // Update existing subscription
+        const updatedSubscription = await storage.updateSubscription(
+          existingSubscription.id,
+          subscriptionData
+        );
+
+        await logger.log({
+          req,
+          action: "plan_selected",
+          entity: "subscription",
+          entityId: existingSubscription.id,
+          companyId,
+          metadata: {
+            planId,
+            planName: plan.name,
+            stripeCustomerId,
+            stripeSubscriptionId: stripeSubscription.id,
+          },
+        });
+
+        res.json({ subscription: updatedSubscription });
+      } else {
+        // Create new subscription
+        const newSubscription = await storage.createSubscription({
+          companyId,
+          ...subscriptionData,
+        });
+
+        await logger.log({
+          req,
+          action: "plan_selected",
+          entity: "subscription",
+          entityId: newSubscription.id,
+          companyId,
+          metadata: {
+            planId,
+            planName: plan.name,
+            stripeCustomerId,
+            stripeSubscriptionId: stripeSubscription.id,
+          },
+        });
+
+        res.json({ subscription: newSubscription });
+      }
+    } catch (error: any) {
+      console.error("Error selecting plan:", error);
+      res.status(500).json({ message: error.message || "Failed to select plan" });
+    }
+  });
+
   // Create checkout session
   app.post("/api/checkout", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
