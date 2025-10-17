@@ -2157,7 +2157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         io.emit('notification_update');
       }
 
-      await loggingService.logAction(
+      await logger.logAction(
         'broadcast_notification',
         currentUser.id,
         null,
