@@ -682,10 +682,29 @@ export class DbStorage implements IStorage {
   }
 
   async markNotificationAsRead(id: string): Promise<boolean> {
+    // First get the notification to check if it's linked to a broadcast
+    const [notification] = await db.select()
+      .from(notifications)
+      .where(eq(notifications.id, id))
+      .limit(1);
+    
+    if (!notification) {
+      return false;
+    }
+    
+    // Mark as read
     const result = await db.update(notifications)
       .set({ isRead: true, readAt: new Date() })
       .where(eq(notifications.id, id))
       .returning();
+    
+    // If this notification is linked to a broadcast and wasn't already read, increment the broadcast read count
+    if (notification.broadcastId && !notification.isRead) {
+      await db.update(broadcastNotifications)
+        .set({ totalRead: sql`total_read + 1` })
+        .where(eq(broadcastNotifications.id, notification.broadcastId));
+    }
+    
     return result.length > 0;
   }
 
@@ -711,15 +730,7 @@ export class DbStorage implements IStorage {
       .from(users)
       .where(eq(users.isActive, true));
     
-    // Create notification for each user
-    const notificationData = allUsers.map(user => ({
-      ...notification,
-      userId: user.id,
-    }));
-    
-    const createdNotifications = await db.insert(notifications).values(notificationData).returning();
-    
-    // Save broadcast history
+    // Save broadcast history first to get the ID
     const broadcastData: InsertBroadcastNotification = {
       type: notification.type,
       title: notification.title,
@@ -731,6 +742,15 @@ export class DbStorage implements IStorage {
     };
     
     const [broadcast] = await db.insert(broadcastNotifications).values(broadcastData).returning();
+    
+    // Create notification for each user with broadcastId link
+    const notificationData = allUsers.map(user => ({
+      ...notification,
+      userId: user.id,
+      broadcastId: broadcast.id, // Link to broadcast for tracking
+    }));
+    
+    const createdNotifications = await db.insert(notifications).values(notificationData).returning();
     
     return {
       notifications: createdNotifications,

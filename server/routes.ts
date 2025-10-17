@@ -2262,13 +2262,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Failed to delete broadcast" });
       }
 
-      await logger.logCrud({
-        req,
-        operation: "delete",
-        resource: "broadcast_notification",
-        entity: req.params.id,
-        details: `Deleted broadcast notification: ${broadcast.title}`,
-      });
+      // Log the operation before sending response
+      try {
+        await logger.logCrud({
+          req,
+          operation: "delete",
+          resource: "broadcast_notification",
+          entity: req.params.id,
+          details: `Deleted broadcast notification: ${broadcast.title}`,
+        });
+      } catch (logError) {
+        console.error('Failed to log delete operation:', logError);
+        // Continue anyway - don't fail the delete because of logging
+      }
 
       res.json({ 
         success: true, 

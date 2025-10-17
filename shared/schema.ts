@@ -426,6 +426,7 @@ export const notifications = pgTable("notifications", {
   readAt: timestamp("read_at"),
   emailSent: boolean("email_sent").notNull().default(false),
   emailSentAt: timestamp("email_sent_at"),
+  broadcastId: varchar("broadcast_id"), // Link to broadcast_notifications for tracking read stats
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
