@@ -528,7 +528,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                                 
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between gap-2 mb-0.5">
-                                    <p className="text-sm font-medium line-clamp-1">
+                                    <p className="text-sm font-medium break-words">
                                       {getName()}
                                     </p>
                                     <div className="flex items-center gap-1 shrink-0">
@@ -541,7 +541,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                                     </div>
                                   </div>
                                   
-                                  <p className="text-xs text-muted-foreground line-clamp-1">
+                                  <p className="text-xs text-muted-foreground break-words">
                                     {getMessagePreview()}
                                   </p>
                                 </div>
