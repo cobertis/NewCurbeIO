@@ -365,9 +365,15 @@ export async function syncPlanWithStripe(plan: {
   stripeSetupFeePriceId?: string | null;
 }) {
   try {
+    const currentKey = process.env.STRIPE_SECRET_KEY || '';
+    const keyMode = currentKey.startsWith('sk_test_') ? '🟢 TEST' : 
+                    currentKey.startsWith('sk_live_') ? '🔴 LIVE' : '❓ UNKNOWN';
+    console.log('='.repeat(70));
     console.log('[STRIPE SYNC] Starting sync for plan:', plan.name, 'ID:', plan.id);
+    console.log(`[STRIPE SYNC] Using Stripe key mode: ${keyMode} (${currentKey.substring(0, 15)}...)`);
     console.log('[STRIPE SYNC] Existing Stripe Product ID:', plan.stripeProductId);
     console.log('[STRIPE SYNC] Existing Stripe Price ID:', plan.stripePriceId);
+    console.log('='.repeat(70));
     
     // Convert billingCycle to Stripe interval format
     const stripeInterval = plan.billingCycle === 'monthly' ? 'month' 
