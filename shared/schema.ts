@@ -571,6 +571,7 @@ export const updateUserSchema = z.object({
   phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   preferredLanguage: z.string().optional(),
+  timezone: z.string().optional(),
   address: z.string().optional(),
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
