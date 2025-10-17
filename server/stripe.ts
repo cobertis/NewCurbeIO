@@ -357,11 +357,9 @@ export async function syncPlanWithStripe(plan: {
 }) {
   try {
     // Convert billingCycle to Stripe interval format
-    console.log('Plan billingCycle:', plan.billingCycle, 'type:', typeof plan.billingCycle);
     const stripeInterval = plan.billingCycle === 'monthly' ? 'month' 
                           : plan.billingCycle === 'yearly' ? 'year'
                           : plan.billingCycle as 'month' | 'year';
-    console.log('Stripe interval:', stripeInterval);
 
     // Step 1: Create or update Stripe Product
     let product: Stripe.Product;
