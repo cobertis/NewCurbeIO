@@ -292,7 +292,8 @@ export default function BusinessProfile() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 pb-8">
+    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Section 1: General Information */}
         <Card>
         <CardHeader>
@@ -1025,6 +1026,7 @@ export default function BusinessProfile() {
           </Form>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
