@@ -255,7 +255,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       });
 
       if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/session"] });
         setTimezoneDialogOpen(false);
         toast({
           title: "Timezone updated",
