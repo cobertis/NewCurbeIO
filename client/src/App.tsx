@@ -343,20 +343,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Notifications Sidebar */}
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <SheetContent side="right" className="w-[380px] p-0 flex flex-col">
-          {/* Simple header */}
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between">
-              <SheetTitle className="text-lg font-semibold">Notifications</SheetTitle>
+        <SheetContent side="right" className="w-[400px] p-0 flex flex-col">
+          {/* Header */}
+          <div className="p-4 border-b bg-muted/30">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <SheetTitle className="text-lg font-semibold">Notifications</SheetTitle>
+                {unreadCount > 0 && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{unreadCount} new</p>
+                )}
+              </div>
               {unreadCount > 0 && (
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={markAllAsRead}
                   data-testid="button-mark-all-read"
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 >
-                  <Check className="h-3 w-3 mr-1" />
                   Mark all read
                 </Button>
               )}
@@ -388,7 +392,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             ) : (
-              <div className="p-3 space-y-2">
+              <div className="p-4 space-y-3">
                 {notifications.map((notification: any) => {
                   const getNotificationIcon = () => {
                     if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
@@ -399,38 +403,38 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   
                   const Icon = getNotificationIcon();
                   
-                  // Format exact time (e.g., "10:45 PM" or "Yesterday 3:30 PM")
-                  const formatTime = (date: Date) => {
-                    const now = new Date();
-                    const isToday = date.toDateString() === now.toDateString();
-                    const yesterday = new Date(now);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const isYesterday = date.toDateString() === yesterday.toDateString();
+                  // Calculate time ago
+                  const getTimeAgo = (date: Date) => {
+                    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+                    const minutes = Math.floor(seconds / 60);
+                    const hours = Math.floor(minutes / 60);
+                    const days = Math.floor(hours / 24);
                     
-                    const timeStr = date.toLocaleTimeString('en-US', { 
-                      hour: 'numeric', 
-                      minute: '2-digit',
-                      hour12: true 
-                    });
-                    
-                    if (isToday) return timeStr;
-                    if (isYesterday) return `Yesterday ${timeStr}`;
-                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + timeStr;
+                    if (days > 0) return `${days}d ago`;
+                    if (hours > 0) return `${hours}h ago`;
+                    if (minutes > 0) return `${minutes}m ago`;
+                    return 'just now';
                   };
                   
-                  const timeStr = notification.createdAt 
-                    ? formatTime(new Date(notification.createdAt))
+                  const timeAgo = notification.createdAt 
+                    ? getTimeAgo(new Date(notification.createdAt))
                     : '';
 
-                  // Extract first name only from message (e.g., "Jason Fonseca: texto" -> "Jason")
-                  const getDisplayText = () => {
+                  // Extract name and message
+                  const getName = () => {
                     if (notification.title.toLowerCase().includes('sms')) {
                       const parts = notification.message.split(':');
-                      const fullName = parts[0] || 'Unknown';
-                      const firstName = fullName.split(' ')[0];
-                      return firstName;
+                      return parts[0] || 'Unknown';
                     }
-                    return notification.title.replace('New ', '').trim();
+                    return notification.title.replace('New ', '').replace(' Created', '');
+                  };
+
+                  const getMessagePreview = () => {
+                    if (notification.title.toLowerCase().includes('sms')) {
+                      const parts = notification.message.split(':');
+                      return parts.slice(1).join(':').trim();
+                    }
+                    return notification.message;
                   };
 
                   return (
@@ -446,37 +450,66 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         }
                       }}
                       className={`
-                        rounded-lg border p-3 transition-all cursor-pointer hover-elevate
+                        rounded-xl p-3 transition-all cursor-pointer border
                         ${!notification.isRead 
-                          ? 'bg-primary/5 border-primary/20' 
-                          : 'bg-card border-border'
+                          ? 'bg-primary/5 border-primary/20 hover:bg-primary/10' 
+                          : 'bg-card border-border hover:bg-muted/50'
                         }
                       `}
                       data-testid={`notification-item-${notification.id}`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex gap-3">
                         <div className={`
-                          rounded-full p-2 shrink-0
-                          ${!notification.isRead 
-                            ? 'bg-primary/10' 
-                            : 'bg-muted'
+                          shrink-0 h-10 w-10 rounded-full flex items-center justify-center
+                          ${notification.title.toLowerCase().includes('sms') 
+                            ? 'bg-blue-500/10' 
+                            : notification.title.toLowerCase().includes('email')
+                            ? 'bg-orange-500/10'
+                            : 'bg-purple-500/10'
                           }
                         `}>
-                          <Icon className={`h-4 w-4 ${!notification.isRead ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <Icon className={`h-5 w-5 ${
+                            notification.title.toLowerCase().includes('sms') 
+                              ? 'text-blue-600 dark:text-blue-400' 
+                              : notification.title.toLowerCase().includes('email')
+                              ? 'text-orange-600 dark:text-orange-400'
+                              : 'text-purple-600 dark:text-purple-400'
+                          }`} />
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm truncate ${!notification.isRead ? 'font-semibold' : 'text-muted-foreground'}`}>
-                            {getDisplayText()}
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <p className={`text-sm font-semibold line-clamp-1 ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
+                              {getName()}
+                            </p>
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {timeAgo}
+                            </span>
+                          </div>
+                          
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {getMessagePreview()}
                           </p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 shrink-0">
-                          <p className="text-xs text-muted-foreground">
-                            {timeStr}
-                          </p>
-                          {!notification.isRead && (
-                            <div className="h-2 w-2 rounded-full bg-primary"></div>
+                          
+                          {notification.title.toLowerCase().includes('sms') && (
+                            <div className="mt-2 flex items-center gap-1.5">
+                              <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
+                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">SMS</span>
+                            </div>
+                          )}
+                          
+                          {notification.title.toLowerCase().includes('email') && (
+                            <div className="mt-2 flex items-center gap-1.5">
+                              <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
+                              <span className="text-xs font-medium text-orange-600 dark:text-orange-400">Email</span>
+                            </div>
+                          )}
+                          
+                          {notification.title.toLowerCase().includes('user') && (
+                            <div className="mt-2 flex items-center gap-1.5">
+                              <div className="h-1.5 w-1.5 rounded-full bg-purple-500"></div>
+                              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">User</span>
+                            </div>
                           )}
                         </div>
                       </div>
