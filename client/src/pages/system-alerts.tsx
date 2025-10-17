@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Bell, Send, AlertCircle, Info, CheckCircle, AlertTriangle, RefreshCw, History } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Bell, Send, AlertCircle, Info, CheckCircle, AlertTriangle, RefreshCw, History, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const broadcastSchema = z.object({
@@ -105,6 +106,33 @@ export default function SystemAlerts() {
       toast({
         title: "Resend Failed",
         description: error.message || "Failed to resend broadcast notification",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (broadcastId: string) => {
+      const response = await apiRequest("DELETE", `/api/notifications/broadcast/${broadcastId}`, {});
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to delete broadcast" }));
+        throw new Error(errorData.message || "Failed to delete broadcast");
+      }
+      
+      return response.json() as Promise<{ success: boolean; message: string }>;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Broadcast Deleted",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/broadcast/history"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete broadcast",
         variant: "destructive",
       });
     },
@@ -248,7 +276,7 @@ export default function SystemAlerts() {
             <div className="border rounded-lg p-3">
               <div className="flex gap-3">
                 <div className="shrink-0 h-9 w-9 rounded-full bg-muted flex items-center justify-center">
-                  {getTypeIcon(form.watch("type") || "info")}
+                  {getTypeIcon(previewType)}
                 </div>
                 
                 <div className="flex-1 min-w-0">
@@ -331,16 +359,49 @@ export default function SystemAlerts() {
                       {formatDistanceToNow(new Date(broadcast.createdAt), { addSuffix: true })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => resendMutation.mutate(broadcast.id)}
-                        disabled={resendMutation.isPending}
-                        data-testid={`button-resend-${broadcast.id}`}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        Resend
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => resendMutation.mutate(broadcast.id)}
+                          disabled={resendMutation.isPending}
+                          data-testid={`button-resend-${broadcast.id}`}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Resend
+                        </Button>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-${broadcast.id}`}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Broadcast?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{broadcast.title}"? This will only remove it from history. Users who received this notification will still see it.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteMutation.mutate(broadcast.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

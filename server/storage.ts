@@ -761,6 +761,13 @@ export class DbStorage implements IStorage {
       .where(eq(broadcastNotifications.id, broadcastId));
   }
 
+  async deleteBroadcastNotification(id: string): Promise<boolean> {
+    const result = await db.delete(broadcastNotifications)
+      .where(eq(broadcastNotifications.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
   // ==================== EMAIL TEMPLATES ====================
   
   async getEmailTemplates(): Promise<EmailTemplate[]> {

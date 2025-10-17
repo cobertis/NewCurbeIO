@@ -2242,6 +2242,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete broadcast notification from history (superadmin only)
+  app.delete("/api/notifications/broadcast/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const broadcast = await storage.getBroadcastNotification(req.params.id);
+      if (!broadcast) {
+        return res.status(404).json({ message: "Broadcast not found" });
+      }
+
+      const deleted = await storage.deleteBroadcastNotification(req.params.id);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete broadcast" });
+      }
+
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        resource: "broadcast_notification",
+        entity: req.params.id,
+        details: `Deleted broadcast notification: ${broadcast.title}`,
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Broadcast deleted successfully"
+      });
+    } catch (error) {
+      console.error('Delete broadcast error:', error);
+      res.status(500).json({ message: "Failed to delete broadcast notification" });
+    }
+  });
+
   // ==================== EMAIL TEMPLATES ENDPOINTS ====================
 
   // Get all email templates (superadmin only)
