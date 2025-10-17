@@ -335,6 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role,
         companyId: user.companyId,
         companyName: companyName,
+        timezone: user.timezone,
       },
     });
   });
