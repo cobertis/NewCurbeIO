@@ -1655,41 +1655,58 @@ export class DbStorage implements IStorage {
     sentByName?: string;
   }>> {
     // Get incoming messages with optional companyId filter
-    let incomingQuery = db
-      .select({
-        id: incomingSmsMessages.id,
-        message: incomingSmsMessages.messageBody,
-        timestamp: incomingSmsMessages.receivedAt,
-      })
-      .from(incomingSmsMessages)
-      .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
-    
-    if (companyId) {
-      incomingQuery = incomingQuery.where(eq(incomingSmsMessages.companyId, companyId));
-    }
-    
-    const incoming = await incomingQuery;
+    const incoming = companyId
+      ? await db
+          .select({
+            id: incomingSmsMessages.id,
+            message: incomingSmsMessages.messageBody,
+            timestamp: incomingSmsMessages.receivedAt,
+          })
+          .from(incomingSmsMessages)
+          .where(and(
+            eq(incomingSmsMessages.fromPhone, phoneNumber),
+            eq(incomingSmsMessages.companyId, companyId)
+          ))
+      : await db
+          .select({
+            id: incomingSmsMessages.id,
+            message: incomingSmsMessages.messageBody,
+            timestamp: incomingSmsMessages.receivedAt,
+          })
+          .from(incomingSmsMessages)
+          .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
     
     // Get outgoing messages with sender info and optional companyId filter
-    let outgoingQuery = db
-      .select({
-        id: outgoingSmsMessages.id,
-        message: outgoingSmsMessages.messageBody,
-        timestamp: outgoingSmsMessages.sentAt,
-        status: outgoingSmsMessages.status,
-        sentBy: outgoingSmsMessages.sentBy,
-        senderFirstName: users.firstName,
-        senderLastName: users.lastName,
-      })
-      .from(outgoingSmsMessages)
-      .leftJoin(users, eq(outgoingSmsMessages.sentBy, users.id))
-      .where(eq(outgoingSmsMessages.toPhone, phoneNumber));
-    
-    if (companyId) {
-      outgoingQuery = outgoingQuery.where(eq(outgoingSmsMessages.companyId, companyId));
-    }
-    
-    const outgoing = await outgoingQuery;
+    const outgoing = companyId
+      ? await db
+          .select({
+            id: outgoingSmsMessages.id,
+            message: outgoingSmsMessages.messageBody,
+            timestamp: outgoingSmsMessages.sentAt,
+            status: outgoingSmsMessages.status,
+            sentBy: outgoingSmsMessages.sentBy,
+            senderFirstName: users.firstName,
+            senderLastName: users.lastName,
+          })
+          .from(outgoingSmsMessages)
+          .leftJoin(users, eq(outgoingSmsMessages.sentBy, users.id))
+          .where(and(
+            eq(outgoingSmsMessages.toPhone, phoneNumber),
+            eq(outgoingSmsMessages.companyId, companyId)
+          ))
+      : await db
+          .select({
+            id: outgoingSmsMessages.id,
+            message: outgoingSmsMessages.messageBody,
+            timestamp: outgoingSmsMessages.sentAt,
+            status: outgoingSmsMessages.status,
+            sentBy: outgoingSmsMessages.sentBy,
+            senderFirstName: users.firstName,
+            senderLastName: users.lastName,
+          })
+          .from(outgoingSmsMessages)
+          .leftJoin(users, eq(outgoingSmsMessages.sentBy, users.id))
+          .where(eq(outgoingSmsMessages.toPhone, phoneNumber));
     
     // Combine and sort
     const allMessages = [
@@ -1716,15 +1733,18 @@ export class DbStorage implements IStorage {
   }
   
   async markConversationAsRead(phoneNumber: string, companyId?: string): Promise<void> {
-    let query = db.update(incomingSmsMessages)
-      .set({ isRead: true })
-      .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
-    
     if (companyId) {
-      query = query.where(eq(incomingSmsMessages.companyId, companyId));
+      await db.update(incomingSmsMessages)
+        .set({ isRead: true })
+        .where(and(
+          eq(incomingSmsMessages.fromPhone, phoneNumber),
+          eq(incomingSmsMessages.companyId, companyId)
+        ));
+    } else {
+      await db.update(incomingSmsMessages)
+        .set({ isRead: true })
+        .where(eq(incomingSmsMessages.fromPhone, phoneNumber));
     }
-    
-    await query;
   }
   
   // ==================== CONTACT LISTS ====================
