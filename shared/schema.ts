@@ -21,6 +21,34 @@ export const companies = pgTable("companies", {
   companySize: text("company_size"), // e.g., "1-10", "11-50", "51-200", etc.
   timezone: text("timezone").default("UTC"),
   isActive: boolean("is_active").notNull().default(true),
+  
+  // Business Profile - General Information
+  legalName: text("legal_name"), // Legal business name
+  currency: text("currency").default("USD"), // Business currency
+  apiKey: text("api_key"), // API key
+  
+  // Business Profile - Physical Address
+  city: text("city"), // City
+  state: text("state"), // State/Province/Region
+  country: text("country").default("United States"), // Country
+  postalCode: text("postal_code"), // Postal/Zip code
+  platformLanguage: text("platform_language").default("English (United States)"), // Platform language
+  outboundLanguage: text("outbound_language").default("Spanish (United States)"), // Outbound communication language
+  
+  // Business Profile - Business Information
+  businessType: text("business_type"), // e.g., "Limited Liability Company Or Sole-Proprietorship"
+  registrationIdType: text("registration_id_type"), // e.g., "USA: Employer Identification Number (EIN)"
+  registrationNumber: text("registration_number"), // Business registration number
+  isNotRegistered: boolean("is_not_registered").default(false), // Checkbox for not registered
+  regionsOfOperation: text("regions_of_operation").array(), // Business regions
+  
+  // Business Profile - Authorized Representative
+  representativeFirstName: text("representative_first_name"), // Authorized representative first name
+  representativeLastName: text("representative_last_name"), // Authorized representative last name
+  representativeEmail: text("representative_email"), // Representative email
+  representativePosition: text("representative_position"), // Job position
+  representativePhone: text("representative_phone"), // Representative phone
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

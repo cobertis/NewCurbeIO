@@ -45,6 +45,7 @@ import SmsCampaignStats from "@/pages/sms-campaign-stats";
 import IncomingSms from "@/pages/incoming-sms";
 import SystemAlerts from "@/pages/system-alerts";
 import Unsubscribe from "@/pages/unsubscribe";
+import BusinessProfile from "@/pages/business-profile";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -64,6 +65,7 @@ const getPageTitle = (path: string): string => {
     '/contacts': 'Email Contacts',
     '/campaigns': 'Campaigns',
     '/incoming-sms': 'Incoming SMS',
+    '/business-profile': 'Business Profile',
   };
   
   if (path.startsWith('/campaigns/') && path.includes('/stats')) {
@@ -386,7 +388,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => user && setLocation(`/users/${user.id}`)} data-testid="menu-item-profile">
+                  <DropdownMenuItem onClick={() => setLocation("/business-profile")} data-testid="menu-item-profile">
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
@@ -861,6 +863,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SystemAlerts />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/business-profile">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <BusinessProfile />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
