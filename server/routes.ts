@@ -2162,8 +2162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const subscription = await storage.getSubscriptionByCompany(companyId);
+      console.log('[BILLING] Subscription query for company:', companyId, 'Result:', subscription);
       
       if (!subscription) {
+        console.log('[BILLING] No subscription found for company:', companyId);
         return res.json({ subscription: null });
       }
 
