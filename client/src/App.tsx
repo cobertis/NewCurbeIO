@@ -488,12 +488,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
         <SheetContent side="right" className="w-full sm:w-[400px] p-0 flex flex-col">
           {/* Header */}
-          <div className="p-4 border-b bg-muted/30">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <SheetTitle className="text-lg font-semibold">Notifications</SheetTitle>
+          <div className="px-4 py-3 border-b">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-baseline gap-2">
+                <SheetTitle className="text-base font-semibold">Notifications</SheetTitle>
                 {unreadCount > 0 && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{unreadCount} new</p>
+                  <span className="text-xs text-muted-foreground">{unreadCount} new</span>
                 )}
               </div>
               {unreadCount > 0 && (
@@ -502,7 +502,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   size="sm"
                   onClick={markAllAsRead}
                   data-testid="button-mark-all-read"
-                  className="h-8 text-xs"
+                  className="h-7 text-xs"
                 >
                   Mark all read
                 </Button>
