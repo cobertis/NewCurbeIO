@@ -498,8 +498,8 @@ export default function IncomingSms() {
                           </span>
                         </div>
                         
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <p className="text-sm text-muted-foreground truncate flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-muted-foreground line-clamp-1 flex-1 min-w-0 break-all">
                             {conv.lastMessage}
                           </p>
                           {conv.unreadCount > 0 && (
