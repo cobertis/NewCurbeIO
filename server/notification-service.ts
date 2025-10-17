@@ -184,6 +184,46 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for failed login attempt
+   * Shows IP address, device information, and attempted email
+   */
+  async notifyFailedLogin(email: string, ipAddress: string | null, userAgent: string | null) {
+    // Format IP display
+    const ip = ipAddress || 'Unknown IP';
+    
+    // Extract browser info from user agent
+    let deviceInfo = 'Unknown device';
+    if (userAgent) {
+      // Simple browser detection - check Edge before Chrome since Edge UA contains 'Chrome'
+      if (userAgent.includes('Edg')) deviceInfo = 'Edge';
+      else if (userAgent.includes('Chrome')) deviceInfo = 'Chrome';
+      else if (userAgent.includes('Firefox')) deviceInfo = 'Firefox';
+      else if (userAgent.includes('Safari')) deviceInfo = 'Safari';
+      
+      // Add OS info if available
+      if (userAgent.includes('Windows')) deviceInfo += ' on Windows';
+      else if (userAgent.includes('Mac')) deviceInfo += ' on Mac';
+      else if (userAgent.includes('Linux')) deviceInfo += ' on Linux';
+      else if (userAgent.includes('Android')) deviceInfo += ' on Android';
+      else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) deviceInfo += ' on iOS';
+    }
+    
+    // Get superadmins to notify
+    const superadminUserIds = await this.getSuperadminUserIds();
+    
+    const notifications = superadminUserIds.map(adminId => ({
+      userId: adminId,
+      type: "error",
+      title: "Failed Login Attempt",
+      message: `Failed login for ${email} from IP: ${ip} • ${deviceInfo}`,
+      link: "/audit-logs",
+      isRead: false,
+    }));
+
+    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {
