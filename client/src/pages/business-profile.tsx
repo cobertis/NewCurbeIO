@@ -292,14 +292,15 @@ export default function BusinessProfile() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Business Profile Settings</h1>
         <p className="text-muted-foreground mt-1">Manage your business information and settings</p>
       </div>
 
-      {/* Section 1: General Information */}
-      <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Section 1: General Information */}
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
@@ -1030,6 +1031,7 @@ export default function BusinessProfile() {
           </Form>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
