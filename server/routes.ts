@@ -2096,7 +2096,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let customerId = company.stripeCustomerId;
       if (!customerId) {
         const { createStripeCustomer } = await import("./stripe");
-        const customer = await createStripeCustomer(companyId, company.email, company.name);
+        const customer = await createStripeCustomer(company);
         customerId = customer.id;
         
         // Update company with Stripe customer ID

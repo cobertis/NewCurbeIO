@@ -24,14 +24,66 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 // SUBSCRIPTION MANAGEMENT
 // =====================================================
 
-export async function createStripeCustomer(companyId: string, email: string, name: string) {
-  const customer = await stripe.customers.create({
-    email,
-    name,
+export async function createStripeCustomer(company: {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  representativeFirstName?: string | null;
+  representativeLastName?: string | null;
+  representativeEmail?: string | null;
+  representativePhone?: string | null;
+  representativePosition?: string | null;
+  legalName?: string | null;
+}) {
+  // Build customer data with complete information
+  const customerData: Stripe.CustomerCreateParams = {
+    email: company.representativeEmail || company.email,
+    name: company.legalName || company.name,
+    phone: company.representativePhone || company.phone,
     metadata: {
-      companyId,
+      companyId: company.id,
+      companyName: company.name,
+      representativePosition: company.representativePosition || '',
     },
+  };
+
+  // Add address if available
+  if (company.address || company.city || company.state || company.country || company.postalCode) {
+    customerData.address = {
+      line1: company.address,
+      city: company.city || undefined,
+      state: company.state || undefined,
+      country: company.country || undefined,
+      postal_code: company.postalCode || undefined,
+    };
+  }
+
+  // Add shipping address (same as billing for now)
+  if (customerData.address) {
+    customerData.shipping = {
+      name: `${company.representativeFirstName || ''} ${company.representativeLastName || ''}`.trim() || company.name,
+      phone: company.representativePhone || company.phone,
+      address: customerData.address,
+    };
+  }
+
+  console.log('[STRIPE] Creating customer with complete information:', {
+    email: customerData.email,
+    name: customerData.name,
+    hasAddress: !!customerData.address,
+    hasShipping: !!customerData.shipping,
   });
+
+  const customer = await stripe.customers.create(customerData);
+  
+  console.log('[STRIPE] Customer created successfully:', customer.id);
+  
   return customer;
 }
 
@@ -50,8 +102,11 @@ export async function createSubscriptionCheckout(
     const company = await storage.getCompany(companyId);
     if (!company) throw new Error("Company not found");
     
-    const customer = await createStripeCustomer(companyId, company.email, company.name);
+    const customer = await createStripeCustomer(company);
     customerId = customer.id;
+    
+    // Update company with Stripe customer ID
+    await storage.updateCompany(companyId, { stripeCustomerId: customerId });
   }
 
   // Get plan to check for setup fee
