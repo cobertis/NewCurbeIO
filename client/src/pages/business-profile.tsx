@@ -292,13 +292,14 @@ export default function BusinessProfile() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Business Profile Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your business information and settings</p>
-      </div>
+    <div className="h-full overflow-auto">
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold">Business Profile Settings</h1>
+          <p className="text-muted-foreground mt-1">Manage your business information and settings</p>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Section 1: General Information */}
         <Card>
         <CardHeader>
@@ -1031,6 +1032,7 @@ export default function BusinessProfile() {
           </Form>
         </CardContent>
       </Card>
+        </div>
       </div>
     </div>
   );
