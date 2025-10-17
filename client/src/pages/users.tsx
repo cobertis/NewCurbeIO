@@ -302,7 +302,7 @@ export default function Users() {
   const renderProfileView = () => {
     if (isLoadingSingleUser) {
       return (
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="text-center">Loading user profile...</div>
         </div>
       );
@@ -310,7 +310,7 @@ export default function Users() {
 
     if (!profileUser) {
       return (
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="text-center">User not found</div>
         </div>
       );
@@ -320,7 +320,7 @@ export default function Users() {
     const userCompany = companies.find(c => c.id === profileUser.companyId);
 
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="grid grid-cols-12 gap-6">
           {/* Left Sidebar */}
           <div className="col-span-12 lg:col-span-4 xl:col-span-3">

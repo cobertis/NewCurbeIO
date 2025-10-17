@@ -51,7 +51,7 @@ export default function CampaignStats() {
 
   if (isLoading || !stats) {
     return (
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
         <Card>
           <CardContent className="p-6">
             <p className="text-muted-foreground">Loading statistics...</p>
@@ -82,7 +82,7 @@ export default function CampaignStats() {
     : "0.0";
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
