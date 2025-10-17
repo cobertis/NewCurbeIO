@@ -4035,9 +4035,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const notificationPromises = superadmins.map(admin => 
             storage.createNotification({
               userId: admin.id,
-              type: 'info',
-              title: 'New SMS Message',
-              message: `${senderName}: ${Body.substring(0, 50)}${Body.length > 50 ? '...' : ''}`,
+              type: 'sms_received',
+              title: `SMS from ${senderName}`,
+              message: Body.substring(0, 100) + (Body.length > 100 ? '...' : ''),
               link: '/incoming-sms'
             })
           );
