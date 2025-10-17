@@ -71,6 +71,14 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
     - **Automatic Unsubscribe:** Twilio webhook processes STOP keywords (STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT) from incoming messages and automatically unsubscribes users.
     - **Contact List View:** "SMS Unsubscribed" view in Contact Lists displays users who opted out of SMS communications.
     - **Manual Toggle:** Superadmin endpoint (PATCH `/api/users/:userId/sms-subscription`) allows manual subscription management with Zod validation.
+- **Billing & Stripe Integration:**
+    - **Stripe Customer Portal:** Self-service billing portal integration accessible via "Billing" menu item in user dropdown (positioned between Timezone and Settings).
+    - **Billing Page (`/billing`):** Comprehensive subscription management interface displaying current plan details, billing period, payment methods, and invoice history with PDF download capabilities.
+    - **Database Integration:** Companies table extended with `stripeCustomerId` and `stripeSubscriptionId` fields to track Stripe relationships and enable seamless sync.
+    - **Webhook Support:** Stripe webhook handlers process subscription lifecycle events (created, updated, deleted, payment succeeded/failed) to maintain accurate subscription status.
+    - **Invoice Management:** Automatic retrieval and display of Stripe invoices with status indicators, download links, and hosted invoice URLs.
+    - **Access Control:** Billing features available to both superadmins and company admins based on role-based access control.
+    - **API Endpoints:** POST `/api/billing/create-checkout-session` for new subscriptions, POST `/api/billing/portal` for customer portal access, GET `/api/billing/subscription` for current subscription, GET `/api/billing/invoices` for invoice history, POST `/api/billing/webhook` for Stripe event processing.
 
 ### System Design Choices
 The system maintains a clear separation of concerns. Data models use PostgreSQL with Drizzle ORM for multi-tenancy and strict data isolation. Security measures include password management, account activation, and 2FA. The modular feature system offers flexibility.

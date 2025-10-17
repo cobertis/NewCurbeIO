@@ -2042,6 +2042,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "Company ID required" });
     }
 
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company portal" });
+    }
+
     try {
       const company = await storage.getCompany(companyId);
       if (!company) {
@@ -2086,6 +2091,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "Company ID required" });
     }
 
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company invoices" });
+    }
+
     try {
       const invoices = await storage.getInvoicesByCompany(companyId);
       res.json({ invoices });
@@ -2118,6 +2128,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ subscription: null });
       }
 
+      // SECURITY: Verify subscription belongs to the company
+      if (subscription.companyId !== companyId) {
+        return res.status(403).json({ message: "Unauthorized access to subscription" });
+      }
+
       // Get detailed info from Stripe
       const { getSubscriptionDetails } = await import("./stripe");
       const stripeSubscription = await getSubscriptionDetails(subscription.stripeSubscriptionId);
@@ -2140,16 +2155,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/webhooks/stripe", async (req: Request, res: Response) => {
     const sig = req.headers['stripe-signature'];
     if (!sig) {
-      return res.status(400).json({ message: "No signature" });
+      return res.status(400).json({ message: "Missing Stripe signature" });
     }
 
     try {
-      const { stripe } = await import("./stripe");
-      const event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET || ""
-      );
+      // SECURITY: Verify webhook signature before processing
+      const { verifyWebhookSignature } = await import("./stripe");
+      const event = verifyWebhookSignature(req.body, sig as string);
 
       const {
         handleSubscriptionCreated,
@@ -2160,17 +2172,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       switch (event.type) {
         case 'customer.subscription.created':
-          await handleSubscriptionCreated(event.data.object);
+          await handleSubscriptionCreated(event.data.object as any);
           break;
         case 'customer.subscription.updated':
-          await handleSubscriptionUpdated(event.data.object);
+          await handleSubscriptionUpdated(event.data.object as any);
           break;
         case 'customer.subscription.deleted':
-          await handleSubscriptionDeleted(event.data.object);
+          await handleSubscriptionDeleted(event.data.object as any);
           break;
         case 'invoice.paid':
         case 'invoice.payment_succeeded':
-          await syncInvoiceFromStripe(event.data.object.id);
+          await syncInvoiceFromStripe((event.data.object as any).id);
           break;
         default:
           console.log(`Unhandled event type: ${event.type}`);
@@ -2179,7 +2191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ received: true });
     } catch (error: any) {
       console.error("Webhook error:", error.message);
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: `Webhook verification failed: ${error.message}` });
     }
   });
 

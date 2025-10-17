@@ -56,19 +56,12 @@ export async function createSubscriptionCheckout(
     },
   ];
 
-  // Add setup fee if exists
-  if (plan.setupFee > 0) {
-    // Create one-time setup fee price
-    const setupFeePrice = await stripe.prices.create({
-      currency: plan.currency,
-      unit_amount: plan.setupFee,
-      product_data: {
-        name: `${plan.name} - Setup Fee`,
-      },
-    });
-
+  // Add setup fee if exists (only if plan has a setup fee price ID configured)
+  // NOTE: Setup fee prices should be pre-created in Stripe and stored in the plan
+  // This avoids creating unlimited Price objects and misaligned accounting
+  if (plan.setupFee > 0 && plan.stripeSetupFeePriceId) {
     lineItems.push({
-      price: setupFeePrice.id,
+      price: plan.stripeSetupFeePriceId,
       quantity: 1,
     });
   }
@@ -214,6 +207,24 @@ export async function recordPayment(
   };
 
   return await storage.createPayment(paymentData);
+}
+
+// =====================================================
+// WEBHOOK VERIFICATION
+// =====================================================
+
+export function verifyWebhookSignature(payload: string | Buffer, signature: string): Stripe.Event {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  
+  if (!webhookSecret) {
+    throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
+  }
+
+  try {
+    return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+  } catch (err) {
+    throw new Error(`Webhook signature verification failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+  }
 }
 
 // =====================================================
