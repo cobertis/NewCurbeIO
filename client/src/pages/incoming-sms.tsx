@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Send, MessageSquare, Loader2, Plus, Trash2, Building2, Users, StickyNote, X, Edit } from "lucide-react";
+import { Search, Send, MessageSquare, Loader2, Plus, Trash2, Building2, Users, StickyNote, X, Edit, ArrowLeft } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -411,10 +411,13 @@ export default function IncomingSms() {
   });
 
   return (
-    <div className="p-8">
-      <div className="flex gap-6 h-[calc(100vh-8rem)]">
-        {/* Conversations List */}
-        <Card className="w-96 flex flex-col">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex gap-3 sm:gap-4 lg:gap-6 h-[calc(100vh-6rem)] sm:h-[calc(100vh-7rem)] lg:h-[calc(100vh-8rem)]">
+        {/* Conversations List - Hidden on mobile when conversation selected */}
+        <Card className={cn(
+          "w-full sm:w-80 lg:w-96 flex flex-col",
+          selectedConversation && "hidden sm:flex"
+        )}>
           <div className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-xl font-semibold">Messages</h2>
@@ -517,14 +520,27 @@ export default function IncomingSms() {
           </ScrollArea>
         </Card>
 
-        {/* Chat Area */}
-        <Card className="flex-1 flex flex-col">
+        {/* Chat Area - Full width on mobile when conversation selected */}
+        <Card className={cn(
+          "flex-1 flex flex-col",
+          !selectedConversation && "hidden sm:flex"
+        )}>
           {selectedConversation ? (
             <>
               {/* Chat Header */}
               <div className="p-4 border-b">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
+                    {/* Back button for mobile */}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="sm:hidden"
+                      onClick={() => setSelectedConversation(null)}
+                      data-testid="button-back-to-conversations"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={contactInfo?.avatar || selectedConv?.userAvatar || undefined} />
                       <AvatarFallback>
@@ -640,9 +656,9 @@ export default function IncomingSms() {
           )}
         </Card>
 
-        {/* Contact Info Panel */}
+        {/* Contact Info Panel - Hidden on mobile and tablet */}
         {selectedConversation && (
-          <Card className="w-96 flex flex-col">
+          <Card className="hidden xl:flex xl:w-96 flex-col">
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-6">
                 {/* Contact Details */}

@@ -157,7 +157,7 @@ export default function FeaturesPage() {
 
   if (user?.role !== "superadmin") {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-4 sm:p-8">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -174,7 +174,7 @@ export default function FeaturesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
