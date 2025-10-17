@@ -296,29 +296,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Right: Action Icons + User Profile */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              {/* Timezone Button */}
-              <Button 
-                variant="ghost" 
-                onClick={() => setTimezoneDialogOpen(true)}
-                data-testid="button-timezone"
-                className="rounded-md h-9 px-3 gap-2 hidden sm:flex items-center"
-              >
-                <Globe className="h-4 w-4 shrink-0" />
-                <span className="text-xs font-medium">
-                  {selectedTimezone 
-                    ? selectedTimezone.includes('New_York') ? '(UTC-05:00) EST'
-                    : selectedTimezone.includes('Chicago') ? '(UTC-06:00) CST'
-                    : selectedTimezone.includes('Denver') ? '(UTC-07:00) MST'
-                    : selectedTimezone.includes('Los_Angeles') ? '(UTC-08:00) PST'
-                    : selectedTimezone.includes('London') ? '(UTC+00:00) GMT'
-                    : selectedTimezone.includes('Paris') ? '(UTC+01:00) CET'
-                    : selectedTimezone.includes('Tokyo') ? '(UTC+09:00) JST'
-                    : selectedTimezone.includes('Sydney') ? '(UTC+10:00) AEST'
-                    : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'
-                    : 'Select timezone'}
-                </span>
-              </Button>
-
               {/* Search Icon */}
               <Button 
                 variant="ghost" 
@@ -397,6 +374,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   
                   {/* Menu Items */}
                   <div className="space-y-1">
+                    <DropdownMenuItem 
+                      onClick={() => setTimezoneDialogOpen(true)} 
+                      data-testid="menu-item-timezone"
+                      className="py-2.5 px-3 cursor-pointer rounded-md"
+                    >
+                      <Globe className="mr-3 h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm font-medium">Timezone</span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => setLocation("/settings")} 
                       data-testid="menu-item-settings"
