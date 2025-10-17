@@ -81,19 +81,7 @@ export default function SystemAlerts() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Bell className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">System Alerts</h1>
-          <p className="text-sm text-muted-foreground">
-            Send broadcast notifications to all active users in the system
-          </p>
-        </div>
-      </div>
-
+    <div className="p-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Form Section */}
         <Card>
