@@ -1340,7 +1340,13 @@ export default function Users() {
                     return (
                       <tr
                         key={user.id}
-                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                        onClick={(e) => {
+                          // Don't open modal if clicking on action buttons
+                          if ((e.target as HTMLElement).closest('button')) return;
+                          setViewingUser(user);
+                          setViewOpen(true);
+                        }}
                         data-testid={`row-user-${user.id}`}
                       >
                         <td className="px-6 py-4">
@@ -1454,6 +1460,199 @@ export default function Users() {
           )}
         </CardContent>
       </Card>
+
+      {/* User Details Modal - Full Screen */}
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">User Details</DialogTitle>
+            <DialogDescription>Complete information about this user</DialogDescription>
+          </DialogHeader>
+          
+          {viewingUser && (
+            <div className="space-y-6">
+              {/* User Header */}
+              <div className="flex items-start gap-6 p-6 bg-muted rounded-lg">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={viewingUser.avatar || undefined} alt={viewingUser.email} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                    {(viewingUser.firstName?.[0] || viewingUser.email.charAt(0)).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {viewingUser.firstName || viewingUser.lastName 
+                      ? `${viewingUser.firstName || ''} ${viewingUser.lastName || ''}`.trim()
+                      : viewingUser.email
+                    }
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">{viewingUser.email}</p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Badge className={getRoleBadge(viewingUser.role).className}>
+                      {getRoleBadge(viewingUser.role).label}
+                    </Badge>
+                    {(() => {
+                      const userCompany = viewingUser.companyId ? companies.find(c => c.id === viewingUser.companyId) : null;
+                      const isCompanySuspended = userCompany && !userCompany.isActive;
+                      const isUserInactive = viewingUser.isActive === false;
+                      
+                      if (isCompanySuspended) {
+                        return <Badge variant="destructive">Suspended</Badge>;
+                      } else if (isUserInactive) {
+                        return <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-400">Inactive</Badge>;
+                      } else {
+                        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-300">Active</Badge>;
+                      }
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Mail className="h-5 w-5" />
+                      Contact Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{viewingUser.email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">
+                        {viewingUser.phone ? formatPhoneDisplay(viewingUser.phone) : 'Not provided'}
+                      </p>
+                    </div>
+                    {viewingUser.address && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</label>
+                        <p className="text-sm text-gray-900 dark:text-white mt-1">{viewingUser.address}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <UserIcon className="h-5 w-5" />
+                      Personal Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {viewingUser.dateOfBirth && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Date of Birth</label>
+                        <p className="text-sm text-gray-900 dark:text-white mt-1">
+                          {new Date(viewingUser.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </p>
+                      </div>
+                    )}
+                    {viewingUser.preferredLanguage && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Preferred Language</label>
+                        <p className="text-sm text-gray-900 dark:text-white mt-1">{viewingUser.preferredLanguage}</p>
+                      </div>
+                    )}
+                    {isSuperAdmin && viewingUser.companyId && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Company</label>
+                        <p className="text-sm text-gray-900 dark:text-white mt-1">
+                          {companies.find(c => c.id === viewingUser.companyId)?.name || 'Unknown'}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Account Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Account Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created At</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">
+                      {new Date(viewingUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Email Verified</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">
+                      {viewingUser.emailVerified ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">2FA Enabled</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">
+                      {viewingUser.twoFactorEnabled ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Notification Preferences */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Mail className="h-5 w-5" />
+                    Notification Preferences
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Email Subscribed</span>
+                    <Badge variant={viewingUser.emailSubscribed ? "default" : "secondary"}>
+                      {viewingUser.emailSubscribed ? 'Yes' : 'No'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">SMS Subscribed</span>
+                    <Badge variant={viewingUser.smsSubscribed ? "default" : "secondary"}>
+                      {viewingUser.smsSubscribed ? 'Yes' : 'No'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Email Notifications</span>
+                    <Badge variant={viewingUser.emailNotifications ? "default" : "secondary"}>
+                      {viewingUser.emailNotifications ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Invoice Alerts</span>
+                    <Badge variant={viewingUser.invoiceAlerts ? "default" : "secondary"}>
+                      {viewingUser.invoiceAlerts ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={() => setViewOpen(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => {
+                  setViewOpen(false);
+                  handleEdit(viewingUser);
+                }}>
+                  Edit User
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
