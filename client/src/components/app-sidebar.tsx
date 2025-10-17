@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare, Bell } from "lucide-react";
+import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare, Bell, User as UserIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -13,6 +13,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 
@@ -128,16 +129,32 @@ export function AppSidebar() {
     return true;
   });
 
+  const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
+  const userName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user?.email || "User";
+  const userSubtitle = user?.role === "superadmin" 
+    ? "Admin" 
+    : user?.companyName || "Active";
+
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="px-6 py-3 pb-2">
-        <Link href="/dashboard" className="flex items-center justify-center">
-          <img 
-            src={logo} 
-            alt="Curbe.io" 
-            className="h-10 w-auto object-contain"
-          />
-        </Link>
+      <SidebarHeader className="px-4 py-6 border-b border-border">
+        <div className="flex flex-col items-center gap-3">
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={user?.avatar || undefined} alt={userName} />
+            <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+              {userInitial}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col items-center text-center">
+            <p className="text-sm font-semibold text-foreground">{userName}</p>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
+            <Badge variant="secondary" className="mt-2 text-xs">
+              {userSubtitle}
+            </Badge>
+          </div>
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="px-3 pt-2 pb-4">
