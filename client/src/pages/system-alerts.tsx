@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,9 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Send, AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Bell, Send, AlertCircle, Info, CheckCircle, AlertTriangle, RefreshCw, History } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 const broadcastSchema = z.object({
   type: z.enum(["info", "success", "warning", "error"]),
@@ -22,9 +24,26 @@ const broadcastSchema = z.object({
 
 type BroadcastForm = z.infer<typeof broadcastSchema>;
 
+interface BroadcastHistory {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  link: string | null;
+  sentBy: string;
+  totalRecipients: number;
+  totalRead: number;
+  createdAt: string;
+}
+
 export default function SystemAlerts() {
   const { toast } = useToast();
   const [previewType, setPreviewType] = useState<string>("info");
+
+  // Fetch broadcast history
+  const { data: historyData, isLoading: isLoadingHistory } = useQuery<{ broadcasts: BroadcastHistory[] }>({
+    queryKey: ["/api/notifications/broadcast/history"],
+  });
 
   const form = useForm<BroadcastForm>({
     resolver: zodResolver(broadcastSchema),
@@ -53,11 +72,39 @@ export default function SystemAlerts() {
         description: data.message,
       });
       form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/broadcast/history"] });
     },
     onError: (error: Error) => {
       toast({
         title: "Broadcast Failed",
         description: error.message || "Failed to send broadcast notification",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: async (broadcastId: string) => {
+      const response = await apiRequest("POST", `/api/notifications/broadcast/${broadcastId}/resend`, {});
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to resend broadcast" }));
+        throw new Error(errorData.message || "Failed to resend broadcast notification");
+      }
+      
+      return response.json() as Promise<{ success: boolean; count: number; message: string }>;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Broadcast Resent Successfully",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/broadcast/history"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Resend Failed",
+        description: error.message || "Failed to resend broadcast notification",
         variant: "destructive",
       });
     },
@@ -85,21 +132,18 @@ export default function SystemAlerts() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Form Section */}
         <Card>
-          <CardHeader>
-            <CardTitle>Create Broadcast Notification</CardTitle>
-            <CardDescription>
-              This notification will be sent to all active users in the system immediately
-            </CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Create Broadcast</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
                 <FormField
                   control={form.control}
                   name="type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notification Type</FormLabel>
+                      <FormLabel className="text-sm">Type</FormLabel>
                       <Select 
                         onValueChange={(value) => {
                           field.onChange(value);
@@ -109,7 +153,7 @@ export default function SystemAlerts() {
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-notification-type">
-                            <SelectValue placeholder="Select notification type" />
+                            <SelectValue placeholder="Select type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -119,9 +163,6 @@ export default function SystemAlerts() {
                           <SelectItem value="error">Error</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>
-                        Choose the type of notification to send
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -132,7 +173,7 @@ export default function SystemAlerts() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Title</FormLabel>
+                      <FormLabel className="text-sm">Title</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
@@ -141,9 +182,6 @@ export default function SystemAlerts() {
                           data-testid="input-notification-title"
                         />
                       </FormControl>
-                      <FormDescription>
-                        {field.value.length}/200 characters
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -154,19 +192,16 @@ export default function SystemAlerts() {
                   name="message"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Message</FormLabel>
+                      <FormLabel className="text-sm">Message</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
                           placeholder="Enter the notification message here..."
-                          rows={4}
+                          rows={3}
                           maxLength={500}
                           data-testid="textarea-notification-message"
                         />
                       </FormControl>
-                      <FormDescription>
-                        {field.value.length}/500 characters
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -177,7 +212,7 @@ export default function SystemAlerts() {
                   name="link"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Link (Optional)</FormLabel>
+                      <FormLabel className="text-sm">Link (Optional)</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
@@ -185,9 +220,6 @@ export default function SystemAlerts() {
                           data-testid="input-notification-link"
                         />
                       </FormControl>
-                      <FormDescription>
-                        Optional URL to navigate when notification is clicked
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -209,14 +241,11 @@ export default function SystemAlerts() {
 
         {/* Preview Section */}
         <Card>
-          <CardHeader>
-            <CardTitle>Preview</CardTitle>
-            <CardDescription>
-              This is how the notification will appear to users
-            </CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Preview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="border rounded-lg p-4">
+            <div className="border rounded-lg p-3">
               <div className="flex gap-3">
                 <div className="shrink-0 h-9 w-9 rounded-full bg-muted flex items-center justify-center">
                   {getTypeIcon(form.watch("type") || "info")}
@@ -241,31 +270,85 @@ export default function SystemAlerts() {
                 </div>
               </div>
             </div>
-
-            <div className="mt-6 space-y-3">
-              <h3 className="text-sm font-medium">Tips for Effective Notifications</h3>
-              <ul className="text-sm text-muted-foreground space-y-2">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                  <span>Keep titles concise and descriptive</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                  <span>Use the appropriate notification type for context</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                  <span>Provide a link for actionable notifications</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                  <span>Test the message clarity before sending</span>
-                </li>
-              </ul>
-            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* History Section */}
+      <Card className="mt-6">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              <CardTitle className="text-base">Broadcast History</CardTitle>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/notifications/broadcast/history"] })}
+              data-testid="button-refresh-history"
+            >
+              <RefreshCw className="h-3 w-3" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingHistory ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">Loading history...</div>
+          ) : !historyData?.broadcasts || historyData.broadcasts.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">No broadcasts sent yet</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Recipients</TableHead>
+                  <TableHead>Read</TableHead>
+                  <TableHead>Sent</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historyData.broadcasts.map((broadcast) => (
+                  <TableRow key={broadcast.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getTypeIcon(broadcast.type)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{broadcast.title}</TableCell>
+                    <TableCell>{broadcast.totalRecipients}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{broadcast.totalRead}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {Math.round((broadcast.totalRead / broadcast.totalRecipients) * 100)}%
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDistanceToNow(new Date(broadcast.createdAt), { addSuffix: true })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => resendMutation.mutate(broadcast.id)}
+                        disabled={resendMutation.isPending}
+                        data-testid={`button-resend-${broadcast.id}`}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Resend
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

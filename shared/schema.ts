@@ -430,6 +430,22 @@ export const notifications = pgTable("notifications", {
 });
 
 // =====================================================
+// BROADCAST NOTIFICATIONS (History)
+// =====================================================
+
+export const broadcastNotifications = pgTable("broadcast_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // info, success, warning, error
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  link: text("link"),
+  sentBy: varchar("sent_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  totalRecipients: integer("total_recipients").notNull().default(0),
+  totalRead: integer("total_read").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// =====================================================
 // ZOD SCHEMAS FOR VALIDATION
 // =====================================================
 
@@ -701,6 +717,14 @@ export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export const insertBroadcastNotificationSchema = createInsertSchema(broadcastNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type BroadcastNotification = typeof broadcastNotifications.$inferSelect;
+export type InsertBroadcastNotification = z.infer<typeof insertBroadcastNotificationSchema>;
 
 export type Feature = typeof features.$inferSelect;
 export type InsertFeature = z.infer<typeof insertFeatureSchema>;

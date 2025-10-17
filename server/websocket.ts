@@ -76,9 +76,12 @@ export function broadcastNotificationUpdate() {
     type: 'notification_update'
   });
 
+  console.log('Broadcasting notification update to', wss.clients.size, 'clients');
+
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
+      console.log('Sent notification_update to client');
     }
   });
 }

@@ -2149,7 +2149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = broadcastSchema.parse(req.body);
       
-      const notifications = await storage.createBroadcastNotification(validatedData);
+      const result = await storage.createBroadcastNotification(validatedData, currentUser.id);
       
       // Broadcast to all connected WebSocket clients
       broadcastNotificationUpdate();
@@ -2158,13 +2158,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req,
         operation: "create",
         resource: "broadcast_notification",
-        details: `Broadcast notification sent to ${notifications.length} users: ${validatedData.title}`,
+        entity: result.broadcast.id,
+        details: `Broadcast notification sent to ${result.notifications.length} users: ${validatedData.title}`,
       });
 
       res.json({ 
         success: true, 
-        count: notifications.length,
-        message: `Notification sent to ${notifications.length} users` 
+        count: result.notifications.length,
+        message: `Notification sent to ${result.notifications.length} users`,
+        broadcastId: result.broadcast.id
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -2175,6 +2177,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error('Broadcast notification error:', error);
       res.status(500).json({ message: "Failed to broadcast notification" });
+    }
+  });
+
+  // Get broadcast history (superadmin only)
+  app.get("/api/notifications/broadcast/history", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const broadcasts = await storage.getBroadcastHistory(100);
+      res.json({ broadcasts });
+    } catch (error) {
+      console.error('Get broadcast history error:', error);
+      res.status(500).json({ message: "Failed to get broadcast history" });
+    }
+  });
+
+  // Resend broadcast notification (superadmin only)
+  app.post("/api/notifications/broadcast/:id/resend", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const broadcast = await storage.getBroadcastNotification(req.params.id);
+      if (!broadcast) {
+        return res.status(404).json({ message: "Broadcast not found" });
+      }
+
+      // Resend with same data
+      const result = await storage.createBroadcastNotification({
+        type: broadcast.type,
+        title: broadcast.title,
+        message: broadcast.message,
+        link: broadcast.link || undefined,
+      }, currentUser.id);
+
+      // Broadcast to all connected WebSocket clients
+      broadcastNotificationUpdate();
+
+      await logger.logCrud({
+        req,
+        operation: "create",
+        resource: "broadcast_notification",
+        entity: result.broadcast.id,
+        details: `Resent broadcast notification to ${result.notifications.length} users: ${broadcast.title}`,
+      });
+
+      res.json({ 
+        success: true, 
+        count: result.notifications.length,
+        message: `Notification resent to ${result.notifications.length} users`,
+        broadcastId: result.broadcast.id
+      });
+    } catch (error) {
+      console.error('Resend broadcast error:', error);
+      res.status(500).json({ message: "Failed to resend broadcast notification" });
     }
   });
 

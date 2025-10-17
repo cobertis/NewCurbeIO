@@ -53,6 +53,8 @@ import {
   type InsertSmsCampaign,
   type CampaignSmsMessage,
   type InsertCampaignSmsMessage,
+  type BroadcastNotification,
+  type InsertBroadcastNotification,
   type IncomingSmsMessage,
   type InsertIncomingSmsMessage,
   type OutgoingSmsMessage,
@@ -74,6 +76,7 @@ import {
   invitations, 
   apiKeys, 
   notifications,
+  broadcastNotifications,
   emailTemplates,
   emailCampaigns,
   campaignEmails,
@@ -171,11 +174,16 @@ export interface IStorage {
   
   // Notifications
   createNotification(notification: InsertNotification): Promise<Notification>;
-  createBroadcastNotification(notification: Omit<InsertNotification, 'userId'>): Promise<Notification[]>;
+  createBroadcastNotification(notification: Omit<InsertNotification, 'userId'>, sentBy: string): Promise<{ notifications: Notification[], broadcast: BroadcastNotification }>;
   getNotificationsByUser(userId: string, limit?: number): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<boolean>;
   markAllNotificationsAsRead(userId: string): Promise<boolean>;
   markNotificationEmailSent(id: string): Promise<boolean>;
+  
+  // Broadcast Notifications History
+  getBroadcastHistory(limit?: number): Promise<BroadcastNotification[]>;
+  getBroadcastNotification(id: string): Promise<BroadcastNotification | undefined>;
+  updateBroadcastReadCount(broadcastId: string): Promise<void>;
   
   // Email Templates
   getEmailTemplates(): Promise<EmailTemplate[]>;
@@ -697,7 +705,7 @@ export class DbStorage implements IStorage {
     return result.length > 0;
   }
 
-  async createBroadcastNotification(notification: Omit<InsertNotification, 'userId'>): Promise<Notification[]> {
+  async createBroadcastNotification(notification: Omit<InsertNotification, 'userId'>, sentBy: string): Promise<{ notifications: Notification[], broadcast: BroadcastNotification }> {
     // Get all active users
     const allUsers = await db.select({ id: users.id })
       .from(users)
@@ -709,8 +717,48 @@ export class DbStorage implements IStorage {
       userId: user.id,
     }));
     
-    const result = await db.insert(notifications).values(notificationData).returning();
-    return result;
+    const createdNotifications = await db.insert(notifications).values(notificationData).returning();
+    
+    // Save broadcast history
+    const broadcastData: InsertBroadcastNotification = {
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      link: notification.link || null,
+      sentBy,
+      totalRecipients: allUsers.length,
+      totalRead: 0,
+    };
+    
+    const [broadcast] = await db.insert(broadcastNotifications).values(broadcastData).returning();
+    
+    return {
+      notifications: createdNotifications,
+      broadcast,
+    };
+  }
+
+  async getBroadcastHistory(limit: number = 50): Promise<BroadcastNotification[]> {
+    return db.select()
+      .from(broadcastNotifications)
+      .orderBy(desc(broadcastNotifications.createdAt))
+      .limit(limit);
+  }
+
+  async getBroadcastNotification(id: string): Promise<BroadcastNotification | undefined> {
+    const result = await db.select()
+      .from(broadcastNotifications)
+      .where(eq(broadcastNotifications.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateBroadcastReadCount(broadcastId: string): Promise<void> {
+    // Count how many notifications from this broadcast have been read
+    // This is a simplified version - in a real app you'd need to link notifications to broadcasts
+    await db.update(broadcastNotifications)
+      .set({ totalRead: sql`total_read + 1` })
+      .where(eq(broadcastNotifications.id, broadcastId));
   }
 
   // ==================== EMAIL TEMPLATES ====================
