@@ -39,6 +39,12 @@ export default function SystemAlerts() {
   const broadcastMutation = useMutation({
     mutationFn: async (data: BroadcastForm) => {
       const response = await apiRequest("POST", "/api/notifications/broadcast", data);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to send broadcast" }));
+        throw new Error(errorData.message || "Failed to send broadcast notification");
+      }
+      
       return response.json() as Promise<{ success: boolean; count: number; message: string }>;
     },
     onSuccess: (data) => {
@@ -48,10 +54,10 @@ export default function SystemAlerts() {
       });
       form.reset();
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Broadcast Failed",
-        description: "Failed to send broadcast notification",
+        description: error.message || "Failed to send broadcast notification",
         variant: "destructive",
       });
     },
