@@ -1579,7 +1579,7 @@ export default function Users() {
                     Account Details
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created At</label>
                     <p className="text-sm text-gray-900 dark:text-white mt-1">
@@ -1590,12 +1590,6 @@ export default function Users() {
                     <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Email Verified</label>
                     <p className="text-sm text-gray-900 dark:text-white mt-1">
                       {viewingUser.emailVerified ? 'Yes' : 'No'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">2FA Enabled</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">
-                      {viewingUser.twoFactorEnabled ? 'Yes' : 'No'}
                     </p>
                   </div>
                 </CardContent>
