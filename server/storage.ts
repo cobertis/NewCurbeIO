@@ -782,19 +782,16 @@ export class DbStorage implements IStorage {
   }
 
   async deleteBroadcastNotification(id: string): Promise<boolean> {
-    // Delete in a transaction: first delete all individual notifications, then the broadcast
-    return await db.transaction(async (tx) => {
-      // Delete all notifications associated with this broadcast
-      await tx.delete(notifications)
-        .where(eq(notifications.broadcastId, id));
-      
-      // Delete the broadcast from history
-      const result = await tx.delete(broadcastNotifications)
-        .where(eq(broadcastNotifications.id, id))
-        .returning();
-      
-      return result.length > 0;
-    });
+    // Delete all notifications associated with this broadcast first
+    await db.delete(notifications)
+      .where(eq(notifications.broadcastId, id));
+    
+    // Then delete the broadcast from history
+    const result = await db.delete(broadcastNotifications)
+      .where(eq(broadcastNotifications.id, id))
+      .returning();
+    
+    return result.length > 0;
   }
 
   // ==================== EMAIL TEMPLATES ====================
