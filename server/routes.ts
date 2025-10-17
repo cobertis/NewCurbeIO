@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import twilio from "twilio";
@@ -2152,10 +2152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const notifications = await storage.createBroadcastNotification(validatedData);
       
       // Broadcast to all connected WebSocket clients
-      const io = req.app.get('io');
-      if (io) {
-        io.emit('notification_update');
-      }
+      broadcastNotificationUpdate();
 
       await logger.logCrud({
         req,

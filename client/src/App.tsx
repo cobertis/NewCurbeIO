@@ -174,6 +174,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       // Also invalidate unread count for sidebar badge
       queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
+    } else if (message.type === 'notification_update') {
+      // When a broadcast notification is sent, update notifications in real-time
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     }
   }, []);
 

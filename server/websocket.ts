@@ -64,3 +64,21 @@ export function broadcastConversationUpdate() {
     }
   });
 }
+
+// Broadcast notification update to all connected clients
+export function broadcastNotificationUpdate() {
+  if (!wss) {
+    console.warn('WebSocket server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'notification_update'
+  });
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+}
