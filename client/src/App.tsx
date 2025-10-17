@@ -379,23 +379,45 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{userName}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                <DropdownMenuContent align="end" className="w-80 p-4">
+                  {/* User Info Header */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={user?.avatar || undefined} alt={userName} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
+                        {userInitial}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-semibold text-foreground truncate">{userName}</p>
+                      <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+                      <Badge variant="secondary" className="mt-1.5 text-xs">
+                        {userSubtitle}
+                      </Badge>
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setLocation("/settings")} data-testid="menu-item-settings">
-                    <SettingsIcon className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} data-testid="menu-item-logout">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
+                  </div>
+                  
+                  <DropdownMenuSeparator className="my-3" />
+                  
+                  {/* Menu Items */}
+                  <div className="space-y-1">
+                    <DropdownMenuItem 
+                      onClick={() => setLocation("/settings")} 
+                      data-testid="menu-item-settings"
+                      className="py-2.5 px-3 cursor-pointer rounded-md"
+                    >
+                      <SettingsIcon className="mr-3 h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm font-medium">Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={handleLogout} 
+                      data-testid="menu-item-logout"
+                      className="py-2.5 px-3 cursor-pointer rounded-md text-destructive"
+                    >
+                      <LogOut className="mr-3 h-5 w-5" />
+                      <span className="text-sm font-medium">Sign out</span>
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
