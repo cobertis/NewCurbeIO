@@ -78,7 +78,11 @@ interface ContactInfo {
   company?: {
     id: string;
     name: string;
+    slug?: string | null;
+    stripeCustomerId?: string | null;
+    isActive?: boolean;
   };
+  companyUsers?: CompanyUser[];
 }
 
 interface CompanyUser {
