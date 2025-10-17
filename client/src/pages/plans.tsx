@@ -276,6 +276,22 @@ export default function PlansPage() {
                     </ul>
                   </div>
                 )}
+
+                {(plan.stripeProductId || plan.stripePriceId) && (
+                  <div className="space-y-1 pt-2 border-t">
+                    <p className="text-sm font-medium">Stripe IDs:</p>
+                    {plan.stripeProductId && (
+                      <p className="text-xs text-muted-foreground font-mono">
+                        Product: {plan.stripeProductId}
+                      </p>
+                    )}
+                    {plan.stripePriceId && (
+                      <p className="text-xs text-muted-foreground font-mono">
+                        Price: {plan.stripePriceId}
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex gap-2 flex-wrap">
                 <Button
