@@ -343,61 +343,52 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Notifications Sidebar */}
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <SheetContent side="right" className="w-[420px] p-0 flex flex-col">
-          {/* Header with gradient */}
-          <div className="p-6 pb-4 border-b bg-gradient-to-br from-primary/5 to-transparent">
-            <div className="flex items-center justify-between mb-1">
-              <SheetTitle className="text-2xl font-bold">Notifications</SheetTitle>
+        <SheetContent side="right" className="w-[380px] p-0 flex flex-col">
+          {/* Simple header */}
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-lg font-semibold">Notifications</SheetTitle>
               {unreadCount > 0 && (
-                <Badge variant="default" className="h-6 px-2">
-                  {unreadCount} new
-                </Badge>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={markAllAsRead}
+                  data-testid="button-mark-all-read"
+                  className="h-7 text-xs"
+                >
+                  <Check className="h-3 w-3 mr-1" />
+                  Mark all read
+                </Button>
               )}
             </div>
-            {unreadCount > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={markAllAsRead}
-                data-testid="button-mark-all-read"
-                className="h-8 px-2 text-xs -ml-2 mt-1"
-              >
-                <Check className="h-3 w-3 mr-1" />
-                Mark all as read
-              </Button>
-            )}
           </div>
 
-          {/* Notifications list with custom scrollbar */}
-          <div className="flex-1 overflow-y-auto p-3">
+          {/* Notifications list */}
+          <div className="flex-1 overflow-y-auto">
             {isLoadingNotifications ? (
-              <div className="flex items-center justify-center py-20" data-testid="notifications-loading">
+              <div className="flex items-center justify-center py-16" data-testid="notifications-loading">
                 <div className="text-center">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent mb-3"></div>
+                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent mb-2"></div>
                   <p className="text-sm text-muted-foreground">Loading...</p>
                 </div>
               </div>
             ) : isErrorNotifications ? (
-              <div className="flex items-center justify-center py-20" data-testid="notifications-error">
+              <div className="flex items-center justify-center py-16" data-testid="notifications-error">
                 <div className="text-center">
-                  <div className="rounded-full bg-destructive/10 p-3 inline-block mb-3">
-                    <Bell className="h-6 w-6 text-destructive" />
-                  </div>
-                  <p className="text-sm text-destructive font-medium">Failed to load</p>
+                  <Bell className="h-6 w-6 text-destructive mb-2 mx-auto" />
+                  <p className="text-sm text-destructive">Failed to load</p>
                 </div>
               </div>
             ) : notifications.length === 0 ? (
-              <div className="flex items-center justify-center py-20" data-testid="notifications-empty">
+              <div className="flex items-center justify-center py-16" data-testid="notifications-empty">
                 <div className="text-center">
-                  <div className="rounded-full bg-muted p-4 inline-block mb-3">
-                    <Bell className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium mb-1">All caught up!</p>
-                  <p className="text-xs text-muted-foreground">No notifications to show</p>
+                  <Bell className="h-8 w-8 text-muted-foreground/50 mb-2 mx-auto" />
+                  <p className="text-sm font-medium">All caught up!</p>
+                  <p className="text-xs text-muted-foreground mt-1">No new notifications</p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="divide-y">
                 {notifications.map((notification: any) => {
                   const getNotificationIcon = () => {
                     if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
@@ -424,46 +415,30 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         }
                       }}
                       className={`
-                        group relative p-3 rounded-lg transition-all cursor-pointer
-                        ${!notification.isRead 
-                          ? 'bg-primary/5 hover:bg-primary/10 border-l-2 border-primary' 
-                          : 'hover:bg-accent/50'
-                        }
+                        p-4 transition-colors cursor-pointer hover-elevate
+                        ${!notification.isRead ? 'bg-muted/40' : ''}
                       `}
                       data-testid={`notification-item-${notification.id}`}
                     >
                       <div className="flex gap-3">
-                        {/* Icon with colored background */}
-                        <div className={`
-                          shrink-0 rounded-full p-2 h-9 w-9 flex items-center justify-center
-                          ${!notification.isRead 
-                            ? 'bg-primary/10 text-primary' 
-                            : 'bg-muted text-muted-foreground'
-                          }
-                        `}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-
-                        {/* Content */}
+                        <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`} />
+                        
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <h4 className={`
-                              text-sm font-semibold line-clamp-1
-                              ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}
-                            `}>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={`text-sm line-clamp-1 ${!notification.isRead ? 'font-medium' : 'text-muted-foreground'}`}>
                               {notification.title}
-                            </h4>
+                            </p>
                             {!notification.isRead && (
-                              <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1"></div>
+                              <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5"></div>
                             )}
                           </div>
                           
-                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
                             {notification.message}
                           </p>
                           
                           {timeAgo && (
-                            <p className="text-xs text-muted-foreground/70">
+                            <p className="text-xs text-muted-foreground mt-1">
                               {timeAgo}
                             </p>
                           )}
