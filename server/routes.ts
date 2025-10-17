@@ -202,10 +202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: { reason: "Invalid password" },
         });
         
-        // Notify superadmins about failed login attempt
+        // Notify user and superadmins about failed login attempt
         const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip || null;
         const userAgent = req.headers['user-agent'] || null;
-        await notificationService.notifyFailedLogin(email, ipAddress, userAgent);
+        await notificationService.notifyFailedLogin(email, ipAddress, userAgent, user.id);
         
         return res.status(401).json({ message: "Invalid credentials" });
       }

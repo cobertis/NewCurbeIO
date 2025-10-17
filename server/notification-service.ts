@@ -148,6 +148,7 @@ class NotificationService {
 
   /**
    * Create a notification for successful login
+   * Notifies the user AND all superadmins
    * Shows IP address and device information
    */
   async notifyLogin(userId: string, userName: string, ipAddress: string | null, userAgent: string | null) {
@@ -171,23 +172,43 @@ class NotificationService {
       else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) deviceInfo += ' on iOS';
     }
     
-    const notification: InsertNotification = {
+    const notifications: InsertNotification[] = [];
+    
+    // Notification for the user who logged in
+    notifications.push({
       userId,
       type: "user_login",
       title: "Successful Login",
       message: `Login from IP: ${ip} • ${deviceInfo}`,
       link: "/settings",
       isRead: false,
-    };
+    });
     
-    return await storage.createNotification(notification);
+    // Notifications for all superadmins (about this user's login)
+    const superadminUserIds = await this.getSuperadminUserIds();
+    superadminUserIds.forEach(adminId => {
+      // Don't duplicate notification if the user is a superadmin
+      if (adminId !== userId) {
+        notifications.push({
+          userId: adminId,
+          type: "user_login",
+          title: "User Login",
+          message: `${userName} logged in from IP: ${ip} • ${deviceInfo}`,
+          link: "/audit-logs",
+          isRead: false,
+        });
+      }
+    });
+    
+    return await Promise.all(notifications.map(n => storage.createNotification(n)));
   }
 
   /**
    * Create a notification for failed login attempt
+   * Notifies the user (if exists) AND all superadmins
    * Shows IP address, device information, and attempted email
    */
-  async notifyFailedLogin(email: string, ipAddress: string | null, userAgent: string | null) {
+  async notifyFailedLogin(email: string, ipAddress: string | null, userAgent: string | null, userId?: string) {
     // Format IP display
     const ip = ipAddress || 'Unknown IP';
     
@@ -208,17 +229,36 @@ class NotificationService {
       else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) deviceInfo += ' on iOS';
     }
     
+    const notifications: InsertNotification[] = [];
+    
+    // If user exists, notify them about the failed login attempt
+    if (userId) {
+      notifications.push({
+        userId: userId,
+        type: "error",
+        title: "Failed Login Attempt",
+        message: `Failed login attempt from IP: ${ip} • ${deviceInfo}`,
+        link: "/settings",
+        isRead: false,
+      });
+    }
+    
     // Get superadmins to notify
     const superadminUserIds = await this.getSuperadminUserIds();
     
-    const notifications = superadminUserIds.map(adminId => ({
-      userId: adminId,
-      type: "error",
-      title: "Failed Login Attempt",
-      message: `Failed login for ${email} from IP: ${ip} • ${deviceInfo}`,
-      link: "/audit-logs",
-      isRead: false,
-    }));
+    superadminUserIds.forEach(adminId => {
+      // Don't duplicate notification if the user is a superadmin
+      if (adminId !== userId) {
+        notifications.push({
+          userId: adminId,
+          type: "error",
+          title: "Failed Login Attempt",
+          message: `Failed login for ${email} from IP: ${ip} • ${deviceInfo}`,
+          link: "/audit-logs",
+          isRead: false,
+        });
+      }
+    });
 
     return await Promise.all(notifications.map(n => storage.createNotification(n)));
   }
