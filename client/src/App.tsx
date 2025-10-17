@@ -398,9 +398,38 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   };
                   
                   const Icon = getNotificationIcon();
-                  const timeAgo = notification.createdAt 
-                    ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+                  
+                  // Format exact time (e.g., "10:45 PM" or "Yesterday 3:30 PM")
+                  const formatTime = (date: Date) => {
+                    const now = new Date();
+                    const isToday = date.toDateString() === now.toDateString();
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const isYesterday = date.toDateString() === yesterday.toDateString();
+                    
+                    const timeStr = date.toLocaleTimeString('en-US', { 
+                      hour: 'numeric', 
+                      minute: '2-digit',
+                      hour12: true 
+                    });
+                    
+                    if (isToday) return timeStr;
+                    if (isYesterday) return `Yesterday ${timeStr}`;
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + timeStr;
+                  };
+                  
+                  const timeStr = notification.createdAt 
+                    ? formatTime(new Date(notification.createdAt))
                     : '';
+
+                  // Extract sender name from message (e.g., "Jason Fonseca: texto" -> "Jason Fonseca")
+                  const getSenderName = () => {
+                    if (notification.title.toLowerCase().includes('sms')) {
+                      const parts = notification.message.split(':');
+                      return parts[0] || 'Unknown';
+                    }
+                    return notification.title.replace('New SMS Message', '').replace('New ', '').trim();
+                  };
 
                   return (
                     <div 
@@ -415,33 +444,29 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         }
                       }}
                       className={`
-                        p-4 transition-colors cursor-pointer hover-elevate
+                        p-3 transition-colors cursor-pointer hover-elevate
                         ${!notification.isRead ? 'bg-muted/40' : ''}
                       `}
                       data-testid={`notification-item-${notification.id}`}
                     >
-                      <div className="flex gap-3">
-                        <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <div className="flex gap-3 items-start">
+                        <Icon className={`h-4 w-4 shrink-0 mt-1 ${!notification.isRead ? 'text-primary' : 'text-muted-foreground'}`} />
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm line-clamp-1 ${!notification.isRead ? 'font-medium' : 'text-muted-foreground'}`}>
-                              {notification.title}
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <p className={`text-sm truncate ${!notification.isRead ? 'font-semibold' : 'text-muted-foreground'}`}>
+                              {notification.title.toLowerCase().includes('sms') 
+                                ? `SMS from ${getSenderName()}`
+                                : notification.title}
                             </p>
                             {!notification.isRead && (
-                              <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5"></div>
+                              <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0"></div>
                             )}
                           </div>
                           
-                          <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
-                            {notification.message}
+                          <p className="text-xs text-muted-foreground">
+                            {timeStr}
                           </p>
-                          
-                          {timeAgo && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {timeAgo}
-                            </p>
-                          )}
                         </div>
                       </div>
                     </div>
