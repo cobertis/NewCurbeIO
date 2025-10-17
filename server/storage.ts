@@ -171,6 +171,7 @@ export interface IStorage {
   
   // Notifications
   createNotification(notification: InsertNotification): Promise<Notification>;
+  createBroadcastNotification(notification: Omit<InsertNotification, 'userId'>): Promise<Notification[]>;
   getNotificationsByUser(userId: string, limit?: number): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<boolean>;
   markAllNotificationsAsRead(userId: string): Promise<boolean>;
@@ -694,6 +695,22 @@ export class DbStorage implements IStorage {
       .where(eq(notifications.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  async createBroadcastNotification(notification: Omit<InsertNotification, 'userId'>): Promise<Notification[]> {
+    // Get all active users
+    const allUsers = await db.select({ id: users.id })
+      .from(users)
+      .where(eq(users.isActive, true));
+    
+    // Create notification for each user
+    const notificationData = allUsers.map(user => ({
+      ...notification,
+      userId: user.id,
+    }));
+    
+    const result = await db.insert(notifications).values(notificationData).returning();
+    return result;
   }
 
   // ==================== EMAIL TEMPLATES ====================

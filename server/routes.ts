@@ -2131,6 +2131,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Broadcast notification to all users (superadmin only)
+  app.post("/api/notifications/broadcast", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    const broadcastSchema = z.object({
+      type: z.enum(["info", "success", "warning", "error"]),
+      title: z.string().min(1).max(200),
+      message: z.string().min(1).max(500),
+      link: z.string().optional(),
+    });
+
+    try {
+      const validatedData = broadcastSchema.parse(req.body);
+      
+      const notifications = await storage.createBroadcastNotification(validatedData);
+      
+      // Broadcast to all connected WebSocket clients
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('notification_update');
+      }
+
+      await loggingService.logAction(
+        'broadcast_notification',
+        currentUser.id,
+        null,
+        `Broadcast notification sent to ${notifications.length} users: ${validatedData.title}`
+      );
+
+      res.json({ 
+        success: true, 
+        count: notifications.length,
+        message: `Notification sent to ${notifications.length} users` 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: error.errors 
+        });
+      }
+      console.error('Broadcast notification error:', error);
+      res.status(500).json({ message: "Failed to broadcast notification" });
+    }
+  });
+
   // ==================== EMAIL TEMPLATES ENDPOINTS ====================
 
   // Get all email templates (superadmin only)
