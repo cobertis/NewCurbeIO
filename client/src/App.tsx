@@ -114,10 +114,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
-  // Track previous unread count to detect new notifications
-  const prevUnreadCountRef = useRef<number | null>(null);
-  const isFirstLoadRef = useRef(true);
-
   // Play notification sound - pleasant double beep
   const playNotificationSound = useCallback(() => {
     try {
@@ -162,23 +158,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Detect new notifications and play sound (only after initial load)
-  useEffect(() => {
-    // Skip the first load to prevent sound on page refresh
-    if (isFirstLoadRef.current) {
-      isFirstLoadRef.current = false;
-      prevUnreadCountRef.current = unreadCount;
-      return;
-    }
-
-    // Only play sound if unread count increased (new notification arrived)
-    if (prevUnreadCountRef.current !== null && unreadCount > prevUnreadCountRef.current) {
-      playNotificationSound();
-    }
-    
-    prevUnreadCountRef.current = unreadCount;
-  }, [unreadCount, playNotificationSound]);
-
   // WebSocket listener for real-time notification updates
   const handleWebSocketMessage = useCallback((message: any) => {
     if (message.type === 'conversation_update') {
@@ -186,11 +165,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       // Also invalidate unread count for sidebar badge
       queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
+      // Play sound when new SMS arrives
+      playNotificationSound();
     } else if (message.type === 'notification_update') {
       // When a broadcast notification is sent, update notifications in real-time
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      // Play sound when new notification arrives
+      playNotificationSound();
     }
-  }, []);
+  }, [playNotificationSound]);
 
   useWebSocket(handleWebSocketMessage);
 
