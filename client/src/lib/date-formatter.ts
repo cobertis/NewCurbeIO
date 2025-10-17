@@ -84,6 +84,16 @@ export function formatTimeWithTimezone(
 }
 
 /**
+ * Format a date (simple alias for formatDateWithTimezone)
+ * @param date - Date to format (Date object or string)
+ * @param timezone - User's timezone (optional)
+ * @returns Formatted date string
+ */
+export function formatDate(date: Date | string, timezone?: string): string {
+  return formatDateWithTimezone(date, timezone);
+}
+
+/**
  * Get a relative time string (e.g., "2 hours ago")
  * Note: This doesn't use timezone since it's relative
  * @param date - Date to format (Date object or string)
