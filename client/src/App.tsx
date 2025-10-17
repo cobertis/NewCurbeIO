@@ -305,19 +305,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Right: Action Icons + User Profile */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {/* Messages Icon */}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                data-testid="button-messages"
-                className="rounded-md"
-              >
-                <MessageSquare className="h-6 w-6 text-blue-500" />
-              </Button>
-
-              {/* Theme Toggle */}
-              <ThemeToggle />
-
               {/* Timezone Button */}
               <Button 
                 variant="ghost" 
@@ -340,6 +327,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     : 'Select timezone'}
                 </span>
               </Button>
+
+              {/* Messages Icon */}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                data-testid="button-messages"
+                className="rounded-md"
+              >
+                <MessageSquare className="h-6 w-6 text-blue-500" />
+              </Button>
+
+              {/* Theme Toggle */}
+              <ThemeToggle />
 
               {/* Notifications Button */}
               <Button 
