@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -319,6 +319,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </span>
               </Button>
 
+              {/* Search Icon */}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                data-testid="button-search"
+                className="rounded-md hover-elevate active-elevate-2"
+              >
+                <Search className="h-8 w-8 text-blue-500" />
+              </Button>
+
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
               {/* Messages Icon */}
               <Button 
                 variant="ghost" 
@@ -328,9 +341,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               >
                 <MessageSquare className="h-8 w-8 text-blue-500" />
               </Button>
-
-              {/* Theme Toggle */}
-              <ThemeToggle />
 
               {/* Notifications Button */}
               <Button 
