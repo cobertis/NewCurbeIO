@@ -487,18 +487,18 @@ export default function IncomingSms() {
                         </AvatarFallback>
                       </Avatar>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="font-medium truncate">
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <span className="font-medium break-words">
                             {conv.userName || formatPhoneDisplay(conv.phoneNumber)}
                           </span>
-                          <span className="text-xs text-muted-foreground shrink-0">
+                          <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
                             {formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: true })}
                           </span>
                         </div>
                         
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm text-muted-foreground truncate">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm text-muted-foreground break-words">
                             {conv.lastMessage}
                           </p>
                           {conv.unreadCount > 0 && (
