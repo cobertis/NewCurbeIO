@@ -1866,6 +1866,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ subscription });
   });
 
+  // Assign plan to company (superadmin only) - Creates or updates subscription without Stripe
+  app.post("/api/companies/:companyId/subscription", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!; // User is guaranteed by middleware
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const { companyId } = req.params;
+    const { planId } = req.body;
+
+    if (!planId) {
+      return res.status(400).json({ message: "Plan ID required" });
+    }
+
+    // Verify company exists
+    const company = await storage.getCompany(companyId);
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    // Verify plan exists
+    const plan = await storage.getPlan(planId);
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found" });
+    }
+
+    try {
+      // Check if company already has a subscription
+      const existingSubscription = await storage.getSubscriptionByCompany(companyId);
+
+      if (existingSubscription) {
+        // Update existing subscription
+        const updatedSubscription = await storage.updateSubscription(existingSubscription.id, {
+          planId,
+          status: "active",
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        });
+
+        await logger.log({
+          req,
+          action: "subscription_updated",
+          entity: "subscription",
+          entityId: existingSubscription.id,
+          companyId,
+          metadata: {
+            planId,
+            planName: plan.name,
+          },
+        });
+
+        res.json({ subscription: updatedSubscription });
+      } else {
+        // Create new subscription
+        const newSubscription = await storage.createSubscription({
+          companyId,
+          planId,
+          status: "active",
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        });
+
+        await logger.log({
+          req,
+          action: "subscription_created",
+          entity: "subscription",
+          entityId: newSubscription.id,
+          companyId,
+          metadata: {
+            planId,
+            planName: plan.name,
+          },
+        });
+
+        res.json({ subscription: newSubscription });
+      }
+    } catch (error: any) {
+      console.error("Error assigning plan to company:", error);
+      res.status(500).json({ message: "Failed to assign plan" });
+    }
+  });
+
   // Create checkout session
   app.post("/api/checkout", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware

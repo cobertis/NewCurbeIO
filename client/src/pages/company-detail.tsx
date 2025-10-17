@@ -38,6 +38,8 @@ export default function CompanyDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [assignPlanOpen, setAssignPlanOpen] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const companyId = params.id;
 
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: Company }>({
@@ -57,6 +59,22 @@ export default function CompanyDetail() {
 
   const { data: sessionData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
+  });
+
+  const { data: subscriptionData } = useQuery<{ subscription: any }>({
+    queryKey: ["/api/subscription", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/subscription?companyId=${companyId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch subscription");
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: plansData } = useQuery<{ plans: any[] }>({
+    queryKey: ["/api/plans"],
   });
 
   const company = companyData?.company;
@@ -124,6 +142,28 @@ export default function CompanyDetail() {
       toast({
         title: "User Deleted",
         description: "User has been deleted successfully",
+      });
+    },
+  });
+
+  const assignPlanMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      return apiRequest("POST", `/api/companies/${companyId}/subscription`, { planId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscription", companyId] });
+      setAssignPlanOpen(false);
+      setSelectedPlanId("");
+      toast({
+        title: "Plan Assigned",
+        description: "The plan has been successfully assigned to this company.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -228,14 +268,53 @@ export default function CompanyDetail() {
 
         <Card>
           <CardHeader>
+            <CardTitle>Subscription Plan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {subscriptionData?.subscription && plansData?.plans ? (
+              <>
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Current Plan</p>
+                    <p className="text-lg font-semibold">
+                      {plansData.plans.find(p => p.id === subscriptionData.subscription.planId)?.name || "No plan"}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Status: <span className="capitalize">{subscriptionData.subscription.status}</span>
+                    </p>
+                  </div>
+                  <Button onClick={() => setAssignPlanOpen(true)} data-testid="button-change-plan">
+                    Change Plan
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Current Plan</p>
+                  <p className="text-lg font-semibold">No plan assigned</p>
+                </div>
+                <Button onClick={() => setAssignPlanOpen(true)} data-testid="button-assign-plan">
+                  Assign Plan
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-3">
+          <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start" onClick={() => setLocation("/companies")}>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setLocation("/companies")}>
               <Edit className="h-4 w-4 mr-2" />
               Edit Company
             </Button>
-            <Button variant="outline" className="w-full justify-start">
+            <Button variant="outline">
               <Users className="h-4 w-4 mr-2" />
               Manage Features
             </Button>
@@ -547,6 +626,47 @@ export default function CompanyDetail() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Plan Dialog */}
+      <Dialog open={assignPlanOpen} onOpenChange={setAssignPlanOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Plan to Company</DialogTitle>
+            <DialogDescription>
+              Select a subscription plan to assign to this company. This will update the company's subscription.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Select Plan</label>
+              <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+                <SelectTrigger className="mt-2" data-testid="select-plan">
+                  <SelectValue placeholder="Choose a plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plansData?.plans?.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - ${(plan.price / 100).toFixed(2)}/{plan.billingCycle}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAssignPlanOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => selectedPlanId && assignPlanMutation.mutate(selectedPlanId)} 
+                disabled={!selectedPlanId || assignPlanMutation.isPending}
+                data-testid="button-confirm-assign-plan"
+              >
+                {assignPlanMutation.isPending ? "Assigning..." : "Assign Plan"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
