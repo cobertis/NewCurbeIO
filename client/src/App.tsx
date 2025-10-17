@@ -428,6 +428,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                       <div>
                         {notifs.map((notification: any) => {
                           const getNotificationIcon = () => {
+                            // Use notification type if available (for broadcast notifications)
+                            if (notification.type) {
+                              switch (notification.type) {
+                                case 'success': return CheckCircle;
+                                case 'warning': return AlertTriangle;
+                                case 'error': return AlertCircle;
+                                case 'info': return Info;
+                              }
+                            }
+                            // Fallback to title-based detection for legacy notifications
                             if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
                             if (notification.title.toLowerCase().includes('email')) return Mail;
                             if (notification.title.toLowerCase().includes('user')) return UserPlus;
