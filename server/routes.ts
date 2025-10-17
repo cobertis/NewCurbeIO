@@ -1244,10 +1244,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user timezone (any authenticated user can update their own timezone)
-  app.patch("/api/users/timezone", requireActiveCompany, async (req: Request, res: Response) => {
+  app.patch("/api/users/timezone", async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
     try {
+      console.log("Updating timezone for user:", currentUser.id);
+      console.log("Timezone value:", req.body.timezone);
+      
       const { timezone } = z.object({
         timezone: z.string().min(1, "Timezone is required")
       }).parse(req.body);
@@ -1260,6 +1263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log("Timezone updated successfully for user:", currentUser.id);
       const { password, ...sanitizedUser } = updatedUser;
       res.json({ user: sanitizedUser });
     } catch (error: any) {
