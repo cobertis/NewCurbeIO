@@ -14,6 +14,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
+import { formatDateWithTimezone } from "@/lib/date-formatter";
 import { useParams, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -388,11 +389,11 @@ export default function Users() {
                     <div>
                       <p className="text-muted-foreground mb-1">Created:</p>
                       <p className="font-medium">
-                        {new Date(profileUser.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
+                        {formatDateWithTimezone(
+                          profileUser.createdAt,
+                          currentUser?.timezone ?? undefined,
+                          { month: 'short', day: 'numeric', year: 'numeric' }
+                        )}
                       </p>
                     </div>
                   </div>
@@ -1415,7 +1416,10 @@ export default function Users() {
                           })()}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                          {new Date(user.createdAt).toLocaleDateString('en-US')}
+                          {formatDateWithTimezone(
+                            user.createdAt,
+                            currentUser?.timezone ?? undefined
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
