@@ -114,31 +114,45 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Track previous unread count to detect new notifications
   const prevUnreadCountRef = useRef(unreadCount);
 
-  // Play notification sound
+  // Play notification sound - pleasant double beep
   const playNotificationSound = useCallback(() => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      // Create a pleasant "ding" sound
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Higher pitch
-      oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
       
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
+      // First beep
+      const osc1 = audioContext.createOscillator();
+      const gain1 = audioContext.createGain();
+      osc1.connect(gain1);
+      gain1.connect(audioContext.destination);
+      
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, audioContext.currentTime); // D5
+      gain1.gain.setValueAtTime(0, audioContext.currentTime);
+      gain1.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.02);
+      gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+      
+      osc1.start(audioContext.currentTime);
+      osc1.stop(audioContext.currentTime + 0.15);
+      
+      // Second beep (slightly higher)
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+      
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.1); // G5
+      gain2.gain.setValueAtTime(0, audioContext.currentTime + 0.1);
+      gain2.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.12);
+      gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      osc2.start(audioContext.currentTime + 0.1);
+      osc2.stop(audioContext.currentTime + 0.3);
 
       // Clean up
       setTimeout(() => {
         audioContext.close();
-      }, 500);
+      }, 400);
     } catch (error) {
       console.error('Failed to play notification sound:', error);
     }
