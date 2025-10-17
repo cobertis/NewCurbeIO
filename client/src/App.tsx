@@ -392,130 +392,141 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             ) : (
-              <div className="p-4 space-y-3">
-                {notifications.map((notification: any) => {
-                  const getNotificationIcon = () => {
-                    if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
-                    if (notification.title.toLowerCase().includes('email')) return Mail;
-                    if (notification.title.toLowerCase().includes('user')) return UserPlus;
-                    return Bell;
+              <div>
+                {(() => {
+                  // Group notifications by date
+                  const groupedNotifications: { [key: string]: any[] } = {
+                    'Today': [],
+                    'Yesterday': [],
+                    'Older': []
                   };
                   
-                  const Icon = getNotificationIcon();
-                  
-                  // Calculate time ago
-                  const getTimeAgo = (date: Date) => {
-                    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-                    const minutes = Math.floor(seconds / 60);
-                    const hours = Math.floor(minutes / 60);
-                    const days = Math.floor(hours / 24);
+                  notifications.forEach((notification: any) => {
+                    const date = new Date(notification.createdAt);
+                    const now = new Date();
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
                     
-                    if (days > 0) return `${days}d ago`;
-                    if (hours > 0) return `${hours}h ago`;
-                    if (minutes > 0) return `${minutes}m ago`;
-                    return 'just now';
-                  };
-                  
-                  const timeAgo = notification.createdAt 
-                    ? getTimeAgo(new Date(notification.createdAt))
-                    : '';
-
-                  // Extract name and message
-                  const getName = () => {
-                    if (notification.title.toLowerCase().includes('sms')) {
-                      const parts = notification.message.split(':');
-                      return parts[0] || 'Unknown';
+                    if (date.toDateString() === now.toDateString()) {
+                      groupedNotifications['Today'].push(notification);
+                    } else if (date.toDateString() === yesterday.toDateString()) {
+                      groupedNotifications['Yesterday'].push(notification);
+                    } else {
+                      groupedNotifications['Older'].push(notification);
                     }
-                    return notification.title.replace('New ', '').replace(' Created', '');
-                  };
+                  });
 
-                  const getMessagePreview = () => {
-                    if (notification.title.toLowerCase().includes('sms')) {
-                      const parts = notification.message.split(':');
-                      return parts.slice(1).join(':').trim();
-                    }
-                    return notification.message;
-                  };
+                  return Object.entries(groupedNotifications)
+                    .filter(([_, notifs]) => notifs.length > 0)
+                    .map(([dateKey, notifs]) => (
+                    <div key={dateKey} className="mb-4">
+                      <h3 className="text-xs font-medium text-muted-foreground px-4 py-2">{dateKey}</h3>
+                      <div>
+                        {notifs.map((notification: any) => {
+                          const getNotificationIcon = () => {
+                            if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
+                            if (notification.title.toLowerCase().includes('email')) return Mail;
+                            if (notification.title.toLowerCase().includes('user')) return UserPlus;
+                            return Bell;
+                          };
+                          
+                          const Icon = getNotificationIcon();
+                          
+                          // Calculate time ago
+                          const getTimeAgo = (date: Date) => {
+                            const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+                            const minutes = Math.floor(seconds / 60);
+                            const hours = Math.floor(minutes / 60);
+                            const days = Math.floor(hours / 24);
+                            
+                            if (days > 0) return `${days}d ago`;
+                            if (hours > 0) return `${hours}h ago`;
+                            if (minutes > 0) return `${minutes}min ago`;
+                            return 'just now';
+                          };
+                          
+                          const timeAgo = notification.createdAt 
+                            ? getTimeAgo(new Date(notification.createdAt))
+                            : '';
 
-                  return (
-                    <div 
-                      key={notification.id}
-                      onClick={() => {
-                        if (!notification.isRead) {
-                          markAsRead(notification.id);
-                        }
-                        if (notification.link) {
-                          setLocation(notification.link);
-                          setNotificationsOpen(false);
-                        }
-                      }}
-                      className={`
-                        rounded-xl p-3 transition-all cursor-pointer border
-                        ${!notification.isRead 
-                          ? 'bg-primary/5 border-primary/20 hover:bg-primary/10' 
-                          : 'bg-card border-border hover:bg-muted/50'
-                        }
-                      `}
-                      data-testid={`notification-item-${notification.id}`}
-                    >
-                      <div className="flex gap-3">
-                        <div className={`
-                          shrink-0 h-10 w-10 rounded-full flex items-center justify-center
-                          ${notification.title.toLowerCase().includes('sms') 
-                            ? 'bg-blue-500/10' 
-                            : notification.title.toLowerCase().includes('email')
-                            ? 'bg-orange-500/10'
-                            : 'bg-purple-500/10'
-                          }
-                        `}>
-                          <Icon className={`h-5 w-5 ${
-                            notification.title.toLowerCase().includes('sms') 
-                              ? 'text-blue-600 dark:text-blue-400' 
-                              : notification.title.toLowerCase().includes('email')
-                              ? 'text-orange-600 dark:text-orange-400'
-                              : 'text-purple-600 dark:text-purple-400'
-                          }`} />
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <p className={`text-sm font-semibold line-clamp-1 ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
-                              {getName()}
-                            </p>
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {timeAgo}
-                            </span>
-                          </div>
-                          
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {getMessagePreview()}
-                          </p>
-                          
-                          {notification.title.toLowerCase().includes('sms') && (
-                            <div className="mt-2 flex items-center gap-1.5">
-                              <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
-                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">SMS</span>
+                          // Extract name and message
+                          const getName = () => {
+                            if (notification.title.toLowerCase().includes('sms')) {
+                              const parts = notification.message.split(':');
+                              return parts[0] || 'Unknown';
+                            }
+                            return notification.title.replace('New ', '').replace(' Created', '');
+                          };
+
+                          const getMessagePreview = () => {
+                            if (notification.title.toLowerCase().includes('sms')) {
+                              const parts = notification.message.split(':');
+                              return parts.slice(1).join(':').trim();
+                            }
+                            return notification.message;
+                          };
+
+                          return (
+                            <div 
+                              key={notification.id}
+                              onClick={() => {
+                                if (!notification.isRead) {
+                                  markAsRead(notification.id);
+                                }
+                                if (notification.link) {
+                                  setLocation(notification.link);
+                                  setNotificationsOpen(false);
+                                }
+                              }}
+                              className="px-4 py-3 transition-colors cursor-pointer hover-elevate"
+                              data-testid={`notification-item-${notification.id}`}
+                            >
+                              <div className="flex gap-3 items-start">
+                                <div className={`
+                                  shrink-0 h-10 w-10 rounded-full flex items-center justify-center
+                                  ${notification.title.toLowerCase().includes('sms') 
+                                    ? 'bg-blue-500/10' 
+                                    : notification.title.toLowerCase().includes('email')
+                                    ? 'bg-orange-500/10'
+                                    : 'bg-purple-500/10'
+                                  }
+                                `}>
+                                  <Icon className={`h-5 w-5 ${
+                                    notification.title.toLowerCase().includes('sms') 
+                                      ? 'text-blue-600 dark:text-blue-400' 
+                                      : notification.title.toLowerCase().includes('email')
+                                      ? 'text-orange-600 dark:text-orange-400'
+                                      : 'text-purple-600 dark:text-purple-400'
+                                  }`} />
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className="text-sm font-semibold line-clamp-1">
+                                      {getName()}
+                                    </p>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="text-xs text-muted-foreground">
+                                        {timeAgo}
+                                      </span>
+                                      {!notification.isRead && (
+                                        <div className="h-2 w-2 rounded-full bg-destructive"></div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                    {getMessagePreview()}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                          )}
-                          
-                          {notification.title.toLowerCase().includes('email') && (
-                            <div className="mt-2 flex items-center gap-1.5">
-                              <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
-                              <span className="text-xs font-medium text-orange-600 dark:text-orange-400">Email</span>
-                            </div>
-                          )}
-                          
-                          {notification.title.toLowerCase().includes('user') && (
-                            <div className="mt-2 flex items-center gap-1.5">
-                              <div className="h-1.5 w-1.5 rounded-full bg-purple-500"></div>
-                              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">User</span>
-                            </div>
-                          )}
-                        </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  );
-                })}
+                  ));
+                })()}
               </div>
             )}
           </div>
