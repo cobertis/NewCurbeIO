@@ -430,19 +430,20 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                       <div>
                         {notifs.map((notification: any) => {
                           const getNotificationIcon = () => {
-                            // Use notification type if available (for broadcast notifications)
+                            // Use notification type if available
                             if (notification.type) {
                               switch (notification.type) {
+                                case 'sms_received': return MessageSquare;
                                 case 'success': return CheckCircle;
                                 case 'warning': return AlertTriangle;
                                 case 'error': return AlertCircle;
                                 case 'info': return Info;
                               }
                             }
-                            // Fallback to title-based detection for legacy notifications
+                            // Fallback to title-based detection
                             if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
-                            if (notification.title.toLowerCase().includes('email')) return Mail;
-                            if (notification.title.toLowerCase().includes('user')) return UserPlus;
+                            if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return Mail;
+                            if (notification.title.toLowerCase().includes('user') || notification.title.toLowerCase().includes('subscriber')) return UserPlus;
                             return Bell;
                           };
                           
@@ -452,12 +453,17 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                           const getIconColor = () => {
                             if (notification.type) {
                               switch (notification.type) {
+                                case 'sms_received': return 'text-blue-600 dark:text-blue-400';
                                 case 'success': return 'text-green-600 dark:text-green-400';
                                 case 'warning': return 'text-orange-600 dark:text-orange-400';
                                 case 'error': return 'text-red-600 dark:text-red-400';
                                 case 'info': return 'text-blue-600 dark:text-blue-400';
                               }
                             }
+                            // Colors based on icon type for legacy notifications
+                            if (notification.title.toLowerCase().includes('sms')) return 'text-blue-600 dark:text-blue-400';
+                            if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return 'text-green-600 dark:text-green-400';
+                            if (notification.title.toLowerCase().includes('user') || notification.title.toLowerCase().includes('subscriber')) return 'text-indigo-600 dark:text-indigo-400';
                             // Default color for other notifications
                             return 'text-muted-foreground';
                           };
