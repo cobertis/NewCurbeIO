@@ -25,7 +25,13 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 -   **Campaign System:** Unified interface for managing Email Campaigns, SMS Campaigns, and Contact Lists. Includes detailed reports, contact management with bulk operations, rich HTML editor for emails, targeted sending, and analytics.
 -   **SMS Chat Application:** Bidirectional, real-time SMS chat with a three-column layout, WebSocket-based updates, contact integration, conversation management (search, delete, new), unread badge system, and internal notes for conversations. Includes comprehensive backend APIs for chat functionalities.
 -   **SMS Subscription Management:** `smsSubscribed` field, automatic unsubscribe via Twilio webhook (STOP keywords), and manual toggle for superadmins.
--   **Billing & Stripe Integration:** Real Stripe subscription creation, customer management, webhook processing for various Stripe events (subscriptions, invoices, payments), invoice synchronization, and payment recording. Features a comprehensive billing page for current subscriptions, billing history, and payment history. Includes a Stripe Customer Portal for self-service and automatic plan synchronization.
+-   **Billing & Stripe Integration:** 
+    -   **Automatic Customer Creation:** Stripe customer created immediately when a company is created, using admin information as representative.
+    -   **First Login Plan Selection:** Non-superadmin users without subscription are redirected to `/select-plan` page showing all active plans with Stripe prices.
+    -   **Real Subscription Creation:** Creates actual Stripe subscriptions using existing customer when plan is selected or assigned by superadmin.
+    -   **Webhook Processing:** Handles Stripe events (subscriptions, invoices, payments) for automatic synchronization.
+    -   **Billing Dashboard:** Shows current balance (paid/due), next billing date, payment history, and invoice downloads.
+    -   **Customer Portal:** Self-service Stripe portal for payment method management.
 
 ### System Design Choices
 The system is built on a clear separation of concerns, utilizing PostgreSQL with Drizzle ORM for data management and strict multi-tenancy. Security is enforced through robust password management, account activation, and 2FA. The modular feature system provides high flexibility and extensibility.

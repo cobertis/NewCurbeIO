@@ -1384,6 +1384,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: adminData.email, // Company email is set to admin email
       });
       
+      // Create Stripe customer immediately after company creation
+      try {
+        console.log('[COMPANY CREATION] Creating Stripe customer for:', newCompany.name);
+        const { createStripeCustomer } = await import("./stripe");
+        const stripeCustomer = await createStripeCustomer({
+          ...newCompany,
+          representativeFirstName: adminData.firstName,
+          representativeLastName: adminData.lastName,
+          representativeEmail: adminData.email,
+          representativePhone: adminData.phone,
+        });
+        
+        // Update company with Stripe customer ID
+        await storage.updateCompany(newCompany.id, { 
+          stripeCustomerId: stripeCustomer.id 
+        });
+        console.log('[COMPANY CREATION] Stripe customer created:', stripeCustomer.id);
+      } catch (stripeError) {
+        console.error('[COMPANY CREATION] Failed to create Stripe customer:', stripeError);
+        // Continue without Stripe customer - can be created later
+      }
+      
       // Create admin user WITHOUT password (will be set during activation)
       const adminUser = await storage.createUser({
         email: adminData.email,
