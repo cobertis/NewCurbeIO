@@ -59,6 +59,11 @@ const getPageTitle = (path: string): string => {
     '/features': 'Features',
     '/invoices': 'Invoices',
     '/settings': 'Settings',
+    '/settings/profile': 'Settings - Profile',
+    '/settings/preferences': 'Settings - Preferences',
+    '/settings/company': 'Settings - Company',
+    '/settings/system': 'Settings - Email',
+    '/settings/security': 'Settings - Security',
     '/audit-logs': 'Audit Logs',
     '/support': 'Support',
     '/contacts': 'Email Contacts',
@@ -362,20 +367,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 h-10 hover-elevate rounded-md" 
+                    size="icon"
+                    className="rounded-full hover-elevate" 
                     data-testid="button-user-menu"
                   >
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-9 w-9">
                       <AvatarImage src={user?.avatar || undefined} alt={userName} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="hidden md:flex flex-col items-start">
-                      <span className="text-sm font-medium leading-none">{userName}</span>
-                      <span className="text-xs text-muted-foreground leading-none mt-0.5">{userSubtitle}</span>
-                    </div>
-                    <ChevronDown className="hidden sm:block h-4 w-4 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -798,6 +799,41 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/settings">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/profile">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/preferences">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/company">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/system">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/security">
         <ProtectedRoute>
           <DashboardLayout>
             <Settings />

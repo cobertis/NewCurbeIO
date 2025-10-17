@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/pho
 
 export default function Settings() {
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   
   const { data: userData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -34,6 +36,18 @@ export default function Settings() {
   const user = userData?.user;
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+  // Determine active tab from URL
+  const getCurrentTab = () => {
+    if (location === "/settings" || location === "/settings/profile") return "profile";
+    if (location === "/settings/preferences") return "preferences";
+    if (location === "/settings/company") return "company";
+    if (location === "/settings/system") return "system";
+    if (location === "/settings/security") return "security";
+    return "profile"; // default
+  };
+
+  const activeTab = getCurrentTab();
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -135,7 +149,7 @@ export default function Settings() {
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(value) => setLocation(`/settings/${value}`)} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">
           <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
             <UserIcon className="h-4 w-4" />
