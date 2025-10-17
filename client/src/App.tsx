@@ -236,11 +236,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Initialize timezone when user data loads
+  // Initialize timezone when user data loads - always sync with user's timezone
   useEffect(() => {
-    if (user?.timezone) {
-      setSelectedTimezone(user.timezone);
-    }
+    // Always sync selectedTimezone with user.timezone (even if empty)
+    // This ensures the state persists correctly across page reloads
+    setSelectedTimezone(user?.timezone || "");
   }, [user?.timezone]);
 
   // Update user timezone
