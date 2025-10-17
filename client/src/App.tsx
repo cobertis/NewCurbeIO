@@ -115,7 +115,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   // Track previous unread count to detect new notifications
-  const prevUnreadCountRef = useRef(unreadCount);
+  const prevUnreadCountRef = useRef<number | null>(null);
+  const isFirstLoadRef = useRef(true);
 
   // Play notification sound - pleasant double beep
   const playNotificationSound = useCallback(() => {
@@ -161,11 +162,20 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Detect new notifications and play sound
+  // Detect new notifications and play sound (only after initial load)
   useEffect(() => {
-    if (prevUnreadCountRef.current !== undefined && unreadCount > prevUnreadCountRef.current) {
+    // Skip the first load to prevent sound on page refresh
+    if (isFirstLoadRef.current) {
+      isFirstLoadRef.current = false;
+      prevUnreadCountRef.current = unreadCount;
+      return;
+    }
+
+    // Only play sound if unread count increased (new notification arrived)
+    if (prevUnreadCountRef.current !== null && unreadCount > prevUnreadCountRef.current) {
       playNotificationSound();
     }
+    
     prevUnreadCountRef.current = unreadCount;
   }, [unreadCount, playNotificationSound]);
 
