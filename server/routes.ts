@@ -1933,6 +1933,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      // Create or get Stripe customer with complete company information
+      let stripeCustomerId = company.stripeCustomerId;
+      
+      if (!stripeCustomerId) {
+        console.log('[SUBSCRIPTION] Creating Stripe customer for company:', company.name);
+        const { createStripeCustomer } = await import("./stripe");
+        const stripeCustomer = await createStripeCustomer(company);
+        stripeCustomerId = stripeCustomer.id;
+        
+        // Update company with Stripe customer ID
+        await storage.updateCompany(companyId, { stripeCustomerId });
+        console.log('[SUBSCRIPTION] Stripe customer created:', stripeCustomerId);
+      } else {
+        console.log('[SUBSCRIPTION] Using existing Stripe customer:', stripeCustomerId);
+      }
+
       // Check if company already has a subscription
       const existingSubscription = await storage.getSubscriptionByCompany(companyId);
 
@@ -1943,6 +1959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "active",
           currentPeriodStart: new Date(),
           currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          stripeCustomerId, // Update with Stripe customer ID
         });
 
         await logger.log({
@@ -1954,6 +1971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: {
             planId,
             planName: plan.name,
+            stripeCustomerId,
           },
         });
 
@@ -1966,6 +1984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "active",
           currentPeriodStart: new Date(),
           currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          stripeCustomerId, // Add Stripe customer ID
         });
 
         await logger.log({
@@ -1977,6 +1996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: {
             planId,
             planName: plan.name,
+            stripeCustomerId,
           },
         });
 
@@ -1984,7 +2004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       console.error("Error assigning plan to company:", error);
-      res.status(500).json({ message: "Failed to assign plan" });
+      res.status(500).json({ message: error.message || "Failed to assign plan" });
     }
   });
 
