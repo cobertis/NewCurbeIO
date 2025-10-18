@@ -45,6 +45,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     invoiceUrl?: string
   ): Promise<boolean> {
     try {
+      // Skip sending email for $0.00 invoices (trial invoices, etc.)
+      if (amount === 0) {
+        console.log('[EMAIL] Skipping payment confirmation email for $0.00 invoice:', invoiceNumber);
+        return false;
+      }
+
       // Get company details
       const company = await storage.getCompany(companyId);
       if (!company) {
@@ -138,6 +144,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req: Request
   ): Promise<boolean> {
     try {
+      // Skip sending email for $0.00 invoices
+      if (amount === 0) {
+        console.log('[EMAIL] Skipping payment failed email for $0.00 invoice:', invoiceNumber);
+        return false;
+      }
+
       // Get company details
       const company = await storage.getCompany(companyId);
       if (!company) {
