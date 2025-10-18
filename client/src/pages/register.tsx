@@ -21,18 +21,18 @@ const registerSchema = z.object({
     name: z.string().min(1, "Company name is required"),
     slug: z.string().min(1),
     phone: z.string().min(1, "Phone is required"),
-    website: z.string().optional(),
+    website: z.string().optional().or(z.literal("")),
     address: z.string().min(1, "Address is required"),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    postalCode: z.string().optional(),
+    city: z.string().optional().or(z.literal("")),
+    state: z.string().optional().or(z.literal("")),
+    postalCode: z.string().optional().or(z.literal("")),
     country: z.string().default("United States"),
   }),
   admin: z.object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
-    phone: z.string().optional(),
+    phone: z.string().optional().or(z.literal("")),
   }),
 });
 
@@ -112,12 +112,13 @@ export default function Register() {
       if (response.ok) {
         const data = await response.json();
         setSearchResults(data.results || []);
-        setShowResults(true);
+        setShowResults(data.results && data.results.length > 0);
       } else {
         setSearchResults([]);
         setShowResults(false);
       }
     } catch (error) {
+      console.error("Search error:", error);
       setSearchResults([]);
       setShowResults(false);
     } finally {
@@ -134,7 +135,7 @@ export default function Register() {
     
     const timer = setTimeout(() => {
       searchBusinesses(value);
-    }, 300);
+    }, 400);
     
     setSearchTimer(timer);
   };
@@ -145,21 +146,20 @@ export default function Register() {
     setSearchResults([]);
     setSearchQuery(business.name);
     
-    // Auto-fill company data
+    // Auto-fill company data with proper defaults
     form.setValue("company.name", business.name);
     form.setValue("company.slug", generateSlug(business.name));
-    form.setValue("company.phone", business.phone);
+    form.setValue("company.phone", business.phone || "");
     form.setValue("company.website", business.website || "");
-    form.setValue("company.address", business.address.street);
+    form.setValue("company.address", business.address.street || "");
     form.setValue("company.city", business.address.city || "");
     form.setValue("company.state", business.address.state || "");
     form.setValue("company.postalCode", business.address.postalCode || "");
-    form.setValue("company.country", business.address.country);
+    form.setValue("company.country", business.address.country || "United States");
   };
 
   const enterManually = () => {
-    const name = searchQuery.trim();
-    if (!name) return;
+    const name = searchQuery.trim() || "My Company";
     
     setSelectedBusiness({ 
       id: 'manual',
@@ -179,6 +179,14 @@ export default function Register() {
     
     form.setValue("company.name", name);
     form.setValue("company.slug", generateSlug(name));
+    form.setValue("company.phone", "");
+    form.setValue("company.website", "");
+    form.setValue("company.address", "");
+    form.setValue("company.city", "");
+    form.setValue("company.state", "");
+    form.setValue("company.postalCode", "");
+    form.setValue("company.country", "United States");
+    
     setShowResults(false);
     setSearchResults([]);
   };
@@ -193,6 +201,8 @@ export default function Register() {
     setIsLoading(true);
     
     try {
+      console.log("Submitting registration:", data);
+      
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -212,6 +222,7 @@ export default function Register() {
       
       setTimeout(() => setLocation("/login"), 2000);
     } catch (error: any) {
+      console.error("Registration error:", error);
       toast({
         title: "Registration Failed",
         description: error.message,
@@ -294,16 +305,17 @@ export default function Register() {
                     )}
                   </div>
 
-                  {searchQuery.length >= 2 && (
+                  {/* Always show manual entry option */}
+                  <div className="text-center">
                     <button
                       type="button"
                       onClick={enterManually}
-                      className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
                       data-testid="button-manual-entry"
                     >
-                      Not found? Enter manually
+                      My business is not listed
                     </button>
-                  )}
+                  </div>
                 </>
               ) : (
                 <>
@@ -444,17 +456,19 @@ export default function Register() {
                 </>
               )}
 
-              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => setLocation("/login")}
-                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
-                  data-testid="link-login"
-                >
-                  Sign in here
-                </button>
-              </div>
+              {!selectedBusiness && (
+                <div className="text-center text-sm text-gray-600 dark:text-gray-400 pt-2">
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/login")}
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                    data-testid="link-login"
+                  >
+                    Sign in here
+                  </button>
+                </div>
+              )}
             </form>
           </Form>
         </div>
