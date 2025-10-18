@@ -1180,10 +1180,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash the password
       const hashedPassword = await hashPassword(password);
 
-      // Update user with new password and mark email as verified
+      // Update user with new password, mark email as verified, and activate account
       await storage.updateUser(userId, {
         password: hashedPassword,
         emailVerified: true,
+        isActive: true,
       });
 
       await logger.logAuth({
