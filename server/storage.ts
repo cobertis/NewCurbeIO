@@ -62,7 +62,9 @@ import {
   type OutgoingSmsMessage,
   type InsertOutgoingSmsMessage,
   type SmsChatNote,
-  type InsertSmsChatNote
+  type InsertSmsChatNote,
+  type SubscriptionDiscount,
+  type InsertSubscriptionDiscount
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -97,7 +99,8 @@ import {
   campaignSmsMessages,
   incomingSmsMessages,
   outgoingSmsMessages,
-  smsChatNotes
+  smsChatNotes,
+  subscriptionDiscounts
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -348,6 +351,13 @@ export interface IStorage {
   // Delete conversation
   deleteConversation(phoneNumber: string, companyId: string): Promise<void>;
   deleteConversationAll(phoneNumber: string): Promise<void>;
+  
+  // Subscription Discounts
+  createSubscriptionDiscount(discount: InsertSubscriptionDiscount): Promise<SubscriptionDiscount>;
+  getActiveDiscountForSubscription(subscriptionId: string): Promise<SubscriptionDiscount | undefined>;
+  getActiveDiscountForCompany(companyId: string): Promise<SubscriptionDiscount | undefined>;
+  updateDiscountStatus(id: string, status: string): Promise<void>;
+  expireOldDiscounts(): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1994,6 +2004,63 @@ export class DbStorage implements IStorage {
     // Delete all notes for this conversation (all companies)
     await db.delete(smsChatNotes)
       .where(eq(smsChatNotes.phoneNumber, phoneNumber));
+  }
+
+  // ==================== SUBSCRIPTION DISCOUNTS ====================
+  
+  async createSubscriptionDiscount(discount: InsertSubscriptionDiscount): Promise<SubscriptionDiscount> {
+    const [created] = await db.insert(subscriptionDiscounts).values(discount).returning();
+    return created;
+  }
+
+  async getActiveDiscountForSubscription(subscriptionId: string): Promise<SubscriptionDiscount | undefined> {
+    const [discount] = await db
+      .select()
+      .from(subscriptionDiscounts)
+      .where(
+        and(
+          eq(subscriptionDiscounts.subscriptionId, subscriptionId),
+          eq(subscriptionDiscounts.status, 'active')
+        )
+      )
+      .orderBy(desc(subscriptionDiscounts.appliedAt))
+      .limit(1);
+    return discount;
+  }
+
+  async getActiveDiscountForCompany(companyId: string): Promise<SubscriptionDiscount | undefined> {
+    const [discount] = await db
+      .select()
+      .from(subscriptionDiscounts)
+      .where(
+        and(
+          eq(subscriptionDiscounts.companyId, companyId),
+          eq(subscriptionDiscounts.status, 'active')
+        )
+      )
+      .orderBy(desc(subscriptionDiscounts.appliedAt))
+      .limit(1);
+    return discount;
+  }
+
+  async updateDiscountStatus(id: string, status: string): Promise<void> {
+    await db
+      .update(subscriptionDiscounts)
+      .set({ status })
+      .where(eq(subscriptionDiscounts.id, id));
+  }
+
+  async expireOldDiscounts(): Promise<void> {
+    const now = new Date();
+    await db
+      .update(subscriptionDiscounts)
+      .set({ status: 'expired' })
+      .where(
+        and(
+          eq(subscriptionDiscounts.status, 'active'),
+          sql`${subscriptionDiscounts.discountEndDate} < ${now}`
+        )
+      );
   }
 }
 

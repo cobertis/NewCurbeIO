@@ -432,6 +432,41 @@ export type BillingAddress = typeof billingAddresses.$inferSelect;
 export type InsertBillingAddress = z.infer<typeof insertBillingAddressSchema>;
 
 // =====================================================
+// SUBSCRIPTION DISCOUNTS
+// =====================================================
+
+export const subscriptionDiscounts = pgTable("subscription_discounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subscriptionId: varchar("subscription_id").notNull().references(() => subscriptions.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Stripe integration
+  stripeCouponId: text("stripe_coupon_id"),
+  stripePromotionCode: text("stripe_promotion_code"),
+  
+  // Discount details
+  discountPercentage: integer("discount_percentage").notNull(), // e.g., 20 for 20% off
+  discountMonths: integer("discount_months").notNull(), // Number of months the discount applies
+  discountEndDate: timestamp("discount_end_date").notNull(),
+  
+  // Tracking
+  appliedBy: varchar("applied_by").references(() => users.id),
+  appliedAt: timestamp("applied_at").notNull().defaultNow(),
+  status: text("status").notNull().default("active"), // active, expired
+  
+  // Additional data
+  metadata: jsonb("metadata").default({}),
+});
+
+export const insertSubscriptionDiscountSchema = createInsertSchema(subscriptionDiscounts).omit({
+  id: true,
+  appliedAt: true,
+});
+
+export type SubscriptionDiscount = typeof subscriptionDiscounts.$inferSelect;
+export type InsertSubscriptionDiscount = z.infer<typeof insertSubscriptionDiscountSchema>;
+
+// =====================================================
 // INVITATIONS
 // =====================================================
 
