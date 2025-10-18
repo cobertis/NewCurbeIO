@@ -154,7 +154,8 @@ export default function Billing() {
       });
       setLocation('/companies');
     }
-  }, [sessionData, setLocation, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionData?.user?.role, setLocation]);
 
   // Fetch subscription data with enhanced trial info
   const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery({
