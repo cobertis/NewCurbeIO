@@ -703,45 +703,6 @@ export default function Billing() {
 
         {/* Quick Stats Card */}
         <div className="space-y-6">
-          {/* Usage Stats Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Billing Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Spending</span>
-                  <span className="font-bold">{formatCurrency(totalSpending)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Invoices</span>
-                  <span className="font-bold">{invoices.length}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Payments</span>
-                  <span className="font-bold">{payments.filter(p => p.status === 'succeeded').length}</span>
-                </div>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Estimated Annual Spending</p>
-                <p className="text-2xl font-bold">
-                  {subscription 
-                    ? formatCurrency(
-                        subscription.plan.price * (subscription.plan.billingCycle === 'month' ? 12 : 1),
-                        subscription.plan.currency
-                      )
-                    : "$0.00"
-                  }
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Discount/Coupon Card */}
           <Card>
             <CardHeader>
