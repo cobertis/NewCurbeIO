@@ -42,6 +42,18 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - **Trial Preservation:** Trial period is preserved when changing plans - trial dates remain from original activation and do not reset
         - Cancel subscription (immediate or at period end)
         - Apply coupon/promo codes (with promotion code resolution)
+    -   **Trial Expiration Management:** Automatic account deactivation system:
+        - Middleware checks trial expiration on every authenticated request
+        - When trial period ends (trialEnd < current date):
+            - Subscription status automatically updated to 'past_due'
+            - Company account is deactivated (isActive = false)
+            - HTTP 402 response returned with trialExpired flag
+        - Frontend ProtectedRoute component detects trial expiration:
+            - Intercepts HTTP 402 responses
+            - Automatically redirects users to /select-plan page
+            - Also redirects on 'past_due' subscription status
+        - Users must select and activate a paid plan to reactivate account
+        - Ensures no service access without valid subscription
     -   **Payment Method Management:** Comprehensive multi-card management system:
         - Add multiple payment methods via Stripe Elements
         - View all saved cards with brand logos (Visa, Mastercard, Amex, Discover)
