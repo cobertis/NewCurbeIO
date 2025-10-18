@@ -264,8 +264,12 @@ export async function cancelStripeSubscription(stripeSubscriptionId: string, can
 
 export async function syncInvoiceFromStripe(stripeInvoiceId: string) {
   const stripeInvoice = await stripe.invoices.retrieve(stripeInvoiceId, {
-    expand: ['lines']
+    expand: ['lines', 'subscription']
   }) as any;
+  
+  console.log('[STRIPE] Syncing invoice:', stripeInvoiceId);
+  console.log('[STRIPE] Invoice subscription ID:', stripeInvoice.subscription);
+  console.log('[STRIPE] Invoice customer:', stripeInvoice.customer);
   
   // Find company by subscription
   let subscription: any = null;
@@ -273,8 +277,50 @@ export async function syncInvoiceFromStripe(stripeInvoiceId: string) {
     subscription = await storage.getSubscriptionByStripeId(stripeInvoice.subscription);
   }
   
+  // If subscription not found by subscription ID, try to find by customer ID
+  if (!subscription && stripeInvoice.customer) {
+    console.log('[STRIPE] Subscription not found by ID, trying by customer:', stripeInvoice.customer);
+    subscription = await storage.getSubscriptionByStripeCustomerId(stripeInvoice.customer);
+  }
+  
   if (!subscription) {
-    console.error("Subscription not found for invoice:", stripeInvoiceId);
+    console.error("[STRIPE] Subscription not found for invoice:", stripeInvoiceId, "Customer:", stripeInvoice.customer);
+    
+    // For invoices without a subscription (e.g., one-time charges), try to find company by customer
+    if (stripeInvoice.customer) {
+      const company = await storage.getCompanyByStripeCustomerId(stripeInvoice.customer);
+      if (company) {
+        console.log('[STRIPE] Found company by customer ID, creating invoice without subscription');
+        // Create invoice without subscription ID
+        const invoiceData: InsertInvoice = {
+          companyId: company.id,
+          subscriptionId: undefined, // No subscription for one-time charges
+          invoiceNumber: stripeInvoice.number || `INV-${Date.now()}`,
+          status: mapStripeInvoiceStatus(stripeInvoice.status),
+          subtotal: stripeInvoice.subtotal_excluding_tax || stripeInvoice.subtotal || 0,
+          tax: stripeInvoice.total_tax_amounts?.reduce((sum: number, t: any) => sum + t.amount, 0) || 0,
+          total: stripeInvoice.total || 0,
+          amountPaid: stripeInvoice.amount_paid || 0,
+          amountDue: stripeInvoice.amount_due || 0,
+          currency: stripeInvoice.currency,
+          invoiceDate: new Date(stripeInvoice.created * 1000),
+          dueDate: stripeInvoice.due_date ? new Date(stripeInvoice.due_date * 1000) : undefined,
+          paidAt: stripeInvoice.status_transitions?.paid_at ? new Date(stripeInvoice.status_transitions.paid_at * 1000) : undefined,
+          stripeInvoiceId: stripeInvoiceId,
+          stripeHostedInvoiceUrl: stripeInvoice.hosted_invoice_url || undefined,
+          stripeInvoicePdf: stripeInvoice.invoice_pdf || undefined,
+        };
+        
+        let invoice = await storage.getInvoiceByStripeId(stripeInvoiceId);
+        if (invoice) {
+          invoice = await storage.updateInvoice(invoice.id, invoiceData);
+        } else {
+          invoice = await storage.createInvoice(invoiceData);
+        }
+        return invoice;
+      }
+    }
+    
     return null;
   }
 
@@ -394,14 +440,22 @@ export async function handleSubscriptionCreated(stripeSubscription: Stripe.Subsc
     return;
   }
 
+  // Helper function to safely convert Stripe timestamps to Date objects
+  const toDate = (unixTimestamp?: number | null): Date | undefined => {
+    if (typeof unixTimestamp === 'number' && unixTimestamp > 0) {
+      return new Date(unixTimestamp * 1000);
+    }
+    return undefined;
+  };
+
   const subscriptionData: InsertSubscription = {
     companyId,
     planId,
     status: mapStripeSubscriptionStatus(stripeSubscription.status),
-    trialStart: stripeSubscription.trial_start ? new Date(stripeSubscription.trial_start * 1000) : undefined,
-    trialEnd: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000) : undefined,
-    currentPeriodStart: new Date(),
-    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    trialStart: toDate(stripeSubscription.trial_start),
+    trialEnd: toDate(stripeSubscription.trial_end),
+    currentPeriodStart: toDate(stripeSubscription.current_period_start) || new Date(),
+    currentPeriodEnd: toDate(stripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     stripeCustomerId: stripeSubscription.customer as string,
     stripeSubscriptionId: stripeSubscription.id,
     stripeLatestInvoiceId: stripeSubscription.latest_invoice as string || undefined,

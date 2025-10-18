@@ -2077,10 +2077,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Extract subscription data from Stripe
       const stripeSubData = stripeSubscription as any;
-      const currentPeriodStart = new Date(stripeSubData.current_period_start * 1000);
-      const currentPeriodEnd = new Date(stripeSubData.current_period_end * 1000);
-      const trialStart = stripeSubData.trial_start && stripeSubData.trial_start > 0 ? new Date(stripeSubData.trial_start * 1000) : undefined;
-      const trialEnd = stripeSubData.trial_end && stripeSubData.trial_end > 0 ? new Date(stripeSubData.trial_end * 1000) : undefined;
+      
+      // Helper function to safely convert Stripe timestamps to Date objects
+      const toDate = (unixTimestamp?: number | null): Date | null => {
+        if (typeof unixTimestamp === 'number' && unixTimestamp > 0) {
+          return new Date(unixTimestamp * 1000);
+        }
+        return null;
+      };
+      
+      const currentPeriodStart = toDate(stripeSubData.current_period_start);
+      const currentPeriodEnd = toDate(stripeSubData.current_period_end);
+      const trialStart = toDate(stripeSubData.trial_start);
+      const trialEnd = toDate(stripeSubData.trial_end);
 
       // Map Stripe status to our enum, preserving actual subscription state
       const mapStatus = (stripeStatus: string): string => {
@@ -2277,6 +2286,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract subscription data from Stripe - with defensive null checks
       const stripeSubData = stripeSubscription as any;
       
+      // Helper function to safely convert Stripe timestamps to Date objects
+      // Stripe can omit fields (undefined) or send null/0 for no date
+      const toDate = (unixTimestamp?: number | null): Date | null => {
+        if (typeof unixTimestamp === 'number' && unixTimestamp > 0) {
+          return new Date(unixTimestamp * 1000);
+        }
+        return null;
+      };
+      
       // Map Stripe status to our enum, preserving actual subscription state
       const mapStatus = (stripeStatus: string): string => {
         switch (stripeStatus) {
@@ -2294,10 +2312,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subscriptionData: any = {
         planId,
         status: mapStatus(stripeSubscription.status),
-        trialStart: (stripeSubData.trial_start && stripeSubData.trial_start > 0) ? new Date(stripeSubData.trial_start * 1000) : null,
-        trialEnd: (stripeSubData.trial_end && stripeSubData.trial_end > 0) ? new Date(stripeSubData.trial_end * 1000) : null,
-        currentPeriodStart: new Date(stripeSubData.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSubData.current_period_end * 1000),
+        trialStart: toDate(stripeSubData.trial_start),
+        trialEnd: toDate(stripeSubData.trial_end),
+        currentPeriodStart: toDate(stripeSubData.current_period_start),
+        currentPeriodEnd: toDate(stripeSubData.current_period_end),
         stripeCustomerId,
         stripeSubscriptionId: stripeSubscription.id,
         stripeLatestInvoiceId: typeof stripeSubscription.latest_invoice === 'string' 

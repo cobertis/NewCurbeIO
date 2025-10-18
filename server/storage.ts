@@ -112,6 +112,7 @@ export interface IStorage {
   // Companies
   getCompany(id: string): Promise<Company | undefined>;
   getCompanyBySlug(slug: string): Promise<Company | undefined>;
+  getCompanyByStripeCustomerId(stripeCustomerId: string): Promise<Company | undefined>;
   getAllCompanies(): Promise<Company[]>;
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, data: Partial<InsertCompany>): Promise<Company | undefined>;
@@ -134,6 +135,7 @@ export interface IStorage {
   getSubscription(id: string): Promise<Subscription | undefined>;
   getSubscriptionByCompany(companyId: string): Promise<Subscription | undefined>;
   getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | undefined>;
+  getSubscriptionByStripeCustomerId(stripeCustomerId: string): Promise<Subscription | undefined>;
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
   updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
   cancelSubscription(id: string, cancelAtPeriodEnd: boolean): Promise<Subscription | undefined>;
@@ -423,6 +425,11 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  async getCompanyByStripeCustomerId(stripeCustomerId: string): Promise<Company | undefined> {
+    const result = await db.select().from(companies).where(eq(companies.stripeCustomerId, stripeCustomerId));
+    return result[0];
+  }
+
   async getAllCompanies(): Promise<Company[]> {
     return db.select().from(companies);
   }
@@ -521,6 +528,11 @@ export class DbStorage implements IStorage {
 
   async getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | undefined> {
     const result = await db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId));
+    return result[0];
+  }
+
+  async getSubscriptionByStripeCustomerId(stripeCustomerId: string): Promise<Subscription | undefined> {
+    const result = await db.select().from(subscriptions).where(eq(subscriptions.stripeCustomerId, stripeCustomerId));
     return result[0];
   }
 
