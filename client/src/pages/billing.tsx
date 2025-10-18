@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -545,7 +546,41 @@ export default function Billing() {
       {/* Two Column Layout */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Subscription Details - 2 columns */}
-        {subscription && (
+        {isLoadingSubscription ? (
+          <Card className="lg:col-span-2">
+            <CardContent className="space-y-6 pt-6">
+              {/* Plan Details Skeleton */}
+              <div className="flex items-start justify-between p-4 rounded-lg bg-muted/50">
+                <div className="space-y-3 flex-1">
+                  <Skeleton className="h-8 w-48" />
+                  <Skeleton className="h-4 w-full max-w-md" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-6 w-24" />
+                    <Skeleton className="h-6 w-24" />
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                </div>
+                <div className="text-right space-y-2">
+                  <Skeleton className="h-10 w-32 ml-auto" />
+                  <Skeleton className="h-4 w-24 ml-auto" />
+                </div>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+              <Separator />
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+        ) : subscription ? (
           <Card className="lg:col-span-2">
             <CardContent className="space-y-6 pt-6">
               {/* Plan Details */}
@@ -723,7 +758,7 @@ export default function Billing() {
             </div>
             </CardContent>
           </Card>
-        )}
+        ) : null}
 
         {/* Billing Information */}
         <Card>
