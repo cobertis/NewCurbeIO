@@ -228,71 +228,92 @@ export default function CompanyDetail() {
               Company Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CardContent className="space-y-6">
+            {/* Email, Phone, Website - Row 1 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex items-start gap-3">
                 <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</p>
-                  <p className="text-sm text-gray-900 dark:text-white">{company.email}</p>
+                  <p className="text-sm text-gray-900 dark:text-white truncate">{company.email}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</p>
                   <p className="text-sm text-gray-900 dark:text-white">
                     {company.phone ? formatPhoneDisplay(company.phone) : "Not provided"}
                   </p>
                 </div>
               </div>
-              {company.website && (
-                <div className="flex items-start gap-3">
-                  <Globe className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Website</p>
+              <div className="flex items-start gap-3">
+                <Globe className="h-5 w-5 text-gray-400 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Website</p>
+                  {company.website ? (
                     <a 
                       href={company.website} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate block"
                     >
                       {company.website}
                     </a>
-                  </div>
-                </div>
-              )}
-              {company.domain && (
-                <div className="flex items-start gap-3">
-                  <Globe className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Domain</p>
-                    <p className="text-sm text-gray-900 dark:text-white">{company.domain}</p>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-start gap-3 md:col-span-2">
-                <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</p>
-                  {company.address || company.city || company.state || company.postalCode || company.country ? (
-                    <div className="text-sm text-gray-900 dark:text-white space-y-0.5">
-                      {company.address && <p>{company.address}</p>}
-                      <p>
-                        {[
-                          company.city,
-                          company.state,
-                          company.postalCode,
-                        ].filter(Boolean).join(", ")}
-                      </p>
-                      {company.country && <p>{company.country}</p>}
-                    </div>
                   ) : (
                     <p className="text-sm text-gray-900 dark:text-white">Not provided</p>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Address Section */}
+            {(company.address || company.city || company.state || company.postalCode || company.country) && (
+              <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                {/* Street Address */}
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {company.address || "Not provided"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* City, State, Zip Code */}
+                {(company.city || company.state || company.postalCode) && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pl-8">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">City</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {company.city || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">State</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {company.state || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Zip Code</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {company.postalCode || "—"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Country */}
+                {company.country && (
+                  <div className="pl-8">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Country</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{company.country}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
