@@ -221,6 +221,7 @@ export default function Billing() {
   const [downgradeReason, setDowngradeReason] = useState("");
   const [downgradeConfirm1, setDowngradeConfirm1] = useState(false);
   const [downgradeConfirm2, setDowngradeConfirm2] = useState(false);
+  const [cancelReason, setCancelReason] = useState("missing_features");
 
   // Fetch session data to get user info
   const { data: sessionData } = useQuery({
@@ -1088,29 +1089,108 @@ export default function Billing() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Cancel Subscription Confirmation Dialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your subscription will remain active until the end of your current billing period. You can reactivate anytime before then.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-            <AlertDialogAction
+      {/* Cancel Subscription Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={(open) => {
+        setShowCancelDialog(open);
+        if (!open) {
+          setCancelReason("missing_features"); // Reset to default
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/30">
+                <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              Cancelling Your HighLevel Account?
+            </DialogTitle>
+            <DialogDescription>
+              Why do you want to cancel?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <RadioGroup value={cancelReason} onValueChange={setCancelReason}>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="missing_features" id="missing_features" />
+                  <Label htmlFor="missing_features" className="cursor-pointer font-normal">
+                    Missing features
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="trouble_setting_up" id="trouble_setting_up" />
+                  <Label htmlFor="trouble_setting_up" className="cursor-pointer font-normal">
+                    Having trouble setting up
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="too_expensive" id="too_expensive" />
+                  <Label htmlFor="too_expensive" className="cursor-pointer font-normal">
+                    Too expensive
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="not_using_enough" id="not_using_enough" />
+                  <Label htmlFor="not_using_enough" className="cursor-pointer font-normal">
+                    Not using enough
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="technical_issues" id="technical_issues" />
+                  <Label htmlFor="technical_issues" className="cursor-pointer font-normal">
+                    Technical issues
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="unsatisfactory_experience" id="unsatisfactory_experience" />
+                  <Label htmlFor="unsatisfactory_experience" className="cursor-pointer font-normal">
+                    Unsatisfactory customer experience
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="out_of_business" id="out_of_business" />
+                  <Label htmlFor="out_of_business" className="cursor-pointer font-normal">
+                    Went out of business
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="different_account" id="different_account" />
+                  <Label htmlFor="different_account" className="cursor-pointer font-normal">
+                    Signing up for a different account
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="different_product" id="different_product" />
+                  <Label htmlFor="different_product" className="cursor-pointer font-normal">
+                    Switching to a different product
+                  </Label>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCancelDialog(false)}
+              data-testid="button-cancel-back"
+            >
+              Back
+            </Button>
+            <Button
               onClick={() => {
                 cancelSubscriptionMutation.mutate();
                 setShowCancelDialog(false);
               }}
               className="bg-red-600 hover:bg-red-700"
+              data-testid="button-confirm-cancel"
             >
-              Cancel Subscription
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Next
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Ineligible for Financial Support Dialog */}
       <Dialog open={showIneligibleDialog} onOpenChange={setShowIneligibleDialog}>
