@@ -4436,10 +4436,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await handleSubscriptionDeleted(event.data.object as any);
           break;
         case 'invoice.paid':
+          // Ignore invoice.paid - we only process invoice.payment_succeeded to avoid duplicates
+          console.log('[WEBHOOK] Ignoring invoice.paid (will be processed via invoice.payment_succeeded)');
+          break;
         case 'invoice.payment_succeeded':
           {
             const stripeInvoice = event.data.object as any;
-            console.log('[WEBHOOK] Invoice paid:', stripeInvoice.id);
+            console.log('[WEBHOOK] Invoice payment succeeded:', stripeInvoice.id);
             
             // Sync invoice from Stripe
             const invoice = await syncInvoiceFromStripe(stripeInvoice.id);
@@ -4463,45 +4466,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log('[WEBHOOK] No payment intent found, skipping payment record creation');
               }
               
-              // Send notifications and email for both invoice.paid and invoice.payment_succeeded
-              // Use a flag to prevent duplicates if both webhooks arrive
-              const notificationKey = `payment_notification_${invoice.id}`;
+              // Send notification and email (only once per payment)
+              console.log('[WEBHOOK] Sending payment success notification to company:', invoice.companyId);
+              const { notificationService } = await import("./notification-service");
+              await notificationService.notifyPaymentSucceeded(
+                invoice.companyId,
+                stripeInvoice.amount_paid || stripeInvoice.total,
+                stripeInvoice.currency,
+                invoice.invoiceNumber
+              );
+              console.log('[NOTIFICATION] Payment success notification sent to company:', invoice.companyId);
               
-              // Only send if we haven't sent for this invoice in the last 60 seconds
-              const lastNotification = (global as any)[notificationKey];
-              const now = Date.now();
+              // Send payment confirmation email to admins
+              console.log('[WEBHOOK] Sending payment confirmation email to company:', invoice.companyId);
+              const emailSent = await sendPaymentConfirmationEmail(
+                invoice.companyId,
+                stripeInvoice.amount_paid || stripeInvoice.total,
+                stripeInvoice.currency,
+                invoice.invoiceNumber,
+                stripeInvoice.hosted_invoice_url || undefined
+              );
               
-              if (!lastNotification || (now - lastNotification) > 60000) {
-                console.log('[WEBHOOK] Sending payment success notification to company:', invoice.companyId);
-                const { notificationService } = await import("./notification-service");
-                await notificationService.notifyPaymentSucceeded(
-                  invoice.companyId,
-                  stripeInvoice.amount_paid || stripeInvoice.total,
-                  stripeInvoice.currency,
-                  invoice.invoiceNumber
-                );
-                console.log('[NOTIFICATION] Payment success notification sent to company:', invoice.companyId);
-                
-                // Send payment confirmation email to admins
-                console.log('[WEBHOOK] Sending payment confirmation email to company:', invoice.companyId);
-                const emailSent = await sendPaymentConfirmationEmail(
-                  invoice.companyId,
-                  stripeInvoice.amount_paid || stripeInvoice.total,
-                  stripeInvoice.currency,
-                  invoice.invoiceNumber,
-                  stripeInvoice.hosted_invoice_url || undefined
-                );
-                
-                if (emailSent) {
-                  console.log('[EMAIL] Payment confirmation email sent successfully');
-                } else {
-                  console.error('[EMAIL] Failed to send payment confirmation email');
-                }
-                
-                // Mark as sent
-                (global as any)[notificationKey] = now;
+              if (emailSent) {
+                console.log('[EMAIL] Payment confirmation email sent successfully');
               } else {
-                console.log('[WEBHOOK] Skipping duplicate notification for invoice:', invoice.id);
+                console.error('[EMAIL] Failed to send payment confirmation email');
               }
             } else {
               console.error('[WEBHOOK] Invoice sync failed - invoice is null');
