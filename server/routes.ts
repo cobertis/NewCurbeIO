@@ -484,6 +484,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== GOOGLE PLACES API ====================
 
+  // Autocomplete address using Google Places API
+  app.get("/api/google-places/autocomplete-address", async (req: Request, res: Response) => {
+    try {
+      const { q } = req.query;
+      
+      console.log("[GOOGLE_PLACES] Address autocomplete request with query:", q);
+      
+      if (!q || typeof q !== 'string') {
+        console.log("[GOOGLE_PLACES] Missing or invalid query parameter");
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+
+      if (!process.env.GOOGLE_PLACES_API_KEY) {
+        console.error("[GOOGLE_PLACES] API KEY not configured");
+        return res.status(500).json({ message: "Google Places service not configured" });
+      }
+
+      const url = "https://places.googleapis.com/v1/places:autocomplete";
+      
+      const headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY
+      };
+
+      const body = {
+        input: q,
+        languageCode: "en",
+        regionCode: "us", // Restrict to US addresses
+        includedPrimaryTypes: ["street_address", "premise"], // Only addresses
+        includeQueryPredictions: false
+      };
+
+      console.log("[GOOGLE_PLACES] Making request to Google Places Autocomplete API");
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[GOOGLE_PLACES] API error:", response.status, errorText);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch address suggestions",
+          error: errorText 
+        });
+      }
+
+      const data = await response.json();
+      console.log("[GOOGLE_PLACES] Got", data.suggestions?.length || 0, "address suggestions");
+      
+      // Transform to match AddressAutocomplete expected format
+      const results = (data.suggestions || []).map((suggestion: any) => {
+        const placePrediction = suggestion.placePrediction;
+        
+        return {
+          place_id: placePrediction.placeId,
+          display_name: placePrediction.text?.text || '',
+          // Store structured formatting for parsing
+          structured_formatting: {
+            main_text: placePrediction.structuredFormat?.mainText?.text || '',
+            secondary_text: placePrediction.structuredFormat?.secondaryText?.text || ''
+          }
+        };
+      });
+      
+      res.setHeader('Content-Type', 'application/json');
+      return res.json({ results });
+    } catch (error) {
+      console.error("[GOOGLE_PLACES] Autocomplete error:", error);
+      return res.status(500).json({ message: "Failed to fetch address suggestions" });
+    }
+  });
+
+  // Get place details by ID to extract address components
+  app.get("/api/google-places/place-details", async (req: Request, res: Response) => {
+    try {
+      const { placeId } = req.query;
+      
+      console.log("[GOOGLE_PLACES] Place details request for:", placeId);
+      
+      if (!placeId || typeof placeId !== 'string') {
+        return res.status(400).json({ message: "placeId parameter is required" });
+      }
+
+      if (!process.env.GOOGLE_PLACES_API_KEY) {
+        console.error("[GOOGLE_PLACES] API KEY not configured");
+        return res.status(500).json({ message: "Google Places service not configured" });
+      }
+
+      const url = `https://places.googleapis.com/v1/places/${placeId}`;
+      
+      const headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
+        "X-Goog-FieldMask": "id,formattedAddress,addressComponents"
+      };
+
+      console.log("[GOOGLE_PLACES] Fetching place details");
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[GOOGLE_PLACES] API error:", response.status, errorText);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch place details",
+          error: errorText 
+        });
+      }
+
+      const place = await response.json();
+      console.log("[GOOGLE_PLACES] Got place details");
+      
+      // Parse address components
+      let street = '';
+      let city = '';
+      let state = '';
+      let postalCode = '';
+      let country = '';
+      
+      if (place.addressComponents) {
+        for (const component of place.addressComponents) {
+          const types = component.types || [];
+          
+          if (types.includes('street_number')) {
+            street = component.longText + ' ' + street;
+          }
+          if (types.includes('route')) {
+            street = street + component.longText;
+          }
+          if (types.includes('locality')) {
+            city = component.longText;
+          }
+          if (types.includes('administrative_area_level_1')) {
+            state = component.shortText || component.longText;
+          }
+          if (types.includes('postal_code')) {
+            postalCode = component.longText;
+          }
+          if (types.includes('country')) {
+            country = component.longText;
+          }
+        }
+      }
+      
+      street = street.trim();
+      
+      const address = {
+        street,
+        city,
+        state,
+        postalCode,
+        country
+      };
+      
+      console.log("[GOOGLE_PLACES] Parsed address:", address);
+      
+      res.setHeader('Content-Type', 'application/json');
+      return res.json({ address });
+    } catch (error) {
+      console.error("[GOOGLE_PLACES] Place details error:", error);
+      return res.status(500).json({ message: "Failed to fetch place details" });
+    }
+  });
+
   app.get("/api/google-places/search-business", async (req: Request, res: Response) => {
     try {
       const { q } = req.query;

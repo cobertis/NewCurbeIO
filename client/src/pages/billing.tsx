@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/dialog";
 import { StripeCardForm } from "@/components/stripe-card-form";
 import { ManagePaymentMethodsDialog } from "@/components/manage-payment-methods-dialog";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 
 interface Subscription {
   id: string;
@@ -746,16 +747,24 @@ export default function Billing() {
                 />
               </div>
 
-              {/* Address Line 1 */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Address Line 1</label>
-                <Input
-                  placeholder="123 Main Street"
-                  value={billingForm.addressLine1}
-                  onChange={(e) => handleBillingFormChange('addressLine1', e.target.value)}
-                  data-testid="input-billing-address1"
-                />
-              </div>
+              {/* Address Line 1 with Google Places Autocomplete */}
+              <GooglePlacesAddressAutocomplete
+                value={billingForm.addressLine1}
+                onChange={(value) => handleBillingFormChange('addressLine1', value)}
+                onAddressSelect={(address) => {
+                  // Auto-populate city, state, and postal code when address is selected
+                  setBillingForm(prev => ({
+                    ...prev,
+                    addressLine1: address.street,
+                    city: address.city,
+                    state: address.state,
+                    postalCode: address.postalCode,
+                  }));
+                }}
+                label="Address Line 1"
+                placeholder="Start typing your address..."
+                testId="input-billing-address1"
+              />
 
               {/* Address Line 2 */}
               <div className="space-y-2">
