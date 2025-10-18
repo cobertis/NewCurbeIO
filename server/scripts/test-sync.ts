@@ -10,15 +10,28 @@ async function testSync() {
   
   try {
     // Run the sync
-    const syncedProducts = await syncProductsFromStripe();
+    const syncResult = await syncProductsFromStripe();
     
-    console.log(`\n📦 Found ${syncedProducts.length} products in Stripe:\n`);
+    if (!syncResult.success) {
+      console.error('❌ Sync failed with fatal error:', syncResult.errors);
+      process.exit(1);
+    }
     
-    for (const product of syncedProducts) {
+    console.log(`\n📦 Found ${syncResult.syncedPlans.length} products in Stripe:\n`);
+    
+    for (const product of syncResult.syncedPlans) {
       console.log(`  ✅ ${product.productName}`);
-      console.log(`     Monthly Price ID: ${product.monthlyPriceId}`);
+      console.log(`     Monthly Price ID: ${product.monthlyPriceId || 'Not set'}`);
       console.log(`     Annual Price ID: ${product.annualPriceId || 'Not set'}`);
       console.log(`     Features: ${product.planData.features.join(', ')}`);
+      console.log('');
+    }
+    
+    if (syncResult.errors.length > 0) {
+      console.log(`\n⚠️  Encountered ${syncResult.errors.length} errors during Stripe sync:\n`);
+      for (const err of syncResult.errors) {
+        console.log(`  ⨯ ${err.product}: ${err.error}`);
+      }
       console.log('');
     }
     
@@ -28,31 +41,54 @@ async function testSync() {
     const results = {
       created: [] as any[],
       updated: [] as any[],
+      failed: [] as any[],
     };
     
-    for (const product of syncedProducts) {
-      // Check if plan already exists by stripeProductId
-      const existingPlans = await storage.getAllPlans();
-      const existingPlan = existingPlans.find(p => 
-        (p as any).stripeProductId === product.productId
-      );
+    // Fetch all existing plans ONCE and index by stripeProductId for O(1) lookups
+    const existingPlans = await storage.getAllPlans();
+    const plansByProductId = new Map(
+      existingPlans
+        .filter(p => (p as any).stripeProductId) // Only plans with stripeProductId
+        .map(p => [(p as any).stripeProductId, p])
+    );
+    
+    console.log(`   Found ${plansByProductId.size} existing plans in database\n`);
+    
+    for (const product of syncResult.syncedPlans) {
+      try {
+        const existingPlan = plansByProductId.get(product.productId);
 
-      if (existingPlan) {
-        // Update existing plan
-        console.log(`  🔄 Updating: ${product.productName}`);
-        const updated = await storage.updatePlan(existingPlan.id, product.planData);
-        results.updated.push(updated);
-      } else {
-        // Create new plan
-        console.log(`  ➕ Creating: ${product.productName}`);
-        const created = await storage.createPlan(product.planData);
-        results.created.push(created);
+        if (existingPlan) {
+          // Update existing plan
+          console.log(`  🔄 Updating: ${product.productName}`);
+          const updated = await storage.updatePlan(existingPlan.id, product.planData);
+          results.updated.push(updated);
+        } else {
+          // Create new plan
+          console.log(`  ➕ Creating: ${product.productName}`);
+          const created = await storage.createPlan(product.planData);
+          results.created.push(created);
+        }
+      } catch (dbError: any) {
+        console.error(`  ⨯ Database error for ${product.productName}:`, dbError.message);
+        results.failed.push({
+          product: product.productName,
+          error: dbError.message,
+        });
       }
     }
     
     console.log('\n✅ Sync complete!');
     console.log(`   Created: ${results.created.length}`);
     console.log(`   Updated: ${results.updated.length}`);
+    console.log(`   Failed: ${results.failed.length}`);
+    
+    if (results.failed.length > 0) {
+      console.log('\n⚠️  Failed products:');
+      for (const fail of results.failed) {
+        console.log(`  ⨯ ${fail.product}: ${fail.error}`);
+      }
+    }
     
     // Show current plans in database
     console.log('\n📋 Current plans in database:\n');

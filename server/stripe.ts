@@ -65,79 +65,164 @@ export async function validateStripePrice(priceId: string): Promise<boolean> {
 /**
  * Sync products and prices from Stripe to database
  * This is the SOURCE OF TRUTH - Stripe products/prices are imported into DB
+ * 
+ * Features:
+ * - Automatic pagination to retrieve ALL active products and prices
+ * - Supports monthly-only, annual-only, or both billing cycles
+ * - Extracts features from product metadata or description
+ * - Per-product error handling to continue sync on failures
  */
 export async function syncProductsFromStripe() {
   console.log('[STRIPE-SYNC] Starting product synchronization from Stripe...');
   
-  // Get all active products with their prices
-  const products = await stripe.products.list({
-    active: true,
-    expand: ['data.default_price'],
-  });
-
   const syncedPlans = [];
+  const errors: Array<{product: string, error: string}> = [];
 
-  for (const product of products.data) {
-    console.log(`[STRIPE-SYNC] Processing product: ${product.name}`);
-    
-    // Get all prices for this product
-    const prices = await stripe.prices.list({
-      product: product.id,
-      active: true,
-    });
+  try {
+    // Get ALL active products with manual pagination
+    const allProducts = [];
+    let hasMore = true;
+    let startingAfter: string | undefined = undefined;
 
-    // Separate monthly and annual prices
-    const monthlyPrice = prices.data.find(p => 
-      p.recurring?.interval === 'month' && p.recurring?.interval_count === 1
-    );
-    const annualPrice = prices.data.find(p => 
-      p.recurring?.interval === 'year' && p.recurring?.interval_count === 1
-    );
+    while (hasMore) {
+      const productsPage = await stripe.products.list({
+        active: true,
+        limit: 100,
+        starting_after: startingAfter,
+        expand: ['data.default_price'],
+      });
 
-    if (!monthlyPrice) {
-      console.log(`[STRIPE-SYNC] Skipping ${product.name} - no monthly price found`);
-      continue;
-    }
-
-    // Extract features from product metadata or description
-    let features: string[] = [];
-    if (product.metadata?.features) {
-      try {
-        features = JSON.parse(product.metadata.features);
-      } catch (e) {
-        // If not JSON, split by comma or newline
-        features = product.metadata.features.split(/[,\n]/).map(f => f.trim()).filter(Boolean);
+      allProducts.push(...productsPage.data);
+      hasMore = productsPage.has_more;
+      if (hasMore && productsPage.data.length > 0) {
+        startingAfter = productsPage.data[productsPage.data.length - 1].id;
       }
-    } else if (product.description) {
-      // Try to extract features from description
-      features = product.description.split('\n').map(f => f.trim()).filter(Boolean);
     }
 
-    const planData = {
-      name: product.name,
-      description: product.description || null,
-      price: monthlyPrice.unit_amount || 0,
-      billingCycle: 'monthly',
-      currency: monthlyPrice.currency || 'usd',
-      features: features.length > 0 ? features : ['All core features included'],
-      stripePriceId: monthlyPrice.id,
-      stripeAnnualPriceId: annualPrice?.id || null,
-      stripeProductId: product.id,
-      isActive: true,
-      trialDays: 14, // Default trial period
+    console.log(`[STRIPE-SYNC] Retrieved ${allProducts.length} active products from Stripe`);
+
+    // Process each product
+    for (const product of allProducts) {
+      try {
+        console.log(`[STRIPE-SYNC] Processing product: ${product.name}`);
+        
+        // Get ALL prices for this product with manual pagination
+        const allPrices = [];
+        let pricesHasMore = true;
+        let pricesStartingAfter: string | undefined = undefined;
+
+        while (pricesHasMore) {
+          const pricesPage = await stripe.prices.list({
+            product: product.id,
+            active: true,
+            limit: 100,
+            starting_after: pricesStartingAfter,
+          });
+
+          allPrices.push(...pricesPage.data);
+          pricesHasMore = pricesPage.has_more;
+          if (pricesHasMore && pricesPage.data.length > 0) {
+            pricesStartingAfter = pricesPage.data[pricesPage.data.length - 1].id;
+          }
+        }
+
+        // Separate monthly and annual prices
+        const monthlyPrice = allPrices.find(p => 
+          p.recurring?.interval === 'month' && p.recurring?.interval_count === 1
+        );
+        const annualPrice = allPrices.find(p => 
+          p.recurring?.interval === 'year' && p.recurring?.interval_count === 1
+        );
+
+        // Require at least one billing cycle (monthly OR annual)
+        if (!monthlyPrice && !annualPrice) {
+          console.log(`[STRIPE-SYNC] Skipping ${product.name} - no monthly or annual price found`);
+          errors.push({
+            product: product.name,
+            error: 'No monthly or annual recurring price found',
+          });
+          continue;
+        }
+
+        // Use monthly price as primary, fallback to annual if monthly not available
+        const primaryPrice = monthlyPrice || annualPrice;
+        const primaryBillingCycle = monthlyPrice ? 'monthly' : 'yearly';
+
+        // Extract features from product metadata or description
+        let features: string[] = [];
+        if (product.metadata?.features) {
+          try {
+            features = JSON.parse(product.metadata.features);
+          } catch (e) {
+            // If not JSON, split by comma or newline
+            features = product.metadata.features.split(/[,\n]/).map(f => f.trim()).filter(Boolean);
+          }
+        } else if (product.description) {
+          // Try to extract features from description
+          features = product.description.split('\n').map(f => f.trim()).filter(Boolean);
+        }
+
+        const planData = {
+          name: product.name,
+          description: product.description || null,
+          price: primaryPrice!.unit_amount || 0,
+          billingCycle: primaryBillingCycle,
+          currency: primaryPrice!.currency || 'usd',
+          features: features.length > 0 ? features : ['All core features included'],
+          stripePriceId: monthlyPrice?.id || annualPrice!.id, // Store primary price
+          stripeAnnualPriceId: annualPrice?.id || null,
+          stripeProductId: product.id,
+          isActive: true,
+          trialDays: 14, // Default trial period
+        };
+
+        syncedPlans.push({
+          productId: product.id,
+          productName: product.name,
+          monthlyPriceId: monthlyPrice?.id || null,
+          annualPriceId: annualPrice?.id || null,
+          planData,
+        });
+
+        console.log(`[STRIPE-SYNC] ✓ Synced ${product.name} (${monthlyPrice ? 'monthly' : ''}${monthlyPrice && annualPrice ? '+' : ''}${annualPrice ? 'annual' : ''})`);
+
+      } catch (productError: any) {
+        console.error(`[STRIPE-SYNC] Error processing product ${product.name}:`, productError.message);
+        errors.push({
+          product: product.name,
+          error: productError.message,
+        });
+        // Continue with next product
+      }
+    }
+
+    console.log(`[STRIPE-SYNC] Completed sync. Successfully synced ${syncedPlans.length} products`);
+    if (errors.length > 0) {
+      console.log(`[STRIPE-SYNC] Encountered ${errors.length} errors during sync:`, errors);
+    }
+
+    return {
+      success: true,
+      syncedPlans,
+      errors,
+      stats: {
+        total: syncedPlans.length,
+        errors: errors.length,
+      },
     };
 
-    syncedPlans.push({
-      productId: product.id,
-      productName: product.name,
-      monthlyPriceId: monthlyPrice.id,
-      annualPriceId: annualPrice?.id,
-      planData,
-    });
+  } catch (error: any) {
+    console.error('[STRIPE-SYNC] Fatal error during sync:', error.message);
+    return {
+      success: false,
+      syncedPlans: [],
+      errors: [{ product: 'ALL', error: error.message }],
+      stats: {
+        total: 0,
+        errors: 1,
+      },
+    };
   }
-
-  console.log(`[STRIPE-SYNC] Completed sync. Found ${syncedPlans.length} products`);
-  return syncedPlans;
 }
 
 // =====================================================

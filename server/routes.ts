@@ -2435,52 +2435,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('[SYNC-FROM-STRIPE] Starting synchronization...');
       const { syncProductsFromStripe } = await import("./stripe");
-      const syncedProducts = await syncProductsFromStripe();
+      const syncResult = await syncProductsFromStripe();
+
+      if (!syncResult.success) {
+        return res.status(500).json({ 
+          success: false,
+          message: "Fatal error during Stripe synchronization", 
+          errors: syncResult.errors,
+        });
+      }
 
       const results = {
         created: [] as any[],
         updated: [] as any[],
-        skipped: [] as any[],
+        failed: [] as any[],
       };
 
-      for (const product of syncedProducts) {
-        // Check if plan already exists by stripeProductId
-        const existingPlans = await storage.getAllPlans();
-        const existingPlan = existingPlans.find(p => 
-          (p as any).stripeProductId === product.productId
-        );
+      // Fetch all existing plans ONCE and index by stripeProductId for O(1) lookups
+      const existingPlans = await storage.getAllPlans();
+      const plansByProductId = new Map(
+        existingPlans
+          .filter(p => (p as any).stripeProductId) // Only plans with stripeProductId
+          .map(p => [(p as any).stripeProductId, p])
+      );
 
-        if (existingPlan) {
-          // Update existing plan
-          console.log(`[SYNC-FROM-STRIPE] Updating existing plan: ${product.productName}`);
-          const updated = await storage.updatePlan(existingPlan.id, product.planData);
-          results.updated.push(updated);
-        } else {
-          // Create new plan
-          console.log(`[SYNC-FROM-STRIPE] Creating new plan: ${product.productName}`);
-          const created = await storage.createPlan(product.planData);
-          results.created.push(created);
+      console.log(`[SYNC-FROM-STRIPE] Found ${plansByProductId.size} existing plans in database`);
+
+      // Process each synced product with O(1) lookup
+      for (const product of syncResult.syncedPlans) {
+        try {
+          const existingPlan = plansByProductId.get(product.productId);
+
+          if (existingPlan) {
+            // Update existing plan
+            console.log(`[SYNC-FROM-STRIPE] Updating existing plan: ${product.productName}`);
+            const updated = await storage.updatePlan(existingPlan.id, product.planData);
+            results.updated.push(updated);
+          } else {
+            // Create new plan
+            console.log(`[SYNC-FROM-STRIPE] Creating new plan: ${product.productName}`);
+            const created = await storage.createPlan(product.planData);
+            results.created.push(created);
+          }
+        } catch (dbError: any) {
+          console.error(`[SYNC-FROM-STRIPE] Database error for ${product.productName}:`, dbError.message);
+          results.failed.push({
+            product: product.productName,
+            error: dbError.message,
+          });
         }
       }
 
       console.log('[SYNC-FROM-STRIPE] Synchronization complete:', {
         created: results.created.length,
         updated: results.updated.length,
+        failed: results.failed.length,
+        stripeErrors: syncResult.errors.length,
       });
 
       res.json({
         success: true,
-        message: `Synchronized ${syncedProducts.length} products from Stripe`,
+        message: `Synchronized ${results.created.length + results.updated.length} products from Stripe`,
         results: {
           created: results.created.length,
           updated: results.updated.length,
-          total: syncedProducts.length,
+          failed: results.failed.length,
+          total: syncResult.syncedPlans.length,
         },
         plans: [...results.created, ...results.updated],
+        errors: [...syncResult.errors, ...results.failed],
       });
     } catch (error: any) {
       console.error("Error syncing from Stripe:", error);
       res.status(500).json({ 
+        success: false,
         message: "Failed to sync from Stripe", 
         error: error.message 
       });
