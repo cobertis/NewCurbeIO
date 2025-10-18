@@ -212,6 +212,7 @@ export default function Billing() {
   const [showSkipTrialDialog, setShowSkipTrialDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [pendingSkipTrial, setPendingSkipTrial] = useState(false);
+  const [showModifyDialog, setShowModifyDialog] = useState(false);
 
   // Fetch session data to get user info
   const { data: sessionData } = useQuery({
@@ -645,7 +646,7 @@ export default function Billing() {
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
-                  onClick={() => setLocation('/select-plan')}
+                  onClick={() => setShowModifyDialog(true)}
                   className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 text-left"
                   data-testid="button-modify-subscription"
                 >
@@ -1102,6 +1103,90 @@ export default function Billing() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modify Subscription Dialog */}
+      <Dialog open={showModifyDialog} onOpenChange={setShowModifyDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
+              Modify subscription for {company?.name || 'Curbe.io'}
+            </DialogTitle>
+            <DialogDescription>
+              Hold up! Did you know about the options below?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-4">
+            {/* Upgrade Plan Option */}
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                  <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="font-semibold">Upgrade your current plan</p>
+                  <p className="text-sm text-muted-foreground">
+                    {subscription && formatCurrency(
+                      subscription.billingCycle === 'yearly' 
+                        ? subscription.plan.annualPrice || subscription.plan.price 
+                        : subscription.plan.price,
+                      subscription.plan.currency
+                    )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => {
+                  setShowModifyDialog(false);
+                  setLocation('/select-plan');
+                }}
+                data-testid="button-upgrade-plan"
+              >
+                Upgrade
+              </Button>
+            </div>
+
+            {/* Financial Support Option */}
+            <button
+              onClick={() => {
+                setShowModifyDialog(false);
+                window.location.href = 'mailto:hello@curbe.io?subject=Request for Financial Support';
+              }}
+              className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+              data-testid="button-financial-support"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted">
+                  <DollarSign className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-semibold">Request Financial Support</p>
+                  <p className="text-sm text-muted-foreground">
+                    I need financial support due to unforeseen circumstances
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
+
+            {/* Show More Button */}
+            <button
+              onClick={() => {
+                setShowModifyDialog(false);
+                setShowCancelDialog(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 p-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="button-show-more"
+            >
+              <span>Show more</span>
+              <ChevronRight className="h-4 w-4 rotate-90" />
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
