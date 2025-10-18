@@ -34,6 +34,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize email campaign service
   const emailCampaignService = new EmailCampaignService(storage);
 
+  // Helper function to send payment confirmation email
+  // Returns true if email sent successfully, false otherwise
+  // NEVER throws - handles all errors internally
+  async function sendPaymentConfirmationEmail(
+    companyId: string,
+    amount: number,
+    currency: string,
+    invoiceNumber: string,
+    invoiceUrl?: string
+  ): Promise<boolean> {
+    try {
+      // Get company details
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        console.error('[EMAIL] Company not found:', companyId);
+        return false;
+      }
+
+      // Get all admin users for the company
+      const users = await storage.getUsersByCompany(companyId);
+      const adminUsers = users.filter(u => u.role === 'admin' && u.emailNotifications);
+      
+      if (adminUsers.length === 0) {
+        console.log('[EMAIL] No admin users with email notifications enabled for company:', companyId);
+        return false;
+      }
+
+      // Get payment confirmation template
+      const template = await storage.getEmailTemplateBySlug("payment-confirmation");
+      if (!template) {
+        console.error('[EMAIL] Payment confirmation template not found');
+        return false;
+      }
+
+      // Format amount
+      const formattedAmount = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+      }).format(amount / 100);
+
+      // Format payment date
+      const paymentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      // Replace variables in template
+      const replacements: Record<string, string> = {
+        '{{amount}}': formattedAmount,
+        '{{invoice_number}}': invoiceNumber,
+        '{{payment_date}}': paymentDate,
+        '{{payment_method}}': 'Credit Card',
+        '{{company_name}}': company.name,
+        '{{invoice_url}}': invoiceUrl || '#',
+      };
+
+      let htmlContent = template.htmlContent;
+      let textContent = template.textContent || '';
+      let subject = template.subject;
+
+      // Replace all variables
+      Object.entries(replacements).forEach(([key, value]) => {
+        htmlContent = htmlContent.replace(new RegExp(key, 'g'), value);
+        textContent = textContent.replace(new RegExp(key, 'g'), value);
+        subject = subject.replace(new RegExp(key, 'g'), value);
+      });
+
+      // Send email to all admin users
+      let successCount = 0;
+      for (const user of adminUsers) {
+        const emailSent = await emailService.sendEmail({
+          to: user.email,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        });
+        
+        if (emailSent) {
+          console.log(`[EMAIL] Payment confirmation sent to ${user.email}`);
+          successCount++;
+        } else {
+          console.error(`[EMAIL] Failed to send payment confirmation to ${user.email}`);
+        }
+      }
+
+      return successCount > 0;
+    } catch (error) {
+      console.error('[EMAIL] Error in sendPaymentConfirmationEmail:', error);
+      return false;
+    }
+  }
+
   // Helper function to generate and send activation email
   // Returns true if email sent successfully, false otherwise
   // NEVER throws - handles all errors internally
@@ -4239,6 +4332,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   invoice.invoiceNumber
                 );
                 console.log('[NOTIFICATION] Payment success notification sent to company:', invoice.companyId);
+                
+                // Send payment confirmation email to admins
+                console.log('[WEBHOOK] Sending payment confirmation email to company:', invoice.companyId);
+                const emailSent = await sendPaymentConfirmationEmail(
+                  invoice.companyId,
+                  stripeInvoice.amount_paid || stripeInvoice.total,
+                  stripeInvoice.currency,
+                  invoice.invoiceNumber,
+                  stripeInvoice.hosted_invoice_url || undefined
+                );
+                
+                if (emailSent) {
+                  console.log('[EMAIL] Payment confirmation email sent successfully');
+                } else {
+                  console.error('[EMAIL] Failed to send payment confirmation email');
+                }
               }
             } else {
               console.error('[WEBHOOK] Invoice sync failed - invoice is null');
