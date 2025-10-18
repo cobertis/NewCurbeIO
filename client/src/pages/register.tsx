@@ -13,17 +13,20 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Building2, Loader2, MapPin, Phone, Globe } from "lucide-react";
+import { UserPlus, Building2, Loader2, MapPin, Phone, Globe, Check, ChevronLeft } from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
 
 const registerSchema = z.object({
   company: z.object({
     name: z.string().min(1, "Company name is required"),
     slug: z.string().min(1),
-    phone: z.string().min(1, "Phone is required"),
+    phone: z.string().min(1, "Phone number is required").refine(
+      (val) => val.replace(/\D/g, '').length === 10,
+      "Valid 10-digit phone number is required"
+    ),
     website: z.string().optional().or(z.literal("")),
     address: z.string().min(1, "Address is required"),
-    addressLine2: z.string().optional().or(z.literal("")), // Suite, Apt, Unit
+    addressLine2: z.string().optional().or(z.literal("")),
     city: z.string().optional().or(z.literal("")),
     state: z.string().optional().or(z.literal("")),
     postalCode: z.string().optional().or(z.literal("")),
@@ -33,7 +36,10 @@ const registerSchema = z.object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
-    phone: z.string().optional().or(z.literal("")),
+    phone: z.string().min(1, "Phone number is required").refine(
+      (val) => val.replace(/\D/g, '').length === 10,
+      "Valid 10-digit phone number is required"
+    ),
   }),
 });
 
@@ -47,6 +53,25 @@ const generateSlug = (name: string): string => {
     .substring(0, 50);
 };
 
+const formatPhoneNumber = (value: string): string => {
+  // Remove all non-numeric characters
+  let phoneNumber = value.replace(/\D/g, '');
+  
+  // Remove leading country code (1) if present
+  if (phoneNumber.length === 11 && phoneNumber.startsWith('1')) {
+    phoneNumber = phoneNumber.substring(1);
+  }
+  
+  // Format as (XXX) XXX-XXXX for 10-digit US numbers
+  if (phoneNumber.length <= 3) {
+    return phoneNumber;
+  } else if (phoneNumber.length <= 6) {
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+  } else {
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+  }
+};
+
 interface BusinessResult {
   id: string;
   name: string;
@@ -56,7 +81,7 @@ interface BusinessResult {
   website: string;
   address: {
     street: string;
-    addressLine2?: string; // Suite, Apt, Unit
+    addressLine2?: string;
     city: string;
     state: string;
     postalCode: string;
@@ -67,6 +92,7 @@ interface BusinessResult {
 export default function Register() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -149,10 +175,12 @@ export default function Register() {
     setSearchResults([]);
     setSearchQuery(business.name);
     
-    // Auto-fill company data with proper defaults
+    // Format phone number if it exists
+    const formattedPhone = business.phone ? formatPhoneNumber(business.phone) : "";
+    
     form.setValue("company.name", business.name);
     form.setValue("company.slug", generateSlug(business.name));
-    form.setValue("company.phone", business.phone || "");
+    form.setValue("company.phone", formattedPhone);
     form.setValue("company.website", business.website || "");
     form.setValue("company.address", business.address.street || "");
     form.setValue("company.addressLine2", business.address.addressLine2 || "");
@@ -187,6 +215,7 @@ export default function Register() {
     form.setValue("company.phone", "");
     form.setValue("company.website", "");
     form.setValue("company.address", "");
+    form.setValue("company.addressLine2", "");
     form.setValue("company.city", "");
     form.setValue("company.state", "");
     form.setValue("company.postalCode", "");
@@ -194,6 +223,23 @@ export default function Register() {
     
     setShowResults(false);
     setSearchResults([]);
+  };
+
+  const handleNextStep = async () => {
+    // Validate step 1 fields
+    const companyValid = await form.trigger([
+      "company.name",
+      "company.phone",
+      "company.address"
+    ]);
+    
+    if (companyValid) {
+      setCurrentStep(2);
+    }
+  };
+
+  const handleBackStep = () => {
+    setCurrentStep(1);
   };
 
   useEffect(() => {
@@ -247,171 +293,221 @@ export default function Register() {
       </div>
 
       <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 sm:p-10">
+          {/* Step Indicator */}
+          <div className="mb-8">
+            <div className="flex items-center justify-center gap-3">
+              {/* Step 1 */}
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
+                  currentStep === 1 
+                    ? 'bg-primary text-primary-foreground' 
+                    : currentStep > 1 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                }`}>
+                  {currentStep > 1 ? <Check className="w-5 h-5" /> : '1'}
+                </div>
+                <span className="text-xs mt-2 font-medium text-gray-600 dark:text-gray-400">Company</span>
+              </div>
+              
+              {/* Progress Line */}
+              <div className="w-16 sm:w-20 h-0.5 bg-gray-200 dark:bg-gray-700 relative overflow-hidden rounded-full">
+                <div className={`h-full bg-primary transition-all duration-300 ${
+                  currentStep > 1 ? 'w-full' : 'w-0'
+                }`} />
+              </div>
+              
+              {/* Step 2 */}
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
+                  currentStep === 2 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                }`}>
+                  2
+                </div>
+                <span className="text-xs mt-2 font-medium text-gray-600 dark:text-gray-400">Admin</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Header */}
           <div className="flex justify-center mb-6">
             <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              <UserPlus className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+              {currentStep === 1 ? (
+                <Building2 className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+              ) : (
+                <UserPlus className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+              )}
             </div>
           </div>
 
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              Create your account
+              {currentStep === 1 ? "Find your business" : "Create your account"}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {!selectedBusiness ? "Search for your business" : "Enter your details"}
+              {currentStep === 1 
+                ? "Search or enter your company details" 
+                : "Enter your admin account information"}
             </p>
           </div>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {!selectedBusiness ? (
+              {/* STEP 1: Company Information */}
+              {currentStep === 1 && (
                 <>
-                  {/* Search for business */}
-                  <div className="relative">
-                    <div className="relative">
-                      <Input
-                        placeholder="Search your business..."
-                        value={searchQuery}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                        className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg pr-10"
-                        data-testid="input-business-search"
-                      />
-                      {isSearching && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  {!selectedBusiness ? (
+                    <>
+                      {/* Search for business */}
+                      <div className="relative">
+                        <div className="relative">
+                          <Input
+                            placeholder="Search your business..."
+                            value={searchQuery}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg pr-10"
+                            data-testid="input-business-search"
+                          />
+                          {isSearching && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Results dropdown */}
-                    {showResults && searchResults.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {searchResults.slice(0, 5).map((business) => (
+                        
+                        {/* Results dropdown */}
+                        {showResults && searchResults.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {searchResults.slice(0, 5).map((business) => (
+                              <button
+                                key={business.id}
+                                type="button"
+                                onClick={() => selectBusiness(business)}
+                                className="w-full text-left p-3 hover-elevate border-b border-gray-100 dark:border-gray-700 last:border-0 rounded-lg"
+                                data-testid={`business-result-${business.id}`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                                      {business.name}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                      {business.shortFormattedAddress || business.formattedAddress}
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Manual entry option */}
+                      <div className="text-center">
+                        <button
+                          type="button"
+                          onClick={enterManually}
+                          className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+                          data-testid="button-manual-entry"
+                        >
+                          My business is not listed
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Business Summary Card */}
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 border border-gray-200 dark:border-gray-600">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Building2 className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                {selectedBusiness.name}
+                              </h3>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Company Information
+                              </p>
+                            </div>
+                          </div>
                           <button
-                            key={business.id}
                             type="button"
-                            onClick={() => selectBusiness(business)}
-                            className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
-                            data-testid={`business-result-${business.id}`}
+                            onClick={() => {
+                              setSelectedBusiness(null);
+                              setSearchQuery("");
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                            data-testid="button-change-business"
                           >
-                            <div className="flex items-start gap-2">
-                              <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                                  {business.name}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">
-                                  {business.shortFormattedAddress || business.formattedAddress}
-                                </div>
+                            Change
+                          </button>
+                        </div>
+
+                        {/* Company Details */}
+                        <div className="space-y-2.5">
+                          {selectedBusiness.address.street && (
+                            <div className="flex items-start gap-2.5">
+                              <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  {selectedBusiness.address.street}
+                                </p>
+                                {selectedBusiness.address.addressLine2 && (
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    {selectedBusiness.address.addressLine2}
+                                  </p>
+                                )}
+                                {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode) && (
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    {selectedBusiness.address.city}
+                                    {selectedBusiness.address.state && `${selectedBusiness.address.city ? ', ' : ''}${selectedBusiness.address.state}`}
+                                    {selectedBusiness.address.postalCode && ` ${selectedBusiness.address.postalCode}`}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Always show manual entry option */}
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={enterManually}
-                      className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
-                      data-testid="button-manual-entry"
-                    >
-                      My business is not listed
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* Show selected business - Company Summary */}
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 border border-gray-200 dark:border-gray-600">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Building2 className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                            {selectedBusiness.name}
-                          </h3>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Company Information
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBusiness(null);
-                          setSearchQuery("");
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
-                        data-testid="button-change-business"
-                      >
-                        Change
-                      </button>
-                    </div>
-
-                    {/* Company Details */}
-                    <div className="space-y-2.5">
-                      {selectedBusiness.address.street && (
-                        <div className="flex items-start gap-2.5">
-                          <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              {selectedBusiness.address.street}
-                              {selectedBusiness.address.addressLine2 && `, ${selectedBusiness.address.addressLine2}`}
-                            </p>
-                            {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode) && (
+                          )}
+                          
+                          {selectedBusiness.phone && (
+                            <div className="flex items-center gap-2.5">
+                              <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                               <p className="text-sm text-gray-700 dark:text-gray-300">
-                                {selectedBusiness.address.city}
-                                {selectedBusiness.address.state && `${selectedBusiness.address.city ? ', ' : ''}${selectedBusiness.address.state}`}
-                                {selectedBusiness.address.postalCode && ` ${selectedBusiness.address.postalCode}`}
+                                {selectedBusiness.phone}
                               </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {selectedBusiness.phone && (
-                        <div className="flex items-center gap-2.5">
-                          <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {selectedBusiness.phone}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {selectedBusiness.website && (
-                        <div className="flex items-center gap-2.5">
-                          <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                          <a 
-                            href={selectedBusiness.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate"
-                          >
-                            {selectedBusiness.website.replace(/^https?:\/\//, '')}
-                          </a>
-                        </div>
-                      )}
+                            </div>
+                          )}
+                          
+                          {selectedBusiness.website && (
+                            <div className="flex items-center gap-2.5">
+                              <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                              <a 
+                                href={selectedBusiness.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate"
+                              >
+                                {selectedBusiness.website.replace(/^https?:\/\//, '')}
+                              </a>
+                            </div>
+                          )}
 
-                      {selectedBusiness.id === 'manual' && (
-                        <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                            Manual entry - Please fill in the details below
-                          </p>
+                          {selectedBusiness.id === 'manual' && (
+                            <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                                Manual entry - Please fill in the details below
+                              </p>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
 
-                  {/* Company details - only if entered manually */}
-                  {selectedBusiness.id === 'manual' && (
-                    <>
+                      {/* Editable Company Fields - Always shown for all businesses */}
                       <FormField
                         control={form.control}
                         name="company.phone"
@@ -422,6 +518,10 @@ export default function Register() {
                                 placeholder="Company phone"
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
+                                onChange={(e) => {
+                                  const formatted = formatPhoneNumber(e.target.value);
+                                  field.onChange(formatted);
+                                }}
                                 data-testid="input-company-phone"
                               />
                             </FormControl>
@@ -466,10 +566,38 @@ export default function Register() {
                           </FormItem>
                         )}
                       />
+
+                      {/* Next Step Button */}
+                      <Button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="w-full h-12 text-base font-medium"
+                        data-testid="button-next-step"
+                      >
+                        Continue to Admin Account
+                      </Button>
                     </>
                   )}
 
-                  {/* User details */}
+                  {!selectedBusiness && (
+                    <div className="text-center text-sm text-gray-600 dark:text-gray-400 pt-2">
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => setLocation("/login")}
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                        data-testid="link-login"
+                      >
+                        Sign in here
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* STEP 2: Admin Information */}
+              {currentStep === 2 && (
+                <>
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
@@ -538,6 +666,10 @@ export default function Register() {
                             className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                             {...field}
                             value={field.value ?? ""}
+                            onChange={(e) => {
+                              const formatted = formatPhoneNumber(e.target.value);
+                              field.onChange(formatted);
+                            }}
                             data-testid="input-admin-phone"
                           />
                         </FormControl>
@@ -546,33 +678,52 @@ export default function Register() {
                     )}
                   />
 
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
-                    data-testid="button-register"
-                  >
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      onClick={handleBackStep}
+                      variant="outline"
+                      className="h-12 text-base font-medium"
+                      data-testid="button-back-step"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Back
+                    </Button>
+                    
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="flex-1 h-12 text-base font-medium"
+                      data-testid="button-register"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Creating account...
+                        </>
+                      ) : (
+                        "Create Account"
+                      )}
+                    </Button>
+                  </div>
 
                   <div className="text-center text-xs text-gray-500 dark:text-gray-400">
-                    You'll receive an activation email
+                    You'll receive an activation email to get started
+                  </div>
+
+                  <div className="text-center text-sm text-gray-600 dark:text-gray-400 pt-2">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/login")}
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                      data-testid="link-login"
+                    >
+                      Sign in here
+                    </button>
                   </div>
                 </>
-              )}
-
-              {!selectedBusiness && (
-                <div className="text-center text-sm text-gray-600 dark:text-gray-400 pt-2">
-                  Already have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => setLocation("/login")}
-                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
-                    data-testid="link-login"
-                  >
-                    Sign in here
-                  </button>
-                </div>
               )}
             </form>
           </Form>
