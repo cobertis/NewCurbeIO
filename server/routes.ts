@@ -3357,14 +3357,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { skipTrial } = await import("./stripe");
       const stripeSubscription = await skipTrial(subscription.stripeSubscriptionId);
 
+      // Helper to safely convert Stripe timestamps
+      const toDate = (timestamp: number | null | undefined): Date | undefined => {
+        if (typeof timestamp === 'number' && timestamp > 0) {
+          return new Date(timestamp * 1000);
+        }
+        return undefined;
+      };
+
       // Update local subscription to sync with Stripe
-      await storage.updateSubscription(subscription.id, {
+      const updateData: any = {
         status: stripeSubscription.status as 'active' | 'trialing' | 'past_due' | 'cancelled' | 'unpaid',
-        trialEnd: null,
-        trialStart: null,
-        currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
-      });
+      };
+      
+      // Only update dates if they have valid values
+      if (stripeSubscription.current_period_start) {
+        updateData.currentPeriodStart = toDate(stripeSubscription.current_period_start);
+      }
+      if (stripeSubscription.current_period_end) {
+        updateData.currentPeriodEnd = toDate(stripeSubscription.current_period_end);
+      }
+      
+      // Clear trial dates since trial is skipped
+      updateData.trialEnd = undefined;
+      updateData.trialStart = undefined;
+      
+      await storage.updateSubscription(subscription.id, updateData);
 
       res.json({ message: "Trial period ended successfully", subscription: stripeSubscription });
     } catch (error: any) {
