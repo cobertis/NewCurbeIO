@@ -52,6 +52,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { StripeCardForm } from "@/components/stripe-card-form";
+import { ManagePaymentMethodsDialog } from "@/components/manage-payment-methods-dialog";
 
 interface Subscription {
   id: string;
@@ -176,6 +177,7 @@ export default function Billing() {
   const { toast } = useToast();
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
+  const [showManageCards, setShowManageCards] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [couponCode, setCouponCode] = useState("");
@@ -451,7 +453,7 @@ export default function Billing() {
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => setShowAddCard(true)}
+              onClick={() => setShowManageCards(true)}
               data-testid="button-edit-payment"
             >
               <Pencil className="h-5 w-5 text-muted-foreground" />
@@ -1021,6 +1023,13 @@ export default function Billing() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Manage Payment Methods Dialog */}
+      <ManagePaymentMethodsDialog
+        open={showManageCards}
+        onOpenChange={setShowManageCards}
+        paymentMethods={paymentMethods || []}
+      />
     </div>
   );
 }
