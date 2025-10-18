@@ -548,25 +548,12 @@ export default function Billing() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      {/* Page Header with Action */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing & Subscription</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your subscription, payment methods, and billing history
-          </p>
-        </div>
-        {subscription && (
-          <Button
-            onClick={() => portalMutation.mutate()}
-            disabled={portalMutation.isPending}
-            variant="outline"
-            data-testid="button-customer-portal"
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Customer Portal
-          </Button>
-        )}
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Billing & Subscription</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage your subscription, payment methods, and billing history
+        </p>
       </div>
 
       {/* Two Column Layout */}
