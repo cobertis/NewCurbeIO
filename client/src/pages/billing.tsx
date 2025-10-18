@@ -520,6 +520,49 @@ export default function Billing() {
 
       {/* Main Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* Discount/Coupon Card */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5" />
+                Apply Discount
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {appliedCoupon ? (
+                <Alert>
+                  <Trophy className="h-4 w-4" />
+                  <AlertTitle>Discount Active</AlertTitle>
+                  <AlertDescription>
+                    {appliedCoupon.percentOff 
+                      ? `${appliedCoupon.percentOff}% off`
+                      : formatCurrency(appliedCoupon.amountOff)
+                    } applied to your subscription!
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Enter coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    data-testid="input-coupon-code"
+                  />
+                  <Button
+                    className="w-full"
+                    onClick={() => applyCouponMutation.mutate(couponCode)}
+                    disabled={!couponCode || applyCouponMutation.isPending}
+                    data-testid="button-apply-coupon"
+                  >
+                    Apply Coupon
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Current Plan Card - Enhanced */}
         {subscription && (
           <Card className="lg:col-span-2 border-2">
@@ -664,50 +707,6 @@ export default function Billing() {
             </CardContent>
           </Card>
         )}
-
-        {/* Quick Stats Card */}
-        <div className="space-y-6">
-          {/* Discount/Coupon Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Gift className="h-5 w-5" />
-                Apply Discount
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {appliedCoupon ? (
-                <Alert>
-                  <Trophy className="h-4 w-4" />
-                  <AlertTitle>Discount Active</AlertTitle>
-                  <AlertDescription>
-                    {appliedCoupon.percentOff 
-                      ? `${appliedCoupon.percentOff}% off`
-                      : formatCurrency(appliedCoupon.amountOff)
-                    } applied to your subscription!
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Enter coupon code"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    data-testid="input-coupon-code"
-                  />
-                  <Button
-                    className="w-full"
-                    onClick={() => applyCouponMutation.mutate(couponCode)}
-                    disabled={!couponCode || applyCouponMutation.isPending}
-                    data-testid="button-apply-coupon"
-                  >
-                    Apply Coupon
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       {/* Billing History Tabs */}
