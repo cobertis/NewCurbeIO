@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { FileText, Download, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
-import type { Invoice } from "@shared/schema";
+import type { Invoice, Company } from "@shared/schema";
 
 export default function InvoicesPage() {
   const { data: sessionData } = useQuery<{ user: { id: string; email: string; role: string; companyId: string | null } }>({
@@ -13,13 +13,28 @@ export default function InvoicesPage() {
   });
 
   const user = sessionData?.user;
+  const isSuperadmin = user?.role === "superadmin";
 
+  // Fetch invoices - superadmin gets all, others get their company's
   const { data, isLoading } = useQuery<{ invoices: Invoice[] }>({
-    queryKey: ["/api/invoices", { companyId: user?.companyId }],
-    enabled: !!user?.companyId || user?.role === "superadmin",
+    queryKey: isSuperadmin ? ["/api/invoices"] : ["/api/invoices", { companyId: user?.companyId }],
+    enabled: !!user?.companyId || isSuperadmin,
+  });
+
+  // Fetch all companies for superadmin to show company names
+  const { data: companiesData } = useQuery<{ companies: Company[] }>({
+    queryKey: ["/api/companies"],
+    enabled: isSuperadmin,
   });
 
   const invoices = data?.invoices || [];
+  const companies = companiesData?.companies || [];
+  
+  // Create a map of companyId to company name for quick lookup
+  const companyMap = companies.reduce((acc, company) => {
+    acc[company.id] = company.name;
+    return acc;
+  }, {} as Record<string, string>);
 
   const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
@@ -54,12 +69,15 @@ export default function InvoicesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Invoice History</CardTitle>
-            <CardDescription>Your billing invoices and receipts</CardDescription>
+            <CardDescription>
+              {isSuperadmin ? "All invoices from all companies" : "Your billing invoices and receipts"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isSuperadmin && <TableHead>Company</TableHead>}
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Amount</TableHead>
@@ -70,6 +88,11 @@ export default function InvoicesPage() {
               <TableBody>
                 {invoices.map((invoice) => (
                   <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
+                    {isSuperadmin && (
+                      <TableCell className="font-medium" data-testid={`cell-company-${invoice.id}`}>
+                        {companyMap[invoice.companyId] || "Unknown"}
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                     <TableCell>{format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}</TableCell>
                     <TableCell>

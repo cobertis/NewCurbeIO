@@ -2328,21 +2328,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // INVOICES & PAYMENTS
   // ===================================================================
 
-  // Get invoices (scoped by company for non-superadmins)
+  // Get invoices (scoped by company for non-superadmins, all invoices for superadmin without companyId)
   app.get("/api/invoices", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
 
-    // Superadmins need companyId query param, others use their company
-    const companyId = currentUser.role === "superadmin" 
-      ? req.query.companyId as string
-      : currentUser.companyId;
+    // Superadmins can optionally filter by companyId, or get all invoices if no companyId provided
+    if (currentUser.role === "superadmin") {
+      const companyId = req.query.companyId as string;
+      
+      if (companyId) {
+        // Get invoices for specific company
+        const invoices = await storage.getInvoicesByCompany(companyId);
+        res.json({ invoices });
+      } else {
+        // Get ALL invoices from ALL companies
+        const invoices = await storage.getAllInvoices();
+        res.json({ invoices });
+      }
+    } else {
+      // Non-superadmins can only see their company's invoices
+      const companyId = currentUser.companyId;
+      
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID required" });
+      }
 
-    if (!companyId) {
-      return res.status(400).json({ message: "Company ID required" });
+      const invoices = await storage.getInvoicesByCompany(companyId);
+      res.json({ invoices });
     }
-
-    const invoices = await storage.getInvoicesByCompany(companyId);
-    res.json({ invoices });
   });
 
   // Get invoice by ID
