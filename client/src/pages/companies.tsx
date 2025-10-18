@@ -493,7 +493,7 @@ export default function Companies() {
           }
         }}
       >
-        <DialogContent data-testid="dialog-create-company">
+        <DialogContent className="max-w-4xl" data-testid="dialog-create-company">
           <DialogHeader>
             <DialogTitle>New Company</DialogTitle>
             <DialogDescription>
@@ -527,75 +527,77 @@ export default function Companies() {
           )}
           <Form {...createForm}>
             <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Company Information</h3>
-                <FormField
-                  control={createForm.control}
-                  name="company.name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Company Name</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Acme Inc." 
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            // Auto-generate slug if not manually edited
-                            if (!slugManuallyEdited) {
-                              const generatedSlug = generateSlug(e.target.value);
-                              createForm.setValue('company.slug', generatedSlug);
-                            }
-                          }}
-                          data-testid="input-create-company-name" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="company.slug"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Slug (auto-generated, editable)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="acme-inc" 
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            setSlugManuallyEdited(true);
-                          }}
-                          data-testid="input-create-company-slug" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="company.phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="+1 (415) 555-2671" 
-                          {...field}
-                          onChange={(e) => {
-                            const formatted = formatPhoneInput(e.target.value);
-                            field.onChange(formatted);
-                          }}
-                          data-testid="input-create-company-phone" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="company.name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company Name</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Acme Inc." 
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              // Auto-generate slug if not manually edited
+                              if (!slugManuallyEdited) {
+                                const generatedSlug = generateSlug(e.target.value);
+                                createForm.setValue('company.slug', generatedSlug);
+                              }
+                            }}
+                            data-testid="input-create-company-name" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="company.slug"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Slug (auto-generated, editable)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="acme-inc" 
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              setSlugManuallyEdited(true);
+                            }}
+                            data-testid="input-create-company-slug" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="company.phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="+1 (415) 555-2671" 
+                            {...field}
+                            onChange={(e) => {
+                              const formatted = formatPhoneInput(e.target.value);
+                              field.onChange(formatted);
+                            }}
+                            data-testid="input-create-company-phone" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={createForm.control}
                   name="company.address"
@@ -617,7 +619,7 @@ export default function Companies() {
                     />
                   )}
                 />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={createForm.control}
                     name="company.city"
@@ -644,8 +646,6 @@ export default function Companies() {
                       </FormItem>
                     )}
                   />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={createForm.control}
                     name="company.postalCode"
@@ -675,69 +675,71 @@ export default function Companies() {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-4 border-t">
+              <div className="space-y-4 pt-4 border-t">
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Admin User</h3>
-                <FormField
-                  control={createForm.control}
-                  name="admin.firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John" {...field} data-testid="input-create-admin-firstname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="admin.lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Doe" {...field} data-testid="input-create-admin-lastname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="admin.email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Admin Email (required for OTP)</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="john@acme.com" {...field} data-testid="input-create-admin-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createForm.control}
-                  name="admin.phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Admin Phone (required for OTP)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="+1 (415) 555-2671" 
-                          {...field} 
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const formatted = formatPhoneInput(e.target.value);
-                            field.onChange(formatted);
-                          }}
-                          data-testid="input-create-admin-phone" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="admin.firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John" {...field} data-testid="input-create-admin-firstname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="admin.lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Doe" {...field} data-testid="input-create-admin-lastname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="admin.email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admin Email (required for OTP)</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="john@acme.com" {...field} data-testid="input-create-admin-email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="admin.phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admin Phone (required for OTP)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="+1 (415) 555-2671" 
+                            {...field} 
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const formatted = formatPhoneInput(e.target.value);
+                              field.onChange(formatted);
+                            }}
+                            data-testid="input-create-admin-phone" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
               <DialogFooter>
