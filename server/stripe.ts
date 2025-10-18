@@ -184,7 +184,8 @@ export async function createStripeSubscription(
   stripePriceId: string,
   companyId: string,
   planId: string,
-  trialDays?: number
+  trialDays?: number,
+  billingPeriod: string = 'monthly'
 ) {
   console.log('[STRIPE] Creating subscription:', {
     customerId,
@@ -192,6 +193,7 @@ export async function createStripeSubscription(
     companyId,
     planId,
     trialDays,
+    billingPeriod,
   });
 
   const subscriptionData: Stripe.SubscriptionCreateParams = {
@@ -204,6 +206,7 @@ export async function createStripeSubscription(
     metadata: {
       companyId,
       planId,
+      billingPeriod,
     },
     // Automatically collect payment
     payment_behavior: 'default_incomplete',

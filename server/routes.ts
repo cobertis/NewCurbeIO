@@ -2013,7 +2013,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         plan.stripePriceId,
         companyId,
         planId,
-        plan.trialDays
+        plan.trialDays,
+        'monthly' // Default to monthly for admin-assigned plans
       );
 
       // Extract subscription data from Stripe
@@ -2114,11 +2115,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const companyId = currentUser.companyId;
-    const { planId } = req.body;
+    const { planId, billingPeriod = "monthly" } = req.body;
 
     if (!planId) {
       return res.status(400).json({ message: "Plan ID required" });
     }
+    
+    console.log('[SELECT-PLAN] Billing period:', billingPeriod);
 
     // Verify company exists
     const company = await storage.getCompany(companyId);
@@ -2183,7 +2186,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         plan.stripePriceId,
         companyId,
         planId,
-        plan.trialDays
+        plan.trialDays,
+        billingPeriod
       );
 
       // Extract subscription data from Stripe
