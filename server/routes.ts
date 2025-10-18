@@ -3365,10 +3365,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "Company ID required" });
     }
 
-    const { fullName, country, addressLine1, addressLine2, city, state, postalCode } = req.body;
+    const { fullName, addressLine1, addressLine2, city, state, postalCode } = req.body;
 
     // Validate required fields
-    if (!fullName || !country || !addressLine1 || !city || !state || !postalCode) {
+    if (!fullName || !addressLine1 || !city || !state || !postalCode) {
       return res.status(400).json({ message: "Missing required billing address fields" });
     }
 
@@ -3381,7 +3381,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update existing address
         billingAddress = await storage.updateBillingAddress(companyId, {
           fullName,
-          country,
           addressLine1,
           addressLine2: addressLine2 || null,
           city,
@@ -3393,7 +3392,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingAddress = await storage.createBillingAddress({
           companyId,
           fullName,
-          country,
           addressLine1,
           addressLine2: addressLine2 || null,
           city,
@@ -3407,6 +3405,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (subscription?.stripeCustomerId) {
         const { stripe } = await import("./stripe");
         
+        // Get company to use its country
+        const company = await storage.getCompany(companyId);
+        
         await stripe.customers.update(subscription.stripeCustomerId, {
           name: fullName,
           address: {
@@ -3415,7 +3416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             city,
             state,
             postal_code: postalCode,
-            country,
+            country: company?.country || 'US',
           },
         });
         

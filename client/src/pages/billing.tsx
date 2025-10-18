@@ -243,7 +243,6 @@ export default function Billing() {
   // Billing address form state
   const [billingForm, setBillingForm] = useState({
     fullName: '',
-    country: '',
     addressLine1: '',
     addressLine2: '',
     city: '',
@@ -257,7 +256,6 @@ export default function Billing() {
       // If billing address exists, use it
       setBillingForm({
         fullName: billingAddress.fullName || '',
-        country: billingAddress.country || '',
         addressLine1: billingAddress.addressLine1 || '',
         addressLine2: billingAddress.addressLine2 || '',
         city: billingAddress.city || '',
@@ -274,7 +272,6 @@ export default function Billing() {
       
       setBillingForm({
         fullName,
-        country: company.country || '',
         addressLine1: company.address || '',
         addressLine2: company.addressLine2 || '',
         city: company.city || '',
@@ -320,7 +317,6 @@ export default function Billing() {
     if (billingAddress) {
       setBillingForm({
         fullName: billingAddress.fullName || '',
-        country: billingAddress.country || '',
         addressLine1: billingAddress.addressLine1 || '',
         addressLine2: billingAddress.addressLine2 || '',
         city: billingAddress.city || '',
@@ -336,7 +332,6 @@ export default function Billing() {
       
       setBillingForm({
         fullName,
-        country: company.country || '',
         addressLine1: company.address || '',
         addressLine2: company.addressLine2 || '',
         city: company.city || '',
@@ -644,14 +639,6 @@ export default function Billing() {
                   <ArrowRight className="h-4 w-4 mr-2" />
                   Change Plan
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAddCard(true)}
-                  data-testid="button-manage-payment"
-                >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Manage Payment Method
-                </Button>
                 {!subscription.cancelAtPeriodEnd && (
                   <Button
                     variant="outline"
@@ -733,40 +720,6 @@ export default function Billing() {
                 </div>
               )}
             </div>
-
-            {/* Apply Coupon */}
-            <div>
-              <h3 className="font-semibold mb-4">Apply Discount Code</h3>
-              {appliedCoupon ? (
-                <Alert>
-                  <Trophy className="h-4 w-4" />
-                  <AlertTitle>Discount Active</AlertTitle>
-                  <AlertDescription>
-                    {appliedCoupon.percentOff 
-                      ? `${appliedCoupon.percentOff}% off`
-                      : formatCurrency(appliedCoupon.amountOff)
-                    } applied to your subscription!
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Enter coupon code"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    data-testid="input-coupon-code"
-                  />
-                  <Button
-                    className="w-full"
-                    onClick={() => applyCouponMutation.mutate(couponCode)}
-                    disabled={!couponCode || applyCouponMutation.isPending}
-                    data-testid="button-apply-coupon"
-                  >
-                    Apply Coupon
-                  </Button>
-                </div>
-              )}
-            </div>
             </CardContent>
           </Card>
         )}
@@ -790,17 +743,6 @@ export default function Billing() {
                   value={billingForm.fullName}
                   onChange={(e) => handleBillingFormChange('fullName', e.target.value)}
                   data-testid="input-billing-name"
-                />
-              </div>
-
-              {/* Country */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Country Or Region</label>
-                <Input
-                  placeholder="United States"
-                  value={billingForm.country}
-                  onChange={(e) => handleBillingFormChange('country', e.target.value)}
-                  data-testid="input-billing-country"
                 />
               </div>
 

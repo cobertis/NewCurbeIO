@@ -410,7 +410,6 @@ export const billingAddresses = pgTable("billing_addresses", {
   fullName: text("full_name").notNull(),
   
   // Address details
-  country: text("country").notNull(),
   addressLine1: text("address_line_1").notNull(),
   addressLine2: text("address_line_2"),
   city: text("city").notNull(),
