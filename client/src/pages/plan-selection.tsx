@@ -37,6 +37,12 @@ export default function PlanSelection() {
   const [, setLocation] = useLocation();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   
+  // Debug: Log when billing period changes
+  const handleBillingPeriodChange = (period: BillingPeriod) => {
+    console.log(`[BILLING-DEBUG] Changing billing period from "${billingPeriod}" to "${period}"`);
+    setBillingPeriod(period);
+  };
+  
   const { data: sessionData } = useQuery<{ user: User }>({
     queryKey: ['/api/session'],
   });
@@ -109,11 +115,12 @@ export default function PlanSelection() {
   };
 
   const getDisplayPrice = (plan: Plan) => {
-    if (billingPeriod === "yearly" && plan.annualPrice) {
-      // Show monthly equivalent of annual price
-      return plan.annualPrice / 12;
-    }
-    return plan.price;
+    const price = billingPeriod === "yearly" && plan.annualPrice
+      ? plan.annualPrice / 12
+      : plan.price;
+    
+    console.log(`[BILLING-DEBUG] Plan: ${plan.name}, Period: ${billingPeriod}, Price: ${price}, Monthly: ${plan.price}, Annual: ${plan.annualPrice}`);
+    return price;
   };
 
   const getYearlyPrice = (plan: Plan) => {
@@ -150,7 +157,7 @@ export default function PlanSelection() {
           <Button
             variant={billingPeriod === "monthly" ? "default" : "outline"}
             size="sm"
-            onClick={() => setBillingPeriod("monthly")}
+            onClick={() => handleBillingPeriodChange("monthly")}
             className="rounded-full px-6"
             data-testid="button-billing-monthly"
           >
@@ -159,7 +166,7 @@ export default function PlanSelection() {
           <Button
             variant={billingPeriod === "yearly" ? "default" : "outline"}
             size="sm"
-            onClick={() => setBillingPeriod("yearly")}
+            onClick={() => handleBillingPeriodChange("yearly")}
             className="rounded-full px-6 relative"
             data-testid="button-billing-yearly"
           >
@@ -268,7 +275,10 @@ export default function PlanSelection() {
                     className="w-full"
                     size="lg"
                     variant={isPopular ? "default" : "outline"}
-                    onClick={() => selectPlanMutation.mutate({ planId: plan.id, billingPeriod })}
+                    onClick={() => {
+                      console.log(`[BILLING-DEBUG] Selecting plan ${plan.name} with billing period: ${billingPeriod}`);
+                      selectPlanMutation.mutate({ planId: plan.id, billingPeriod });
+                    }}
                     disabled={selectPlanMutation.isPending}
                     data-testid={`button-select-plan-${plan.id}`}
                   >
