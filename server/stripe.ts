@@ -54,13 +54,18 @@ export async function createStripeCustomer(company: {
     }
   }
   
-  // Generate invoice prefix from company name initials (first 3 letters, uppercase)
+  // Generate UNIQUE invoice prefix from company name initials + timestamp
   // Stripe requires 1-12 uppercase letters or numbers only (no special characters)
-  const invoicePrefix = company.name
+  // Invoice prefixes cannot be reused even after customer deletion (Stripe restriction)
+  const basePrefix = company.name
     .replace(/[^a-zA-Z\s]/g, '') // Remove special characters
     .split(' ')[0] // Get first word
     .substring(0, 3) // Take first 3 letters
     .toUpperCase(); // Convert to uppercase (e.g., "COB" for Cobertis)
+  
+  // Add timestamp suffix to ensure uniqueness (last 4 digits of epoch time)
+  const uniqueSuffix = Date.now().toString().slice(-4);
+  const invoicePrefix = `${basePrefix}${uniqueSuffix}`; // e.g., "COB1234"
   
   const customerData: Stripe.CustomerCreateParams = {
     email: company.representativeEmail || company.email,
