@@ -141,6 +141,7 @@ export interface IStorage {
   getSubscriptionByStripeCustomerId(stripeCustomerId: string): Promise<Subscription | undefined>;
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
   updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
+  upsertSubscription(subscription: InsertSubscription): Promise<Subscription>;
   cancelSubscription(id: string, cancelAtPeriodEnd: boolean): Promise<Subscription | undefined>;
   
   // Invoices
@@ -554,6 +555,29 @@ export class DbStorage implements IStorage {
 
   async updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined> {
     const result = await db.update(subscriptions).set(data).where(eq(subscriptions.id, id)).returning();
+    return result[0];
+  }
+
+  async upsertSubscription(insertSubscription: InsertSubscription): Promise<Subscription> {
+    const result = await db.insert(subscriptions)
+      .values(insertSubscription)
+      .onConflictDoUpdate({
+        target: subscriptions.companyId,
+        set: {
+          planId: insertSubscription.planId,
+          status: insertSubscription.status,
+          trialStart: insertSubscription.trialStart,
+          trialEnd: insertSubscription.trialEnd,
+          currentPeriodStart: insertSubscription.currentPeriodStart,
+          currentPeriodEnd: insertSubscription.currentPeriodEnd,
+          stripeCustomerId: insertSubscription.stripeCustomerId,
+          stripeSubscriptionId: insertSubscription.stripeSubscriptionId,
+          stripeLatestInvoiceId: insertSubscription.stripeLatestInvoiceId,
+          cancelAtPeriodEnd: insertSubscription.cancelAtPeriodEnd,
+          updatedAt: new Date(),
+        }
+      })
+      .returning();
     return result[0];
   }
 

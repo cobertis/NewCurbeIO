@@ -286,7 +286,7 @@ export const plans = pgTable("plans", {
 
 export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().unique().references(() => companies.id, { onDelete: "cascade" }),
   planId: varchar("plan_id").references(() => plans.id, { onDelete: "set null" }),
   
   // Subscription status

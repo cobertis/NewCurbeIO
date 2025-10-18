@@ -451,43 +451,24 @@ export async function handleSubscriptionCreated(stripeSubscription: Stripe.Subsc
     return undefined;
   };
 
-  // Check if a subscription already exists for this company
-  const existingSubscription = await storage.getSubscriptionByCompany(companyId);
-  
-  if (existingSubscription) {
-    // Update existing subscription instead of creating a duplicate
-    console.log('[WEBHOOK] Updating existing subscription for company:', companyId);
-    await storage.updateSubscription(existingSubscription.id, {
-      planId,
-      status: mapStripeSubscriptionStatus(stripeSubscription.status),
-      trialStart: toDate(stripeSubscription.trial_start),
-      trialEnd: toDate(stripeSubscription.trial_end),
-      currentPeriodStart: toDate(stripeSubscription.current_period_start) || new Date(),
-      currentPeriodEnd: toDate(stripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      stripeCustomerId: stripeSubscription.customer as string,
-      stripeSubscriptionId: stripeSubscription.id,
-      stripeLatestInvoiceId: stripeSubscription.latest_invoice as string || undefined,
-      cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-    });
-  } else {
-    // Create new subscription
-    console.log('[WEBHOOK] Creating new subscription for company:', companyId);
-    const subscriptionData: InsertSubscription = {
-      companyId,
-      planId,
-      status: mapStripeSubscriptionStatus(stripeSubscription.status),
-      trialStart: toDate(stripeSubscription.trial_start),
-      trialEnd: toDate(stripeSubscription.trial_end),
-      currentPeriodStart: toDate(stripeSubscription.current_period_start) || new Date(),
-      currentPeriodEnd: toDate(stripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      stripeCustomerId: stripeSubscription.customer as string,
-      stripeSubscriptionId: stripeSubscription.id,
-      stripeLatestInvoiceId: stripeSubscription.latest_invoice as string || undefined,
-      cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-    };
+  const subscriptionData: InsertSubscription = {
+    companyId,
+    planId,
+    status: mapStripeSubscriptionStatus(stripeSubscription.status),
+    trialStart: toDate(stripeSubscription.trial_start),
+    trialEnd: toDate(stripeSubscription.trial_end),
+    currentPeriodStart: toDate(stripeSubscription.current_period_start) || new Date(),
+    currentPeriodEnd: toDate(stripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    stripeCustomerId: stripeSubscription.customer as string,
+    stripeSubscriptionId: stripeSubscription.id,
+    stripeLatestInvoiceId: stripeSubscription.latest_invoice as string || undefined,
+    cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+  };
 
-    await storage.createSubscription(subscriptionData);
-  }
+  // Use UPSERT to atomically insert or update the subscription
+  // This prevents race conditions when webhooks arrive in parallel
+  console.log('[WEBHOOK] Upserting subscription for company:', companyId);
+  await storage.upsertSubscription(subscriptionData);
 }
 
 export async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription) {
