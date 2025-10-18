@@ -308,16 +308,18 @@ export default function CompanyDetail() {
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Address</h3>
               <div className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div className="flex-1 space-y-1">
+                <div className="flex-1">
                   {company.address || company.addressLine2 || company.city || company.state || company.postalCode || company.country ? (
-                    <>
-                      {company.address && <p className="text-sm">{company.address}</p>}
-                      {company.addressLine2 && <p className="text-sm text-muted-foreground">{company.addressLine2}</p>}
-                      <p className="text-sm">
-                        {[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}
-                      </p>
-                      {company.country && <p className="text-sm">{company.country}</p>}
-                    </>
+                    <p className="text-sm">
+                      {[
+                        company.address,
+                        company.addressLine2,
+                        company.city,
+                        company.state,
+                        company.postalCode,
+                        company.country
+                      ].filter(Boolean).join(', ')}
+                    </p>
                   ) : (
                     <p className="text-sm text-muted-foreground">Not provided</p>
                   )}
