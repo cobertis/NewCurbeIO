@@ -553,7 +553,7 @@ export default function Register() {
                           <FormItem>
                             <FormControl>
                               <Input
-                                placeholder="Company phone"
+                                placeholder="+1 (456) 789-1234"
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
                                 onChange={(e) => {
@@ -800,7 +800,7 @@ export default function Register() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="Phone number"
+                            placeholder="+1 (456) 789-1234"
                             className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                             {...field}
                             value={field.value ?? ""}
