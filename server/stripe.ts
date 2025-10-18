@@ -30,6 +30,7 @@ export async function createStripeCustomer(company: {
   email: string;
   phone: string;
   address: string;
+  addressLine2?: string | null; // Suite, Apt, Unit
   city?: string | null;
   state?: string | null;
   country?: string | null;
@@ -85,6 +86,7 @@ export async function createStripeCustomer(company: {
   if (company.address || company.city || company.state || company.country || company.postalCode) {
     customerData.address = {
       line1: company.address,
+      line2: company.addressLine2 || undefined, // Suite, Apt, Unit
       city: company.city || undefined,
       state: company.state || undefined,
       country: company.country || undefined,
