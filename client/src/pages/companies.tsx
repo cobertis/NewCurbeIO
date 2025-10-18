@@ -471,6 +471,7 @@ export default function Companies() {
                       createForm.setValue("company.phone", business.phone);
                       createForm.setValue("company.website", business.website || "");
                       createForm.setValue("company.address", business.address);
+                      createForm.setValue("company.addressLine2", business.addressLine2 || "");
                       createForm.setValue("company.city", business.city);
                       createForm.setValue("company.state", business.state);
                       createForm.setValue("company.postalCode", business.postalCode);
