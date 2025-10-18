@@ -76,8 +76,12 @@ export function AddressAutocomplete({
       
       if (response.ok) {
         const data = await response.json();
-        setSuggestions(data.results || []);
-        setShowSuggestions(true);
+        // Filter to only show results that have road/street information
+        const filteredResults = (data.results || []).filter((result: AddressResult) => {
+          return result.address && (result.address.road || result.address.house_number);
+        });
+        setSuggestions(filteredResults);
+        setShowSuggestions(filteredResults.length > 0);
       }
     } catch (error) {
       console.error("Failed to fetch address suggestions:", error);

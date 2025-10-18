@@ -364,6 +364,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       url.searchParams.set("limit", "5");
       url.searchParams.set("countrycodes", "us"); // Limit to US addresses
       url.searchParams.set("normalizecity", "1");
+      url.searchParams.set("addressdetails", "1"); // Get detailed address components
+      url.searchParams.set("tag", "place:house,place:building,highway:residential,highway:primary,highway:secondary,highway:tertiary"); // Only search for physical addresses
 
       console.log("[LOCATIONIQ] Fetching from API:", url.origin + url.pathname);
       const response = await fetch(url.toString());
