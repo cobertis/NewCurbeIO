@@ -314,6 +314,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Public registration endpoint - no auth required
+  app.post("/api/register", async (req: Request, res: Response) => {
+    try {
+      const { company: companyData, user: userData } = req.body;
+      
+      // Validate required fields
+      if (!companyData?.name || !userData?.email || !userData?.password) {
+        return res.status(400).json({ message: "Company name, email and password are required" });
+      }
+
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      
+      // Create company first (using admin email as company email)
+      const newCompany = await storage.createCompany({
+        name: companyData.name,
+        email: userData.email, // Company email is set to admin email
+        taxId: companyData.taxId || null,
+        website: companyData.website || null,
+        industry: companyData.industry || null,
+        address: companyData.address || null,
+        city: companyData.city || null,
+        state: companyData.state || null,
+        zipCode: companyData.zipCode || null,
+        country: companyData.country || null,
+        isActive: true,
+      });
+      
+      // Create Stripe customer immediately after company creation
+      try {
+        console.log('[REGISTRATION] Creating Stripe customer for:', newCompany.name);
+        const { createStripeCustomer } = await import("./stripe");
+        
+        // Create Stripe customer with admin as primary contact
+        const stripeCustomer = await createStripeCustomer({
+          ...newCompany,
+          representatives: [{
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            email: userData.email,
+            phone: userData.phone || null,
+            isPrimary: true,
+          }],
+        });
+        
+        // Update company with Stripe customer ID
+        await storage.updateCompany(newCompany.id, { stripeCustomerId: stripeCustomer.id });
+        console.log('[REGISTRATION] Stripe customer created:', stripeCustomer.id);
+      } catch (stripeError) {
+        console.error('[REGISTRATION] Failed to create Stripe customer:', stripeError);
+        // Continue with registration even if Stripe fails - can be fixed later
+      }
+
+      // Create admin user for the company - account starts as NOT activated
+      const newUser = await storage.createUser({
+        email: userData.email,
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        phone: userData.phone || null,
+        role: 'admin',
+        companyId: newCompany.id,
+        isActive: false, // Account starts inactive until email verification
+        password: hashedPassword, // Store the hashed password
+        activationToken: randomBytes(32).toString('hex'),
+        activationTokenExpires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      });
+
+      // Send activation email
+      try {
+        const activationLink = `${process.env.APP_URL || `http://localhost:${process.env.PORT || 5000}`}/activate-account?token=${newUser.activationToken}`;
+        
+        // Get activation email template
+        const template = await storage.getEmailTemplateByType('account_activation');
+        
+        if (template) {
+          let htmlContent = template.htmlContent
+            .replace(/\{\{firstName\}\}/g, userData.firstName || 'there')
+            .replace(/\{\{activationLink\}\}/g, activationLink)
+            .replace(/\{\{companyName\}\}/g, newCompany.name);
+          let textContent = template.textContent
+            ?.replace(/\{\{firstName\}\}/g, userData.firstName || 'there')
+            ?.replace(/\{\{activationLink\}\}/g, activationLink)
+            ?.replace(/\{\{companyName\}\}/g, newCompany.name);
+          
+          await emailService.sendEmail({
+            to: userData.email,
+            subject: template.subject.replace(/\{\{companyName\}\}/g, newCompany.name),
+            html: htmlContent,
+            text: textContent,
+          });
+        } else {
+          // Fallback if template not found
+          await emailService.sendEmail({
+            to: userData.email,
+            subject: `Activate your ${newCompany.name} account`,
+            html: `
+              <h2>Welcome to ${newCompany.name}!</h2>
+              <p>Hi ${userData.firstName || 'there'},</p>
+              <p>Your company account has been created. Please activate it by clicking the link below:</p>
+              <p><a href="${activationLink}">Activate Account</a></p>
+              <p>This link will expire in 24 hours.</p>
+              <p>Best regards,<br>The ${newCompany.name} Team</p>
+            `,
+            text: `Welcome to ${newCompany.name}!\n\nActivate your account: ${activationLink}\n\nThis link expires in 24 hours.`,
+          });
+        }
+      } catch (emailError) {
+        console.error('[REGISTRATION] Failed to send activation email:', emailError);
+        // Continue - user can request a new activation email later
+      }
+
+      // Log the registration
+      await logger.logAuth({
+        req,
+        action: "company_registered",
+        userId: newUser.id,
+        email: userData.email,
+        metadata: { 
+          companyId: newCompany.id,
+          companyName: newCompany.name,
+        },
+      });
+
+      res.json({ 
+        success: true,
+        message: "Registration successful! Please check your email to activate your account.",
+        companyId: newCompany.id,
+        userId: newUser.id,
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Failed to register company. Please try again." });
+    }
+  });
+
   app.get("/api/session", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
 
