@@ -352,42 +352,6 @@ export default function Billing() {
     ? ((subscription.plan.trialDays - trialDaysRemaining) / subscription.plan.trialDays) * 100 
     : 0;
 
-  // Show trial notification when page loads and user is on trial
-  useEffect(() => {
-    if (subscription?.status === 'trialing' && trialDaysRemaining > 0 && !isLoadingSubscription) {
-      // Only show if we have a valid trial
-      const trialEndDate = new Date(subscription.trialEnd!);
-      const formattedDate = trialEndDate.toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-      });
-      
-      // Show a more celebratory notification if trial just started (more than 10 days remaining)
-      if (trialDaysRemaining >= 10) {
-        toast({
-          title: "🎉 You're on a Free Trial!",
-          description: `Enjoy all features of the ${subscription.plan.name} plan free until ${formattedDate}. No credit card required to continue trying.`,
-          duration: 6000,
-        });
-      } else if (trialDaysRemaining <= 3) {
-        // Urgent reminder if trial is ending soon
-        toast({
-          title: "⏰ Trial Ending Soon",
-          description: `Only ${trialDaysRemaining} days left in your free trial! Add a payment method to keep your ${subscription.plan.name} plan active.`,
-          variant: "default",
-          duration: 8000,
-        });
-      } else {
-        // Regular reminder for mid-trial
-        toast({
-          title: "📅 Free Trial Active",
-          description: `${trialDaysRemaining} days remaining in your trial. Your first payment of ${formatCurrency(subscription.plan.price, subscription.plan.currency)} will be on ${formattedDate}.`,
-          duration: 5000,
-        });
-      }
-    }
-  }, [subscription?.status, trialDaysRemaining, isLoadingSubscription]);
 
   // Calculate savings for annual billing
   const calculateAnnualSavings = (monthlyPrice: number) => {
