@@ -26,12 +26,24 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 -   **SMS Chat Application:** Bidirectional, real-time SMS chat with a three-column layout, WebSocket-based updates, contact integration, conversation management (search, delete, new), unread badge system, and internal notes for conversations. Includes comprehensive backend APIs for chat functionalities.
 -   **SMS Subscription Management:** `smsSubscribed` field, automatic unsubscribe via Twilio webhook (STOP keywords), and manual toggle for superadmins.
 -   **Billing & Stripe Integration:** 
-    -   **Automatic Customer Creation:** Stripe customer created immediately when a company is created, using admin information as representative.
+    -   **Automatic Customer Creation:** Stripe customer created immediately when a company is created, with complete business information (company name in `description` field, representative details, billing address).
     -   **First Login Plan Selection:** Non-superadmin users without subscription are redirected to `/select-plan` page showing all active plans with Stripe prices.
     -   **Real Subscription Creation:** Creates actual Stripe subscriptions using existing customer when plan is selected or assigned by superadmin.
-    -   **Webhook Processing:** Handles Stripe events (subscriptions, invoices, payments) for automatic synchronization.
-    -   **Billing Dashboard:** Shows current balance (paid/due), next billing date, payment history, and invoice downloads.
-    -   **Customer Portal:** Self-service Stripe portal for payment method management.
+    -   **Webhook Processing:** Handles Stripe events (subscriptions, invoices, payments) for automatic synchronization with fallback methods for invoice association.
+    -   **Professional Billing Dashboard:** Comprehensive billing page at `/billing` featuring:
+        - Trial countdown with visual progress bar
+        - Current plan details with pricing
+        - Next billing date and amount
+        - Payment history table
+        - Invoice list with download links
+        - Billing period toggle (monthly/yearly with 20% annual discount)
+    -   **Subscription Management:** Full control over subscriptions:
+        - Skip trial period (immediate billing)
+        - Change plans with automatic proration
+        - Cancel subscription (immediate or at period end)
+        - Apply coupon/promo codes (with promotion code resolution)
+    -   **Customer Portal:** Self-service Stripe portal for payment method management and invoice access.
+    -   **Superadmin Multi-Tenancy:** All billing endpoints support superadmin management of any company's subscription via companyId parameters.
 
 ### System Design Choices
 The system is built on a clear separation of concerns, utilizing PostgreSQL with Drizzle ORM for data management and strict multi-tenancy. Security is enforced through robust password management, account activation, and 2FA. The modular feature system provides high flexibility and extensibility.
