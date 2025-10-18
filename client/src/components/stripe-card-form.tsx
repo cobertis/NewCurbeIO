@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   useStripe,
   useElements,
@@ -10,9 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CreditCard, Lock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-
-// Load Stripe with public key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "");
 
 // Card element styling options
 const CARD_ELEMENT_OPTIONS = {
@@ -163,6 +160,26 @@ function StripeCardFormInner({ onSuccess, onError, companyId }: StripeCardFormIn
 
 // Wrapper component with Stripe Elements provider
 export function StripeCardForm({ onSuccess, onError, companyId }: StripeCardFormInnerProps) {
+  // Create Stripe instance lazily to ensure environment variable is loaded
+  const stripePromise = useMemo(() => {
+    const key = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+    if (!key) {
+      console.error("Stripe public key is not defined");
+      return null;
+    }
+    return loadStripe(key);
+  }, []);
+
+  if (!stripePromise) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Payment system is not configured properly. Please contact support.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <Elements stripe={stripePromise}>
       <StripeCardFormInner onSuccess={onSuccess} onError={onError} companyId={companyId} />

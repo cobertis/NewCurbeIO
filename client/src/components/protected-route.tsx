@@ -39,8 +39,10 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
               const subscriptionData = await subscriptionResponse.json();
               const subscription = subscriptionData?.subscription;
               
-              // Redirect if no subscription or if subscription is cancelled
-              if (!subscription || subscription.status === 'cancelled') {
+              // Redirect only if no subscription or if subscription is cancelled/canceled
+              // Valid statuses that should NOT redirect: trialing, active, incomplete, past_due, unpaid
+              const invalidStatuses = ['cancelled', 'canceled'];
+              if (!subscription || invalidStatuses.includes(subscription.status)) {
                 setLocation("/select-plan");
                 return;
               }
