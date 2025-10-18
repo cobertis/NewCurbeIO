@@ -371,7 +371,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = loginSchema.parse(req.body);
 
+      console.log(`[LOGIN-DEBUG] Login attempt for email: ${email}`);
       const user = await storage.getUserByEmail(email);
+      console.log(`[LOGIN-DEBUG] User found:`, user ? `Yes (ID: ${user.id}, Status: ${user.status}, Has Password: ${!!user.password})` : 'No');
 
       if (!user) {
         await logger.logAuth({
@@ -461,7 +463,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      console.log(`[LOGIN-DEBUG] Verifying password for user: ${user.email}`);
       const isValidPassword = await verifyPassword(password, user.password);
+      console.log(`[LOGIN-DEBUG] Password valid:`, isValidPassword);
       if (!isValidPassword) {
         await logger.logAuth({
           req,
