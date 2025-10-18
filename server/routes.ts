@@ -346,12 +346,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { q } = req.query;
       
+      console.log("[LOCATIONIQ] Received request with query:", q);
+      
       if (!q || typeof q !== 'string') {
+        console.log("[LOCATIONIQ] Missing or invalid query parameter");
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
 
       if (!process.env.LOCATIONIQ_API_KEY) {
-        console.error("LOCATIONIQ_API_KEY not configured");
+        console.error("[LOCATIONIQ] API KEY not configured");
         return res.status(500).json({ message: "Address autocomplete service not configured" });
       }
 
@@ -362,18 +365,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       url.searchParams.set("countrycodes", "us"); // Limit to US addresses
       url.searchParams.set("normalizecity", "1");
 
+      console.log("[LOCATIONIQ] Fetching from API:", url.origin + url.pathname);
       const response = await fetch(url.toString());
       
       if (!response.ok) {
-        console.error("LocationIQ API error:", response.status, response.statusText);
+        console.error("[LOCATIONIQ] API error:", response.status, response.statusText);
         return res.status(response.status).json({ message: "Failed to fetch address suggestions" });
       }
 
       const data = await response.json();
-      res.json({ results: data });
+      console.log("[LOCATIONIQ] Got", data.length, "results");
+      
+      // Set JSON content type explicitly
+      res.setHeader('Content-Type', 'application/json');
+      return res.json({ results: data });
     } catch (error) {
-      console.error("LocationIQ autocomplete error:", error);
-      res.status(500).json({ message: "Failed to fetch address suggestions" });
+      console.error("[LOCATIONIQ] Autocomplete error:", error);
+      return res.status(500).json({ message: "Failed to fetch address suggestions" });
     }
   });
 
