@@ -23,6 +23,7 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
+import Register from "@/pages/register";
 import VerifyOTP from "@/pages/verify-otp";
 import ActivateAccount from "@/pages/activate-account";
 import Dashboard from "@/pages/dashboard";
@@ -793,6 +794,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       <Route path="/verify-otp" component={VerifyOTP} />
       <Route path="/activate-account" component={ActivateAccount} />
       <Route path="/dashboard">
