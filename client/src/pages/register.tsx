@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import {
   Form,
   FormControl,
@@ -236,7 +236,9 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
       <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
-        <img src={logo} alt="Curbe.io" className="h-8 sm:h-10 w-auto object-contain" />
+        <Link href="/">
+          <img src={logo} alt="Curbe.io" className="h-8 sm:h-10 w-auto object-contain cursor-pointer" />
+        </Link>
       </div>
 
       <div className="w-full max-w-md">
