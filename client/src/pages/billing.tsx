@@ -91,7 +91,7 @@ interface Plan {
   currency: string;
   features?: string[];
   stripePriceId?: string;
-  stripeYearlyPriceId?: string;
+  stripeAnnualPriceId?: string;
   trialDays?: number;
   isActive: boolean;
 }

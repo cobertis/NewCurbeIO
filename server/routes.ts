@@ -3278,7 +3278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get the correct Stripe price ID based on billing period
       const stripePriceId = billingPeriod === 'yearly' 
-        ? plan.stripeYearlyPriceId 
+        ? plan.stripeAnnualPriceId 
         : plan.stripePriceId;
 
       if (!stripePriceId) {
