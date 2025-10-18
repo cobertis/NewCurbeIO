@@ -629,22 +629,34 @@ export default function Billing() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold">
-                    {formatCurrency(subscription.plan.price, subscription.plan.currency)}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
+                  {activeDiscount && activeDiscount.percentOff ? (
+                    <>
+                      <div className="text-lg font-medium text-muted-foreground line-through">
+                        {formatCurrency(subscription.plan.price, subscription.plan.currency)}
+                      </div>
+                      <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                        {formatCurrency(
+                          Math.round(subscription.plan.price * (1 - activeDiscount.percentOff / 100)),
+                          subscription.plan.currency
+                        )}
+                      </div>
+                      <Badge className="mt-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                        <Gift className="h-3 w-3 mr-1" />
+                        {activeDiscount.percentOff}% discount applied
+                      </Badge>
+                    </>
+                  ) : (
+                    <div className="text-3xl font-bold">
+                      {formatCurrency(subscription.plan.price, subscription.plan.currency)}
+                    </div>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-1">
                     {subscription.billingCycle === 'yearly' ? 'Billed Annually' : 'per month'}
                   </p>
                   {subscription.billingCycle === 'yearly' && (
                     <Badge variant="secondary" className="mt-1">
                       <TrendingUp className="h-3 w-3 mr-1" />
                       Annual Plan
-                    </Badge>
-                  )}
-                  {activeDiscount && activeDiscount.percentOff && (
-                    <Badge className="mt-2 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                      <Gift className="h-3 w-3 mr-1" />
-                      {activeDiscount.percentOff}% discount applied
                     </Badge>
                   )}
                 </div>
