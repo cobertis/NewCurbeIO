@@ -543,52 +543,6 @@ export default function Billing() {
         )}
       </div>
 
-      {/* Trial Alert - Only shown when in trial */}
-      {subscription && subscription.status === 'trialing' && trialDaysRemaining > 0 && (
-        <Alert className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:border-blue-800 dark:from-blue-950/40 dark:to-indigo-950/40 py-3" data-testid="alert-trial">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 shrink-0">
-              <Rocket className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <AlertTitle className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-0">
-                  Trial Active
-                </AlertTitle>
-                <span className="text-xs text-blue-700 dark:text-blue-300">
-                  <span className="font-semibold">{trialDaysRemaining} days</span> left
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <Progress 
-                  value={trialProgress} 
-                  className="h-1.5 flex-1 bg-blue-100 dark:bg-blue-900/30" 
-                  data-testid="progress-trial"
-                />
-                <span className="text-xs text-blue-600 dark:text-blue-400 shrink-0">
-                  {Math.round(trialProgress)}%
-                </span>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (confirm("Are you sure you want to skip the trial and start billing immediately?")) {
-                  skipTrialMutation.mutate();
-                }
-              }}
-              disabled={skipTrialMutation.isPending}
-              className="shrink-0 border-blue-300 bg-white text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-200 dark:hover:bg-blue-900"
-              data-testid="button-skip-trial"
-            >
-              <Zap className="h-3 w-3 mr-1.5" />
-              Skip
-            </Button>
-          </div>
-        </Alert>
-      )}
-
       {/* Two Column Layout */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Subscription Details - 2 columns */}
