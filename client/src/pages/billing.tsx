@@ -543,6 +543,60 @@ export default function Billing() {
         )}
       </div>
 
+      {/* Trial Alert - Only shown when in trial */}
+      {subscription && subscription.status === 'trialing' && trialDaysRemaining > 0 && (
+        <Alert className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:border-blue-800 dark:from-blue-950/40 dark:to-indigo-950/40" data-testid="alert-trial">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+                <Rocket className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <div className="flex-1 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <AlertTitle className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                    Your Trial is Active!
+                  </AlertTitle>
+                  <AlertDescription className="text-blue-700 dark:text-blue-300 mt-1">
+                    You have <span className="font-bold text-blue-900 dark:text-blue-100">{trialDaysRemaining} days</span> remaining to explore all {subscription.plan.name} features. Your trial ends on {formatDate(new Date(subscription.trialEnd!))}.
+                  </AlertDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (confirm("Are you sure you want to skip the trial and start billing immediately?")) {
+                      skipTrialMutation.mutate();
+                    }
+                  }}
+                  disabled={skipTrialMutation.isPending}
+                  className="shrink-0 border-blue-300 bg-white text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-200 dark:hover:bg-blue-900"
+                  data-testid="button-skip-trial"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Skip Trial
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-blue-700 dark:text-blue-300 font-medium">Trial Progress</span>
+                  <span className="text-blue-900 dark:text-blue-100 font-semibold">{Math.round(trialProgress)}%</span>
+                </div>
+                <Progress 
+                  value={trialProgress} 
+                  className="h-2 bg-blue-100 dark:bg-blue-900/30" 
+                  data-testid="progress-trial"
+                />
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  {subscription.plan.trialDays ? `${subscription.plan.trialDays - trialDaysRemaining} of ${subscription.plan.trialDays} days used` : 'Trial in progress'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Alert>
+      )}
+
       {/* Two Column Layout */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Subscription Details - 2 columns */}
