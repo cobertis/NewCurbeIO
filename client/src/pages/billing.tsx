@@ -773,7 +773,7 @@ export default function Billing() {
             <form onSubmit={handleBillingFormSubmit} className="space-y-4">
               {/* Full Name */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Full Name</label>
+                <label className="text-sm font-medium">Full Name on Card</label>
                 <Input
                   placeholder="John Doe"
                   value={billingForm.fullName}
