@@ -26,7 +26,7 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 -   **SMS Chat Application:** Bidirectional, real-time SMS chat with a three-column layout, WebSocket-based updates, contact integration, conversation management (search, delete, new), unread badge system, and internal notes for conversations. Includes comprehensive backend APIs for chat functionalities.
 -   **SMS Subscription Management:** `smsSubscribed` field, automatic unsubscribe via Twilio webhook (STOP keywords), and manual toggle for superadmins.
 -   **Billing & Stripe Integration:** 
-    -   **Automatic Customer Creation:** Stripe customer created immediately when a company is created, with complete business information (company name in `description` field, representative details, billing address).
+    -   **Automatic Customer Creation:** Stripe customer created immediately when a company is created, with complete business information (company name in `metadata.business_name` field, representative details, billing address).
     -   **First Login Plan Selection:** Non-superadmin users without subscription are redirected to `/select-plan` page showing all active plans with Stripe prices.
     -   **Real Subscription Creation:** Creates actual Stripe subscriptions using existing customer when plan is selected or assigned by superadmin.
     -   **Webhook Processing:** Handles Stripe events (subscriptions, invoices, payments) for automatic synchronization with fallback methods for invoice association.

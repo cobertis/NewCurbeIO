@@ -70,12 +70,12 @@ export async function createStripeCustomer(company: {
   const customerData: Stripe.CustomerCreateParams = {
     email: company.representativeEmail || company.email,
     name: individualName || company.name, // Individual's name first, fallback to company name
-    description: company.name, // Business/Company name - shows as "Business name" in Stripe UI
     phone: company.representativePhone || company.phone,
     invoice_prefix: invoicePrefix, // e.g., "COB-" for "Cobertis Insurance"
     metadata: {
       companyId: company.id,
       companyName: company.name,
+      business_name: company.name, // This shows as "Business name" in Stripe UI
       legalName: company.legalName || company.name,
       representativePosition: company.representativePosition || '',
     },
