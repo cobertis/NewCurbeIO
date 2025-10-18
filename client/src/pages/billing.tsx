@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -200,6 +201,7 @@ const CardBrandLogo = ({ brand }: { brand: string }) => {
 
 export default function Billing() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [showManageCards, setShowManageCards] = useState(false);
@@ -771,7 +773,7 @@ export default function Billing() {
                 )}
                 <Button
                   variant={subscription.status === 'trialing' ? "outline" : "default"}
-                  onClick={() => setShowChangePlan(true)}
+                  onClick={() => setLocation('/select-plan')}
                   data-testid="button-change-plan"
                 >
                   <ArrowRight className="h-4 w-4 mr-2" />
