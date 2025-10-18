@@ -355,6 +355,9 @@ export default function Companies() {
                         </div>
                         <div className="text-sm" data-testid={`text-company-address-${company.id}`}>
                           <p className="text-gray-600 dark:text-gray-300">{company.address}</p>
+                          {company.addressLine2 && (
+                            <p className="text-gray-500 dark:text-gray-400 text-xs">{company.addressLine2}</p>
+                          )}
                           <p className="text-gray-500 dark:text-gray-400 text-xs">
                             {[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}
                           </p>
