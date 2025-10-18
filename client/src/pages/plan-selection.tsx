@@ -137,7 +137,13 @@ export default function PlanSelection() {
             data-testid="button-billing-yearly"
           >
             Yearly
-            <Badge className="ml-2 bg-primary/20 text-primary border-0 hover:bg-primary/20">
+            <Badge 
+              className={`ml-2 border-0 ${
+                billingPeriod === "yearly" 
+                  ? "bg-white/20 text-white hover:bg-white/20" 
+                  : "bg-primary/20 text-primary hover:bg-primary/20"
+              }`}
+            >
               -20%
             </Badge>
           </Button>
