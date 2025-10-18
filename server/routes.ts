@@ -2272,8 +2272,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subscriptionData: any = {
         planId,
         status: mapStatus(stripeSubscription.status),
-        trialStart: stripeSubData.trial_start ? new Date(stripeSubData.trial_start * 1000) : undefined,
-        trialEnd: stripeSubData.trial_end ? new Date(stripeSubData.trial_end * 1000) : undefined,
+        trialStart: (stripeSubData.trial_start && stripeSubData.trial_start > 0) ? new Date(stripeSubData.trial_start * 1000) : null,
+        trialEnd: (stripeSubData.trial_end && stripeSubData.trial_end > 0) ? new Date(stripeSubData.trial_end * 1000) : null,
         currentPeriodStart: new Date(stripeSubData.current_period_start * 1000),
         currentPeriodEnd: new Date(stripeSubData.current_period_end * 1000),
         stripeCustomerId,
