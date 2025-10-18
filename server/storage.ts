@@ -531,7 +531,9 @@ export class DbStorage implements IStorage {
   }
 
   async getSubscriptionByCompany(companyId: string): Promise<Subscription | undefined> {
-    const result = await db.select().from(subscriptions).where(eq(subscriptions.companyId, companyId));
+    const result = await db.select().from(subscriptions)
+      .where(eq(subscriptions.companyId, companyId))
+      .orderBy(desc(subscriptions.updatedAt)); // Get the most recently updated subscription
     return result[0];
   }
 
