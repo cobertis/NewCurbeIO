@@ -207,6 +207,7 @@ export default function Billing() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [showSkipTrialDialog, setShowSkipTrialDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [pendingSkipTrial, setPendingSkipTrial] = useState(false);
 
   // Fetch session data to get user info
   const { data: sessionData } = useQuery({
@@ -738,7 +739,21 @@ export default function Billing() {
                 {subscription.status === 'trialing' && trialDaysRemaining > 0 && (
                   <Button
                     variant="default"
-                    onClick={() => setShowSkipTrialDialog(true)}
+                    onClick={() => {
+                      // Check if payment method exists first
+                      if (!paymentMethods || paymentMethods.length === 0) {
+                        // No payment method - open add card modal and set pending flag
+                        setPendingSkipTrial(true);
+                        setShowAddCard(true);
+                        toast({
+                          title: "Payment Method Required",
+                          description: "Please add a payment method to skip your trial and activate your subscription.",
+                        });
+                      } else {
+                        // Payment method exists - show confirmation dialog
+                        setShowSkipTrialDialog(true);
+                      }
+                    }}
                     disabled={skipTrialMutation.isPending}
                     data-testid="button-skip-trial"
                   >
@@ -1160,7 +1175,13 @@ export default function Billing() {
       </Dialog>
 
       {/* Add Payment Method Dialog */}
-      <Dialog open={showAddCard} onOpenChange={setShowAddCard}>
+      <Dialog open={showAddCard} onOpenChange={(open) => {
+        setShowAddCard(open);
+        // If closing the dialog, clear pending skip trial flag
+        if (!open) {
+          setPendingSkipTrial(false);
+        }
+      }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Add Payment Method</DialogTitle>
@@ -1178,6 +1199,12 @@ export default function Billing() {
                 setShowAddCard(false);
                 // Refresh payment methods
                 queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
+                
+                // If we were waiting to skip trial, do it now
+                if (pendingSkipTrial) {
+                  setPendingSkipTrial(false);
+                  skipTrialMutation.mutate();
+                }
               }}
               onError={(error) => {
                 toast({
