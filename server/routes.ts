@@ -3165,7 +3165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeSubscriptionId) {
+      if (!subscription || !subscription.stripeSubscriptionId || !subscription.stripeCustomerId) {
         return res.status(404).json({ message: "No active subscription found" });
       }
 
@@ -3183,25 +3183,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: `${billingPeriod} pricing not available for this plan` });
       }
 
+      // Cancel current subscription and create new one with new plan
+      // IMPORTANT: Preserve trial dates from original activation
       const { changePlan } = await import("./stripe");
-      const stripeSubscription = await changePlan(
+      const newStripeSubscription = await changePlan(
+        subscription.stripeCustomerId,
         subscription.stripeSubscriptionId,
         stripePriceId,
-        billingPeriod as 'monthly' | 'yearly'
+        billingPeriod as 'monthly' | 'yearly',
+        subscription.trialStart,
+        subscription.trialEnd
       );
 
-      // Update local subscription to sync with Stripe
-      // IMPORTANT: DO NOT update trialStart/trialEnd when changing plans
-      // The trial period must remain from the original activation date, not reset when plan changes
-      // Only update: plan, status, and current period dates
+      // Update local subscription with new Stripe subscription ID and dates
+      // IMPORTANT: Preserve the original trial dates (they're already preserved in Stripe)
       await storage.updateSubscription(subscription.id, {
         planId: plan.id,
-        status: stripeSubscription.status,
-        currentPeriodStart: toDate(stripeSubscription.current_period_start) || new Date(),
-        currentPeriodEnd: toDate(stripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        stripeSubscriptionId: newStripeSubscription.id, // NEW subscription ID
+        status: newStripeSubscription.status,
+        // Preserve trial dates from local subscription (not from Stripe response)
+        // because we want to keep the original activation dates
+        trialStart: subscription.trialStart,
+        trialEnd: subscription.trialEnd,
+        currentPeriodStart: toDate(newStripeSubscription.current_period_start) || new Date(),
+        currentPeriodEnd: toDate(newStripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
 
-      res.json({ message: "Plan changed successfully", subscription: stripeSubscription });
+      res.json({ message: "Plan changed successfully", subscription: newStripeSubscription });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

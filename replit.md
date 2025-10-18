@@ -46,11 +46,10 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - Billing period toggle (monthly/yearly with 20% annual discount)
     -   **Subscription Management:** Full control over subscriptions:
         - Skip trial period (immediate billing)
-        - Change plans with automatic proration
+        - **Change plans:** When changing plans, the current subscription is canceled and a new subscription is created with the new plan (only one active subscription at a time)
         - **Trial Preservation:** Trial period is preserved when changing plans - trial dates remain from original activation and do not reset
         - Cancel subscription (immediate or at period end)
         - Apply coupon/promo codes (with promotion code resolution)
-        - Prevents plan changes on canceled subscriptions with clear error messaging
     -   **Payment Method Management:** Comprehensive multi-card management system:
         - Add multiple payment methods via Stripe Elements
         - View all saved cards with brand logos (Visa, Mastercard, Amex, Discover)

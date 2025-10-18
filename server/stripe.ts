@@ -793,33 +793,58 @@ export async function skipTrial(stripeSubscriptionId: string) {
 }
 
 export async function changePlan(
+  stripeCustomerId: string,
   stripeSubscriptionId: string,
   newStripePriceId: string,
-  billingPeriod: 'monthly' | 'yearly'
+  billingPeriod: 'monthly' | 'yearly',
+  currentTrialStart: Date | null,
+  currentTrialEnd: Date | null
 ) {
   try {
     console.log('[STRIPE] Changing plan for subscription:', stripeSubscriptionId);
+    console.log('[STRIPE] Customer ID:', stripeCustomerId);
     console.log('[STRIPE] New price ID:', newStripePriceId);
     
-    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    // Step 1: Check current subscription status and cancel if not already canceled
+    const currentSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
     
-    // If subscription is canceled, we cannot change the plan
-    if (subscription.status === 'canceled') {
-      console.log('[STRIPE] Subscription is canceled, cannot change plan');
-      throw new Error('Cannot change plan for a canceled subscription. Please create a new subscription instead.');
+    if (currentSubscription.status !== 'canceled') {
+      console.log('[STRIPE] Canceling current subscription...');
+      await stripe.subscriptions.cancel(stripeSubscriptionId);
+      console.log('[STRIPE] Current subscription canceled');
+    } else {
+      console.log('[STRIPE] Subscription already canceled, skipping cancellation');
     }
     
-    // Update the existing subscription
-    const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
-      items: [{
-        id: subscription.items.data[0].id,
-        price: newStripePriceId,
-      }],
-      proration_behavior: 'create_prorations',
-    });
+    // Step 2: Create a new subscription with the new plan
+    console.log('[STRIPE] Creating new subscription with new plan...');
+    const subscriptionData: any = {
+      customer: stripeCustomerId,
+      items: [{ price: newStripePriceId }],
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+    };
     
-    console.log('[STRIPE] Plan changed successfully');
-    return updatedSubscription;
+    // Step 3: Preserve trial dates if they exist
+    // IMPORTANT: Trial dates must remain from original activation, not reset
+    if (currentTrialStart && currentTrialEnd) {
+      const now = new Date();
+      const trialEndDate = new Date(currentTrialEnd);
+      
+      // Only preserve trial if it hasn't ended yet
+      if (trialEndDate > now) {
+        const trialEndTimestamp = Math.floor(trialEndDate.getTime() / 1000);
+        subscriptionData.trial_end = trialEndTimestamp;
+        console.log('[STRIPE] Preserving trial until:', trialEndDate.toISOString());
+      } else {
+        console.log('[STRIPE] Trial has already ended, not preserving');
+      }
+    }
+    
+    const newSubscription = await stripe.subscriptions.create(subscriptionData);
+    
+    console.log('[STRIPE] New subscription created successfully:', newSubscription.id);
+    return newSubscription;
   } catch (error) {
     console.error('[STRIPE] Error changing plan:', error);
     throw error;
