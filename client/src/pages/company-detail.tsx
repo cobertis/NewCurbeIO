@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, LayoutDashboard } from "lucide-react";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, LayoutDashboard, FileText, Briefcase, UserCheck, Languages, DollarSign, Clock } from "lucide-react";
 import { formatPhoneDisplay } from "@/lib/phone-formatter";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -253,67 +253,249 @@ export default function CompanyDetail() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Email, Phone, Website - Row 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex items-start gap-3">
-                <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</p>
-                  <p className="text-sm text-gray-900 dark:text-white truncate">{company.email}</p>
+            {/* Contact Information */}
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Contact Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3">
+                  <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Email</p>
+                    <p className="text-sm truncate">{company.email}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</p>
-                  <p className="text-sm text-gray-900 dark:text-white">
-                    {company.phone ? formatPhoneDisplay(company.phone) : "Not provided"}
-                  </p>
+                <div className="flex items-start gap-3">
+                  <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Phone</p>
+                    <p className="text-sm">
+                      {company.phone ? formatPhoneDisplay(company.phone) : "Not provided"}
+                    </p>
+                  </div>
                 </div>
+                <div className="flex items-start gap-3">
+                  <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Website</p>
+                    {company.website ? (
+                      <a 
+                        href={company.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate block"
+                      >
+                        {company.website}
+                      </a>
+                    ) : (
+                      <p className="text-sm">Not provided</p>
+                    )}
+                  </div>
+                </div>
+                {company.domain && (
+                  <div className="flex items-start gap-3">
+                    <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Domain</p>
+                      <p className="text-sm truncate">{company.domain}</p>
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
+
+            {/* Company Details */}
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Company Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {company.legalName && (
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Legal Name</p>
+                      <p className="text-sm">{company.legalName}</p>
+                    </div>
+                  </div>
+                )}
+                {company.industry && (
+                  <div className="flex items-start gap-3">
+                    <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Industry</p>
+                      <p className="text-sm">{company.industry}</p>
+                    </div>
+                  </div>
+                )}
+                {company.companySize && (
+                  <div className="flex items-start gap-3">
+                    <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Company Size</p>
+                      <p className="text-sm">{company.companySize}</p>
+                    </div>
+                  </div>
+                )}
+                {company.timezone && (
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Timezone</p>
+                      <p className="text-sm">{company.timezone}</p>
+                    </div>
+                  </div>
+                )}
+                {company.currency && (
+                  <div className="flex items-start gap-3">
+                    <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Currency</p>
+                      <p className="text-sm">{company.currency}</p>
+                    </div>
+                  </div>
+                )}
+                {company.platformLanguage && (
+                  <div className="flex items-start gap-3">
+                    <Languages className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Platform Language</p>
+                      <p className="text-sm">{company.platformLanguage}</p>
+                    </div>
+                  </div>
+                )}
+                {company.outboundLanguage && (
+                  <div className="flex items-start gap-3">
+                    <Languages className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Outbound Language</p>
+                      <p className="text-sm">{company.outboundLanguage}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Address Section */}
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Address</h3>
               <div className="flex items-start gap-3">
-                <Globe className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Website</p>
-                  {company.website ? (
-                    <a 
-                      href={company.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate block"
-                    >
-                      {company.website}
-                    </a>
+                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  {company.address || company.addressLine2 || company.city || company.state || company.postalCode || company.country ? (
+                    <>
+                      {company.address && <p className="text-sm">{company.address}</p>}
+                      {company.addressLine2 && <p className="text-sm text-muted-foreground">{company.addressLine2}</p>}
+                      <p className="text-sm">
+                        {[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}
+                      </p>
+                      {company.country && <p className="text-sm">{company.country}</p>}
+                    </>
                   ) : (
-                    <p className="text-sm text-gray-900 dark:text-white">Not provided</p>
+                    <p className="text-sm text-muted-foreground">Not provided</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Address Section */}
-            {(company.address || company.city || company.state || company.postalCode || company.country) && (
-              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</p>
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      {company.address ? (
-                        <>
-                          {company.address}
-                          {(company.city || company.state || company.postalCode) && (
-                            <span className="text-muted-foreground">
-                              {', '}
-                              {[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        "Not provided"
-                      )}
-                    </p>
-                  </div>
+            {/* Business Information */}
+            {(company.businessType || company.registrationIdType || company.registrationNumber || company.isNotRegistered || company.regionsOfOperation) && (
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Business Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {company.businessType && (
+                    <div className="flex items-start gap-3">
+                      <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Business Type</p>
+                        <p className="text-sm">{company.businessType}</p>
+                      </div>
+                    </div>
+                  )}
+                  {company.registrationIdType && (
+                    <div className="flex items-start gap-3">
+                      <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Registration ID Type</p>
+                        <p className="text-sm">{company.registrationIdType}</p>
+                      </div>
+                    </div>
+                  )}
+                  {company.registrationNumber && (
+                    <div className="flex items-start gap-3">
+                      <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Registration Number</p>
+                        <p className="text-sm">{company.registrationNumber}</p>
+                      </div>
+                    </div>
+                  )}
+                  {company.isNotRegistered && (
+                    <div className="flex items-start gap-3">
+                      <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Registration Status</p>
+                        <Badge variant="outline" className="mt-0.5">Not Registered</Badge>
+                      </div>
+                    </div>
+                  )}
+                  {company.regionsOfOperation && company.regionsOfOperation.length > 0 && (
+                    <div className="flex items-start gap-3 md:col-span-2">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Regions of Operation</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {company.regionsOfOperation.map((region, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {region}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Authorized Representative */}
+            {(company.representativeFirstName || company.representativeLastName || company.representativeEmail || company.representativePhone || company.representativePosition) && (
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Authorized Representative</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(company.representativeFirstName || company.representativeLastName) && (
+                    <div className="flex items-start gap-3">
+                      <UserCheck className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Name</p>
+                        <p className="text-sm">{[company.representativeFirstName, company.representativeLastName].filter(Boolean).join(' ')}</p>
+                      </div>
+                    </div>
+                  )}
+                  {company.representativePosition && (
+                    <div className="flex items-start gap-3">
+                      <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Position</p>
+                        <p className="text-sm">{company.representativePosition}</p>
+                      </div>
+                    </div>
+                  )}
+                  {company.representativeEmail && (
+                    <div className="flex items-start gap-3">
+                      <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Email</p>
+                        <p className="text-sm truncate">{company.representativeEmail}</p>
+                      </div>
+                    </div>
+                  )}
+                  {company.representativePhone && (
+                    <div className="flex items-start gap-3">
+                      <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Phone</p>
+                        <p className="text-sm">{formatPhoneDisplay(company.representativePhone)}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
