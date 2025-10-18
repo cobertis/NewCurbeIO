@@ -31,7 +31,14 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
     -   **Real Subscription Creation:** Creates actual Stripe subscriptions using existing customer when plan is selected or assigned by superadmin.
     -   **Webhook Processing:** Handles Stripe events (subscriptions, invoices, payments) for automatic synchronization with fallback methods for invoice association.
     -   **Professional Billing Dashboard:** Comprehensive billing page at `/billing` featuring:
-        - Trial countdown with visual progress bar
+        - **Trial Alert UI:** Prominent gradient alert shown only during trial period with:
+            - Rocket icon in blue circle for visual impact
+            - "Your Trial is Active!" title with days remaining highlighted
+            - Trial end date display
+            - Visual progress bar showing percentage of trial used
+            - "Skip Trial" button with confirmation dialog
+            - Dark mode support with gradient backgrounds
+            - Only visible when subscription.status === 'trialing' and days remaining > 0
         - Current plan details with pricing
         - Next billing date and amount
         - Payment history table
