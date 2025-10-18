@@ -151,7 +151,7 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Amount</p>
                     <p className="text-lg font-semibold" data-testid="text-subscription-amount">
-                      {subscription.plan ? formatCurrency(subscription.plan.priceMonthly, subscription.plan.currency) : "-"}
+                      {subscription.plan ? formatCurrency(subscription.plan.price, subscription.plan.currency) : "-"}
                     </p>
                   </div>
                   {subscription.currentPeriodEnd && (
