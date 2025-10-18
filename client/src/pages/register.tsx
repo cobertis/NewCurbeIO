@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { UserPlus, Loader2 } from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
 
 // Schema matching exactly what dashboard uses
@@ -63,11 +64,34 @@ const generateSlug = (name: string): string => {
     .substring(0, 50);
 };
 
+interface BusinessResult {
+  id: string;
+  name: string;
+  formattedAddress: string;
+  shortFormattedAddress: string;
+  phone: string;
+  website: string;
+  type: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+}
+
 export default function Register() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<BusinessResult[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null);
+  const [notListed, setNotListed] = useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessResult | null>(null);
 
   const form = useForm<CreateCompanyForm>({
     resolver: zodResolver(createCompanyWithAdminSchema),
@@ -91,6 +115,121 @@ export default function Register() {
       },
     },
   });
+
+  const searchBusinesses = useCallback(async (query: string) => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `/api/google-places/search-business?q=${encodeURIComponent(query)}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data.results || []);
+        setShowResults(true);
+      } else {
+        console.error("Failed to fetch business suggestions");
+        setSearchResults([]);
+        setShowResults(false);
+      }
+    } catch (error) {
+      console.error("Failed to fetch business suggestions:", error);
+      setSearchResults([]);
+      setShowResults(false);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handleCompanyNameChange = (value: string) => {
+    form.setValue('company.name', value);
+    
+    // Generate slug
+    const generatedSlug = generateSlug(value);
+    form.setValue('company.slug', generatedSlug);
+    
+    // Only search if not in manual mode
+    if (!notListed) {
+      // Clear previous timer
+      if (searchTimer) {
+        clearTimeout(searchTimer);
+      }
+      
+      // Set new timer for debounced search
+      const timer = setTimeout(() => {
+        searchBusinesses(value);
+      }, 300); // 300ms debounce
+      
+      setSearchTimer(timer);
+    }
+  };
+
+  const selectBusiness = (business: BusinessResult) => {
+    // Set the selected business
+    setSelectedBusiness(business);
+    
+    // Populate form with business data
+    form.setValue("company.name", business.name);
+    form.setValue("company.phone", business.phone);
+    form.setValue("company.website", business.website);
+    form.setValue("company.address", business.address.street);
+    form.setValue("company.city", business.address.city);
+    form.setValue("company.state", business.address.state);
+    form.setValue("company.postalCode", business.address.postalCode);
+    form.setValue("company.country", business.address.country);
+    
+    // Generate slug
+    const generatedSlug = generateSlug(business.name);
+    form.setValue("company.slug", generatedSlug);
+    
+    // Hide results
+    setShowResults(false);
+    setSearchResults([]);
+  };
+
+  const handleNotListedChange = (checked: boolean) => {
+    setNotListed(checked);
+    
+    if (checked) {
+      // Clear search results and selected business when switching to manual
+      setShowResults(false);
+      setSearchResults([]);
+      setSelectedBusiness(null);
+      
+      // Keep the company name but clear other fields to allow manual entry
+      const currentName = form.getValues('company.name');
+      form.setValue("company.phone", "");
+      form.setValue("company.website", "");
+      form.setValue("company.address", "");
+      form.setValue("company.city", "");
+      form.setValue("company.state", "");
+      form.setValue("company.postalCode", "");
+      form.setValue("company.country", "United States");
+      
+      // Keep the name and slug
+      form.setValue('company.name', currentName);
+      const generatedSlug = generateSlug(currentName);
+      form.setValue('company.slug', generatedSlug);
+    } else {
+      // If unchecking, clear everything for a fresh start
+      setSelectedBusiness(null);
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimer) {
+        clearTimeout(searchTimer);
+      }
+    };
+  }, [searchTimer]);
 
   const onSubmit = async (data: CreateCompanyForm) => {
     setIsLoading(true);
@@ -169,11 +308,11 @@ export default function Register() {
           {/* Title - same style as login */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              {currentStep === 1 ? "Create your business account" : "Admin information"}
+              {currentStep === 1 ? "Create your account" : "Admin information"}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {currentStep === 1 
-                ? "Enter your business details to get started" 
+                ? "Search for your business to get started" 
                 : "Who will manage this account?"}
             </p>
           </div>
@@ -184,114 +323,170 @@ export default function Register() {
               {currentStep === 1 ? (
                 <>
                   {/* Step 1: Company Info - Clean inputs like login */}
-                  <FormField
-                    control={form.control}
-                    name="company.name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="Company name"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              const generatedSlug = generateSlug(e.target.value);
-                              form.setValue('company.slug', generatedSlug);
-                            }}
-                            data-testid="input-company-name"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="company.phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="Company phone"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                            {...field}
-                            onChange={(e) => {
-                              const formatted = formatPhoneInput(e.target.value);
-                              field.onChange(formatted);
-                            }}
-                            data-testid="input-company-phone"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="company.address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="Business address"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                            {...field}
-                            data-testid="input-company-address"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="relative">
                     <FormField
                       control={form.control}
-                      name="company.city"
+                      name="company.name"
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <Input
-                              placeholder="City"
-                              className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                              {...field}
-                              value={field.value ?? ""}
-                              data-testid="input-company-city"
-                            />
+                            <div className="relative">
+                              <Input
+                                placeholder="Company name"
+                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg pr-10"
+                                {...field}
+                                onChange={(e) => handleCompanyNameChange(e.target.value)}
+                                disabled={selectedBusiness !== null && !notListed}
+                                data-testid="input-company-name"
+                              />
+                              {isSearching && !notListed && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                                </div>
+                              )}
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="company.postalCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input
-                              placeholder="ZIP Code"
-                              className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                              {...field}
-                              value={field.value ?? ""}
-                              data-testid="input-company-zip"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    
+                    {/* Search Results Dropdown */}
+                    {showResults && searchResults.length > 0 && !notListed && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {searchResults.slice(0, 5).map((business) => (
+                          <button
+                            key={business.id}
+                            type="button"
+                            onClick={() => selectBusiness(business)}
+                            className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
+                            data-testid={`business-result-${business.id}`}
+                          >
+                            <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                              {business.name}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              {business.shortFormattedAddress || business.formattedAddress}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Not Listed Checkbox */}
+                  {!selectedBusiness && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="not-listed" 
+                        checked={notListed}
+                        onCheckedChange={(checked) => handleNotListedChange(checked as boolean)}
+                        data-testid="checkbox-not-listed"
+                      />
+                      <label 
+                        htmlFor="not-listed" 
+                        className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer"
+                      >
+                        My business is not listed
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Show fields only if business is selected or manual entry */}
+                  {(selectedBusiness || notListed) && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="company.phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="Company phone"
+                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                {...field}
+                                onChange={(e) => {
+                                  const formatted = formatPhoneInput(e.target.value);
+                                  field.onChange(formatted);
+                                }}
+                                disabled={selectedBusiness !== null && !notListed}
+                                data-testid="input-company-phone"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="company.address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="Business address"
+                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                {...field}
+                                disabled={selectedBusiness !== null && !notListed}
+                                data-testid="input-company-address"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="company.city"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  placeholder="City"
+                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  disabled={selectedBusiness !== null && !notListed}
+                                  data-testid="input-company-city"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="company.postalCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  placeholder="ZIP Code"
+                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  disabled={selectedBusiness !== null && !notListed}
+                                  data-testid="input-company-zip"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* Continue Button - Same style as login Sign In button */}
                   <Button
                     type="button"
                     onClick={handleNext}
                     className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
+                    disabled={!selectedBusiness && !notListed}
                     data-testid="button-next"
                   >
                     Continue
