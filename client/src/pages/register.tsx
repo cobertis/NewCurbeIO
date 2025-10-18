@@ -13,17 +13,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { UserPlus, Loader2 } from "lucide-react";
+import { UserPlus, Building2, Loader2 } from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
 
-// Schema matching exactly what dashboard uses
-const createCompanyWithAdminSchema = z.object({
+const registerSchema = z.object({
   company: z.object({
     name: z.string().min(1, "Company name is required"),
-    slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
-    phone: z.string().min(1, "Company phone is required"),
-    website: z.string().url().optional().or(z.literal("")),
+    slug: z.string().min(1),
+    phone: z.string().min(1, "Phone is required"),
+    website: z.string().optional(),
     address: z.string().min(1, "Address is required"),
     city: z.string().optional(),
     state: z.string().optional(),
@@ -38,24 +36,8 @@ const createCompanyWithAdminSchema = z.object({
   }),
 });
 
-type CreateCompanyForm = z.infer<typeof createCompanyWithAdminSchema>;
+type RegisterForm = z.infer<typeof registerSchema>;
 
-// Helper function to format phone number
-const formatPhoneInput = (input: string): string => {
-  const cleaned = input.replace(/\D/g, '');
-  
-  if (cleaned.length <= 3) {
-    return cleaned;
-  } else if (cleaned.length <= 6) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-  } else if (cleaned.length <= 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-  } else {
-    return `+${cleaned.slice(0, 1)} (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7, 11)}`;
-  }
-};
-
-// Generate slug from company name
 const generateSlug = (name: string): string => {
   return name
     .toLowerCase()
@@ -71,7 +53,6 @@ interface BusinessResult {
   shortFormattedAddress: string;
   phone: string;
   website: string;
-  type: string;
   address: {
     street: string;
     city: string;
@@ -85,16 +66,15 @@ export default function Register() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<BusinessResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null);
-  const [notListed, setNotListed] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessResult | null>(null);
 
-  const form = useForm<CreateCompanyForm>({
-    resolver: zodResolver(createCompanyWithAdminSchema),
+  const form = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       company: {
         name: "",
@@ -134,12 +114,10 @@ export default function Register() {
         setSearchResults(data.results || []);
         setShowResults(true);
       } else {
-        console.error("Failed to fetch business suggestions");
         setSearchResults([]);
         setShowResults(false);
       }
     } catch (error) {
-      console.error("Failed to fetch business suggestions:", error);
       setSearchResults([]);
       setShowResults(false);
     } finally {
@@ -147,91 +125,71 @@ export default function Register() {
     }
   }, []);
 
-  const handleCompanyNameChange = (value: string) => {
-    form.setValue('company.name', value);
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
     
-    // Generate slug
-    const generatedSlug = generateSlug(value);
-    form.setValue('company.slug', generatedSlug);
-    
-    // Only search if not in manual mode
-    if (!notListed) {
-      // Clear previous timer
-      if (searchTimer) {
-        clearTimeout(searchTimer);
-      }
-      
-      // Set new timer for debounced search
-      const timer = setTimeout(() => {
-        searchBusinesses(value);
-      }, 300); // 300ms debounce
-      
-      setSearchTimer(timer);
+    if (searchTimer) {
+      clearTimeout(searchTimer);
     }
+    
+    const timer = setTimeout(() => {
+      searchBusinesses(value);
+    }, 300);
+    
+    setSearchTimer(timer);
   };
 
   const selectBusiness = (business: BusinessResult) => {
-    // Set the selected business
     setSelectedBusiness(business);
+    setShowResults(false);
+    setSearchResults([]);
+    setSearchQuery(business.name);
     
-    // Populate form with business data
+    // Auto-fill company data
     form.setValue("company.name", business.name);
+    form.setValue("company.slug", generateSlug(business.name));
     form.setValue("company.phone", business.phone);
-    form.setValue("company.website", business.website);
+    form.setValue("company.website", business.website || "");
     form.setValue("company.address", business.address.street);
-    form.setValue("company.city", business.address.city);
-    form.setValue("company.state", business.address.state);
-    form.setValue("company.postalCode", business.address.postalCode);
+    form.setValue("company.city", business.address.city || "");
+    form.setValue("company.state", business.address.state || "");
+    form.setValue("company.postalCode", business.address.postalCode || "");
     form.setValue("company.country", business.address.country);
+  };
+
+  const enterManually = () => {
+    const name = searchQuery.trim();
+    if (!name) return;
     
-    // Generate slug
-    const generatedSlug = generateSlug(business.name);
-    form.setValue("company.slug", generatedSlug);
+    setSelectedBusiness({ 
+      id: 'manual',
+      name,
+      formattedAddress: '',
+      shortFormattedAddress: '',
+      phone: '',
+      website: '',
+      address: {
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'United States'
+      }
+    } as BusinessResult);
     
-    // Hide results
+    form.setValue("company.name", name);
+    form.setValue("company.slug", generateSlug(name));
     setShowResults(false);
     setSearchResults([]);
   };
 
-  const handleNotListedChange = (checked: boolean) => {
-    setNotListed(checked);
-    
-    if (checked) {
-      // Clear search results and selected business when switching to manual
-      setShowResults(false);
-      setSearchResults([]);
-      setSelectedBusiness(null);
-      
-      // Keep the company name but clear other fields to allow manual entry
-      const currentName = form.getValues('company.name');
-      form.setValue("company.phone", "");
-      form.setValue("company.website", "");
-      form.setValue("company.address", "");
-      form.setValue("company.city", "");
-      form.setValue("company.state", "");
-      form.setValue("company.postalCode", "");
-      form.setValue("company.country", "United States");
-      
-      // Keep the name and slug
-      form.setValue('company.name', currentName);
-      const generatedSlug = generateSlug(currentName);
-      form.setValue('company.slug', generatedSlug);
-    } else {
-      // If unchecking, clear everything for a fresh start
-      setSelectedBusiness(null);
-    }
-  };
-
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
-      if (searchTimer) {
-        clearTimeout(searchTimer);
-      }
+      if (searchTimer) clearTimeout(searchTimer);
     };
   }, [searchTimer]);
 
-  const onSubmit = async (data: CreateCompanyForm) => {
+  const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     
     try {
@@ -248,18 +206,15 @@ export default function Register() {
       }
 
       toast({
-        title: "Success!",
-        description: "Your account has been created. Please check your email for activation instructions.",
+        title: "Account created!",
+        description: "Check your email for activation instructions.",
       });
       
-      setTimeout(() => {
-        setLocation("/login");
-      }, 2000);
+      setTimeout(() => setLocation("/login"), 2000);
     } catch (error: any) {
-      console.error("Registration error:", error);
       toast({
         title: "Registration Failed",
-        description: error.message || "An error occurred during registration",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -267,106 +222,71 @@ export default function Register() {
     }
   };
 
-  const handleNext = async () => {
-    const companyValid = await form.trigger([
-      "company.name",
-      "company.slug",
-      "company.phone",
-      "company.address",
-    ]);
-    
-    if (companyValid) {
-      setCurrentStep(2);
-    }
-  };
-
-  const handleBack = () => {
-    setCurrentStep(1);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
-      {/* Logo in top left - identical to login */}
       <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
-        <img 
-          src={logo} 
-          alt="Curbe.io" 
-          className="h-8 sm:h-10 w-auto object-contain"
-        />
+        <img src={logo} alt="Curbe.io" className="h-8 sm:h-10 w-auto object-contain" />
       </div>
 
-      {/* Registration Card - exact same style as login */}
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
-          {/* Icon - same style as login */}
           <div className="flex justify-center mb-6">
             <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
               <UserPlus className="w-6 h-6 text-gray-600 dark:text-gray-300" />
             </div>
           </div>
 
-          {/* Title - same style as login */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              {currentStep === 1 ? "Create your account" : "Admin information"}
+              Create your account
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {currentStep === 1 
-                ? "Search for your business to get started" 
-                : "Who will manage this account?"}
+              {!selectedBusiness ? "Search for your business" : "Enter your details"}
             </p>
           </div>
 
-          {/* Form */}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {currentStep === 1 ? (
+              {!selectedBusiness ? (
                 <>
-                  {/* Step 1: Company Info - Clean inputs like login */}
+                  {/* Search for business */}
                   <div className="relative">
-                    <FormField
-                      control={form.control}
-                      name="company.name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                placeholder="Company name"
-                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg pr-10"
-                                {...field}
-                                onChange={(e) => handleCompanyNameChange(e.target.value)}
-                                disabled={selectedBusiness !== null && !notListed}
-                                data-testid="input-company-name"
-                              />
-                              {isSearching && !notListed && (
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <div className="relative">
+                      <Input
+                        placeholder="Search your business..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg pr-10"
+                        data-testid="input-business-search"
+                      />
+                      {isSearching && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                        </div>
                       )}
-                    />
+                    </div>
                     
-                    {/* Search Results Dropdown */}
-                    {showResults && searchResults.length > 0 && !notListed && (
-                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {/* Results dropdown */}
+                    {showResults && searchResults.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {searchResults.slice(0, 5).map((business) => (
                           <button
                             key={business.id}
                             type="button"
                             onClick={() => selectBusiness(business)}
-                            className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
+                            className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
                             data-testid={`business-result-${business.id}`}
                           >
-                            <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                              {business.name}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                              {business.shortFormattedAddress || business.formattedAddress}
+                            <div className="flex items-start gap-2">
+                              <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                                  {business.name}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  {business.shortFormattedAddress || business.formattedAddress}
+                                </div>
+                              </div>
                             </div>
                           </button>
                         ))}
@@ -374,26 +294,44 @@ export default function Register() {
                     )}
                   </div>
 
-                  {/* Not Listed Checkbox */}
-                  {!selectedBusiness && (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="not-listed" 
-                        checked={notListed}
-                        onCheckedChange={(checked) => handleNotListedChange(checked as boolean)}
-                        data-testid="checkbox-not-listed"
-                      />
-                      <label 
-                        htmlFor="not-listed" 
-                        className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer"
-                      >
-                        My business is not listed
-                      </label>
-                    </div>
+                  {searchQuery.length >= 2 && (
+                    <button
+                      type="button"
+                      onClick={enterManually}
+                      className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      data-testid="button-manual-entry"
+                    >
+                      Not found? Enter manually
+                    </button>
                   )}
+                </>
+              ) : (
+                <>
+                  {/* Show selected business */}
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {selectedBusiness.name}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedBusiness(null);
+                          setSearchQuery("");
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                        data-testid="button-change-business"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </div>
 
-                  {/* Show fields only if business is selected or manual entry */}
-                  {(selectedBusiness || notListed) && (
+                  {/* Company details - only if entered manually */}
+                  {selectedBusiness.id === 'manual' && (
                     <>
                       <FormField
                         control={form.control}
@@ -405,11 +343,6 @@ export default function Register() {
                                 placeholder="Company phone"
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
-                                onChange={(e) => {
-                                  const formatted = formatPhoneInput(e.target.value);
-                                  field.onChange(formatted);
-                                }}
-                                disabled={selectedBusiness !== null && !notListed}
                                 data-testid="input-company-phone"
                               />
                             </FormControl>
@@ -428,7 +361,6 @@ export default function Register() {
                                 placeholder="Business address"
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
-                                disabled={selectedBusiness !== null && !notListed}
                                 data-testid="input-company-address"
                               />
                             </FormControl>
@@ -436,78 +368,10 @@ export default function Register() {
                           </FormItem>
                         )}
                       />
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="company.city"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input
-                                  placeholder="City"
-                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  disabled={selectedBusiness !== null && !notListed}
-                                  data-testid="input-company-city"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="company.postalCode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input
-                                  placeholder="ZIP Code"
-                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  disabled={selectedBusiness !== null && !notListed}
-                                  data-testid="input-company-zip"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
                     </>
                   )}
 
-                  {/* Continue Button - Same style as login Sign In button */}
-                  <Button
-                    type="button"
-                    onClick={handleNext}
-                    className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
-                    disabled={!selectedBusiness && !notListed}
-                    data-testid="button-next"
-                  >
-                    Continue
-                  </Button>
-
-                  {/* Sign In Link - same style as login */}
-                  <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/login")}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                      data-testid="link-login"
-                    >
-                      Sign in here
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* Step 2: Admin Info */}
+                  {/* User details */}
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
@@ -519,7 +383,7 @@ export default function Register() {
                               placeholder="First name"
                               className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                               {...field}
-                              data-testid="input-admin-first-name"
+                              data-testid="input-first-name"
                             />
                           </FormControl>
                           <FormMessage />
@@ -537,7 +401,7 @@ export default function Register() {
                               placeholder="Last name"
                               className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                               {...field}
-                              data-testid="input-admin-last-name"
+                              data-testid="input-last-name"
                             />
                           </FormControl>
                           <FormMessage />
@@ -557,7 +421,7 @@ export default function Register() {
                             placeholder="Email address"
                             className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                             {...field}
-                            data-testid="input-admin-email"
+                            data-testid="input-email"
                           />
                         </FormControl>
                         <FormMessage />
@@ -565,42 +429,6 @@ export default function Register() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="admin.phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="Phone (optional)"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                            {...field}
-                            value={field.value ?? ""}
-                            onChange={(e) => {
-                              const formatted = formatPhoneInput(e.target.value);
-                              field.onChange(formatted);
-                            }}
-                            data-testid="input-admin-phone"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Back link */}
-                  <div className="text-right">
-                    <button
-                      type="button"
-                      onClick={handleBack}
-                      className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                      data-testid="button-back"
-                    >
-                      Go back
-                    </button>
-                  </div>
-
-                  {/* Create Account Button - Same style as login Sign In button */}
                   <Button
                     type="submit"
                     disabled={isLoading}
@@ -610,12 +438,23 @@ export default function Register() {
                     {isLoading ? "Creating account..." : "Create Account"}
                   </Button>
 
-                  {/* Info text */}
-                  <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-                    You'll receive an activation email after registration
+                  <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+                    You'll receive an activation email
                   </div>
                 </>
               )}
+
+              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => setLocation("/login")}
+                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                  data-testid="link-login"
+                >
+                  Sign in here
+                </button>
+              </div>
             </form>
           </Form>
         </div>
