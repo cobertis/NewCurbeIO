@@ -46,12 +46,12 @@ export async function createStripeCustomer(company: {
   const individualName = `${company.representativeFirstName || ''} ${company.representativeLastName || ''}`.trim();
   
   // Generate invoice prefix from company name initials (first 3 letters, uppercase)
+  // Stripe requires 1-12 uppercase letters or numbers only (no special characters)
   const invoicePrefix = company.name
     .replace(/[^a-zA-Z\s]/g, '') // Remove special characters
     .split(' ')[0] // Get first word
     .substring(0, 3) // Take first 3 letters
-    .toUpperCase() // Convert to uppercase
-    + '-'; // Add dash
+    .toUpperCase(); // Convert to uppercase (e.g., "COB" for Cobertis)
   
   const customerData: Stripe.CustomerCreateParams = {
     email: company.representativeEmail || company.email,
