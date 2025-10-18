@@ -208,11 +208,21 @@ export default function CompanyDetail() {
       {/* Company Information */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Company Information
-            </CardTitle>
+          <CardHeader className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl">{company.name}</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">@{company.slug}</p>
+                </div>
+              </div>
+              <Badge variant={company.isActive ? "default" : "destructive"} className="mt-1">
+                {company.isActive ? "Active" : "Suspended"}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Email, Phone, Website - Row 1 */}
