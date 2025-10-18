@@ -1962,6 +1962,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue without Stripe customer - can be created later
       }
       
+      // Create billing address automatically using company data
+      try {
+        if (newCompany.address && newCompany.city && newCompany.state && newCompany.postalCode) {
+          await storage.createBillingAddress({
+            companyId: newCompany.id,
+            fullName: newCompany.name,
+            addressLine1: newCompany.address,
+            addressLine2: newCompany.addressLine2 || null,
+            city: newCompany.city,
+            state: newCompany.state,
+            postalCode: newCompany.postalCode,
+          });
+          console.log('[COMPANY CREATION] Billing address created for:', newCompany.name);
+        }
+      } catch (billingError) {
+        console.error('[COMPANY CREATION] Failed to create billing address:', billingError);
+        // Continue without billing address - can be created later
+      }
+      
       // Create admin user WITHOUT password (will be set during activation)
       const adminUser = await storage.createUser({
         email: adminData.email,
