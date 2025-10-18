@@ -406,6 +406,7 @@ export class DbStorage implements IStorage {
     if (data.role !== undefined) mappedData.role = data.role;
     if (data.companyId !== undefined) mappedData.companyId = data.companyId;
     if (data.isActive !== undefined) mappedData.isActive = data.isActive;
+    if (data.status !== undefined) mappedData.status = data.status;
     if (data.emailVerified !== undefined) mappedData.emailVerified = data.emailVerified;
     // Email preferences
     if (data.emailSubscribed !== undefined) mappedData.emailSubscribed = data.emailSubscribed;
