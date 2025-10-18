@@ -1852,6 +1852,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create annual prices for all plans (superadmin only) - TEMPORARY HELPER
+  app.post("/api/plans/create-annual-prices", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const Stripe = (await import("stripe")).default;
+      const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
+      const stripe = new Stripe(STRIPE_SECRET_KEY);
+      
+      // Query active plans
+      const plansResult = await storage.db.query.plans.findMany({
+        where: (plans: any, { eq }: any) => eq(plans.isActive, true),
+      });
+      
+      const results = [];
+
+      for (const plan of plansResult) {
+        if (!plan.stripeProductId) {
+          console.log(`[ANNUAL-PRICES] Skipping plan ${plan.name}: No Stripe product`);
+          continue;
+        }
+
+        // Calculate annual price with 20% discount
+        const monthlyPrice = plan.price; // in cents
+        const annualPrice = Math.round((monthlyPrice * 12) * 0.8); // 20% off
+
+        console.log(`[ANNUAL-PRICES] Creating annual price for ${plan.name}: $${annualPrice / 100}/year`);
+
+        // Create annual price in Stripe
+        const annualStripePrice = await stripe.prices.create({
+          product: plan.stripeProductId,
+          unit_amount: annualPrice,
+          currency: plan.currency,
+          recurring: {
+            interval: 'year',
+          },
+          metadata: {
+            planId: plan.id,
+            billingPeriod: 'yearly',
+            discount: '20%',
+          },
+        });
+
+        // Update plan with annual price ID
+        await storage.updatePlan(plan.id, {
+          stripeAnnualPriceId: annualStripePrice.id,
+        });
+
+        results.push({
+          planName: plan.name,
+          annualPriceId: annualStripePrice.id,
+          annualPrice: annualPrice / 100,
+        });
+      }
+
+      res.json({ 
+        success: true,
+        results,
+        message: "Annual prices created successfully"
+      });
+    } catch (error: any) {
+      console.error("Error creating annual prices:", error);
+      res.status(500).json({ 
+        message: "Failed to create annual prices",
+        error: error.message 
+      });
+    }
+  });
+
   // Delete plan (superadmin only)
   app.delete("/api/plans/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -2136,12 +2209,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      // Determine which Stripe price to use based on billing period
+      let stripePriceId: string | null;
+      if (billingPeriod === 'yearly') {
+        // Use annual price if available, otherwise fall back to monthly
+        const annualPriceId = (plan as any).stripeAnnualPriceId;
+        stripePriceId = annualPriceId || plan.stripePriceId;
+        if (!annualPriceId) {
+          console.log('[SELECT-PLAN] No annual price found, using monthly price');
+        }
+      } else {
+        stripePriceId = plan.stripePriceId;
+      }
+
       // Verify plan has Stripe price configured
-      if (!plan.stripePriceId) {
+      if (!stripePriceId) {
         return res.status(400).json({ 
           message: "Plan must be synced with Stripe before selecting. Please contact support." 
         });
       }
+
+      console.log('[SELECT-PLAN] Using Stripe price:', stripePriceId, 'for billing period:', billingPeriod);
 
       // Create or get Stripe customer with complete company information
       let stripeCustomerId = company.stripeCustomerId;
@@ -2183,7 +2271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { createStripeSubscription } = await import("./stripe");
       const stripeSubscription = await createStripeSubscription(
         stripeCustomerId,
-        plan.stripePriceId,
+        stripePriceId,
         companyId,
         planId,
         plan.trialDays,

@@ -247,11 +247,12 @@ export const plans = pgTable("plans", {
   
   // Stripe Integration
   stripeProductId: text("stripe_product_id").unique(), // Stripe Product ID
-  stripePriceId: text("stripe_price_id").unique(), // Stripe Price ID for recurring charge
+  stripePriceId: text("stripe_price_id").unique(), // Stripe Price ID for monthly recurring charge
+  stripeAnnualPriceId: text("stripe_annual_price_id"), // Stripe Price ID for annual recurring charge
   stripeSetupFeePriceId: text("stripe_setup_fee_price_id"), // Stripe Price ID for one-time setup fee
   
   // Pricing
-  price: integer("price").notNull(), // in cents
+  price: integer("price").notNull(), // in cents (monthly price)
   currency: text("currency").notNull().default("usd"),
   billingCycle: text("billing_cycle").notNull().default("monthly"), // monthly, yearly
   

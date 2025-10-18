@@ -24,6 +24,7 @@ interface Plan {
   currency: string;
   isActive: boolean;
   stripePriceId?: string;
+  stripeAnnualPriceId?: string;
   features: string[];
 }
 
