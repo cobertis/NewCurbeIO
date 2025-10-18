@@ -3709,6 +3709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // IMPORTANT: Preserve the original trial dates (they're already preserved in Stripe)
       await storage.updateSubscription(subscription.id, {
         planId: plan.id,
+        billingCycle: billingPeriod, // Update billing cycle to match new selection
         stripeSubscriptionId: newStripeSubscription.id, // NEW subscription ID
         status: newStripeSubscription.status,
         // Preserve trial dates from local subscription (not from Stripe response)
