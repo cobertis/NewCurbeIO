@@ -2205,11 +2205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingPeriod
       );
 
-      // Extract subscription data from Stripe
+      // Extract subscription data from Stripe - with defensive null checks
       const stripeSubData = stripeSubscription as any;
-      const currentPeriodStart = new Date(stripeSubData.current_period_start * 1000);
-      const currentPeriodEnd = new Date(stripeSubData.current_period_end * 1000);
-
+      
       // Map Stripe status to our enum, preserving actual subscription state
       const mapStatus = (stripeStatus: string): string => {
         switch (stripeStatus) {
@@ -2229,8 +2227,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: mapStatus(stripeSubscription.status),
         trialStart: stripeSubData.trial_start ? new Date(stripeSubData.trial_start * 1000) : undefined,
         trialEnd: stripeSubData.trial_end ? new Date(stripeSubData.trial_end * 1000) : undefined,
-        currentPeriodStart,
-        currentPeriodEnd,
+        currentPeriodStart: new Date(stripeSubData.current_period_start * 1000),
+        currentPeriodEnd: new Date(stripeSubData.current_period_end * 1000),
         stripeCustomerId,
         stripeSubscriptionId: stripeSubscription.id,
         stripeLatestInvoiceId: typeof stripeSubscription.latest_invoice === 'string' 
