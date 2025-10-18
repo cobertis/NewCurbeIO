@@ -498,6 +498,25 @@ export default function Register() {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="admin.phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="Phone number"
+                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                            {...field}
+                            value={field.value ?? ""}
+                            data-testid="input-admin-phone"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <Button
                     type="submit"
                     disabled={isLoading}
