@@ -1222,9 +1222,11 @@ export async function removeDiscount(stripeSubscriptionId: string): Promise<Stri
   try {
     console.log('[STRIPE] Removing discount from subscription:', stripeSubscriptionId);
     
-    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
-      discounts: [], // Remove all discounts
-    });
+    // First, delete the discount using the proper Stripe method
+    await stripe.subscriptions.deleteDiscount(stripeSubscriptionId);
+    
+    // Then retrieve the updated subscription
+    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
     
     console.log('[STRIPE] Discount removed successfully');
     return subscription;
