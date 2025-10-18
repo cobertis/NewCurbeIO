@@ -622,24 +622,23 @@ export default function Billing() {
                 <div className="flex items-center justify-between p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                      <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <p className="font-semibold text-blue-900 dark:text-blue-100">
-                        Claim your 2 Free Months
+                        Free Trial Active - {trialDaysRemaining} {trialDaysRemaining === 1 ? 'Day' : 'Days'} Remaining
                       </p>
                       <p className="text-sm text-blue-700 dark:text-blue-300">
-                        Get 2 months free, if you upgrade to annual subscription
+                        Your trial ends on {formatDate(new Date(subscription.trialEnd))}. No payment required until then.
                       </p>
                     </div>
                   </div>
-                  <Button 
-                    onClick={() => setLocation('/select-plan')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    data-testid="button-claim-discount"
-                  >
-                    Claim Now
-                  </Button>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{Math.round(trialProgress)}% Complete</p>
+                    </div>
+                    <Progress value={trialProgress} className="h-2 w-32" />
+                  </div>
                 </div>
               )}
 
