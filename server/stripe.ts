@@ -42,13 +42,17 @@ export async function createStripeCustomer(company: {
   legalName?: string | null;
 }) {
   // Build customer data with complete information
+  // Individual name uses representative's full name
+  const individualName = `${company.representativeFirstName || ''} ${company.representativeLastName || ''}`.trim();
+  
   const customerData: Stripe.CustomerCreateParams = {
     email: company.representativeEmail || company.email,
-    name: company.legalName || company.name,
+    name: individualName || company.name, // Individual's name first, fallback to company name
     phone: company.representativePhone || company.phone,
     metadata: {
       companyId: company.id,
       companyName: company.name,
+      legalName: company.legalName || company.name,
       representativePosition: company.representativePosition || '',
     },
   };
