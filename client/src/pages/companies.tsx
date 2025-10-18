@@ -779,7 +779,7 @@ export default function Companies() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent data-testid="dialog-edit-company">
+        <DialogContent className="max-w-4xl" data-testid="dialog-edit-company">
           <DialogHeader>
             <DialogTitle>Edit Company</DialogTitle>
             <DialogDescription>
@@ -788,181 +788,159 @@ export default function Companies() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-              <FormField
-                control={editForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Company name" {...field} value={field.value ?? ""} data-testid="input-edit-company-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="slug"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Slug</FormLabel>
-                    <FormControl>
-                      <Input placeholder="company-slug" {...field} value={field.value ?? ""} data-testid="input-edit-company-slug" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="contact@company.com" {...field} value={field.value ?? ""} data-testid="input-edit-company-email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="+1 (415) 555-2671" 
-                        {...field} 
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          const formatted = formatPhoneInput(e.target.value);
-                          field.onChange(formatted);
-                        }}
-                        data-testid="input-edit-company-phone" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="website"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Website</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="https://example.com" 
-                        {...field} 
-                        value={field.value ?? ""}
-                        data-testid="input-edit-company-website" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="address"
-                render={({ field }) => (
-                  <AddressAutocomplete
-                    value={field.value || ""}
-                    onChange={field.onChange}
-                    onAddressSelect={(address) => {
-                      editForm.setValue("address", address.street);
-                      editForm.setValue("city", address.city);
-                      editForm.setValue("state", address.state);
-                      editForm.setValue("postalCode", address.postalCode);
-                      editForm.setValue("country", address.country);
-                    }}
-                    label="Street Address"
-                    placeholder="Start typing an address..."
-                    testId="input-edit-company-address"
-                    error={editForm.formState.errors.address?.message}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Company Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Acme Inc." {...field} value={field.value ?? ""} data-testid="input-edit-company-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                )}
-              />
-              <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={editForm.control}
+                    name="slug"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Slug</FormLabel>
+                        <FormControl>
+                          <Input placeholder="acme-inc" {...field} value={field.value ?? ""} data-testid="input-edit-company-slug" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="+1 (415) 555-2671" 
+                            {...field} 
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const formatted = formatPhoneInput(e.target.value);
+                              field.onChange(formatted);
+                            }}
+                            data-testid="input-edit-company-phone" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="website"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://example.com" 
+                            {...field} 
+                            value={field.value ?? ""}
+                            data-testid="input-edit-company-website" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={editForm.control}
-                  name="city"
+                  name="address"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Miami" {...field} value={field.value ?? ""} data-testid="input-edit-company-city" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <AddressAutocomplete
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      onAddressSelect={(address) => {
+                        editForm.setValue("address", address.street);
+                        editForm.setValue("city", address.city);
+                        editForm.setValue("state", address.state);
+                        editForm.setValue("postalCode", address.postalCode);
+                        editForm.setValue("country", address.country);
+                      }}
+                      label="Street Address"
+                      placeholder="Start typing an address..."
+                      testId="input-edit-company-address"
+                      error={editForm.formState.errors.address?.message}
+                    />
                   )}
                 />
-                <FormField
-                  control={editForm.control}
-                  name="state"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>State</FormLabel>
-                      <FormControl>
-                        <Input placeholder="FL" {...field} value={field.value ?? ""} data-testid="input-edit-company-state" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Miami" {...field} value={field.value ?? ""} data-testid="input-edit-company-city" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <Input placeholder="FL" {...field} value={field.value ?? ""} data-testid="input-edit-company-state" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="postalCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Postal Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="33185" {...field} value={field.value ?? ""} data-testid="input-edit-company-postal" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country</FormLabel>
+                        <FormControl>
+                          <Input placeholder="United States" {...field} value={field.value ?? ""} data-testid="input-edit-company-country" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <FormField
-                  control={editForm.control}
-                  name="postalCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Postal Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="33185" {...field} value={field.value ?? ""} data-testid="input-edit-company-postal" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                      <FormControl>
-                        <Input placeholder="United States" {...field} value={field.value ?? ""} data-testid="input-edit-company-country" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={editForm.control}
-                name="domain"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Domain (optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="example.com" {...field} value={field.value ?? ""} data-testid="input-edit-company-domain" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={editMutation.isPending} data-testid="button-submit-edit-company">
-                  {editMutation.isPending ? "Saving..." : "Save"}
+                  {editMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogFooter>
             </form>
