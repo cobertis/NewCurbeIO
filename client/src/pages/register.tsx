@@ -410,89 +410,111 @@ export default function Register() {
                     </>
                   ) : (
                     <>
-                      {/* Business Summary Card */}
-                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 border border-gray-200 dark:border-gray-600">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <Building2 className="h-5 w-5 text-primary" />
+                      {/* Business Summary Card - Only show for Google Places selection */}
+                      {selectedBusiness.id !== 'manual' && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 border border-gray-200 dark:border-gray-600">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Building2 className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                  {selectedBusiness.name}
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  Company Information
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                                {selectedBusiness.name}
-                              </h3>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Company Information
-                              </p>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedBusiness(null);
+                                setSearchQuery("");
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                              data-testid="button-change-business"
+                            >
+                              Change
+                            </button>
                           </div>
+
+                          {/* Company Details */}
+                          <div className="space-y-2.5">
+                            {(selectedBusiness.address.street || selectedBusiness.address.city || selectedBusiness.address.state) && (
+                              <div className="flex items-start gap-2.5">
+                                <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  {selectedBusiness.address.street && (
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                      {selectedBusiness.address.street}
+                                    </p>
+                                  )}
+                                  {selectedBusiness.address.addressLine2 && (
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                                      {selectedBusiness.address.addressLine2}
+                                    </p>
+                                  )}
+                                  {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode || selectedBusiness.address.country) && (
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                                      {[
+                                        selectedBusiness.address.city,
+                                        selectedBusiness.address.state,
+                                        selectedBusiness.address.postalCode,
+                                        selectedBusiness.address.country
+                                      ].filter(Boolean).join(', ')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {selectedBusiness.phone && (
+                              <div className="flex items-center gap-2.5">
+                                <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  {selectedBusiness.phone}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {selectedBusiness.website && (
+                              <div className="flex items-center gap-2.5">
+                                <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                                <a 
+                                  href={selectedBusiness.website}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate"
+                                >
+                                  {selectedBusiness.website.replace(/^https?:\/\//, '')}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Manual Entry Header - Show only for manual entry */}
+                      {selectedBusiness.id === 'manual' && (
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            Enter Company Information
+                          </h3>
                           <button
                             type="button"
                             onClick={() => {
                               setSelectedBusiness(null);
                               setSearchQuery("");
                             }}
-                            className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
                             data-testid="button-change-business"
                           >
-                            Change
+                            Back to search
                           </button>
                         </div>
-
-                        {/* Company Details */}
-                        <div className="space-y-2.5">
-                          {(selectedBusiness.address.street || selectedBusiness.address.city || selectedBusiness.address.state) && (
-                            <div className="flex items-start gap-2.5">
-                              <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                {selectedBusiness.address.street && (
-                                  <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                                    {selectedBusiness.address.street}
-                                  </p>
-                                )}
-                                {selectedBusiness.address.addressLine2 && (
-                                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                                    {selectedBusiness.address.addressLine2}
-                                  </p>
-                                )}
-                                {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode || selectedBusiness.address.country) && (
-                                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                                    {[
-                                      selectedBusiness.address.city,
-                                      selectedBusiness.address.state,
-                                      selectedBusiness.address.postalCode,
-                                      selectedBusiness.address.country
-                                    ].filter(Boolean).join(', ')}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {selectedBusiness.phone && (
-                            <div className="flex items-center gap-2.5">
-                              <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                              <p className="text-sm text-gray-700 dark:text-gray-300">
-                                {selectedBusiness.phone}
-                              </p>
-                            </div>
-                          )}
-                          
-                          {selectedBusiness.website && (
-                            <div className="flex items-center gap-2.5">
-                              <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                              <a 
-                                href={selectedBusiness.website}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate"
-                              >
-                                {selectedBusiness.website.replace(/^https?:\/\//, '')}
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      )}
 
                       {/* Editable Company Fields */}
                       {/* For manual entry, show ALL fields. For Google Places, show only fields that can be edited */}
