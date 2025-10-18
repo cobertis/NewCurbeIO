@@ -191,11 +191,11 @@ export default function Register() {
   };
 
   const enterManually = () => {
-    const name = searchQuery.trim() || "My Company";
+    const name = searchQuery.trim() || "";
     
     setSelectedBusiness({ 
       id: 'manual',
-      name,
+      name: name || 'Manual Entry',
       formattedAddress: '',
       shortFormattedAddress: '',
       phone: '',
@@ -210,8 +210,9 @@ export default function Register() {
       }
     } as BusinessResult);
     
+    // Set initial values but allow editing
     form.setValue("company.name", name);
-    form.setValue("company.slug", generateSlug(name));
+    form.setValue("company.slug", name ? generateSlug(name) : "");
     form.setValue("company.phone", "");
     form.setValue("company.website", "");
     form.setValue("company.address", "");
@@ -507,7 +508,34 @@ export default function Register() {
                         </div>
                       </div>
 
-                      {/* Editable Company Fields - Always shown for all businesses */}
+                      {/* Editable Company Fields */}
+                      {/* For manual entry, show ALL fields. For Google Places, show only fields that can be edited */}
+                      {selectedBusiness.id === 'manual' && (
+                        <FormField
+                          control={form.control}
+                          name="company.name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  placeholder="Company name"
+                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    // Auto-update slug when name changes
+                                    form.setValue("company.slug", generateSlug(e.target.value));
+                                  }}
+                                  autoComplete="organization"
+                                  data-testid="input-company-name"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
                       <FormField
                         control={form.control}
                         name="company.phone"
@@ -522,6 +550,7 @@ export default function Register() {
                                   const formatted = formatPhoneNumber(e.target.value);
                                   field.onChange(formatted);
                                 }}
+                                autoComplete="tel"
                                 data-testid="input-company-phone"
                               />
                             </FormControl>
@@ -529,6 +558,28 @@ export default function Register() {
                           </FormItem>
                         )}
                       />
+
+                      {selectedBusiness.id === 'manual' && (
+                        <FormField
+                          control={form.control}
+                          name="company.website"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  placeholder="Website (optional)"
+                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  autoComplete="url"
+                                  data-testid="input-company-website"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
 
                       <FormField
                         control={form.control}
@@ -540,6 +591,7 @@ export default function Register() {
                                 placeholder="Street address"
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
+                                autoComplete="address-line1"
                                 data-testid="input-company-address"
                               />
                             </FormControl>
@@ -559,6 +611,7 @@ export default function Register() {
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
                                 value={field.value ?? ""}
+                                autoComplete="address-line2"
                                 data-testid="input-company-address-line2"
                               />
                             </FormControl>
@@ -566,6 +619,72 @@ export default function Register() {
                           </FormItem>
                         )}
                       />
+
+                      {selectedBusiness.id === 'manual' && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="company.city"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Input
+                                    placeholder="City"
+                                    className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                    {...field}
+                                    value={field.value ?? ""}
+                                    autoComplete="address-level2"
+                                    data-testid="input-company-city"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <FormField
+                              control={form.control}
+                              name="company.state"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="State"
+                                      className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                      {...field}
+                                      value={field.value ?? ""}
+                                      autoComplete="address-level1"
+                                      data-testid="input-company-state"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="company.postalCode"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="ZIP code"
+                                      className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                      {...field}
+                                      value={field.value ?? ""}
+                                      autoComplete="postal-code"
+                                      data-testid="input-company-postal-code"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </>
+                      )}
 
                       {/* Next Step Button */}
                       <Button
@@ -609,6 +728,7 @@ export default function Register() {
                               placeholder="First name"
                               className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                               {...field}
+                              autoComplete="given-name"
                               data-testid="input-first-name"
                             />
                           </FormControl>
@@ -627,6 +747,7 @@ export default function Register() {
                               placeholder="Last name"
                               className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                               {...field}
+                              autoComplete="family-name"
                               data-testid="input-last-name"
                             />
                           </FormControl>
@@ -647,6 +768,7 @@ export default function Register() {
                             placeholder="Email address"
                             className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                             {...field}
+                            autoComplete="email"
                             data-testid="input-email"
                           />
                         </FormControl>
@@ -670,6 +792,7 @@ export default function Register() {
                               const formatted = formatPhoneNumber(e.target.value);
                               field.onChange(formatted);
                             }}
+                            autoComplete="tel"
                             data-testid="input-admin-phone"
                           />
                         </FormControl>
