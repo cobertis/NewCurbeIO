@@ -707,8 +707,23 @@ export default function Billing() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2">
+                {subscription.status === 'trialing' && trialDaysRemaining > 0 && (
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      if (confirm("Skip trial and activate your subscription now? Your card will be charged immediately.")) {
+                        skipTrialMutation.mutate();
+                      }
+                    }}
+                    disabled={skipTrialMutation.isPending}
+                    data-testid="button-skip-trial"
+                  >
+                    <Zap className="h-4 w-4 mr-2" />
+                    {skipTrialMutation.isPending ? 'Activating...' : 'Skip Trial & Pay Now'}
+                  </Button>
+                )}
                 <Button
-                  variant="default"
+                  variant={subscription.status === 'trialing' ? "outline" : "default"}
                   onClick={() => setShowChangePlan(true)}
                   data-testid="button-change-plan"
                 >

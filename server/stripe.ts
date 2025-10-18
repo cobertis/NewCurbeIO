@@ -1026,8 +1026,20 @@ export async function changePlan(
     console.log('[STRIPE] Customer ID:', stripeCustomerId);
     console.log('[STRIPE] New price ID:', newStripePriceId);
     
-    // Step 1: Check current subscription status and cancel if not already canceled
-    const currentSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    // Step 1: Check current subscription and get any active discounts
+    const currentSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+      expand: ['discounts'],
+    });
+    
+    // Capture active discount before canceling
+    let activeDiscount: Stripe.Discount | null = null;
+    if (currentSubscription.discounts && currentSubscription.discounts.length > 0) {
+      const discount = currentSubscription.discounts[0];
+      if (typeof discount !== 'string') {
+        activeDiscount = discount as Stripe.Discount;
+        console.log('[STRIPE] Found active discount to preserve:', activeDiscount.id);
+      }
+    }
     
     if (currentSubscription.status !== 'canceled') {
       console.log('[STRIPE] Canceling current subscription...');
@@ -1060,6 +1072,18 @@ export async function changePlan(
       } else {
         console.log('[STRIPE] Trial has already ended, not preserving');
       }
+    }
+    
+    // Step 4: Preserve active discount if it exists
+    if (activeDiscount && activeDiscount.coupon) {
+      const couponId = typeof activeDiscount.coupon === 'string' 
+        ? activeDiscount.coupon 
+        : activeDiscount.coupon.id;
+      
+      subscriptionData.discounts = [{
+        coupon: couponId
+      }];
+      console.log('[STRIPE] Preserving discount with coupon:', couponId);
     }
     
     const newSubscription = await stripe.subscriptions.create(subscriptionData);
