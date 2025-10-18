@@ -3,7 +3,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building2, Plus, Pencil, Trash2, Search, Package, Power } from "lucide-react";
+import { Building2, Plus, Trash2, Search, Package, Power } from "lucide-react";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createCompanyWithAdminSchema, updateCompanySchema, type Company, type Feature } from "@shared/schema";
+import { createCompanyWithAdminSchema, type Company, type Feature } from "@shared/schema";
 import { useState, useRef } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
@@ -31,12 +31,10 @@ function generateSlug(name: string): string {
 }
 
 type CreateCompanyForm = z.infer<typeof createCompanyWithAdminSchema>;
-type UpdateCompanyForm = z.infer<typeof updateCompanySchema>;
 
 export default function Companies() {
   const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -81,39 +79,6 @@ export default function Companies() {
     },
   });
 
-  const editMutation = useMutation({
-    mutationFn: async (data: UpdateCompanyForm & { id: string }) => {
-      const { id, ...rest } = data;
-      const response = await fetch(`/api/companies/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(rest),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to update company");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
-      setEditOpen(false);
-      setSelectedCompany(null);
-      editForm.reset();
-      toast({
-        title: "Company Updated",
-        description: "The company has been updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update company",
-        variant: "destructive",
-      });
-    },
-  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -262,21 +227,6 @@ export default function Companies() {
     },
   });
 
-  const editForm = useForm<UpdateCompanyForm>({
-    resolver: zodResolver(updateCompanySchema),
-    defaultValues: {
-      name: "",
-      slug: "",
-      email: "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "",
-      domain: "",
-    },
-  });
 
   const onCreateSubmit = (data: CreateCompanyForm) => {
     console.log("=== FORM SUBMITTED ===");
@@ -285,28 +235,6 @@ export default function Companies() {
     createMutation.mutate(data);
   };
 
-  const onEditSubmit = (data: UpdateCompanyForm) => {
-    if (selectedCompany) {
-      editMutation.mutate({ ...data, id: selectedCompany.id });
-    }
-  };
-
-  const handleEdit = (company: Company) => {
-    setSelectedCompany(company);
-    editForm.reset({
-      name: company.name,
-      slug: company.slug,
-      email: company.email,
-      phone: company.phone,
-      address: company.address,
-      city: company.city ?? "",
-      state: company.state ?? "",
-      postalCode: company.postalCode ?? "",
-      country: company.country ?? "",
-      domain: company.domain ?? "",
-    });
-    setEditOpen(true);
-  };
 
   const handleDelete = (id: string) => {
     setDeleteCompanyId(id);
@@ -457,14 +385,6 @@ export default function Companies() {
                         title="Manage Features"
                       >
                         <Package className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(company)}
-                        data-testid={`button-edit-company-${company.id}`}
-                      >
-                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -770,177 +690,6 @@ export default function Companies() {
                   data-testid="button-submit-create-company"
                 >
                   {createMutation.isPending ? "Creating..." : "Create Company & Admin"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-4xl" data-testid="dialog-edit-company">
-          <DialogHeader>
-            <DialogTitle>Edit Company</DialogTitle>
-            <DialogDescription>
-              Update the company information and settings.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Company Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Company Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Acme Inc." {...field} value={field.value ?? ""} data-testid="input-edit-company-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="slug"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Slug</FormLabel>
-                        <FormControl>
-                          <Input placeholder="acme-inc" {...field} value={field.value ?? ""} data-testid="input-edit-company-slug" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="+1 (415) 555-2671" 
-                            {...field} 
-                            value={field.value ?? ""}
-                            onChange={(e) => {
-                              const formatted = formatPhoneInput(e.target.value);
-                              field.onChange(formatted);
-                            }}
-                            data-testid="input-edit-company-phone" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="website"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Website</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="https://example.com" 
-                            {...field} 
-                            value={field.value ?? ""}
-                            data-testid="input-edit-company-website" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={editForm.control}
-                  name="address"
-                  render={({ field }) => (
-                    <AddressAutocomplete
-                      value={field.value || ""}
-                      onChange={field.onChange}
-                      onAddressSelect={(address) => {
-                        editForm.setValue("address", address.street);
-                        editForm.setValue("city", address.city);
-                        editForm.setValue("state", address.state);
-                        editForm.setValue("postalCode", address.postalCode);
-                        editForm.setValue("country", address.country);
-                      }}
-                      label="Street Address"
-                      placeholder="Start typing an address..."
-                      testId="input-edit-company-address"
-                      error={editForm.formState.errors.address?.message}
-                    />
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Miami" {...field} value={field.value ?? ""} data-testid="input-edit-company-city" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>State</FormLabel>
-                        <FormControl>
-                          <Input placeholder="FL" {...field} value={field.value ?? ""} data-testid="input-edit-company-state" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="postalCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Postal Code</FormLabel>
-                        <FormControl>
-                          <Input placeholder="33185" {...field} value={field.value ?? ""} data-testid="input-edit-company-postal" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <FormControl>
-                          <Input placeholder="United States" {...field} value={field.value ?? ""} data-testid="input-edit-company-country" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={editMutation.isPending} data-testid="button-submit-edit-company">
-                  {editMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogFooter>
             </form>
