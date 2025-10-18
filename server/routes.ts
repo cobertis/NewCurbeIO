@@ -127,6 +127,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Helper function to send payment failed email
+  // Returns true if email sent successfully, false otherwise
+  // NEVER throws - handles all errors internally
+  async function sendPaymentFailedEmail(
+    companyId: string,
+    amount: number,
+    currency: string,
+    invoiceNumber: string,
+    req: Request
+  ): Promise<boolean> {
+    try {
+      // Get company details
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        console.error('[EMAIL] Company not found:', companyId);
+        return false;
+      }
+
+      // Get all admin users for the company
+      const users = await storage.getUsersByCompany(companyId);
+      const adminUsers = users.filter(u => u.role === 'admin' && u.emailNotifications);
+      
+      if (adminUsers.length === 0) {
+        console.log('[EMAIL] No admin users with email notifications enabled for company:', companyId);
+        return false;
+      }
+
+      // Get payment failed template
+      const template = await storage.getEmailTemplateBySlug("payment-failed");
+      if (!template) {
+        console.error('[EMAIL] Payment failed template not found');
+        return false;
+      }
+
+      // Format amount
+      const formattedAmount = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+      }).format(amount / 100);
+
+      // Format payment date
+      const paymentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      // Generate billing URL
+      const billingUrl = `${req.protocol}://${req.get('host')}/billing`;
+
+      // Replace variables in template
+      const replacements: Record<string, string> = {
+        '{{amount}}': formattedAmount,
+        '{{invoice_number}}': invoiceNumber,
+        '{{payment_date}}': paymentDate,
+        '{{company_name}}': company.name,
+        '{{billing_url}}': billingUrl,
+      };
+
+      let htmlContent = template.htmlContent;
+      let textContent = template.textContent || '';
+      let subject = template.subject;
+
+      // Replace all variables
+      Object.entries(replacements).forEach(([key, value]) => {
+        htmlContent = htmlContent.replace(new RegExp(key, 'g'), value);
+        textContent = textContent.replace(new RegExp(key, 'g'), value);
+        subject = subject.replace(new RegExp(key, 'g'), value);
+      });
+
+      // Send email to all admin users
+      let successCount = 0;
+      for (const user of adminUsers) {
+        const emailSent = await emailService.sendEmail({
+          to: user.email,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        });
+        
+        if (emailSent) {
+          console.log(`[EMAIL] Payment failed notification sent to ${user.email}`);
+          successCount++;
+        } else {
+          console.error(`[EMAIL] Failed to send payment failed notification to ${user.email}`);
+        }
+      }
+
+      return successCount > 0;
+    } catch (error) {
+      console.error('[EMAIL] Error in sendPaymentFailedEmail:', error);
+      return false;
+    }
+  }
+
   // Helper function to generate and send activation email
   // Returns true if email sent successfully, false otherwise
   // NEVER throws - handles all errors internally
@@ -4423,6 +4518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Notify company admins about failed payment
             if (invoice) {
+              // Send in-app notification
               const { notificationService } = await import("./notification-service");
               await notificationService.notifyPaymentFailed(
                 invoice.companyId,
@@ -4431,6 +4527,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 invoice.invoiceNumber
               );
               console.log('[NOTIFICATION] Payment failure notification sent to company:', invoice.companyId);
+              
+              // Send payment failed email to admins
+              console.log('[WEBHOOK] Sending payment failed email to company:', invoice.companyId);
+              const emailSent = await sendPaymentFailedEmail(
+                invoice.companyId,
+                stripeInvoice.amount_due || stripeInvoice.total,
+                stripeInvoice.currency,
+                invoice.invoiceNumber,
+                req
+              );
+              
+              if (emailSent) {
+                console.log('[EMAIL] Payment failed email sent successfully');
+              } else {
+                console.error('[EMAIL] Failed to send payment failed email');
+              }
             }
           }
           break;
