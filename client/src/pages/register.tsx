@@ -491,14 +491,6 @@ export default function Register() {
                               </a>
                             </div>
                           )}
-
-                          {selectedBusiness.id === 'manual' && (
-                            <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                                Manual entry - Please fill in the details below
-                              </p>
-                            </div>
-                          )}
                         </div>
                       </div>
 
