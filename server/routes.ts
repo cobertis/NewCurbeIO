@@ -2978,6 +2978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subscriptionData: any = {
         planId,
         status: mapStatus(stripeSubscription.status),
+        billingCycle: billingPeriod, // Save the customer's choice: monthly or yearly
         trialStart: toDate(stripeSubData.trial_start),
         trialEnd: toDate(stripeSubData.trial_end),
         currentPeriodStart: toDate(stripeSubData.current_period_start) || new Date(),

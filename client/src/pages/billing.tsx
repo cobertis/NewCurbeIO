@@ -72,6 +72,7 @@ interface Subscription {
   companyId: string;
   planId: string;
   status: string;
+  billingCycle?: string;
   trialStart?: string;
   trialEnd?: string;
   currentPeriodStart: string;
@@ -631,11 +632,14 @@ export default function Billing() {
                   <div className="text-3xl font-bold">
                     {formatCurrency(subscription.plan.price, subscription.plan.currency)}
                   </div>
-                  <p className="text-sm text-muted-foreground">per {subscription.plan.billingCycle}</p>
-                  {subscription.plan.billingCycle === 'month' && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      Save {formatCurrency(calculateAnnualSavings(subscription.plan.price), subscription.plan.currency)}/year with annual
-                    </p>
+                  <p className="text-sm text-muted-foreground">
+                    {subscription.billingCycle === 'yearly' ? 'Billed Annually' : 'per month'}
+                  </p>
+                  {subscription.billingCycle === 'yearly' && (
+                    <Badge variant="secondary" className="mt-1">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      Annual Plan
+                    </Badge>
                   )}
                   {activeDiscount && activeDiscount.percentOff && (
                     <Badge className="mt-2 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">

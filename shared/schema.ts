@@ -293,6 +293,7 @@ export const subscriptions = pgTable("subscriptions", {
   
   // Subscription status
   status: text("status").notNull().default("active"), // active, trialing, past_due, cancelled, unpaid
+  billingCycle: text("billing_cycle").notNull().default("monthly"), // monthly, yearly - what the customer selected
   
   // Trial period
   trialStart: timestamp("trial_start"),

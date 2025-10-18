@@ -282,7 +282,7 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Billing Period</p>
                     <p className="text-sm font-medium capitalize" data-testid="text-billing-period">
-                      {subscription.billingPeriod || "Monthly"}
+                      {subscription.billingCycle === 'yearly' ? 'Annual' : 'Monthly'}
                     </p>
                   </div>
                   <div className="space-y-1">
