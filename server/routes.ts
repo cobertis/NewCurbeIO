@@ -528,6 +528,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== GOOGLE PLACES API ====================
+
+  app.get("/api/google-places/search-business", async (req: Request, res: Response) => {
+    try {
+      const { q } = req.query;
+      
+      console.log("[GOOGLE_PLACES] Received request with query:", q);
+      
+      if (!q || typeof q !== 'string') {
+        console.log("[GOOGLE_PLACES] Missing or invalid query parameter");
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+
+      if (!process.env.GOOGLE_PLACES_API_KEY) {
+        console.error("[GOOGLE_PLACES] API KEY not configured");
+        return res.status(500).json({ message: "Google Places service not configured" });
+      }
+
+      const url = "https://places.googleapis.com/v1/places:searchText";
+      
+      const headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.primaryTypeDisplayName,places.shortFormattedAddress,places.addressComponents"
+      };
+
+      const body = {
+        textQuery: q,
+        languageCode: "en",
+        locationBias: {
+          // Optional: Bias results to US
+          rectangle: {
+            low: {
+              latitude: 24.396308,
+              longitude: -125.000000
+            },
+            high: {
+              latitude: 49.384358,
+              longitude: -66.934570
+            }
+          }
+        },
+        maxResultCount: 10
+      };
+
+      console.log("[GOOGLE_PLACES] Making request to Google Places API");
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[GOOGLE_PLACES] API error:", response.status, errorText);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch business suggestions",
+          error: errorText 
+        });
+      }
+
+      const data = await response.json();
+      console.log("[GOOGLE_PLACES] Got", data.places?.length || 0, "results");
+      
+      // Transform the response to a simpler format for the frontend
+      const results = (data.places || []).map((place: any) => {
+        // Parse address components to get structured address
+        let street = '';
+        let city = '';
+        let state = '';
+        let postalCode = '';
+        let country = 'United States';
+        
+        if (place.addressComponents) {
+          for (const component of place.addressComponents) {
+            const types = component.types || [];
+            
+            if (types.includes('street_number')) {
+              street = component.longText + ' ' + street;
+            }
+            if (types.includes('route')) {
+              street = street + component.longText;
+            }
+            if (types.includes('locality')) {
+              city = component.longText;
+            }
+            if (types.includes('administrative_area_level_1')) {
+              state = component.shortText || component.longText;
+            }
+            if (types.includes('postal_code')) {
+              postalCode = component.longText;
+            }
+            if (types.includes('country')) {
+              country = component.longText;
+            }
+          }
+        }
+        
+        // Clean up the street address
+        street = street.trim();
+        
+        // If no structured address components, try to parse from formattedAddress
+        if (!street && place.formattedAddress) {
+          const parts = place.formattedAddress.split(',');
+          if (parts.length > 0) {
+            street = parts[0].trim();
+          }
+        }
+
+        return {
+          id: place.id,
+          name: place.displayName?.text || '',
+          formattedAddress: place.formattedAddress || '',
+          shortFormattedAddress: place.shortFormattedAddress || '',
+          phone: place.nationalPhoneNumber || '',
+          website: place.websiteUri || '',
+          type: place.primaryTypeDisplayName?.text || '',
+          // Structured address for form population
+          address: {
+            street: street,
+            city: city,
+            state: state,
+            postalCode: postalCode,
+            country: country
+          }
+        };
+      });
+      
+      // Set JSON content type explicitly
+      res.setHeader('Content-Type', 'application/json');
+      return res.json({ results });
+    } catch (error) {
+      console.error("[GOOGLE_PLACES] Search error:", error);
+      return res.status(500).json({ message: "Failed to fetch business suggestions" });
+    }
+  });
+
   // ==================== 2FA/OTP ENDPOINTS ====================
 
   app.post("/api/auth/send-otp", async (req: Request, res: Response) => {

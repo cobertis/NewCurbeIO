@@ -27,7 +27,8 @@ import {
   ArrowRight,
   CheckCircle 
 } from "lucide-react";
-import AddressAutocomplete from "@/components/address-autocomplete";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
+import { BusinessAutocomplete } from "@/components/business-autocomplete";
 
 // Schema matching exactly what dashboard uses
 const createCompanyWithAdminSchema = z.object({
@@ -200,6 +201,41 @@ export default function Register() {
                   <>
                     {/* Step 1: Company Info */}
                     <div className="space-y-4">
+                      {/* Business Search Section */}
+                      <div className="mb-4">
+                        <BusinessAutocomplete
+                          value={form.watch("company.name")}
+                          onChange={(value) => {
+                            form.setValue("company.name", value);
+                            if (!slugManuallyEdited) {
+                              const generatedSlug = generateSlug(value);
+                              form.setValue("company.slug", generatedSlug);
+                            }
+                          }}
+                          onBusinessSelect={(business) => {
+                            // Populate all company fields with the selected business data
+                            form.setValue("company.name", business.name);
+                            form.setValue("company.phone", business.phone);
+                            form.setValue("company.website", business.website);
+                            form.setValue("company.address", business.address);
+                            form.setValue("company.city", business.city);
+                            form.setValue("company.state", business.state);
+                            form.setValue("company.postalCode", business.postalCode);
+                            form.setValue("company.country", business.country);
+                            
+                            // Auto-generate slug from business name
+                            if (!slugManuallyEdited) {
+                              const generatedSlug = generateSlug(business.name);
+                              form.setValue("company.slug", generatedSlug);
+                            }
+                          }}
+                          testId="input-business-search"
+                        />
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Can't find your business? Enter the details manually below.
+                        </p>
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}

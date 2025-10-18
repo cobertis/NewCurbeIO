@@ -18,6 +18,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { formatPhoneInput, formatPhoneDisplay } from "@/lib/phone-formatter";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
+import { BusinessAutocomplete } from "@/components/business-autocomplete";
 
 // Function to generate slug from company name
 function generateSlug(name: string): string {
@@ -449,6 +450,42 @@ export default function Companies() {
             <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Company Information</h3>
+                
+                {/* Business Search Section */}
+                <div className="col-span-2">
+                  <BusinessAutocomplete
+                    value={createForm.watch("company.name")}
+                    onChange={(value) => {
+                      createForm.setValue("company.name", value);
+                      if (!slugManuallyEdited) {
+                        const generatedSlug = generateSlug(value);
+                        createForm.setValue("company.slug", generatedSlug);
+                      }
+                    }}
+                    onBusinessSelect={(business) => {
+                      // Populate all company fields with the selected business data
+                      createForm.setValue("company.name", business.name);
+                      createForm.setValue("company.phone", business.phone);
+                      createForm.setValue("company.website", business.website || "");
+                      createForm.setValue("company.address", business.address);
+                      createForm.setValue("company.city", business.city);
+                      createForm.setValue("company.state", business.state);
+                      createForm.setValue("company.postalCode", business.postalCode);
+                      createForm.setValue("company.country", business.country);
+                      
+                      // Auto-generate slug from business name
+                      if (!slugManuallyEdited) {
+                        const generatedSlug = generateSlug(business.name);
+                        createForm.setValue("company.slug", generatedSlug);
+                      }
+                    }}
+                    testId="input-business-search-dialog"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Can't find the business? Enter the details manually below.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={createForm.control}
