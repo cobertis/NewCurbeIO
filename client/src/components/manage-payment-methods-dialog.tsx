@@ -23,6 +23,15 @@ import { Loader2 } from "lucide-react";
 
 // Card brand logos component
 function CardBrandLogo({ brand }: { brand: string }) {
+  if (!brand) {
+    // Fallback when brand is not provided
+    return (
+      <div className="flex items-center justify-center w-12 h-8 bg-muted rounded">
+        <CreditCard className="h-4 w-4 text-muted-foreground" />
+      </div>
+    );
+  }
+  
   const brandLower = brand.toLowerCase();
   
   if (brandLower === 'visa') {
