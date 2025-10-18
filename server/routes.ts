@@ -3009,7 +3009,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const invoices = await storage.getInvoicesByCompany(companyId);
+      const allInvoices = await storage.getInvoicesByCompany(companyId);
+      // Filter out $0.00 invoices (trial invoices) from billing history
+      const invoices = allInvoices.filter(invoice => invoice.total > 0);
       res.json({ invoices });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
