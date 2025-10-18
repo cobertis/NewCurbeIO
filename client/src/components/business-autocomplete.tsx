@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { FormControl, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Building2, Phone, Globe, MapPin } from "lucide-react";
 
 interface BusinessResult {
@@ -51,6 +52,7 @@ export function BusinessAutocomplete({
   const [suggestions, setSuggestions] = useState<BusinessResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [notListed, setNotListed] = useState(false);
   const debounceTimer = useRef<NodeJS.Timeout>();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -158,6 +160,14 @@ export function BusinessAutocomplete({
     setShowSuggestions(false);
   };
 
+  const handleNotListedChange = (checked: boolean) => {
+    setNotListed(checked);
+    if (checked) {
+      setShowSuggestions(false);
+      setSuggestions([]);
+    }
+  };
+
   return (
     <div ref={wrapperRef} className="relative">
       <FormItem>
@@ -172,6 +182,7 @@ export function BusinessAutocomplete({
               data-testid={testId}
               autoComplete="off"
               className="pl-10"
+              disabled={notListed}
             />
             {isLoading && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -181,10 +192,26 @@ export function BusinessAutocomplete({
           </div>
         </FormControl>
         {error && <FormMessage>{error}</FormMessage>}
+        
+        {/* Not Listed Checkbox */}
+        <div className="flex items-center space-x-2 mt-2">
+          <Checkbox 
+            id="not-listed" 
+            checked={notListed}
+            onCheckedChange={handleNotListedChange}
+            data-testid="checkbox-not-listed"
+          />
+          <label 
+            htmlFor="not-listed" 
+            className="text-sm text-muted-foreground cursor-pointer"
+          >
+            My business is not listed
+          </label>
+        </div>
       </FormItem>
 
       {/* Suggestions Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
+      {showSuggestions && suggestions.length > 0 && !notListed && (
         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-80 overflow-y-auto">
           {suggestions.map((business) => (
             <button

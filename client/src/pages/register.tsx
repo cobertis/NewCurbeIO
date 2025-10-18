@@ -75,7 +75,6 @@ export default function Register() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
   const form = useForm<CreateCompanyForm>({
@@ -205,12 +204,13 @@ export default function Register() {
                       <div className="mb-4">
                         <BusinessAutocomplete
                           value={form.watch("company.name")}
+                          label="Enter your business name"
+                          placeholder="Type to search for your business..."
                           onChange={(value) => {
                             form.setValue("company.name", value);
-                            if (!slugManuallyEdited) {
-                              const generatedSlug = generateSlug(value);
-                              form.setValue("company.slug", generatedSlug);
-                            }
+                            // Auto-generate slug internally
+                            const generatedSlug = generateSlug(value);
+                            form.setValue("company.slug", generatedSlug);
                           }}
                           onBusinessSelect={(business) => {
                             // Populate all company fields with the selected business data
@@ -223,71 +223,41 @@ export default function Register() {
                             form.setValue("company.postalCode", business.postalCode);
                             form.setValue("company.country", business.country);
                             
-                            // Auto-generate slug from business name
-                            if (!slugManuallyEdited) {
-                              const generatedSlug = generateSlug(business.name);
-                              form.setValue("company.slug", generatedSlug);
-                            }
+                            // Auto-generate slug internally from business name
+                            const generatedSlug = generateSlug(business.name);
+                            form.setValue("company.slug", generatedSlug);
                           }}
                           testId="input-business-search"
                         />
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Can't find your business? Enter the details manually below.
-                        </p>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="company.name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Company Name</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    placeholder="Acme Inc."
-                                    className="pl-10"
-                                    {...field}
-                                    onChange={(e) => {
-                                      field.onChange(e);
-                                      if (!slugManuallyEdited) {
-                                        const generatedSlug = generateSlug(e.target.value);
-                                        form.setValue('company.slug', generatedSlug);
-                                      }
-                                    }}
-                                    data-testid="input-company-name"
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="company.slug"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Slug (auto-generated)</FormLabel>
-                              <FormControl>
+                      <FormField
+                        control={form.control}
+                        name="company.name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Company Name</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                  placeholder="acme-inc"
+                                  placeholder="Acme Inc."
+                                  className="pl-10"
                                   {...field}
                                   onChange={(e) => {
                                     field.onChange(e);
-                                    setSlugManuallyEdited(true);
+                                    // Auto-generate slug internally
+                                    const generatedSlug = generateSlug(e.target.value);
+                                    form.setValue('company.slug', generatedSlug);
                                   }}
-                                  data-testid="input-company-slug"
+                                  data-testid="input-company-name"
                                 />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
