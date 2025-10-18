@@ -812,19 +812,17 @@ export default function Billing() {
                 />
               </div>
 
-              {/* City */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">City</label>
-                <Input
-                  placeholder="New York"
-                  value={billingForm.city}
-                  onChange={(e) => handleBillingFormChange('city', e.target.value)}
-                  data-testid="input-billing-city"
-                />
-              </div>
-
-              {/* State and ZIP Code */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* City, State and ZIP Code */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">City</label>
+                  <Input
+                    placeholder="New York"
+                    value={billingForm.city}
+                    onChange={(e) => handleBillingFormChange('city', e.target.value)}
+                    data-testid="input-billing-city"
+                  />
+                </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">State</label>
                   <Input
