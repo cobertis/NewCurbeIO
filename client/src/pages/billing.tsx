@@ -475,7 +475,7 @@ export default function Billing() {
         </Card>
 
         {/* Trial Status Card */}
-        {subscription?.status === 'trialing' && trialDaysRemaining > 0 && (
+        {subscription?.status === 'trialing' && trialDaysRemaining > 0 && subscription.trialEnd && (
           <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
@@ -488,7 +488,7 @@ export default function Billing() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                Your trial will end on {formatDate(new Date(subscription.trialEnd!))}. 
+                Your trial will end on {formatDate(new Date(subscription.trialEnd))}. 
                 After that, you'll be charged {formatCurrency(subscription.plan.price, subscription.plan.currency)} per {subscription.plan.billingCycle}.
               </p>
               <Progress value={trialProgress} className="h-2" />
@@ -632,8 +632,8 @@ export default function Billing() {
                     Next Payment
                   </div>
                   <p className="text-sm font-medium">
-                    {subscription.status === 'trialing' 
-                      ? `After trial ends (${formatDate(new Date(subscription.trialEnd!))})`
+                    {subscription.status === 'trialing' && subscription.trialEnd
+                      ? `After trial ends (${formatDate(new Date(subscription.trialEnd))})`
                       : formatDate(new Date(subscription.currentPeriodEnd))
                     }
                   </p>

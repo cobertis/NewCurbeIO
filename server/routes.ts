@@ -2905,7 +2905,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update local subscription to sync with Stripe
       await storage.updateSubscription(subscription.id, {
+        status: stripeSubscription.status as 'active' | 'trialing' | 'past_due' | 'cancelled' | 'unpaid',
         trialEnd: null,
+        trialStart: null,
         currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
         currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
       });
