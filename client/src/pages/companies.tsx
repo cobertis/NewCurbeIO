@@ -214,6 +214,7 @@ export default function Companies() {
         slug: "",
         phone: "",
         address: "",
+        addressLine2: "",
         city: "",
         state: "",
         postalCode: "",
@@ -599,6 +600,24 @@ export default function Companies() {
                       testId="input-create-company-address"
                       error={createForm.formState.errors.company?.address?.message}
                     />
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="company.addressLine2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Suite, Apartment, Unit (optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Suite 100" 
+                          {...field} 
+                          value={field.value ?? ""} 
+                          data-testid="input-create-company-address2" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
                 />
                 <div className="grid grid-cols-2 gap-4">

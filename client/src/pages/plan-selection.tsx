@@ -308,7 +308,7 @@ export default function PlanSelection() {
 
         {/* Footer Note */}
         <div className="text-center text-sm text-muted-foreground space-y-1">
-          <p>All plans include a 7-day money-back guarantee</p>
+          <p>All plans include a 14-day money-back guarantee</p>
           <p>
             Need help choosing?{' '}
             <a 
