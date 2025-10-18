@@ -246,13 +246,22 @@ export default function CompanyDetail() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</p>
-                  <p className="text-sm text-gray-900 dark:text-white">{company.address || "Not provided"}</p>
+              {company.website && (
+                <div className="flex items-start gap-3">
+                  <Globe className="h-5 w-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Website</p>
+                    <a 
+                      href={company.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {company.website}
+                    </a>
+                  </div>
                 </div>
-              </div>
+              )}
               {company.domain && (
                 <div className="flex items-start gap-3">
                   <Globe className="h-5 w-5 text-gray-400 mt-0.5" />
@@ -262,6 +271,27 @@ export default function CompanyDetail() {
                   </div>
                 </div>
               )}
+              <div className="flex items-start gap-3 md:col-span-2">
+                <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</p>
+                  {company.address || company.city || company.state || company.postalCode || company.country ? (
+                    <div className="text-sm text-gray-900 dark:text-white space-y-0.5">
+                      {company.address && <p>{company.address}</p>}
+                      <p>
+                        {[
+                          company.city,
+                          company.state,
+                          company.postalCode,
+                        ].filter(Boolean).join(", ")}
+                      </p>
+                      {company.country && <p>{company.country}</p>}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-900 dark:text-white">Not provided</p>
+                  )}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
