@@ -14,6 +14,7 @@ interface BusinessResult {
   type: string;
   address: {
     street: string;
+    addressLine2?: string;
     city: string;
     state: string;
     postalCode: string;
@@ -29,6 +30,7 @@ interface BusinessAutocompleteProps {
     phone: string;
     website: string;
     address: string;
+    addressLine2?: string;
     city: string;
     state: string;
     postalCode: string;
@@ -150,6 +152,7 @@ export function BusinessAutocomplete({
       phone: formatPhoneForForm(business.phone),
       website: business.website,
       address: business.address.street,
+      addressLine2: business.address.addressLine2,
       city: business.address.city,
       state: business.address.state,
       postalCode: business.address.postalCode,
