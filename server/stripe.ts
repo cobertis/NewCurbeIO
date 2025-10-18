@@ -1215,13 +1215,16 @@ export async function getSubscriptionDiscount(
     console.log('[STRIPE] Getting discount for subscription:', stripeSubscriptionId);
     
     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
-      expand: ['discounts.coupon'],
+      expand: ['discount.coupon'],
     });
     
-    if (subscription.discounts && subscription.discounts.length > 0) {
-      const discount = subscription.discounts[0];
-      return typeof discount === 'string' ? null : discount;
+    // Check for discount (singular) - this is where Stripe stores the active discount
+    if (subscription.discount && typeof subscription.discount !== 'string') {
+      console.log('[STRIPE] Found discount:', subscription.discount);
+      return subscription.discount;
     }
+    
+    console.log('[STRIPE] No discount found for subscription');
     return null;
   } catch (error) {
     console.error('[STRIPE] Error getting subscription discount:', error);
