@@ -587,268 +587,96 @@ export default function Billing() {
           </Card>
         ) : subscription ? (
           <Card className="lg:col-span-2">
-            <CardContent className="space-y-6 pt-6">
-              {/* Plan Details */}
-              <div className="flex items-start justify-between p-4 rounded-lg bg-muted/50">
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-bold flex items-center gap-2">
-                    {subscription.plan.name}
-                    {subscription.status === 'trialing' && (
-                      <Badge variant="secondary" className="ml-2">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        Trial
-                      </Badge>
-                    )}
-                  </h3>
-                  {subscription.plan.description && (
-                    <p className="text-sm text-muted-foreground">{subscription.plan.description}</p>
+            <CardContent className="space-y-4 pt-6">
+              {/* Header with Plan Name and Price */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold">{subscription.plan.name}</h2>
+                  {activeDiscount && activeDiscount.percentOff && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Gift className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {activeDiscount.percentOff}% discount applied for {activeDiscount.durationInMonths || 0} months
+                      </span>
+                    </div>
                   )}
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {subscription.plan.features && Array.isArray(subscription.plan.features) && subscription.plan.features.map((feature, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        {feature}
-                      </Badge>
-                    ))}
-                  </div>
                 </div>
                 <div className="text-right">
-                  {(() => {
-                    const displayPrice = subscription.billingCycle === 'yearly' 
-                      ? subscription.plan.annualPrice || subscription.plan.price 
-                      : subscription.plan.price;
-
-                    return activeDiscount && activeDiscount.percentOff ? (
-                      <>
-                        <div className="text-lg font-medium text-muted-foreground line-through">
-                          {formatCurrency(displayPrice, subscription.plan.currency)}
-                        </div>
-                        <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                          {formatCurrency(
-                            Math.round(displayPrice * (1 - activeDiscount.percentOff / 100)),
-                            subscription.plan.currency
-                          )}
-                        </div>
-                        <Badge className="mt-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                          <Gift className="h-3 w-3 mr-1" />
-                          {activeDiscount.percentOff}% discount applied
-                        </Badge>
-                      </>
-                    ) : (
-                      <div className="text-3xl font-bold">
-                        {formatCurrency(displayPrice, subscription.plan.currency)}
-                      </div>
-                    );
-                  })()}
+                  <div className="text-4xl font-bold">
+                    {(() => {
+                      const displayPrice = subscription.billingCycle === 'yearly' 
+                        ? subscription.plan.annualPrice || subscription.plan.price 
+                        : subscription.plan.price;
+                      
+                      return formatCurrency(displayPrice, subscription.plan.currency);
+                    })()}
+                  </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {subscription.billingCycle === 'yearly' ? 'Billed Annually' : 'per month'}
+                    {subscription.billingCycle === 'yearly' ? 'per year' : 'per month'}
                   </p>
-                  {subscription.billingCycle === 'yearly' && (
-                    <Badge variant="secondary" className="mt-1">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      Annual Plan
-                    </Badge>
-                  )}
                 </div>
               </div>
 
               {/* Trial Banner */}
               {subscription.status === 'trialing' && trialDaysRemaining > 0 && (
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/10">
-                  <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-blue-900 dark:text-blue-100">
-                      <span className="font-semibold">{trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'} left in trial</span>
-                      <span className="text-blue-700 dark:text-blue-300"> • Ends {formatDate(new Date(subscription.trialEnd))}</span>
-                    </p>
+                <div className="flex items-center justify-between p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-blue-900 dark:text-blue-100">
+                        Claim your 2 Free Months
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        Get 2 months free, if you upgrade to annual subscription
+                      </p>
+                    </div>
                   </div>
-                  <Progress value={trialProgress} className="h-1.5 w-24 shrink-0" />
+                  <Button 
+                    onClick={() => setLocation('/select-plan')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    data-testid="button-claim-discount"
+                  >
+                    Claim Now
+                  </Button>
                 </div>
               )}
 
-              {/* Active Discount Alert */}
-              {activeDiscount && activeDiscount.percentOff && (
-                <Alert className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20">
-                  <Gift className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <AlertTitle className="text-green-900 dark:text-green-100">
-                    {activeDiscount.percentOff}% Discount Active
-                  </AlertTitle>
-                  <AlertDescription className="text-green-700 dark:text-green-300">
-                    {activeDiscount.durationInMonths ? (
-                      <>
-                        You have a {activeDiscount.percentOff}% discount applied for {activeDiscount.durationInMonths} month{activeDiscount.durationInMonths > 1 ? 's' : ''}.
-                        {activeDiscount.end && (
-                          <> This discount will expire on {formatDate(new Date(activeDiscount.end))}.</>
-                        )}
-                      </>
-                    ) : (
-                      activeDiscount.duration === 'forever' ? 
-                        `You have a permanent ${activeDiscount.percentOff}% discount on your subscription.` : 
-                        activeDiscount.duration === 'once' ? 
-                        `You have a one-time ${activeDiscount.percentOff}% discount applied to your current billing period.` :
-                        `You have a ${activeDiscount.percentOff}% discount active on your subscription.`
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <Separator />
-
-              {/* Billing Details Grid */}
+              {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    Current Period
-                  </div>
-                  <p className="text-sm font-medium">
-                    {formatDate(new Date(subscription.currentPeriodStart))} - {formatDate(new Date(subscription.currentPeriodEnd))}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <DollarSign className="h-4 w-4" />
-                    Next Payment
-                  </div>
-                  <p className="text-sm font-medium">
-                    {subscription.status === 'trialing' && subscription.trialEnd
-                      ? `After trial ends (${formatDate(new Date(subscription.trialEnd))})`
-                      : formatDate(new Date(subscription.currentPeriodEnd))
-                    }
-                  </p>
-                </div>
-                {subscription.stripeCustomerId && (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Shield className="h-4 w-4" />
-                      Customer ID
-                    </div>
-                    <p className="text-sm font-mono">{subscription.stripeCustomerId}</p>
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <RefreshCw className="h-4 w-4" />
-                    Renewal
-                  </div>
-                  <p className="text-sm font-medium">
-                    {subscription.cancelAtPeriodEnd ? "Cancelling at period end" : "Auto-renew enabled"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-2">
-                {subscription.status === 'trialing' && trialDaysRemaining > 0 && (
-                  <Button
-                    variant="default"
-                    onClick={() => {
-                      // Check if payment method exists first
-                      if (!paymentMethods || paymentMethods.length === 0) {
-                        // No payment method - open add card modal and set pending flag
-                        setPendingSkipTrial(true);
-                        setShowAddCard(true);
-                        toast({
-                          title: "Payment Method Required",
-                          description: "Please add a payment method to skip your trial and activate your subscription.",
-                        });
-                      } else {
-                        // Payment method exists - show confirmation dialog
-                        setShowSkipTrialDialog(true);
-                      }
-                    }}
-                    disabled={skipTrialMutation.isPending}
-                    data-testid="button-skip-trial"
-                  >
-                    <Zap className="h-4 w-4 mr-2" />
-                    {skipTrialMutation.isPending ? 'Activating...' : 'Skip Trial & Pay Now'}
-                  </Button>
-                )}
-                <Button
-                  variant={subscription.status === 'trialing' ? "outline" : "default"}
+                <button
                   onClick={() => setLocation('/select-plan')}
-                  data-testid="button-change-plan"
+                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 text-left"
+                  data-testid="button-modify-subscription"
                 >
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Change Plan
-                </Button>
-                {!subscription.cancelAtPeriodEnd && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCancelDialog(true)}
-                    className="text-red-600 hover:text-red-700"
-                    data-testid="button-cancel-subscription"
-                  >
-                    Cancel Subscription
-                  </Button>
-                )}
+                  <span className="font-medium">Want to modify / cancel your subscription?</span>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+                
+                <div className="flex items-center justify-between p-4 rounded-lg border">
+                  <div>
+                    <p className="font-medium">Have a Billing Question?</p>
+                    <a 
+                      href="tel:+18887324197" 
+                      className="text-sm text-primary hover:underline"
+                      data-testid="link-billing-phone"
+                    >
+                      Contact us at +1(888)732-4197
+                    </a>
+                  </div>
+                </div>
               </div>
 
-              {subscription.cancelAtPeriodEnd && (
-                <Alert className="border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
-                  <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  <AlertTitle className="text-orange-900 dark:text-orange-100">
-                    Subscription Ending
-                  </AlertTitle>
-                  <AlertDescription className="text-orange-700 dark:text-orange-300">
-                    Your subscription will end on {formatDate(new Date(subscription.currentPeriodEnd))}.
-                    You can reactivate anytime before this date.
-                  </AlertDescription>
-                </Alert>
-              )}
-            {/* Payment Methods */}
-            <div>
-              <h3 className="font-semibold mb-4 flex items-center justify-between">
-                <span>Payment Methods</span>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowManageCards(true)}
-                  data-testid="button-manage-cards"
-                >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Manage Cards
-                </Button>
-              </h3>
-              {paymentMethods && paymentMethods.length > 0 ? (
-                <div className="space-y-3">
-                  {paymentMethods.map((method) => (
-                    <div key={method.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
-                      <CardBrandLogo brand={method.brand || ''} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold truncate">
-                            {method.brand ? (method.brand.charAt(0).toUpperCase() + method.brand.slice(1)) : 'Card'} •••• {method.last4 || '****'}
-                          </p>
-                          {method.isDefault && (
-                            <Badge variant="secondary" className="shrink-0 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
-                              Primary
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Expires {method.expMonth || '**'}/{method.expYear || '****'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 border rounded-lg bg-muted/30">
-                  <CreditCard className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground mb-4">
-                    No payment method on file
-                  </p>
-                  <Button
-                    onClick={() => setShowAddCard(true)}
-                    data-testid="button-add-first-card"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Add Payment Method
-                  </Button>
-                </div>
-              )}
-            </div>
+              {/* Next Invoice */}
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground">
+                  Your next invoice is scheduled on{' '}
+                  <span className="font-medium text-foreground">
+                    {formatDate(new Date(subscription.currentPeriodEnd))}
+                  </span>
+                </p>
+              </div>
             </CardContent>
           </Card>
         ) : null}
