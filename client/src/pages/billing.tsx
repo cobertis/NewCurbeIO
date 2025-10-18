@@ -130,6 +130,48 @@ interface PaymentMethod {
   isDefault?: boolean;
 }
 
+// Helper component to render card brand logo
+const CardBrandLogo = ({ brand }: { brand: string }) => {
+  const brandLower = brand.toLowerCase();
+  
+  // Return styled brand name with appropriate colors
+  if (brandLower === 'visa') {
+    return (
+      <div className="flex items-center justify-center w-16 h-10 bg-white dark:bg-gray-100 rounded border border-border px-2">
+        <span className="text-[#1434CB] font-bold text-xl tracking-tight">VISA</span>
+      </div>
+    );
+  } else if (brandLower === 'mastercard') {
+    return (
+      <div className="flex items-center justify-center w-16 h-10 bg-white dark:bg-gray-100 rounded border border-border">
+        <div className="flex -space-x-2">
+          <div className="w-4 h-4 rounded-full bg-[#EB001B]"></div>
+          <div className="w-4 h-4 rounded-full bg-[#F79E1B]"></div>
+        </div>
+      </div>
+    );
+  } else if (brandLower === 'amex' || brandLower === 'american express') {
+    return (
+      <div className="flex items-center justify-center w-16 h-10 bg-[#006FCF] rounded border border-border px-1">
+        <span className="text-white font-bold text-xs">AMEX</span>
+      </div>
+    );
+  } else if (brandLower === 'discover') {
+    return (
+      <div className="flex items-center justify-center w-16 h-10 bg-[#FF6000] rounded border border-border px-1">
+        <span className="text-white font-bold text-xs">DISCOVER</span>
+      </div>
+    );
+  } else {
+    // Default fallback
+    return (
+      <div className="flex items-center justify-center w-16 h-10 bg-muted rounded border border-border">
+        <CreditCard className="h-5 w-5 text-muted-foreground" />
+      </div>
+    );
+  }
+};
+
 export default function Billing() {
   const { toast } = useToast();
   const [showChangePlan, setShowChangePlan] = useState(false);
@@ -400,21 +442,82 @@ export default function Billing() {
         )}
       </div>
 
-      {/* Trial Status Alert */}
-      {subscription?.status === 'trialing' && trialDaysRemaining > 0 && (
-        <Alert className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
-          <Rocket className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          <AlertTitle className="text-blue-900 dark:text-blue-100">
-            Trial Period - {trialDaysRemaining} days remaining
-          </AlertTitle>
-          <AlertDescription className="text-blue-700 dark:text-blue-300">
-            <div className="space-y-3 mt-2">
-              <p>
+      {/* Payment Method and Trial Info Section */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Payment Method Card - Redesigned */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle className="text-2xl font-bold">Payment Method</CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setShowAddCard(true)}
+              data-testid="button-edit-payment"
+            >
+              <Pencil className="h-5 w-5 text-muted-foreground" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {paymentMethods && paymentMethods.length > 0 ? (
+              <div className="space-y-4">
+                {paymentMethods.map((method) => (
+                  <div key={method.id} className="flex items-center gap-4">
+                    <CardBrandLogo brand={method.brand} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-lg font-semibold">
+                          {method.brand.charAt(0).toUpperCase() + method.brand.slice(1)} •••• {method.last4}
+                        </p>
+                        {method.isDefault && (
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
+                            Primary Card
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Expires {method.expMonth}/{method.expYear}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground mb-4">
+                  No payment method on file
+                </p>
+                <Button
+                  onClick={() => setShowAddCard(true)}
+                  data-testid="button-add-first-card"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Add Payment Method
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Trial Status Card */}
+        {subscription?.status === 'trialing' && trialDaysRemaining > 0 && (
+          <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+                <Rocket className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                Trial Period
+              </CardTitle>
+              <CardDescription className="text-blue-700 dark:text-blue-300">
+                {trialDaysRemaining} days remaining
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
                 Your trial will end on {formatDate(new Date(subscription.trialEnd!))}. 
                 After that, you'll be charged {formatCurrency(subscription.plan.price, subscription.plan.currency)} per {subscription.plan.billingCycle}.
               </p>
               <Progress value={trialProgress} className="h-2" />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   onClick={() => skipTrialMutation.mutate()}
@@ -429,15 +532,16 @@ export default function Billing() {
                   variant="outline"
                   onClick={() => setShowAddCard(true)}
                   data-testid="button-add-payment"
+                  className="bg-white dark:bg-gray-900"
                 >
                   <CreditCard className="h-4 w-4 mr-2" />
                   Add Payment Method
                 </Button>
               </div>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Main Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -588,60 +692,6 @@ export default function Billing() {
 
         {/* Quick Stats Card */}
         <div className="space-y-6">
-          {/* Payment Method Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Payment Method
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {paymentMethods && paymentMethods.length > 0 ? (
-                <>
-                  {paymentMethods.map((method) => (
-                    <div key={method.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <CardIcon className="h-5 w-5" />
-                        <div>
-                          <p className="font-medium">{method.brand} •••• {method.last4}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Expires {method.expMonth}/{method.expYear}
-                          </p>
-                        </div>
-                      </div>
-                      {method.isDefault && (
-                        <Badge variant="secondary" className="text-xs">Default</Badge>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setShowAddCard(true)}
-                    data-testid="button-update-card"
-                  >
-                    Update Payment Method
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    No payment method on file
-                  </p>
-                  <Button
-                    className="w-full"
-                    onClick={() => setShowAddCard(true)}
-                    data-testid="button-add-first-card"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Add Payment Method
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Usage Stats Card */}
           <Card>
             <CardHeader>
