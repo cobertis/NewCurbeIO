@@ -193,6 +193,21 @@ export default function Billing() {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
 
+  // Fetch session data to get user info
+  const { data: sessionData } = useQuery({
+    queryKey: ['/api/session'],
+  });
+
+  const user = sessionData?.user;
+
+  // Fetch company data
+  const { data: companyData } = useQuery({
+    queryKey: ['/api/companies', user?.companyId],
+    enabled: !!user?.companyId,
+  });
+
+  const company = companyData?.company;
+
   // Fetch subscription data with enhanced trial info
   const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery({
     queryKey: ['/api/billing/subscription'],
@@ -658,7 +673,14 @@ export default function Billing() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Full Name</label>
                 <Input
-                  placeholder="Javier Lazo"
+                  placeholder="John Doe"
+                  defaultValue={
+                    company?.representativeFirstName && company?.representativeLastName
+                      ? `${company.representativeFirstName} ${company.representativeLastName}`
+                      : user?.firstName && user?.lastName
+                      ? `${user.firstName} ${user.lastName}`
+                      : ''
+                  }
                   data-testid="input-billing-name"
                 />
               </div>
@@ -668,6 +690,7 @@ export default function Billing() {
                 <label className="text-sm font-medium">Country Or Region</label>
                 <Input
                   placeholder="United States"
+                  defaultValue={company?.country || ''}
                   data-testid="input-billing-country"
                 />
               </div>
@@ -676,7 +699,8 @@ export default function Billing() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Address Line 1</label>
                 <Input
-                  placeholder="5712 SW 19TH ST"
+                  placeholder="123 Main Street"
+                  defaultValue={company?.address || ''}
                   data-testid="input-billing-address1"
                 />
               </div>
@@ -686,6 +710,7 @@ export default function Billing() {
                 <label className="text-sm font-medium">Address Line 2</label>
                 <Input
                   placeholder="Apt., suite, unit number, etc. (optional)"
+                  defaultValue={company?.addressLine2 || ''}
                   data-testid="input-billing-address2"
                 />
               </div>
@@ -694,7 +719,8 @@ export default function Billing() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">City</label>
                 <Input
-                  placeholder="MIAMI"
+                  placeholder="New York"
+                  defaultValue={company?.city || ''}
                   data-testid="input-billing-city"
                 />
               </div>
@@ -704,14 +730,16 @@ export default function Billing() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">State</label>
                   <Input
-                    placeholder="Florida"
+                    placeholder="NY"
+                    defaultValue={company?.state || ''}
                     data-testid="input-billing-state"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">ZIP Code</label>
                   <Input
-                    placeholder="33155-2169"
+                    placeholder="10001"
+                    defaultValue={company?.postalCode || ''}
                     data-testid="input-billing-zip"
                   />
                 </div>
