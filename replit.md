@@ -47,7 +47,9 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 -   **Modular Feature System:** Superadmins can define and assign features to different companies.
 -   **Audit Logging:** Centralized service for tracking critical actions.
 -   **Campaign System:** Unified interface for managing Email Campaigns, SMS Campaigns, and Contact Lists. Includes detailed reports, contact management with bulk operations, rich HTML editor for emails, targeted sending, and analytics.
--   **Real-Time Notifications:** Comprehensive WebSocket-based notification system providing instant updates:
+-   **Real-Time Notifications:** Production-grade WebSocket-based notification system providing instant updates without polling:
+    -   **100% WebSocket-Based:** All notifications delivered in real-time via WebSocket connection at `/ws/chat` - NO polling to prevent server saturation
+    -   **Automatic Reconnection:** Client automatically reconnects with exponential backoff if connection drops (max 30s delay)
     -   **WebSocket Broadcasting:** All notification events broadcast immediately via WebSocket (`notification_update` messages)
     -   **Automatic Notifications:** System generates notifications for 14+ events including:
         - User creation and activation
@@ -59,8 +61,7 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - User subscription to SMS
         - Contact list creation
     -   **Instant Client Updates:** Client-side WebSocket listener invalidates notification cache immediately upon receiving broadcast
-    -   **Polling Fallback:** 30-second polling as backup when WebSocket connection drops (paused when tab inactive)
-    -   **Sound Notifications:** Audio alerts for new notifications via client-side sound playback
+    -   **Sound Notifications:** Pleasant double-beep audio alerts for new notifications via Web Audio API
     -   **Broadcast System:** Superadmin can send manual system-wide broadcasts to all users
 -   **SMS Chat Application:** Bidirectional, real-time SMS chat with a three-column layout, WebSocket-based updates, contact integration, conversation management (search, delete, new), unread badge system, and internal notes for conversations. Includes comprehensive backend APIs for chat functionalities.
 -   **SMS Subscription Management:** `smsSubscribed` field, automatic unsubscribe via Twilio webhook (STOP keywords), and manual toggle for superadmins.

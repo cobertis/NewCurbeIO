@@ -103,8 +103,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const { data: notificationsData, isLoading: isLoadingNotifications, isError: isErrorNotifications } = useQuery<{ notifications: any[] }>({
     queryKey: ["/api/notifications"],
-    refetchInterval: 30000, // Auto-refresh every 30 seconds as fallback if WebSocket fails
-    refetchIntervalInBackground: false, // Pause polling when tab is not active to save resources
+    // Real-time updates handled exclusively by WebSocket - no polling needed
   });
 
   const user = userData?.user;
