@@ -515,6 +515,7 @@ export default function Register() {
                                     // Auto-update slug when name changes
                                     form.setValue("company.slug", generateSlug(e.target.value));
                                   }}
+                                  name="organization"
                                   autoComplete="organization"
                                   data-testid="input-company-name"
                                 />
@@ -539,6 +540,7 @@ export default function Register() {
                                   const formatted = formatPhoneInput(e.target.value);
                                   field.onChange(formatted);
                                 }}
+                                name="tel"
                                 autoComplete="tel"
                                 data-testid="input-company-phone"
                               />
@@ -560,6 +562,7 @@ export default function Register() {
                                   className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                   {...field}
                                   value={field.value ?? ""}
+                                  name="url"
                                   autoComplete="url"
                                   data-testid="input-company-website"
                                 />
@@ -580,6 +583,7 @@ export default function Register() {
                                 placeholder="Street address"
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
+                                name="address-line1"
                                 autoComplete="address-line1"
                                 data-testid="input-company-address"
                               />
@@ -600,6 +604,7 @@ export default function Register() {
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
                                 value={field.value ?? ""}
+                                name="address-line2"
                                 autoComplete="address-line2"
                                 data-testid="input-company-address-line2"
                               />
@@ -622,6 +627,7 @@ export default function Register() {
                                     className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                     {...field}
                                     value={field.value ?? ""}
+                                    name="address-level2"
                                     autoComplete="address-level2"
                                     data-testid="input-company-city"
                                   />
@@ -643,6 +649,7 @@ export default function Register() {
                                       className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                       {...field}
                                       value={field.value ?? ""}
+                                      name="address-level1"
                                       autoComplete="address-level1"
                                       data-testid="input-company-state"
                                     />
@@ -663,6 +670,7 @@ export default function Register() {
                                       className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                       {...field}
                                       value={field.value ?? ""}
+                                      name="postal-code"
                                       autoComplete="postal-code"
                                       data-testid="input-company-postal-code"
                                     />
@@ -717,6 +725,7 @@ export default function Register() {
                               placeholder="First name"
                               className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                               {...field}
+                              name="given-name"
                               autoComplete="given-name"
                               data-testid="input-first-name"
                             />
@@ -736,6 +745,7 @@ export default function Register() {
                               placeholder="Last name"
                               className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                               {...field}
+                              name="family-name"
                               autoComplete="family-name"
                               data-testid="input-last-name"
                             />
@@ -757,6 +767,7 @@ export default function Register() {
                             placeholder="Email address"
                             className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                             {...field}
+                            name="email"
                             autoComplete="email"
                             data-testid="input-email"
                           />
@@ -781,6 +792,7 @@ export default function Register() {
                               const formatted = formatPhoneInput(e.target.value);
                               field.onChange(formatted);
                             }}
+                            name="tel-admin"
                             autoComplete="tel"
                             data-testid="input-admin-phone"
                           />
