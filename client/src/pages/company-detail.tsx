@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, LayoutDashboard } from "lucide-react";
 import { formatPhoneDisplay } from "@/lib/phone-formatter";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +20,7 @@ import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { formatPhoneInput, formatPhoneE164 } from "@/lib/phone-formatter";
 import { useState } from "react";
+import { CompanyBillingTab } from "@/components/company-billing-tab";
 
 const userFormSchema = insertUserSchema.omit({ password: true }).extend({
   role: z.enum(["admin", "member", "viewer"]),
@@ -205,8 +207,34 @@ export default function CompanyDetail() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
-      {/* Company Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">{company.name}</h1>
+          <p className="text-muted-foreground">@{company.slug}</p>
+        </div>
+        <Badge variant={company.isActive ? "default" : "destructive"}>
+          {company.isActive ? "Active" : "Suspended"}
+        </Badge>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList data-testid="tabs-company-details">
+          <TabsTrigger value="overview" data-testid="tab-overview">
+            <LayoutDashboard className="h-4 w-4 mr-2" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="billing" data-testid="tab-billing">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Billing
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Company Information */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader className="space-y-4">
             <div className="flex items-start justify-between gap-4">
@@ -475,6 +503,13 @@ export default function CompanyDetail() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        {/* Billing Tab */}
+        <TabsContent value="billing">
+          <CompanyBillingTab companyId={companyId!} />
+        </TabsContent>
+      </Tabs>
 
       {/* Create User Dialog */}
       <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>

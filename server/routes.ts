@@ -3506,10 +3506,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get billing address for company
   app.get("/api/billing/address", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    const companyId = currentUser.companyId;
+
+    // Only admin or superadmin can view billing address
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
 
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company billing address" });
     }
 
     try {
