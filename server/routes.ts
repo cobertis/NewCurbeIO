@@ -548,68 +548,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("[GOOGLE_PLACES] Got", data.places?.length || 0, "results");
       
       // Transform the response to a simpler format for the frontend
-      const results = (data.places || []).map((place: any) => {
-        // Parse address components to get structured address
-        let street = '';
-        let city = '';
-        let state = '';
-        let postalCode = '';
-        let country = 'United States';
-        
-        if (place.addressComponents) {
-          for (const component of place.addressComponents) {
-            const types = component.types || [];
-            
-            if (types.includes('street_number')) {
-              street = component.longText + ' ' + street;
-            }
-            if (types.includes('route')) {
-              street = street + component.longText;
-            }
-            if (types.includes('locality')) {
-              city = component.longText;
-            }
-            if (types.includes('administrative_area_level_1')) {
-              state = component.shortText || component.longText;
-            }
-            if (types.includes('postal_code')) {
-              postalCode = component.longText;
-            }
-            if (types.includes('country')) {
-              country = component.longText;
+      const results = (data.places || [])
+        .map((place: any) => {
+          // Parse address components to get structured address
+          let street = '';
+          let city = '';
+          let state = '';
+          let postalCode = '';
+          let country = '';
+          
+          if (place.addressComponents) {
+            for (const component of place.addressComponents) {
+              const types = component.types || [];
+              
+              if (types.includes('street_number')) {
+                street = component.longText + ' ' + street;
+              }
+              if (types.includes('route')) {
+                street = street + component.longText;
+              }
+              if (types.includes('locality')) {
+                city = component.longText;
+              }
+              if (types.includes('administrative_area_level_1')) {
+                state = component.shortText || component.longText;
+              }
+              if (types.includes('postal_code')) {
+                postalCode = component.longText;
+              }
+              if (types.includes('country')) {
+                country = component.longText;
+              }
             }
           }
-        }
-        
-        // Clean up the street address
-        street = street.trim();
-        
-        // If no structured address components, try to parse from formattedAddress
-        if (!street && place.formattedAddress) {
-          const parts = place.formattedAddress.split(',');
-          if (parts.length > 0) {
-            street = parts[0].trim();
+          
+          // Clean up the street address
+          street = street.trim();
+          
+          // If no structured address components, try to parse from formattedAddress
+          if (!street && place.formattedAddress) {
+            const parts = place.formattedAddress.split(',');
+            if (parts.length > 0) {
+              street = parts[0].trim();
+            }
           }
-        }
 
-        return {
-          id: place.id,
-          name: place.displayName?.text || '',
-          formattedAddress: place.formattedAddress || '',
-          shortFormattedAddress: place.shortFormattedAddress || '',
-          phone: place.nationalPhoneNumber || '',
-          website: place.websiteUri || '',
-          type: place.primaryTypeDisplayName?.text || '',
-          // Structured address for form population
-          address: {
-            street: street,
-            city: city,
-            state: state,
-            postalCode: postalCode,
-            country: country
+          return {
+            id: place.id,
+            name: place.displayName?.text || '',
+            formattedAddress: place.formattedAddress || '',
+            shortFormattedAddress: place.shortFormattedAddress || '',
+            phone: place.nationalPhoneNumber || '',
+            website: place.websiteUri || '',
+            type: place.primaryTypeDisplayName?.text || '',
+            // Structured address for form population
+            address: {
+              street: street,
+              city: city,
+              state: state,
+              postalCode: postalCode,
+              country: country
+            }
+          };
+        })
+        // FILTER: Only return results from United States
+        .filter((result: any) => {
+          const isUSA = result.address.country === 'United States' || 
+                       result.address.country === 'USA' ||
+                       result.address.country === 'US';
+          if (!isUSA) {
+            console.log(`[GOOGLE_PLACES] Filtered out non-US result: ${result.name} (${result.address.country})`);
           }
-        };
-      });
+          return isUSA;
+        });
       
       // Set JSON content type explicitly
       res.setHeader('Content-Type', 'application/json');
