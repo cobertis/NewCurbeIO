@@ -85,6 +85,7 @@ interface Subscription {
     name: string;
     description?: string;
     price: number;
+    annualPrice?: number;
     billingCycle: string;
     currency: string;
     features?: string[];
@@ -630,27 +631,33 @@ export default function Billing() {
                   </div>
                 </div>
                 <div className="text-right">
-                  {activeDiscount && activeDiscount.percentOff ? (
-                    <>
-                      <div className="text-lg font-medium text-muted-foreground line-through">
-                        {formatCurrency(subscription.plan.price, subscription.plan.currency)}
+                  {(() => {
+                    const displayPrice = subscription.billingCycle === 'yearly' 
+                      ? subscription.plan.annualPrice || subscription.plan.price 
+                      : subscription.plan.price;
+
+                    return activeDiscount && activeDiscount.percentOff ? (
+                      <>
+                        <div className="text-lg font-medium text-muted-foreground line-through">
+                          {formatCurrency(displayPrice, subscription.plan.currency)}
+                        </div>
+                        <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                          {formatCurrency(
+                            Math.round(displayPrice * (1 - activeDiscount.percentOff / 100)),
+                            subscription.plan.currency
+                          )}
+                        </div>
+                        <Badge className="mt-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                          <Gift className="h-3 w-3 mr-1" />
+                          {activeDiscount.percentOff}% discount applied
+                        </Badge>
+                      </>
+                    ) : (
+                      <div className="text-3xl font-bold">
+                        {formatCurrency(displayPrice, subscription.plan.currency)}
                       </div>
-                      <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                        {formatCurrency(
-                          Math.round(subscription.plan.price * (1 - activeDiscount.percentOff / 100)),
-                          subscription.plan.currency
-                        )}
-                      </div>
-                      <Badge className="mt-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                        <Gift className="h-3 w-3 mr-1" />
-                        {activeDiscount.percentOff}% discount applied
-                      </Badge>
-                    </>
-                  ) : (
-                    <div className="text-3xl font-bold">
-                      {formatCurrency(subscription.plan.price, subscription.plan.currency)}
-                    </div>
-                  )}
+                    );
+                  })()}
                   <p className="text-sm text-muted-foreground mt-1">
                     {subscription.billingCycle === 'yearly' ? 'Billed Annually' : 'per month'}
                   </p>
