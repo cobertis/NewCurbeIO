@@ -45,10 +45,19 @@ export async function createStripeCustomer(company: {
   // Individual name uses representative's full name
   const individualName = `${company.representativeFirstName || ''} ${company.representativeLastName || ''}`.trim();
   
+  // Generate invoice prefix from company name initials (first 3 letters, uppercase)
+  const invoicePrefix = company.name
+    .replace(/[^a-zA-Z\s]/g, '') // Remove special characters
+    .split(' ')[0] // Get first word
+    .substring(0, 3) // Take first 3 letters
+    .toUpperCase() // Convert to uppercase
+    + '-'; // Add dash
+  
   const customerData: Stripe.CustomerCreateParams = {
     email: company.representativeEmail || company.email,
     name: individualName || company.name, // Individual's name first, fallback to company name
     phone: company.representativePhone || company.phone,
+    invoice_prefix: invoicePrefix, // e.g., "COB-" for "Cobertis Insurance"
     metadata: {
       companyId: company.id,
       companyName: company.name,
@@ -71,6 +80,7 @@ export async function createStripeCustomer(company: {
   console.log('[STRIPE] Creating customer with complete information:', {
     email: customerData.email,
     name: customerData.name,
+    invoicePrefix: customerData.invoice_prefix,
     hasAddress: !!customerData.address,
   });
 
