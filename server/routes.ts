@@ -407,6 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: adminData.email, // Company email is set to admin email
         website: companyData.website || null,
         address: companyData.address || null,
+        addressLine2: companyData.addressLine2 || null, // Suite, Apt, Unit
         city: companyData.city || null,
         state: companyData.state || null,
         postalCode: companyData.postalCode || null,
@@ -419,8 +420,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[REGISTRATION] Creating Stripe customer for:', newCompany.name);
         const { createStripeCustomer } = await import("./stripe");
         
-        // Create Stripe customer - simplified version
-        const stripeCustomer = await createStripeCustomer(newCompany);
+        // Create Stripe customer with representative information
+        const stripeCustomer = await createStripeCustomer({
+          ...newCompany,
+          representativeFirstName: adminData.firstName,
+          representativeLastName: adminData.lastName,
+          representativeEmail: adminData.email,
+          representativePhone: adminData.phone,
+        });
         
         // Update company with Stripe customer ID
         await storage.updateCompany(newCompany.id, { stripeCustomerId: stripeCustomer.id });

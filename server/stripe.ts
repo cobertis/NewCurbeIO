@@ -108,6 +108,19 @@ export async function createStripeCustomer(company: {
   return customer;
 }
 
+export async function updateStripeCustomer(customerId: string, data: {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: Stripe.AddressParam;
+  metadata?: Stripe.MetadataParam;
+}) {
+  console.log('[STRIPE] Updating customer:', customerId, data);
+  const updated = await stripe.customers.update(customerId, data);
+  console.log('[STRIPE] Customer updated successfully');
+  return updated;
+}
+
 export async function deleteStripeCustomer(customerId: string) {
   try {
     console.log('[STRIPE] Deleting customer:', customerId);
