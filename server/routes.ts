@@ -224,6 +224,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Account error. Please contact support." });
       }
 
+      // Legacy check: verify isActive flag (fallback for accounts deactivated via old system)
+      if (!user.isActive && user.status === 'active') {
+        // Update status to match isActive if they're out of sync
+        await storage.updateUser(user.id, { status: 'deactivated' });
+        await logger.logAuth({
+          req,
+          action: "login_failed",
+          userId: user.id,
+          email,
+          metadata: { reason: "Account deactivated (isActive=false)" },
+        });
+        return res.status(401).json({ message: "Your account has been deactivated. Please contact support for assistance." });
+      }
+
       // Check if user's company is active (for non-superadmin users)
       if (user.companyId && user.role !== "superadmin") {
         const company = await storage.getCompany(user.companyId);
@@ -1684,6 +1698,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (validatedData.role === "superadmin") {
           return res.status(403).json({ message: "Cannot set role to superadmin" });
+        }
+      }
+
+      // Sync status field with isActive changes
+      if ('isActive' in validatedData) {
+        if (validatedData.isActive === false) {
+          // User is being deactivated
+          validatedData.status = 'deactivated';
+        } else if (validatedData.isActive === true) {
+          // User is being reactivated - only set to active if they have a password
+          const targetUser = await storage.getUser(req.params.id);
+          if (targetUser?.password) {
+            validatedData.status = 'active';
+          }
         }
       }
 
