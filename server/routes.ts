@@ -3610,7 +3610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Broadcast notification update via WebSocket
-      io.emit('notification_update', { type: 'discount_applied' });
+      broadcastNotificationUpdate();
 
       res.json({ 
         message: `${percentOff}% discount applied for ${months} month${months > 1 ? 's' : ''}`,
