@@ -1,469 +1,584 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Building2, User, Mail, Phone, Lock, MapPin } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import logo from "@assets/logo no fondo_1760457183587.png";
+import { useLocation } from "wouter";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Building2, 
+  Mail, 
+  Phone,
+  Globe,
+  MapPin,
+  User,
+  Sparkles,
+  ArrowRight,
+  CheckCircle 
+} from "lucide-react";
+import AddressAutocomplete from "@/components/address-autocomplete";
+
+// Schema matching exactly what dashboard uses
+const createCompanyWithAdminSchema = z.object({
+  company: z.object({
+    name: z.string().min(1, "Company name is required"),
+    slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
+    phone: z.string().min(1, "Company phone is required"),
+    website: z.string().url().optional().or(z.literal("")),
+    address: z.string().min(1, "Address is required"),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().default("United States"),
+  }),
+  admin: z.object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().optional(),
+  }),
+});
+
+type CreateCompanyForm = z.infer<typeof createCompanyWithAdminSchema>;
+
+// Helper functions
+const generateSlug = (name: string) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .substring(0, 50);
+};
+
+const formatPhoneInput = (value: string) => {
+  const cleaned = value.replace(/\D/g, "");
+  const match = cleaned.match(/^1?(\d{3})(\d{3})(\d{4})$/);
+  if (match) {
+    return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
+  }
+  return value;
+};
 
 export default function Register() {
-  const [, setLocation] = useLocation();
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [isLoading, setIsLoading] = useState(false);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
 
-  // Company fields
-  const [companyName, setCompanyName] = useState("");
-  const [taxId, setTaxId] = useState("");
-  const [website, setWebsite] = useState("");
-  const [industry, setIndustry] = useState("");
-  
-  // Address fields
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zipCode, setZipCode] = useState("");
-  const [country, setCountry] = useState("");
+  const form = useForm<CreateCompanyForm>({
+    resolver: zodResolver(createCompanyWithAdminSchema),
+    defaultValues: {
+      company: {
+        name: "",
+        slug: "",
+        phone: "",
+        website: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "United States",
+      },
+      admin: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+      },
+    },
+  });
 
-  // Admin user fields
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  // Check if user is already authenticated
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/session", {
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          // User is already authenticated, redirect to dashboard
-          setLocation("/");
-        }
-      } catch (error) {
-        // User is not authenticated, stay on registration page
-      }
-    };
-
-    checkAuth();
-  }, [setLocation]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      toast({
-        variant: "destructive",
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-      });
-      return;
-    }
-
-    // Validate password strength
-    if (password.length < 8) {
-      toast({
-        variant: "destructive",
-        title: "Weak password",
-        description: "Password must be at least 8 characters long.",
-      });
-      return;
-    }
-
+  const onSubmit = async (data: CreateCompanyForm) => {
     setIsLoading(true);
-
+    
     try {
       const response = await fetch("/api/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          // Company data
-          company: {
-            name: companyName,
-            taxId,
-            website,
-            industry,
-            address,
-            city,
-            state,
-            zipCode,
-            country,
-          },
-          // Admin user data
-          user: {
-            firstName,
-            lastName,
-            email,
-            phone,
-            password,
-          }
-        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "Registration successful!",
-          description: "Please check your email to activate your account.",
-        });
-        // Redirect to login page
-        setLocation("/login");
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Registration failed",
-          description: data.message || "An error occurred during registration.",
-        });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Registration failed");
       }
-    } catch (error) {
+
+      const result = await response.json();
+      
       toast({
+        title: "Success!",
+        description: "Company registered successfully. Check your email for activation instructions.",
+      });
+      
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        setLocation("/login");
+      }, 2000);
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Registration Failed",
+        description: error.message || "An error occurred during registration",
         variant: "destructive",
-        title: "Error",
-        description: "An error occurred. Please try again.",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleNext = async () => {
+    const companyValid = await form.trigger([
+      "company.name",
+      "company.slug",
+      "company.phone",
+    ]);
+    
+    if (companyValid) {
+      setCurrentStep(2);
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep(1);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
-      {/* Logo in top left */}
-      <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
-        <img 
-          src={logo} 
-          alt="Curbe.io" 
-          className="h-8 sm:h-10 w-auto object-contain"
-        />
-      </div>
-
-      {/* Registration Card */}
-      <div className="w-full max-w-2xl my-8">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
-          {/* Icon */}
-          <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/5 p-4 flex items-center justify-center">
+      <div className="w-full max-w-2xl">
+        {/* Modern Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/20 blur-3xl"></div>
+              <Sparkles className="h-12 w-12 text-primary relative" />
             </div>
           </div>
+          
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
+            Start Your Free Trial
+          </h1>
+          <p className="text-muted-foreground">
+            7 days free • No credit card required • Cancel anytime
+          </p>
 
-          {/* Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              Create your company account
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Start your 7-day free trial today. No credit card required.
-            </p>
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all
+              ${currentStep === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+              <Building2 className="h-4 w-4" />
+              <span className="text-sm font-medium">Company</span>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all
+              ${currentStep === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+              <User className="h-4 w-4" />
+              <span className="text-sm font-medium">Admin</span>
+            </div>
           </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Company Information Section */}
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
-                <Building2 className="w-5 h-5 mr-2" />
-                Company Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="companyName" className="text-sm text-gray-700 dark:text-gray-300">
-                    Company Name *
-                  </Label>
-                  <Input
-                    id="companyName"
-                    type="text"
-                    placeholder="Acme Inc."
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                    required
-                    data-testid="input-company-name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="taxId" className="text-sm text-gray-700 dark:text-gray-300">
-                    Tax ID
-                  </Label>
-                  <Input
-                    id="taxId"
-                    type="text"
-                    placeholder="12-3456789"
-                    value={taxId}
-                    onChange={(e) => setTaxId(e.target.value)}
-                    className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                    data-testid="input-tax-id"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="website" className="text-sm text-gray-700 dark:text-gray-300">
-                    Website
-                  </Label>
-                  <Input
-                    id="website"
-                    type="url"
-                    placeholder="https://example.com"
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                    data-testid="input-website"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="industry" className="text-sm text-gray-700 dark:text-gray-300">
-                    Industry
-                  </Label>
-                  <Input
-                    id="industry"
-                    type="text"
-                    placeholder="Technology"
-                    value={industry}
-                    onChange={(e) => setIndustry(e.target.value)}
-                    className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                    data-testid="input-industry"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Company Address Section */}
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2" />
-                Company Address
-              </h2>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label htmlFor="address" className="text-sm text-gray-700 dark:text-gray-300">
-                    Street Address
-                  </Label>
-                  <Input
-                    id="address"
-                    type="text"
-                    placeholder="123 Main St"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                    data-testid="input-address"
-                  />
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <Label htmlFor="city" className="text-sm text-gray-700 dark:text-gray-300">
-                      City
-                    </Label>
-                    <Input
-                      id="city"
-                      type="text"
-                      placeholder="New York"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                      data-testid="input-city"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="state" className="text-sm text-gray-700 dark:text-gray-300">
-                      State
-                    </Label>
-                    <Input
-                      id="state"
-                      type="text"
-                      placeholder="NY"
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                      data-testid="input-state"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="zipCode" className="text-sm text-gray-700 dark:text-gray-300">
-                      ZIP Code
-                    </Label>
-                    <Input
-                      id="zipCode"
-                      type="text"
-                      placeholder="10001"
-                      value={zipCode}
-                      onChange={(e) => setZipCode(e.target.value)}
-                      className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                      data-testid="input-zip-code"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="country" className="text-sm text-gray-700 dark:text-gray-300">
-                      Country
-                    </Label>
-                    <Input
-                      id="country"
-                      type="text"
-                      placeholder="USA"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                      data-testid="input-country"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Administrator Information Section */}
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
-                <User className="w-5 h-5 mr-2" />
-                Administrator Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName" className="text-sm text-gray-700 dark:text-gray-300">
-                    First Name *
-                  </Label>
-                  <Input
-                    id="firstName"
-                    type="text"
-                    placeholder="John"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                    required
-                    data-testid="input-first-name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName" className="text-sm text-gray-700 dark:text-gray-300">
-                    Last Name *
-                  </Label>
-                  <Input
-                    id="lastName"
-                    type="text"
-                    placeholder="Doe"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="mt-1 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                    required
-                    data-testid="input-last-name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email" className="text-sm text-gray-700 dark:text-gray-300">
-                    Email Address *
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="mt-1 pl-10 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                      required
-                      data-testid="input-email"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="phone" className="text-sm text-gray-700 dark:text-gray-300">
-                    Phone Number
-                  </Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+1 (555) 123-4567"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="mt-1 pl-10 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                      data-testid="input-phone"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="password" className="text-sm text-gray-700 dark:text-gray-300">
-                    Password *
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Min. 8 characters"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="mt-1 pl-10 pr-10 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                      required
-                      data-testid="input-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors mt-1"
-                      data-testid="button-toggle-password"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="confirmPassword" className="text-sm text-gray-700 dark:text-gray-300">
-                    Confirm Password *
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      id="confirmPassword"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Confirm your password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="mt-1 pl-10 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                      required
-                      data-testid="input-confirm-password"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
-              disabled={isLoading}
-              data-testid="button-register"
-            >
-              {isLoading ? "Creating account..." : "Create Company Account"}
-            </Button>
-
-            {/* Login Link */}
-            <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={() => setLocation("/login")}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                data-testid="link-login"
-              >
-                Sign in here
-              </button>
-            </div>
-          </form>
         </div>
+
+        {/* Main Card */}
+        <Card className="border-0 shadow-xl bg-card/95 backdrop-blur">
+          <CardContent className="p-6 sm:p-8">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {currentStep === 1 ? (
+                  <>
+                    {/* Step 1: Company Info */}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="company.name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Company Name</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    placeholder="Acme Inc."
+                                    className="pl-10"
+                                    {...field}
+                                    onChange={(e) => {
+                                      field.onChange(e);
+                                      if (!slugManuallyEdited) {
+                                        const generatedSlug = generateSlug(e.target.value);
+                                        form.setValue('company.slug', generatedSlug);
+                                      }
+                                    }}
+                                    data-testid="input-company-name"
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="company.slug"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Slug (auto-generated)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="acme-inc"
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    setSlugManuallyEdited(true);
+                                  }}
+                                  data-testid="input-company-slug"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="company.phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Company Phone</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    placeholder="+1 (555) 123-4567"
+                                    className="pl-10"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const formatted = formatPhoneInput(e.target.value);
+                                      field.onChange(formatted);
+                                    }}
+                                    data-testid="input-company-phone"
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="company.website"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Website (optional)</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    placeholder="https://example.com"
+                                    className="pl-10"
+                                    {...field}
+                                    value={field.value ?? ""}
+                                    data-testid="input-company-website"
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="company.address"
+                        render={({ field }) => (
+                          <div className="space-y-1">
+                            <AddressAutocomplete
+                              value={field.value}
+                              onChange={field.onChange}
+                              onAddressSelect={(address) => {
+                                form.setValue("company.address", address.street);
+                                form.setValue("company.city", address.city);
+                                form.setValue("company.state", address.state);
+                                form.setValue("company.postalCode", address.postalCode);
+                                form.setValue("company.country", address.country);
+                              }}
+                              label="Company Address"
+                              placeholder="Start typing an address..."
+                              testId="input-company-address"
+                              error={form.formState.errors.company?.address?.message}
+                            />
+                          </div>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="company.city"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>City</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Miami"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  data-testid="input-company-city"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="company.state"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>State</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="FL"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  data-testid="input-company-state"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="company.postalCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>ZIP</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="33185"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  data-testid="input-company-postal"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="company.country"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Country</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="United States"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  data-testid="input-company-country"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={handleNext}
+                      className="w-full"
+                      size="lg"
+                      data-testid="button-next-step"
+                    >
+                      Continue to Admin Setup
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {/* Step 2: Admin Info */}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="admin.firstName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>First Name</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="John"
+                                  {...field}
+                                  data-testid="input-admin-firstname"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="admin.lastName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Last Name</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Doe"
+                                  {...field}
+                                  data-testid="input-admin-lastname"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="admin.email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  type="email"
+                                  placeholder="john@example.com"
+                                  className="pl-10"
+                                  {...field}
+                                  data-testid="input-admin-email"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="admin.phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number (optional)</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  placeholder="+1 (555) 123-4567"
+                                  className="pl-10"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => {
+                                    const formatted = formatPhoneInput(e.target.value);
+                                    field.onChange(formatted);
+                                  }}
+                                  data-testid="input-admin-phone"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* What happens next */}
+                      <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+                        <p className="text-sm font-medium text-foreground">What happens next?</p>
+                        <div className="space-y-1">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
+                            <p className="text-sm text-muted-foreground">
+                              We'll send an activation email with your login credentials
+                            </p>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
+                            <p className="text-sm text-muted-foreground">
+                              You'll be able to set up your account and start your free trial
+                            </p>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
+                            <p className="text-sm text-muted-foreground">
+                              No credit card required for the first 7 days
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        onClick={handleBack}
+                        variant="outline"
+                        size="lg"
+                        className="flex-1"
+                        data-testid="button-back"
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        size="lg"
+                        className="flex-1"
+                        data-testid="button-register"
+                      >
+                        {isLoading ? "Creating account..." : "Create Account"}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </form>
+            </Form>
+
+            {/* Sign in link */}
+            {currentStep === 1 && (
+              <div className="text-center mt-6 pt-6 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <button
+                    onClick={() => setLocation("/login")}
+                    className="text-primary hover:text-primary/80 font-medium transition-colors"
+                    data-testid="link-login"
+                  >
+                    Sign in
+                  </button>
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
