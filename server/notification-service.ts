@@ -404,7 +404,7 @@ class NotificationService {
   }
 
   /**
-   * Create a notification for when a payment fails
+   * Create a notification for when a payment is declined
    * Notifies all admins of the company AND all superadmins in the system
    */
   async notifyPaymentFailed(companyId: string, amount: number, currency: string, invoiceNumber?: string) {
@@ -432,10 +432,10 @@ class NotificationService {
       notifications.push({
         userId: user.id,
         type: "error",
-        title: "Payment Failed",
+        title: "Payment Declined",
         message: invoiceNumber 
-          ? `Payment of ${formattedAmount} for invoice ${invoiceNumber} failed. Please update your payment method.`
-          : `Payment of ${formattedAmount} failed. Please update your payment method.`,
+          ? `Payment of ${formattedAmount} for invoice ${invoiceNumber} was declined. Please update your payment method.`
+          : `Payment of ${formattedAmount} was declined. Please update your payment method.`,
         link: "/billing",
         isRead: false,
       });
@@ -449,10 +449,10 @@ class NotificationService {
         notifications.push({
           userId: superadminId,
           type: "error",
-          title: "Payment Failed",
+          title: "Payment Declined",
           message: invoiceNumber 
-            ? `${companyName} payment of ${formattedAmount} for invoice ${invoiceNumber} failed.`
-            : `${companyName} payment of ${formattedAmount} failed.`,
+            ? `${companyName} payment of ${formattedAmount} for invoice ${invoiceNumber} was declined.`
+            : `${companyName} payment of ${formattedAmount} was declined.`,
           link: `/companies/${companyId}?tab=billing`,
           isRead: false,
         });
@@ -460,13 +460,13 @@ class NotificationService {
     });
 
     if (notifications.length === 0) {
-      console.warn('[NOTIFICATION] No users to notify for payment failure');
+      console.warn('[NOTIFICATION] No users to notify for payment declined');
       return [];
     }
 
     const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
     broadcastNotificationUpdate();
-    console.log(`[NOTIFICATION] Payment failed: Notified ${notifications.length} users (${adminUsers.length} company admins + ${allSuperadmins.length - adminUsers.filter(u => u.role === 'superadmin').length} global superadmins)`);
+    console.log(`[NOTIFICATION] Payment declined: Notified ${notifications.length} users (${adminUsers.length} company admins + ${allSuperadmins.length - adminUsers.filter(u => u.role === 'superadmin').length} global superadmins)`);
     return result;
   }
 
