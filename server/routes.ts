@@ -3328,6 +3328,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send invoice via email
+  app.post("/api/invoices/:invoiceId/send-email", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { invoiceId } = req.params;
+
+    // Only admin or superadmin can send invoices
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      // Get invoice
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      // SECURITY: For non-superadmins, verify the invoice belongs to their company
+      if (currentUser.role !== "superadmin" && invoice.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Unauthorized access to invoice" });
+      }
+
+      // Get company details
+      const company = await storage.getCompany(invoice.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Send email using the payment confirmation template
+      const emailSent = await sendPaymentConfirmationEmail(
+        invoice.companyId,
+        invoice.total,
+        invoice.currency,
+        invoice.invoiceNumber,
+        invoice.stripeHostedInvoiceUrl || undefined
+      );
+
+      if (emailSent) {
+        res.json({ success: true, message: "Invoice sent successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to send invoice email" });
+      }
+    } catch (error: any) {
+      console.error('[INVOICE] Error sending invoice email:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get billing payments
   app.get("/api/billing/payments", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;

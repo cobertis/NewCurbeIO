@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CreditCard, FileText, MapPin, Calendar, CheckCircle2, XCircle, Clock, AlertCircle, Percent, Tag } from "lucide-react";
+import { CreditCard, FileText, MapPin, Calendar, CheckCircle2, XCircle, Clock, AlertCircle, Percent, Tag, MoreVertical, Eye, Download, Mail } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -12,6 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface CompanyBillingTabProps {
   companyId: string;
@@ -108,6 +115,26 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
   const [discountPercentage, setDiscountPercentage] = useState("");
   const [discountMonths, setDiscountMonths] = useState("");
   const { toast } = useToast();
+
+  // Mutation to send invoice via email
+  const sendInvoiceMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      return await apiRequest("POST", `/api/invoices/${invoiceId}/send-email`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Invoice sent",
+        description: "The invoice has been sent to the customer via email",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to send invoice",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Mutation for applying discount
   const applyDiscountMutation = useMutation({
@@ -548,7 +575,7 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                 {invoices.map((invoice: any) => (
                   <div
                     key={invoice.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
+                    className="flex items-center justify-between p-3 border rounded-lg gap-3"
                     data-testid={`card-invoice-${invoice.id}`}
                   >
                     <div className="flex-1 min-w-0">
@@ -563,9 +590,54 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                         {format(new Date(invoice.createdAt), "MMM dd, yyyy")}
                       </p>
                     </div>
-                    <p className="text-sm font-semibold ml-3" data-testid={`text-invoice-amount-${invoice.id}`}>
-                      {formatCurrency(invoice.amountDue, invoice.currency)}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold whitespace-nowrap" data-testid={`text-invoice-amount-${invoice.id}`}>
+                        {formatCurrency(invoice.amountDue, invoice.currency)}
+                      </p>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            data-testid={`button-invoice-actions-${invoice.id}`}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {invoice.stripeHostedInvoiceUrl && (
+                            <DropdownMenuItem
+                              onClick={() => window.open(invoice.stripeHostedInvoiceUrl, '_blank')}
+                              data-testid={`button-view-invoice-${invoice.id}`}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                          )}
+                          {invoice.stripeInvoicePdf && (
+                            <DropdownMenuItem
+                              onClick={() => window.open(invoice.stripeInvoicePdf, '_blank')}
+                              data-testid={`button-download-invoice-${invoice.id}`}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download PDF
+                            </DropdownMenuItem>
+                          )}
+                          {(invoice.stripeHostedInvoiceUrl || invoice.stripeInvoicePdf) && (
+                            <DropdownMenuSeparator />
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => sendInvoiceMutation.mutate(invoice.id)}
+                            disabled={sendInvoiceMutation.isPending}
+                            data-testid={`button-send-invoice-${invoice.id}`}
+                          >
+                            <Mail className="h-4 w-4 mr-2" />
+                            {sendInvoiceMutation.isPending ? 'Sending...' : 'Send via Email'}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 ))}
               </div>
