@@ -332,6 +332,39 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for when a trial starts
+   * Notifies all admins and superadmins of the company
+   */
+  async notifyTrialStarted(companyId: string, planName: string, trialEndDate: Date | null) {
+    // Get all admin and superadmin users for this company
+    const users = await storage.getUsersByCompany(companyId);
+    const adminUsers = users.filter(u => u.role === "admin" || u.role === "superadmin");
+    
+    if (adminUsers.length === 0) {
+      console.warn('[NOTIFICATION] No admin users found for company:', companyId);
+      return [];
+    }
+    
+    // Format trial end date
+    let trialMessage = `Your ${planName} trial has started successfully.`;
+    if (trialEndDate) {
+      const daysRemaining = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      trialMessage = `Your ${planName} trial has started! You have ${daysRemaining} days to explore all features.`;
+    }
+    
+    const notifications = adminUsers.map(user => ({
+      userId: user.id,
+      type: "success",
+      title: "Trial Started",
+      message: trialMessage,
+      link: "/billing",
+      isRead: false,
+    }));
+
+    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {
