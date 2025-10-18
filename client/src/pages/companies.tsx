@@ -353,8 +353,11 @@ export default function Companies() {
                             {company.phone ? formatPhoneDisplay(company.phone) : '-'}
                           </p>
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-company-address-${company.id}`}>
-                          {company.address}
+                        <div className="text-sm" data-testid={`text-company-address-${company.id}`}>
+                          <p className="text-gray-600 dark:text-gray-300">{company.address}</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">
+                            {[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}
+                          </p>
                         </div>
                         <div className="flex items-center">
                           <Badge 
