@@ -156,6 +156,7 @@ export const users = pgTable("users", {
   companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }),
   
   // User status
+  status: text("status").notNull().default("active"), // 'pending_activation', 'active', 'deactivated'
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),
   emailVerifiedAt: timestamp("email_verified_at"),
