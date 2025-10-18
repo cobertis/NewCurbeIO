@@ -50,7 +50,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useLocation } from "wouter";
 
 interface Subscription {
   id: string;
@@ -131,7 +130,6 @@ interface PaymentMethod {
 
 export default function Billing() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>("");
@@ -139,52 +137,29 @@ export default function Billing() {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
 
-  // Check user session and redirect superadmins
-  const { data: sessionData } = useQuery({
-    queryKey: ['/api/session'],
-  });
-
-  // Redirect superadmins to companies page
-  useEffect(() => {
-    if (sessionData?.user?.role === 'superadmin') {
-      toast({
-        title: "Access Restricted",
-        description: "Superadmins manage billing through the Companies page",
-        variant: "default",
-      });
-      setLocation('/companies');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionData?.user?.role, setLocation]);
-
   // Fetch subscription data with enhanced trial info
   const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery({
     queryKey: ['/api/billing/subscription'],
-    enabled: sessionData?.user?.role !== 'superadmin', // Don't fetch if superadmin
   });
 
   // Fetch available plans
   const { data: plansData } = useQuery({
     queryKey: ['/api/plans'],
-    enabled: sessionData?.user?.role !== 'superadmin',
   });
 
   // Fetch invoices
   const { data: invoicesData, isLoading: isLoadingInvoices } = useQuery({
     queryKey: ['/api/billing/invoices'],
-    enabled: sessionData?.user?.role !== 'superadmin',
   });
 
   // Fetch payments
   const { data: paymentsData, isLoading: isLoadingPayments } = useQuery({
     queryKey: ['/api/billing/payments'],
-    enabled: sessionData?.user?.role !== 'superadmin',
   });
 
   // Fetch payment methods
   const { data: paymentMethodsData } = useQuery({
     queryKey: ['/api/billing/payment-methods'],
-    enabled: sessionData?.user?.role !== 'superadmin',
   });
 
   // Create customer portal session
