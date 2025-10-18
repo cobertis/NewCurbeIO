@@ -548,14 +548,6 @@ export default function Billing() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Billing & Subscription</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your subscription, payment methods, and billing history
-        </p>
-      </div>
-
       {/* Two Column Layout */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Subscription Details - 2 columns */}
