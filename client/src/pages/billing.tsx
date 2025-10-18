@@ -40,7 +40,8 @@ import {
   ArrowRight,
   CreditCard as CardIcon,
   Building2,
-  Pencil
+  Pencil,
+  MapPin
 } from "lucide-react";
 import { formatDate } from "@/lib/date-formatter";
 import {
@@ -417,14 +418,16 @@ export default function Billing() {
         )}
       </div>
 
-      {/* Subscription Details */}
-      {subscription && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Subscription Details</CardTitle>
-            <CardDescription>Manage your subscription settings and view detailed information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+      {/* Two Column Layout */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Subscription Details - 2 columns */}
+        {subscription && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Subscription Details</CardTitle>
+              <CardDescription>Manage your subscription settings and view detailed information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
               {/* Plan Details */}
               <div className="flex items-start justify-between p-4 rounded-lg bg-muted/50">
                 <div className="space-y-1">
@@ -643,6 +646,103 @@ export default function Billing() {
             </CardContent>
           </Card>
         )}
+
+        {/* Billing Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Billing Information
+            </CardTitle>
+            <CardDescription>Update your billing information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4">
+              {/* Full Name */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Full Name</label>
+                <Input
+                  placeholder="Javier Lazo"
+                  data-testid="input-billing-name"
+                />
+              </div>
+
+              {/* Country */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Country Or Region</label>
+                <Input
+                  placeholder="United States"
+                  data-testid="input-billing-country"
+                />
+              </div>
+
+              {/* Address Line 1 */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Address Line 1</label>
+                <Input
+                  placeholder="5712 SW 19TH ST"
+                  data-testid="input-billing-address1"
+                />
+              </div>
+
+              {/* Address Line 2 */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Address Line 2</label>
+                <Input
+                  placeholder="Apt., suite, unit number, etc. (optional)"
+                  data-testid="input-billing-address2"
+                />
+              </div>
+
+              {/* City */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">City</label>
+                <Input
+                  placeholder="MIAMI"
+                  data-testid="input-billing-city"
+                />
+              </div>
+
+              {/* State and ZIP Code */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">State</label>
+                  <Input
+                    placeholder="Florida"
+                    data-testid="input-billing-state"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">ZIP Code</label>
+                  <Input
+                    placeholder="33155-2169"
+                    data-testid="input-billing-zip"
+                  />
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  data-testid="button-billing-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  data-testid="button-billing-save"
+                >
+                  Save
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Billing History */}
       <Card>
