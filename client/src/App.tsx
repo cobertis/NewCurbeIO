@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
+import { UploadAvatarDialog } from "@/components/upload-avatar-dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -94,6 +95,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [timezoneDialogOpen, setTimezoneDialogOpen] = useState(false);
+  const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -378,7 +380,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuContent align="end" className="w-80 p-4">
                   {/* User Info Header */}
                   <div className="flex items-center gap-4 mb-4">
-                    <Avatar className="h-16 w-16">
+                    <Avatar 
+                      className="h-16 w-16 cursor-pointer hover-elevate active-elevate-2 transition-transform"
+                      onClick={() => setUploadAvatarOpen(true)}
+                      data-testid="avatar-upload-trigger"
+                    >
                       <AvatarImage src={user?.avatar || undefined} alt={userName} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
                         {userInitial}
@@ -790,6 +796,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Upload Avatar Dialog */}
+      <UploadAvatarDialog
+        open={uploadAvatarOpen}
+        onOpenChange={setUploadAvatarOpen}
+        currentAvatar={user?.avatar || ""}
+        userInitial={userInitial}
+      />
     </SidebarProvider>
   );
 }
