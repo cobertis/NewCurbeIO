@@ -3216,8 +3216,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
 
-        // Send notification about trial start only if subscription is in trialing status
-        if (subscriptionData.status === 'trialing' && subscriptionData.trialEnd) {
+        // Only send trial notification if this is a NEW trial (not a plan change during existing trial)
+        // Check if previous subscription was NOT in trialing status
+        const isNewTrial = subscriptionData.status === 'trialing' 
+          && subscriptionData.trialEnd 
+          && existingSubscription.status !== 'trialing';
+        
+        if (isNewTrial) {
           try {
             await notificationService.notifyTrialStarted(
               companyId, 
