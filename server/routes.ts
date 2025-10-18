@@ -4208,22 +4208,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Sync invoice from Stripe
             const invoice = await syncInvoiceFromStripe(stripeInvoice.id);
             
-            // Create payment record if payment intent exists
-            if (invoice && stripeInvoice.payment_intent) {
-              console.log('[WEBHOOK] Creating payment record for payment intent:', stripeInvoice.payment_intent);
-              await recordPayment(
-                stripeInvoice.payment_intent,
-                invoice.companyId,
-                invoice.id,
-                stripeInvoice.amount_paid || stripeInvoice.total,
-                stripeInvoice.currency,
-                'succeeded',
-                stripeInvoice.payment_method_types?.[0] || 'card'
-              );
+            if (invoice) {
+              console.log('[WEBHOOK] Invoice synced successfully, invoice ID:', invoice.id);
+              
+              // Create payment record if payment intent exists
+              if (stripeInvoice.payment_intent) {
+                console.log('[WEBHOOK] Creating payment record for payment intent:', stripeInvoice.payment_intent);
+                await recordPayment(
+                  stripeInvoice.payment_intent,
+                  invoice.companyId,
+                  invoice.id,
+                  stripeInvoice.amount_paid || stripeInvoice.total,
+                  stripeInvoice.currency,
+                  'succeeded',
+                  stripeInvoice.payment_method_types?.[0] || 'card'
+                );
+              } else {
+                console.log('[WEBHOOK] No payment intent found, skipping payment record creation');
+              }
               
               // Only send notification for invoice.paid to avoid duplicates
               // (Stripe sends both invoice.paid and invoice.payment_succeeded for the same payment)
               if (event.type === 'invoice.paid') {
+                console.log('[WEBHOOK] Sending payment success notification to company:', invoice.companyId);
                 const { notificationService } = await import("./notification-service");
                 await notificationService.notifyPaymentSucceeded(
                   invoice.companyId,
@@ -4233,6 +4240,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 );
                 console.log('[NOTIFICATION] Payment success notification sent to company:', invoice.companyId);
               }
+            } else {
+              console.error('[WEBHOOK] Invoice sync failed - invoice is null');
             }
           }
           break;

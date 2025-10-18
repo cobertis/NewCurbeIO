@@ -503,6 +503,7 @@ export async function syncInvoiceFromStripe(stripeInvoiceId: string) {
   if (!subscription && stripeInvoice.customer) {
     console.log('[STRIPE] Subscription not found by ID, trying by customer:', stripeInvoice.customer);
     subscription = await storage.getSubscriptionByStripeCustomerId(stripeInvoice.customer);
+    console.log('[STRIPE] Subscription found by customer ID:', subscription ? 'Yes' : 'No');
   }
   
   if (!subscription) {
@@ -510,9 +511,12 @@ export async function syncInvoiceFromStripe(stripeInvoiceId: string) {
     
     // For invoices without a subscription (e.g., one-time charges), try to find company by customer
     if (stripeInvoice.customer) {
+      console.log('[STRIPE] Attempting to find company by customer ID:', stripeInvoice.customer);
       const company = await storage.getCompanyByStripeCustomerId(stripeInvoice.customer);
+      console.log('[STRIPE] Company found by customer ID:', company ? company.id : 'NOT FOUND');
+      
       if (company) {
-        console.log('[STRIPE] Found company by customer ID, creating invoice without subscription');
+        console.log('[STRIPE] Found company by customer ID, creating invoice without subscription:', company.name);
         // Create invoice without subscription ID
         const invoiceData: InsertInvoice = {
           companyId: company.id,
