@@ -185,6 +185,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       // Play sound when new notification arrives
       playNotificationSound();
+    } else if (message.type === 'subscription_update') {
+      // When a subscription is updated via Stripe webhook, refresh subscription data
+      const companyId = message.companyId;
+      console.log('[WEBSOCKET] Subscription updated for company:', companyId);
+      // Invalidate subscription queries for the specific company
+      queryClient.invalidateQueries({ queryKey: ["/api/subscription", companyId] });
+      // Also invalidate billing-related queries
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId] });
     }
   }, [playNotificationSound]);
 

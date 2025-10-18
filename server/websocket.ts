@@ -85,3 +85,24 @@ export function broadcastNotificationUpdate() {
     }
   });
 }
+
+// Broadcast subscription update to all connected clients
+export function broadcastSubscriptionUpdate(companyId: string) {
+  if (!wss) {
+    console.warn('WebSocket server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'subscription_update',
+    companyId
+  });
+
+  console.log('Broadcasting subscription update for company:', companyId, 'to', wss.clients.size, 'clients');
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+}

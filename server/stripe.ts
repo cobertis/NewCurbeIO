@@ -692,6 +692,10 @@ export async function handleSubscriptionCreated(stripeSubscription: Stripe.Subsc
   // This prevents race conditions when webhooks arrive in parallel
   console.log('[WEBHOOK] Upserting subscription for company:', companyId);
   await storage.upsertSubscription(subscriptionData);
+  
+  // Broadcast subscription update to all connected clients
+  const { broadcastSubscriptionUpdate } = await import('./websocket');
+  broadcastSubscriptionUpdate(companyId);
 }
 
 export async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription) {
@@ -711,6 +715,10 @@ export async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subsc
   }
 
   await storage.updateSubscription(subscription.id, updateData);
+  
+  // Broadcast subscription update to all connected clients
+  const { broadcastSubscriptionUpdate } = await import('./websocket');
+  broadcastSubscriptionUpdate(subscription.companyId);
 }
 
 export async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription) {
@@ -726,6 +734,10 @@ export async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subsc
   };
 
   await storage.updateSubscription(subscription.id, updateData);
+  
+  // Broadcast subscription update to all connected clients
+  const { broadcastSubscriptionUpdate } = await import('./websocket');
+  broadcastSubscriptionUpdate(subscription.companyId);
 }
 
 function mapStripeSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): string {
