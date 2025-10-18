@@ -48,6 +48,19 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - Set any card as primary/default payment method
         - Delete non-primary cards with protection against removing default card
         - Modal dialog interface for managing all payment methods
+    -   **Billing Address Management:** Separate billing address storage system:
+        - Initially displays company data in billing form
+        - When user modifies billing information, saves to separate billingAddresses table
+        - Automatically updates Stripe customer with new billing information
+        - Form has controlled inputs with save/cancel handlers
+        - Fallback to company data when no custom address exists
+    -   **Payment Notifications:** Real-time payment processing notifications:
+        - Automatic notifications when payments are successfully processed
+        - Automatic notifications when payments fail
+        - Notifies all admins and superadmins of the company
+        - Includes formatted payment amounts and invoice numbers
+        - Links directly to billing page for action
+        - Deduplication logic to prevent duplicate notifications from Stripe events
     -   **Customer Portal:** Self-service Stripe portal for payment method management and invoice access.
     -   **Superadmin Multi-Tenancy:** All billing endpoints support superadmin management of any company's subscription via companyId parameters.
 
