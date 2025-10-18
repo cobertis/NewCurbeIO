@@ -358,10 +358,14 @@ export default function Register() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-gray-700 dark:text-gray-300">
                               {selectedBusiness.address.street}
-                              {selectedBusiness.address.city && `, ${selectedBusiness.address.city}`}
-                              {selectedBusiness.address.state && `, ${selectedBusiness.address.state}`}
-                              {selectedBusiness.address.postalCode && ` ${selectedBusiness.address.postalCode}`}
                             </p>
+                            {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode) && (
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                {selectedBusiness.address.city}
+                                {selectedBusiness.address.state && `${selectedBusiness.address.city ? ', ' : ''}${selectedBusiness.address.state}`}
+                                {selectedBusiness.address.postalCode && ` ${selectedBusiness.address.postalCode}`}
+                              </p>
+                            )}
                           </div>
                         </div>
                       )}
