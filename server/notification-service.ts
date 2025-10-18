@@ -342,7 +342,7 @@ class NotificationService {
    */
   async notifyPaymentSucceeded(companyId: string, amount: number, currency: string, invoiceNumber?: string) {
     // Get company information for notification message
-    const company = await storage.getCompanyById(companyId);
+    const company = await storage.getCompany(companyId);
     const companyName = company?.name || 'Unknown Company';
     
     // Get all admin users for this company
@@ -409,7 +409,7 @@ class NotificationService {
    */
   async notifyPaymentFailed(companyId: string, amount: number, currency: string, invoiceNumber?: string) {
     // Get company information for notification message
-    const company = await storage.getCompanyById(companyId);
+    const company = await storage.getCompany(companyId);
     const companyName = company?.name || 'Unknown Company';
     
     // Get all admin users for this company
