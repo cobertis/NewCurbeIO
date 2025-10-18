@@ -1075,20 +1075,22 @@ export async function changePlan(
       payment_settings: { save_default_payment_method: 'on_subscription' },
     };
     
-    // Step 3: Preserve trial dates if they exist
-    // IMPORTANT: Trial dates must remain from original activation, not reset
-    if (currentTrialStart && currentTrialEnd) {
+    // Step 3: Preserve trial ONLY if subscription is currently in trialing status
+    // IMPORTANT: Don't preserve trial if user has skipped it or it has ended
+    if (currentSubscription.status === 'trialing' && currentTrialEnd) {
       const now = new Date();
       const trialEndDate = new Date(currentTrialEnd);
       
-      // Only preserve trial if it hasn't ended yet
+      // Only preserve trial if it's actually in the future
       if (trialEndDate > now) {
         const trialEndTimestamp = Math.floor(trialEndDate.getTime() / 1000);
         subscriptionData.trial_end = trialEndTimestamp;
         console.log('[STRIPE] Preserving trial until:', trialEndDate.toISOString());
       } else {
-        console.log('[STRIPE] Trial has already ended, not preserving');
+        console.log('[STRIPE] Trial date is in the past, not preserving');
       }
+    } else {
+      console.log('[STRIPE] Subscription is not in trial status, not preserving trial');
     }
     
     // Step 4: Preserve active discount if it exists
