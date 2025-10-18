@@ -3215,6 +3215,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Set default payment method (for existing payment methods)
+  app.post("/api/billing/set-default-payment-method", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { paymentMethodId } = req.body;
+
+    // Only admin or superadmin can manage payment methods
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    if (!paymentMethodId) {
+      return res.status(400).json({ message: "Payment method ID required" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      
+      if (!subscription || !subscription.stripeCustomerId) {
+        return res.status(400).json({ message: "No active subscription found" });
+      }
+
+      const { stripe } = await import("./stripe");
+      
+      // Set this payment method as the default for the customer
+      await stripe.customers.update(subscription.stripeCustomerId, {
+        invoice_settings: {
+          default_payment_method: paymentMethodId,
+        },
+      });
+
+      // If the subscription exists, update its default payment method
+      if (subscription.stripeSubscriptionId) {
+        await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+          default_payment_method: paymentMethodId,
+        });
+      }
+
+      res.json({ success: true, message: "Default payment method updated successfully" });
+    } catch (error: any) {
+      console.error('[STRIPE] Error setting default payment method:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Delete payment method
+  app.delete("/api/billing/payment-method/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { paymentMethodId } = req.params;
+
+    // Only admin or superadmin can manage payment methods
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    if (!paymentMethodId) {
+      return res.status(400).json({ message: "Payment method ID required" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      
+      if (!subscription || !subscription.stripeCustomerId) {
+        return res.status(400).json({ message: "No active subscription found" });
+      }
+
+      const { stripe } = await import("./stripe");
+      
+      // First, check if this is the default payment method
+      const customer = await stripe.customers.retrieve(subscription.stripeCustomerId) as any;
+      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+      
+      if (defaultPaymentMethodId === paymentMethodId) {
+        return res.status(400).json({ message: "Cannot delete the default payment method. Please set another card as default first." });
+      }
+
+      // Detach the payment method from the customer
+      await stripe.paymentMethods.detach(paymentMethodId);
+
+      res.json({ success: true, message: "Payment method deleted successfully" });
+    } catch (error: any) {
+      console.error('[STRIPE] Error deleting payment method:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===================================================================
   // STRIPE WEBHOOKS
   // ===================================================================
