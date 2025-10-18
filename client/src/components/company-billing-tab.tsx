@@ -525,104 +525,107 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
         </Card>
       </div>
 
-      {/* Payment Methods */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Payment Methods
-          </CardTitle>
-          <CardDescription>Saved payment methods for this company</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingPaymentMethods ? (
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : paymentMethods.length > 0 ? (
-            <div className="space-y-3">
-              {paymentMethods.map((pm: any) => (
-                <div
-                  key={pm.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                  data-testid={`card-payment-method-${pm.id}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium capitalize">
-                        {pm.brand} •••• {pm.last4}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Expires {String(pm.expMonth).padStart(2, '0')}/{pm.expYear}
+      {/* Invoices & Payment Methods in two columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Invoices */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Invoices
+            </CardTitle>
+            <CardDescription>Recent invoices for this company</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingInvoices ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : invoices.length > 0 ? (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {invoices.map((invoice: any) => (
+                  <div
+                    key={invoice.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                    data-testid={`card-invoice-${invoice.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">
+                          Invoice #{invoice.invoiceNumber}
+                        </p>
+                        {getStatusBadge(invoice.status)}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        <Calendar className="h-3 w-3 inline mr-1" />
+                        {format(new Date(invoice.createdAt), "MMM dd, yyyy")}
                       </p>
                     </div>
-                  </div>
-                  {pm.isDefault && (
-                    <Badge variant="default" data-testid={`badge-default-${pm.id}`}>Default</Badge>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No payment methods on file
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Invoices */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Invoices
-          </CardTitle>
-          <CardDescription>Recent invoices for this company</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingInvoices ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : invoices.length > 0 ? (
-            <div className="space-y-3 max-h-[400px] overflow-y-auto">
-              {invoices.map((invoice: any) => (
-                <div
-                  key={invoice.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                  data-testid={`card-invoice-${invoice.id}`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">
-                        Invoice #{invoice.invoiceNumber}
-                      </p>
-                      {getStatusBadge(invoice.status)}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      <Calendar className="h-3 w-3 inline mr-1" />
-                      {format(new Date(invoice.createdAt), "MMM dd, yyyy")}
+                    <p className="text-sm font-semibold ml-3" data-testid={`text-invoice-amount-${invoice.id}`}>
+                      {formatCurrency(invoice.amountDue, invoice.currency)}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold ml-3" data-testid={`text-invoice-amount-${invoice.id}`}>
-                    {formatCurrency(invoice.amountDue, invoice.currency)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              No invoices found
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No invoices found
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Payment Methods */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Payment Methods
+            </CardTitle>
+            <CardDescription>Saved payment methods for this company</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingPaymentMethods ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : paymentMethods.length > 0 ? (
+              <div className="space-y-3">
+                {paymentMethods.map((pm: any) => (
+                  <div
+                    key={pm.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                    data-testid={`card-payment-method-${pm.id}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium capitalize">
+                          {pm.brand} •••• {pm.last4}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Expires {String(pm.expMonth).padStart(2, '0')}/{pm.expYear}
+                        </p>
+                      </div>
+                    </div>
+                    {pm.isDefault && (
+                      <Badge variant="default" data-testid={`badge-default-${pm.id}`}>Default</Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No payment methods on file
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
