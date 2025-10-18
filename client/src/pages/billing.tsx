@@ -535,6 +535,16 @@ export default function Billing() {
     }).format(amount / 100);
   };
 
+  // Format currency without cents
+  const formatCurrencyWhole = (amount: number, currency: string = 'usd') => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount / 100);
+  };
+
   // Get status badge
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
@@ -603,24 +613,49 @@ export default function Billing() {
                 <div>
                   <h2 className="text-2xl font-semibold">{subscription.plan.name}</h2>
                   {activeDiscount && activeDiscount.percentOff && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Gift className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {activeDiscount.percentOff}% discount applied for {activeDiscount.durationInMonths || 0} months
+                    <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md">
+                      <Gift className="h-4 w-4" />
+                      <span className="text-sm font-semibold">
+                        {activeDiscount.percentOff}% OFF for {activeDiscount.durationInMonths || 0} months
                       </span>
+                      <Sparkles className="h-4 w-4" />
                     </div>
                   )}
                 </div>
                 <div className="text-right">
-                  <div className="text-4xl font-bold">
-                    {(() => {
-                      const displayPrice = subscription.billingCycle === 'yearly' 
-                        ? subscription.plan.annualPrice || subscription.plan.price 
-                        : subscription.plan.price;
-                      
-                      return formatCurrency(displayPrice, subscription.plan.currency);
-                    })()}
-                  </div>
+                  {activeDiscount && activeDiscount.percentOff ? (
+                    <>
+                      <div className="text-xl font-medium text-muted-foreground line-through">
+                        {(() => {
+                          const displayPrice = subscription.billingCycle === 'yearly' 
+                            ? subscription.plan.annualPrice || subscription.plan.price 
+                            : subscription.plan.price;
+                          
+                          return formatCurrencyWhole(displayPrice, subscription.plan.currency);
+                        })()}
+                      </div>
+                      <div className="text-5xl font-bold text-green-600 dark:text-green-400">
+                        {(() => {
+                          const originalPrice = subscription.billingCycle === 'yearly' 
+                            ? subscription.plan.annualPrice || subscription.plan.price 
+                            : subscription.plan.price;
+                          const discountedPrice = originalPrice * (1 - activeDiscount.percentOff / 100);
+                          
+                          return formatCurrencyWhole(discountedPrice, subscription.plan.currency);
+                        })()}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-5xl font-bold">
+                      {(() => {
+                        const displayPrice = subscription.billingCycle === 'yearly' 
+                          ? subscription.plan.annualPrice || subscription.plan.price 
+                          : subscription.plan.price;
+                        
+                        return formatCurrencyWhole(displayPrice, subscription.plan.currency);
+                      })()}
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground mt-1">
                     {subscription.billingCycle === 'yearly' ? 'per year' : 'per month'}
                   </p>
