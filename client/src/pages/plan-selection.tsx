@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Check } from "lucide-react";
+import { Check, CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface User {
@@ -116,6 +116,12 @@ export default function PlanSelection() {
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Select the perfect plan for your business needs. You can upgrade or downgrade at any time.
           </p>
+          
+          {/* No Credit Card Required Banner */}
+          <div className="mt-6 flex items-center justify-center gap-2 text-sm font-medium text-primary" data-testid="text-no-credit-card">
+            <CreditCard className="h-5 w-5" />
+            <span className="text-base">No credit card required to start your free trial</span>
+          </div>
         </div>
 
         {/* Billing Period Toggle */}
