@@ -57,7 +57,7 @@ export async function createStripeCustomer(company: {
     },
   };
 
-  // Add address if available
+  // Add billing address if available
   if (company.address || company.city || company.state || company.country || company.postalCode) {
     customerData.address = {
       line1: company.address,
@@ -68,20 +68,10 @@ export async function createStripeCustomer(company: {
     };
   }
 
-  // Add shipping address (same as billing for now)
-  if (customerData.address) {
-    customerData.shipping = {
-      name: `${company.representativeFirstName || ''} ${company.representativeLastName || ''}`.trim() || company.name,
-      phone: company.representativePhone || company.phone,
-      address: customerData.address,
-    };
-  }
-
   console.log('[STRIPE] Creating customer with complete information:', {
     email: customerData.email,
     name: customerData.name,
     hasAddress: !!customerData.address,
-    hasShipping: !!customerData.shipping,
   });
 
   const customer = await stripe.customers.create(customerData);
