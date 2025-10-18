@@ -423,11 +423,7 @@ export default function Billing() {
         {/* Subscription Details - 2 columns */}
         {subscription && (
           <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Subscription Details</CardTitle>
-              <CardDescription>Manage your subscription settings and view detailed information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               {/* Plan Details */}
               <div className="flex items-start justify-between p-4 rounded-lg bg-muted/50">
                 <div className="space-y-1">
