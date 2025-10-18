@@ -815,6 +815,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
+          // Extract suite/unit/apt from street address if not already in addressLine2
+          // Common patterns: "STE 210", "Suite 210", "APT 3B", "Unit 5", "#210", etc.
+          if (!addressLine2 && street) {
+            const suitePattern = /\b(STE|SUITE|APT|APARTMENT|UNIT|#)\s*\.?\s*([A-Z0-9-]+)\b/i;
+            const match = street.match(suitePattern);
+            if (match) {
+              // Extract the suite part
+              addressLine2 = match[0].trim();
+              // Remove it from street
+              street = street.replace(suitePattern, '').trim();
+            }
+          }
+
           return {
             id: place.id,
             name: place.displayName?.text || '',
