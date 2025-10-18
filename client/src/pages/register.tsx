@@ -23,6 +23,7 @@ const registerSchema = z.object({
     phone: z.string().min(1, "Phone is required"),
     website: z.string().optional().or(z.literal("")),
     address: z.string().min(1, "Address is required"),
+    addressLine2: z.string().optional().or(z.literal("")), // Suite, Apt, Unit
     city: z.string().optional().or(z.literal("")),
     state: z.string().optional().or(z.literal("")),
     postalCode: z.string().optional().or(z.literal("")),
@@ -55,6 +56,7 @@ interface BusinessResult {
   website: string;
   address: {
     street: string;
+    addressLine2?: string; // Suite, Apt, Unit
     city: string;
     state: string;
     postalCode: string;
@@ -82,6 +84,7 @@ export default function Register() {
         phone: "",
         website: "",
         address: "",
+        addressLine2: "",
         city: "",
         state: "",
         postalCode: "",
@@ -152,6 +155,7 @@ export default function Register() {
     form.setValue("company.phone", business.phone || "");
     form.setValue("company.website", business.website || "");
     form.setValue("company.address", business.address.street || "");
+    form.setValue("company.addressLine2", business.address.addressLine2 || "");
     form.setValue("company.city", business.address.city || "");
     form.setValue("company.state", business.address.state || "");
     form.setValue("company.postalCode", business.address.postalCode || "");
@@ -170,6 +174,7 @@ export default function Register() {
       website: '',
       address: {
         street: '',
+        addressLine2: '',
         city: '',
         state: '',
         postalCode: '',
@@ -358,6 +363,7 @@ export default function Register() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-gray-700 dark:text-gray-300">
                               {selectedBusiness.address.street}
+                              {selectedBusiness.address.addressLine2 && `, ${selectedBusiness.address.addressLine2}`}
                             </p>
                             {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode) && (
                               <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -431,10 +437,29 @@ export default function Register() {
                           <FormItem>
                             <FormControl>
                               <Input
-                                placeholder="Business address"
+                                placeholder="Street address"
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
                                 data-testid="input-company-address"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="company.addressLine2"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="Suite, Apt, Unit (optional)"
+                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                {...field}
+                                value={field.value ?? ""}
+                                data-testid="input-company-address-line2"
                               />
                             </FormControl>
                             <FormMessage />
