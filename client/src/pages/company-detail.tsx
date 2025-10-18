@@ -265,41 +265,28 @@ export default function CompanyDetail() {
 
             {/* Address Section */}
             {(company.address || company.city || company.state || company.postalCode || company.country) && (
-              <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                {/* Street Address */}
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-start gap-3">
                   <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-1">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</p>
                     <p className="text-sm text-gray-900 dark:text-white">
-                      {company.address || "Not provided"}
+                      {company.address ? (
+                        <>
+                          {company.address}
+                          {(company.city || company.state || company.postalCode) && (
+                            <span className="text-muted-foreground">
+                              {', '}
+                              {[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "Not provided"
+                      )}
                     </p>
                   </div>
                 </div>
-
-                {/* City, State, Zip Code */}
-                {(company.city || company.state || company.postalCode) && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pl-8">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">City</p>
-                      <p className="text-sm text-gray-900 dark:text-white">
-                        {company.city || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">State</p>
-                      <p className="text-sm text-gray-900 dark:text-white">
-                        {company.state || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Zip Code</p>
-                      <p className="text-sm text-gray-900 dark:text-white">
-                        {company.postalCode || "—"}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </CardContent>
