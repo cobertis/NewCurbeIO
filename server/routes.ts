@@ -133,6 +133,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deactivated: true 
         });
       }
+
+      // Check trial expiration for non-superadmin users
+      const subscription = await storage.getSubscriptionByCompany(user.companyId);
+      if (subscription && subscription.status === 'trialing' && subscription.trialEnd) {
+        const now = new Date();
+        const trialEnd = new Date(subscription.trialEnd);
+        
+        if (now > trialEnd) {
+          // Trial has expired - update subscription status to past_due
+          console.log(`[TRIAL-EXPIRED] Trial expired for company ${user.companyId}, updating status to past_due`);
+          await storage.updateSubscription(subscription.id, { 
+            status: 'past_due'
+          });
+          
+          // Deactivate the company
+          await storage.updateCompany(user.companyId, { 
+            isActive: false 
+          });
+          
+          return res.status(402).json({ 
+            message: "Your trial period has ended. Please select a plan to continue.",
+            trialExpired: true 
+          });
+        }
+      }
     }
 
     // Store user in request for use in route handlers
