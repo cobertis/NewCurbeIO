@@ -523,13 +523,13 @@ export default function Register() {
                           <div className="flex items-start gap-2">
                             <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
                             <p className="text-sm text-muted-foreground">
-                              We'll send an activation email with your login credentials
+                              We'll send you an activation email to verify your account
                             </p>
                           </div>
                           <div className="flex items-start gap-2">
                             <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
                             <p className="text-sm text-muted-foreground">
-                              You'll be able to set up your account and start your free trial
+                              After activation, you'll select your plan and start your free trial
                             </p>
                           </div>
                           <div className="flex items-start gap-2">
