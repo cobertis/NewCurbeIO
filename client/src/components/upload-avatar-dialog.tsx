@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Upload, User, Trash2 } from "lucide-react";
+import { Upload, Trash2, ImageIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +16,8 @@ interface UploadAvatarDialogProps {
 
 export function UploadAvatarDialog({ open, onOpenChange, currentAvatar, userInitial }: UploadAvatarDialogProps) {
   const [avatarUrl, setAvatarUrl] = useState(currentAvatar || "");
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -24,6 +25,7 @@ export function UploadAvatarDialog({ open, onOpenChange, currentAvatar, userInit
   useEffect(() => {
     if (open) {
       setAvatarUrl(currentAvatar || "");
+      setIsDragging(false);
     }
   }, [open, currentAvatar]);
 
@@ -58,16 +60,86 @@ export function UploadAvatarDialog({ open, onOpenChange, currentAvatar, userInit
     updateAvatarMutation.mutate("");
   };
 
+  const handleFileSelect = (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file",
+        description: "Please select an image file (JPG, PNG, GIF, etc.)",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Please select an image smaller than 5MB",
+      });
+      return;
+    }
+
+    // Read file and convert to data URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setAvatarUrl(result);
+    };
+    reader.onerror = () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to read the image file",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" data-testid="dialog-upload-avatar">
         <DialogHeader>
           <DialogTitle>Upload Profile Photo</DialogTitle>
           <DialogDescription>
-            Enter the URL of your profile photo. Make sure the URL points to a valid image.
+            Choose an image from your computer to use as your profile photo
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {/* Preview */}
           <div className="flex flex-col items-center gap-4">
             <Avatar className="h-24 w-24">
               <AvatarImage src={avatarUrl || currentAvatar} alt="Profile photo preview" />
@@ -77,17 +149,44 @@ export function UploadAvatarDialog({ open, onOpenChange, currentAvatar, userInit
             </Avatar>
             <p className="text-sm text-muted-foreground">Preview</p>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Image URL</label>
-            <Input
-              placeholder="https://example.com/photo.jpg"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              data-testid="input-avatar-url"
+
+          {/* Upload Area */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={handleButtonClick}
+            className={`
+              relative border-2 border-dashed rounded-lg p-6 cursor-pointer
+              transition-colors duration-200
+              ${isDragging 
+                ? 'border-primary bg-primary/5' 
+                : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
+              }
+            `}
+            data-testid="upload-area"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileInputChange}
+              className="hidden"
+              data-testid="input-avatar-file"
             />
-            <p className="text-xs text-muted-foreground">
-              Paste the URL of an image from the web
-            </p>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="rounded-full bg-primary/10 p-3">
+                <ImageIcon className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">
+                  Click to upload or drag and drop
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  PNG, JPG, GIF up to 5MB
+                </p>
+              </div>
+            </div>
           </div>
         </div>
         <DialogFooter className="gap-2 sm:justify-between">
