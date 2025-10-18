@@ -247,6 +247,10 @@ export default function Companies() {
         slug: "",
         phone: "",
         address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "United States",
       },
       admin: {
         firstName: "",
@@ -265,6 +269,10 @@ export default function Companies() {
       email: "",
       phone: "",
       address: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "",
       domain: "",
     },
   });
@@ -290,6 +298,10 @@ export default function Companies() {
       email: company.email,
       phone: company.phone,
       address: company.address,
+      city: company.city ?? "",
+      state: company.state ?? "",
+      postalCode: company.postalCode ?? "",
+      country: company.country ?? "",
       domain: company.domain ?? "",
     });
     setEditOpen(true);
@@ -588,14 +600,70 @@ export default function Companies() {
                   name="company.address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address</FormLabel>
+                      <FormLabel>Street Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="123 Main St, City, Country" {...field} data-testid="input-create-company-address" />
+                        <Input placeholder="123 Main St" {...field} data-testid="input-create-company-address" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={createForm.control}
+                    name="company.city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Miami" {...field} value={field.value ?? ""} data-testid="input-create-company-city" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="company.state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <Input placeholder="FL" {...field} value={field.value ?? ""} data-testid="input-create-company-state" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={createForm.control}
+                    name="company.postalCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Postal Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="33185" {...field} value={field.value ?? ""} data-testid="input-create-company-postal" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="company.country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country</FormLabel>
+                        <FormControl>
+                          <Input placeholder="United States" {...field} value={field.value ?? ""} data-testid="input-create-company-country" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
               <div className="space-y-3 pt-4 border-t">
@@ -757,14 +825,70 @@ export default function Companies() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>Street Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="123 Main St, City, Country" {...field} value={field.value ?? ""} data-testid="input-edit-company-address" />
+                      <Input placeholder="123 Main St" {...field} value={field.value ?? ""} data-testid="input-edit-company-address" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={editForm.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Miami" {...field} value={field.value ?? ""} data-testid="input-edit-company-city" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State</FormLabel>
+                      <FormControl>
+                        <Input placeholder="FL" {...field} value={field.value ?? ""} data-testid="input-edit-company-state" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={editForm.control}
+                  name="postalCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Postal Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="33185" {...field} value={field.value ?? ""} data-testid="input-edit-company-postal" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                      <FormControl>
+                        <Input placeholder="United States" {...field} value={field.value ?? ""} data-testid="input-edit-company-country" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={editForm.control}
                 name="domain"

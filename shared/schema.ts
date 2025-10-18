@@ -502,6 +502,10 @@ export const updateCompanySchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().min(1).optional(),
   address: z.string().min(1).optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
   domain: z.string().optional(),
   logo: z.string().url().optional(),
   website: z.string().url().optional(),
@@ -521,6 +525,10 @@ export const createCompanyWithAdminSchema = z.object({
     slug: z.string().min(1, "Slug is required"),
     phone: z.string().min(1, "Phone is required"),
     address: z.string().min(1, "Address is required"),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().default("United States"),
   }),
   // Admin user data (password will be set during account activation)
   admin: z.object({
