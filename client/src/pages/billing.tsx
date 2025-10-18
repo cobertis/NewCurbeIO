@@ -11,6 +11,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -215,6 +217,10 @@ export default function Billing() {
   const [showModifyDialog, setShowModifyDialog] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showIneligibleDialog, setShowIneligibleDialog] = useState(false);
+  const [showDowngradeDialog, setShowDowngradeDialog] = useState(false);
+  const [downgradeReason, setDowngradeReason] = useState("");
+  const [downgradeConfirm1, setDowngradeConfirm1] = useState(false);
+  const [downgradeConfirm2, setDowngradeConfirm2] = useState(false);
 
   // Fetch session data to get user info
   const { data: sessionData } = useQuery({
@@ -1144,6 +1150,183 @@ export default function Billing() {
         </DialogContent>
       </Dialog>
 
+      {/* Downgrade Plan Dialog */}
+      <Dialog open={showDowngradeDialog} onOpenChange={(open) => {
+        setShowDowngradeDialog(open);
+        if (!open) {
+          // Reset form when dialog closes
+          setDowngradeReason("");
+          setDowngradeConfirm1(false);
+          setDowngradeConfirm2(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
+              </div>
+              Downgrade your plan
+            </DialogTitle>
+            <DialogDescription>
+              If you wish to move to a lower plan, you can downgrade your subscription to{' '}
+              {subscription && plans.length > 0 && (
+                <>
+                  {formatCurrency(
+                    plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
+                    subscription.plan.currency
+                  )} / month
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Registration Links */}
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-sm text-center mb-3">
+                To use your HighLevel subscription to the fullest please join here
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <a
+                  href="https://example.com/register"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
+                  data-testid="link-daily-group"
+                >
+                  <div className="p-1.5 rounded bg-muted">
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">HL Daily Group demo</p>
+                    <p className="text-xs text-primary truncate">Register here</p>
+                  </div>
+                </a>
+                <a
+                  href="https://example.com/qa"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
+                  data-testid="link-daily-qa"
+                >
+                  <div className="p-1.5 rounded bg-muted">
+                    <Info className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">Daily Live Q&A</p>
+                    <p className="text-xs text-primary truncate">Register here</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+
+            {/* Reason Textarea */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Tell us why you want to downgrade? <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                placeholder="Please tell us why would you like to downgrade your subscription? This will help us in making our platform better in future."
+                value={downgradeReason}
+                onChange={(e) => setDowngradeReason(e.target.value)}
+                className="min-h-[100px] resize-none"
+                data-testid="textarea-downgrade-reason"
+              />
+            </div>
+
+            {/* Confirmation Checkboxes */}
+            <div className="space-y-3">
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="confirm1"
+                  checked={downgradeConfirm1}
+                  onCheckedChange={(checked) => setDowngradeConfirm1(checked as boolean)}
+                  data-testid="checkbox-confirm-1"
+                />
+                <label
+                  htmlFor="confirm1"
+                  className="text-sm leading-tight cursor-pointer"
+                >
+                  I understand that I can't use SaaS Mode on the{' '}
+                  {subscription && plans.length > 0 && (
+                    <>
+                      {formatCurrency(
+                        plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
+                        subscription.plan.currency
+                      )} / month plan
+                    </>
+                  )}
+                </label>
+              </div>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="confirm2"
+                  checked={downgradeConfirm2}
+                  onCheckedChange={(checked) => setDowngradeConfirm2(checked as boolean)}
+                  data-testid="checkbox-confirm-2"
+                />
+                <label
+                  htmlFor="confirm2"
+                  className="text-sm leading-tight cursor-pointer"
+                >
+                  I confirm that I have turned off SaaS Mode on all sub-accounts and have discussed this with all my SaaS clients
+                </label>
+              </div>
+            </div>
+
+            {/* Discount Warning */}
+            {activeDiscount && (
+              <div className="p-4 rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
+                <div className="flex gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+                      Your discount coupon will be removed.
+                    </p>
+                    <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
+                      A {activeDiscount.percentOff}% off for {activeDiscount.durationInMonths || 3} months coupon is applied to your subscription, which will be lost if you proceed to downgrade.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDowngradeDialog(false)}
+              data-testid="button-downgrade-back"
+            >
+              Back
+            </Button>
+            <Button
+              onClick={() => {
+                // Handle downgrade logic here
+                toast({
+                  title: "Downgrade Request",
+                  description: "Your downgrade request has been submitted.",
+                });
+                setShowDowngradeDialog(false);
+              }}
+              disabled={!downgradeReason || !downgradeConfirm1 || !downgradeConfirm2}
+              data-testid="button-confirm-downgrade"
+            >
+              Downgrade to{' '}
+              {subscription && plans.length > 0 && (
+                <>
+                  {formatCurrency(
+                    plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
+                    subscription.plan.currency
+                  )} / month
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modify Subscription Dialog */}
       <Dialog open={showModifyDialog} onOpenChange={(open) => {
         setShowModifyDialog(open);
@@ -1229,7 +1412,7 @@ export default function Billing() {
                 <button
                   onClick={() => {
                     setShowModifyDialog(false);
-                    setLocation('/select-plan');
+                    setShowDowngradeDialog(true);
                   }}
                   className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
                   data-testid="button-downgrade-plan"
