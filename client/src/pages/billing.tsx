@@ -214,6 +214,7 @@ export default function Billing() {
   const [pendingSkipTrial, setPendingSkipTrial] = useState(false);
   const [showModifyDialog, setShowModifyDialog] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [showIneligibleDialog, setShowIneligibleDialog] = useState(false);
 
   // Fetch session data to get user info
   const { data: sessionData } = useQuery({
@@ -1105,6 +1106,44 @@ export default function Billing() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Ineligible for Financial Support Dialog */}
+      <Dialog open={showIneligibleDialog} onOpenChange={setShowIneligibleDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              You are ineligible for Financial Assistance at this point.
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="p-4 rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
+              <div className="flex gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-orange-900 dark:text-orange-100 mb-1">Reason:</p>
+                  <p className="text-sm text-orange-800 dark:text-orange-200">
+                    Currently, you are not eligible for financial assistance support because you already have a discount applied to the upcoming invoice
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowIneligibleDialog(false)}
+              data-testid="button-ineligible-back"
+            >
+              Back
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modify Subscription Dialog */}
       <Dialog open={showModifyDialog} onOpenChange={(open) => {
         setShowModifyDialog(open);
@@ -1159,7 +1198,12 @@ export default function Billing() {
             <button
               onClick={() => {
                 setShowModifyDialog(false);
-                window.location.href = 'mailto:hello@curbe.io?subject=Request for Financial Support';
+                // Check if user already has an active discount
+                if (activeDiscount) {
+                  setShowIneligibleDialog(true);
+                } else {
+                  window.location.href = 'mailto:hello@curbe.io?subject=Request for Financial Support';
+                }
               }}
               className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
               data-testid="button-financial-support"
