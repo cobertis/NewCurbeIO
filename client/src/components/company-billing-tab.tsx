@@ -112,13 +112,10 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
   // Mutation for applying discount
   const applyDiscountMutation = useMutation({
     mutationFn: async (data: { percentOff: number; months: number }) => {
-      const response = await apiRequest("/api/billing/apply-temporary-discount", {
-        method: "POST",
-        body: JSON.stringify({
-          companyId,
-          percentOff: data.percentOff,
-          months: data.months,
-        }),
+      const response = await apiRequest("POST", "/api/billing/apply-temporary-discount", {
+        companyId,
+        percentOff: data.percentOff,
+        months: data.months,
       });
 
       if (!response.ok) {
@@ -152,9 +149,8 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
   // Mutation for removing discount
   const removeDiscountMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("/api/billing/remove-discount", {
-        method: "POST",
-        body: JSON.stringify({ companyId }),
+      const response = await apiRequest("POST", "/api/billing/remove-discount", {
+        companyId,
       });
 
       if (!response.ok) {
