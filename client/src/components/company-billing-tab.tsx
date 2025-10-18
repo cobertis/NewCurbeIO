@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CreditCard, FileText, Receipt, MapPin, Calendar, DollarSign, CheckCircle2, XCircle, Clock, AlertCircle, Percent, Tag } from "lucide-react";
+import { CreditCard, FileText, MapPin, Calendar, CheckCircle2, XCircle, Clock, AlertCircle, Percent, Tag } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -39,19 +39,6 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch invoices");
-      return res.json();
-    },
-    enabled: !!companyId,
-  });
-
-  // Fetch payments
-  const { data: paymentsData, isLoading: isLoadingPayments } = useQuery<{ payments: any[] }>({
-    queryKey: ["/api/billing/payments", companyId],
-    queryFn: async () => {
-      const res = await fetch(`/api/billing/payments?companyId=${companyId}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch payments");
       return res.json();
     },
     enabled: !!companyId,
@@ -111,7 +98,6 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
 
   const subscription = subscriptionData?.subscription;
   const invoices = invoicesData?.invoices || [];
-  const payments = paymentsData?.payments || [];
   const paymentMethods = paymentMethodsData?.paymentMethods || [];
   const billingAddress = billingAddressData?.billingAddress;
   const activeDiscount = discountData?.discount;
@@ -588,111 +574,55 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
         </CardContent>
       </Card>
 
-      {/* Invoices & Payments in two columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Invoices */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Invoices
-            </CardTitle>
-            <CardDescription>Recent invoices for this company</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingInvoices ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : invoices.length > 0 ? (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {invoices.map((invoice: any) => (
-                  <div
-                    key={invoice.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                    data-testid={`card-invoice-${invoice.id}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">
-                          Invoice #{invoice.invoiceNumber}
-                        </p>
-                        {getStatusBadge(invoice.status)}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        <Calendar className="h-3 w-3 inline mr-1" />
-                        {format(new Date(invoice.createdAt), "MMM dd, yyyy")}
+      {/* Invoices */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Invoices
+          </CardTitle>
+          <CardDescription>Recent invoices for this company</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingInvoices ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : invoices.length > 0 ? (
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {invoices.map((invoice: any) => (
+                <div
+                  key={invoice.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                  data-testid={`card-invoice-${invoice.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium truncate">
+                        Invoice #{invoice.invoiceNumber}
                       </p>
+                      {getStatusBadge(invoice.status)}
                     </div>
-                    <p className="text-sm font-semibold ml-3" data-testid={`text-invoice-amount-${invoice.id}`}>
-                      {formatCurrency(invoice.amountDue, invoice.currency)}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <Calendar className="h-3 w-3 inline mr-1" />
+                      {format(new Date(invoice.createdAt), "MMM dd, yyyy")}
                     </p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                No invoices found
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Payments */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
-              Payments
-            </CardTitle>
-            <CardDescription>Payment history for this company</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingPayments ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : payments.length > 0 ? (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {payments.map((payment: any) => (
-                  <div
-                    key={payment.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                    data-testid={`card-payment-${payment.id}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm font-medium">
-                          {payment.description || "Payment"}
-                        </p>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        <Calendar className="h-3 w-3 inline mr-1" />
-                        {format(new Date(payment.createdAt), "MMM dd, yyyy")}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 ml-3">
-                      <p className="text-sm font-semibold" data-testid={`text-payment-amount-${payment.id}`}>
-                        {formatCurrency(payment.amount, payment.currency)}
-                      </p>
-                      {getStatusBadge(payment.status)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                No payments found
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  <p className="text-sm font-semibold ml-3" data-testid={`text-invoice-amount-${invoice.id}`}>
+                    {formatCurrency(invoice.amountDue, invoice.currency)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              No invoices found
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
