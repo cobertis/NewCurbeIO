@@ -511,8 +511,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const body = {
         textQuery: q,
         languageCode: "en",
-        locationBias: {
-          // Optional: Bias results to US
+        locationRestriction: {
+          // Restrict results to US only (strict filter)
           rectangle: {
             low: {
               latitude: 24.396308,
