@@ -96,6 +96,13 @@ export function AddressAutocomplete({
       clearTimeout(debounceTimer.current);
     }
 
+    // Don't search if value is empty
+    if (!newValue.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
     // Set new timeout for debouncing
     debounceTimer.current = setTimeout(() => {
       fetchSuggestions(newValue);
@@ -143,6 +150,8 @@ export function AddressAutocomplete({
               placeholder={placeholder}
               data-testid={testId}
               autoComplete="off"
+              name="street-address"
+              id="street-address-field"
             />
             {isLoading && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
