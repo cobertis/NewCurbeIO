@@ -189,20 +189,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Check if user has activated their account (password set)
-      if (!user.password) {
+      // Check account status
+      if (user.status === 'pending_activation') {
         await logger.logAuth({
           req,
           action: "login_failed",
           userId: user.id,
           email,
-          metadata: { reason: "Account not activated" },
+          metadata: { reason: "Account pending activation" },
         });
         return res.status(401).json({ message: "Please activate your account first. Check your email for the activation link." });
       }
 
-      // Check if user account is active
-      if (!user.isActive) {
+      if (user.status === 'deactivated') {
         await logger.logAuth({
           req,
           action: "login_failed",
@@ -210,7 +209,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email,
           metadata: { reason: "Account deactivated" },
         });
-        return res.status(401).json({ message: "Your account has been deactivated. Please check your email for more information or contact support." });
+        return res.status(401).json({ message: "Your account has been deactivated. Please contact support for assistance." });
+      }
+
+      // Additional safety check: verify password exists (should always exist for active users)
+      if (!user.password) {
+        await logger.logAuth({
+          req,
+          action: "login_failed",
+          userId: user.id,
+          email,
+          metadata: { reason: "Missing password" },
+        });
+        return res.status(401).json({ message: "Account error. Please contact support." });
       }
 
       // Check if user's company is active (for non-superadmin users)
