@@ -769,3 +769,111 @@ export async function syncPlanWithStripe(plan: {
     throw error;
   }
 }
+
+// =====================================================
+// SUBSCRIPTION MODIFICATIONS
+// =====================================================
+
+export async function skipTrial(stripeSubscriptionId: string) {
+  try {
+    console.log('[STRIPE] Skipping trial for subscription:', stripeSubscriptionId);
+    
+    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+      trial_end: 'now',
+    });
+    
+    console.log('[STRIPE] Trial skipped successfully');
+    return subscription;
+  } catch (error) {
+    console.error('[STRIPE] Error skipping trial:', error);
+    throw error;
+  }
+}
+
+export async function changePlan(
+  stripeSubscriptionId: string,
+  newStripePriceId: string,
+  billingPeriod: 'monthly' | 'yearly'
+) {
+  try {
+    console.log('[STRIPE] Changing plan for subscription:', stripeSubscriptionId);
+    console.log('[STRIPE] New price ID:', newStripePriceId);
+    
+    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    
+    const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+      items: [{
+        id: subscription.items.data[0].id,
+        price: newStripePriceId,
+      }],
+      proration_behavior: 'create_prorations',
+    });
+    
+    console.log('[STRIPE] Plan changed successfully');
+    return updatedSubscription;
+  } catch (error) {
+    console.error('[STRIPE] Error changing plan:', error);
+    throw error;
+  }
+}
+
+export async function applyCoupon(stripeSubscriptionId: string, promoCode: string) {
+  try {
+    console.log('[STRIPE] Applying promo code to subscription:', stripeSubscriptionId);
+    console.log('[STRIPE] Promo code:', promoCode);
+    
+    // First, try to find the promotion code in Stripe
+    const promotionCodes = await stripe.promotionCodes.list({
+      code: promoCode,
+      limit: 1,
+    });
+    
+    let couponId: string;
+    
+    if (promotionCodes.data.length > 0) {
+      // Found a promotion code, get the coupon ID
+      couponId = promotionCodes.data[0].coupon.id;
+      console.log('[STRIPE] Found promotion code, using coupon:', couponId);
+    } else {
+      // No promotion code found, assume it's a direct coupon ID
+      // Verify the coupon exists
+      try {
+        const coupon = await stripe.coupons.retrieve(promoCode);
+        couponId = coupon.id;
+        console.log('[STRIPE] Using direct coupon ID:', couponId);
+      } catch (error: any) {
+        if (error.code === 'resource_missing') {
+          throw new Error(`Invalid promo code or coupon: ${promoCode}`);
+        }
+        throw error;
+      }
+    }
+    
+    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+      coupon: couponId,
+    });
+    
+    console.log('[STRIPE] Coupon applied successfully');
+    return subscription;
+  } catch (error) {
+    console.error('[STRIPE] Error applying coupon:', error);
+    throw error;
+  }
+}
+
+export async function getPaymentMethods(customerId: string) {
+  try {
+    console.log('[STRIPE] Retrieving payment methods for customer:', customerId);
+    
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: 'card',
+    });
+    
+    console.log('[STRIPE] Found', paymentMethods.data.length, 'payment methods');
+    return paymentMethods.data;
+  } catch (error) {
+    console.error('[STRIPE] Error retrieving payment methods:', error);
+    throw error;
+  }
+}

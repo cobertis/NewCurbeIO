@@ -2630,6 +2630,250 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Skip trial period
+  app.post("/api/billing/skip-trial", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can skip trial
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company subscription" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No active subscription found" });
+      }
+
+      const { skipTrial } = await import("./stripe");
+      const stripeSubscription = await skipTrial(subscription.stripeSubscriptionId);
+
+      // Update local subscription to sync with Stripe
+      await storage.updateSubscription(subscription.id, {
+        trialEnd: null,
+        currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
+        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+      });
+
+      res.json({ message: "Trial period ended successfully", subscription: stripeSubscription });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Change subscription plan
+  app.post("/api/billing/change-plan", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can change plan
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company subscription" });
+    }
+
+    const { planId, billingPeriod } = req.body;
+    if (!planId || !billingPeriod) {
+      return res.status(400).json({ message: "Plan ID and billing period required" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No active subscription found" });
+      }
+
+      const plan = await storage.getPlan(planId);
+      if (!plan || !plan.isActive) {
+        return res.status(404).json({ message: "Plan not found or inactive" });
+      }
+
+      // Get the correct Stripe price ID based on billing period
+      const stripePriceId = billingPeriod === 'yearly' 
+        ? plan.stripeYearlyPriceId 
+        : plan.stripePriceId;
+
+      if (!stripePriceId) {
+        return res.status(400).json({ message: `${billingPeriod} pricing not available for this plan` });
+      }
+
+      const { changePlan } = await import("./stripe");
+      const stripeSubscription = await changePlan(
+        subscription.stripeSubscriptionId,
+        stripePriceId,
+        billingPeriod as 'monthly' | 'yearly'
+      );
+
+      // Update local subscription to sync with Stripe
+      await storage.updateSubscription(subscription.id, {
+        planId: plan.id,
+        currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
+        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+        status: stripeSubscription.status,
+      });
+
+      res.json({ message: "Plan changed successfully", subscription: stripeSubscription });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Cancel subscription
+  app.post("/api/billing/cancel", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can cancel subscription
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company subscription" });
+    }
+
+    const { cancelAtPeriodEnd } = req.body;
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No active subscription found" });
+      }
+
+      const { cancelStripeSubscription } = await import("./stripe");
+      const stripeSubscription = await cancelStripeSubscription(
+        subscription.stripeSubscriptionId,
+        cancelAtPeriodEnd !== false
+      );
+
+      // Update local subscription
+      await storage.updateSubscription(subscription.id, {
+        cancelAtPeriodEnd: cancelAtPeriodEnd !== false,
+        cancelledAt: cancelAtPeriodEnd === false ? new Date() : null,
+      });
+
+      res.json({ 
+        message: cancelAtPeriodEnd !== false 
+          ? "Subscription will be cancelled at the end of the billing period" 
+          : "Subscription cancelled immediately",
+        subscription: stripeSubscription 
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Apply coupon/promo code
+  app.post("/api/billing/apply-coupon", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can apply coupons
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company subscription" });
+    }
+
+    const { couponCode } = req.body;
+    if (!couponCode) {
+      return res.status(400).json({ message: "Coupon code required" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No active subscription found" });
+      }
+
+      const { applyCoupon } = await import("./stripe");
+      const stripeSubscription = await applyCoupon(subscription.stripeSubscriptionId, couponCode);
+
+      res.json({ message: "Coupon applied successfully", subscription: stripeSubscription });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get payment methods
+  app.get("/api/billing/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can view payment methods
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company payment methods" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeCustomerId) {
+        return res.json({ paymentMethods: [] });
+      }
+
+      const { getPaymentMethods } = await import("./stripe");
+      const paymentMethods = await getPaymentMethods(subscription.stripeCustomerId);
+
+      res.json({ paymentMethods });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===================================================================
   // STRIPE WEBHOOKS
   // ===================================================================
