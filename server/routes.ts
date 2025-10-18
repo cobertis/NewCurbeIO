@@ -3698,17 +3698,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (stripeDiscount && stripeDiscount.coupon) {
           const coupon = stripeDiscount.coupon as any;
+          
+          // Check if discount has expired
+          const now = new Date();
+          const discountEnd = stripeDiscount.end ? new Date(stripeDiscount.end * 1000) : null;
+          
+          if (discountEnd && now > discountEnd) {
+            // Discount has expired - update local database status
+            console.log('[BILLING] Discount has expired, updating local status');
+            if (activeDiscount) {
+              await storage.updateDiscountStatus(activeDiscount.id, 'expired');
+            }
+            return res.json({ discount: null });
+          }
+          
+          // Discount is still active
           res.json({
             discount: {
               percentOff: coupon.percent_off,
               amountOff: coupon.amount_off,
               duration: coupon.duration,
               durationInMonths: coupon.duration_in_months,
-              end: stripeDiscount.end ? new Date(stripeDiscount.end * 1000) : null,
+              end: discountEnd,
               localDiscount: activeDiscount
             }
           });
         } else {
+          // No discount in Stripe - update local status if needed
+          if (activeDiscount) {
+            await storage.updateDiscountStatus(activeDiscount.id, 'expired');
+          }
           res.json({ discount: null });
         }
       } else {
