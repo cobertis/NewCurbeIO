@@ -441,23 +441,28 @@ export default function Register() {
 
                         {/* Company Details */}
                         <div className="space-y-2.5">
-                          {selectedBusiness.address.street && (
+                          {(selectedBusiness.address.street || selectedBusiness.address.city || selectedBusiness.address.state) && (
                             <div className="flex items-start gap-2.5">
                               <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-gray-700 dark:text-gray-300">
-                                  {selectedBusiness.address.street}
-                                </p>
+                                {selectedBusiness.address.street && (
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                    {selectedBusiness.address.street}
+                                  </p>
+                                )}
                                 {selectedBusiness.address.addressLine2 && (
                                   <p className="text-sm text-gray-700 dark:text-gray-300">
                                     {selectedBusiness.address.addressLine2}
                                   </p>
                                 )}
-                                {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode) && (
+                                {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode || selectedBusiness.address.country) && (
                                   <p className="text-sm text-gray-700 dark:text-gray-300">
-                                    {selectedBusiness.address.city}
-                                    {selectedBusiness.address.state && `${selectedBusiness.address.city ? ', ' : ''}${selectedBusiness.address.state}`}
-                                    {selectedBusiness.address.postalCode && ` ${selectedBusiness.address.postalCode}`}
+                                    {[
+                                      selectedBusiness.address.city,
+                                      selectedBusiness.address.state,
+                                      selectedBusiness.address.postalCode,
+                                      selectedBusiness.address.country
+                                    ].filter(Boolean).join(', ')}
                                   </p>
                                 )}
                               </div>
@@ -614,74 +619,70 @@ export default function Register() {
                         )}
                       />
 
-                      {selectedBusiness.id === 'manual' && (
-                        <>
-                          <FormField
-                            control={form.control}
-                            name="company.city"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormControl>
-                                  <Input
-                                    placeholder="City"
-                                    className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                    {...field}
-                                    value={field.value ?? ""}
-                                    name="address-level2"
-                                    autoComplete="address-level2"
-                                    data-testid="input-company-city"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                      <FormField
+                        control={form.control}
+                        name="company.city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="City"
+                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                {...field}
+                                value={field.value ?? ""}
+                                name="address-level2"
+                                autoComplete="address-level2"
+                                data-testid="input-company-city"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <FormField
-                              control={form.control}
-                              name="company.state"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="State"
-                                      className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      name="address-level1"
-                                      autoComplete="address-level1"
-                                      data-testid="input-company-state"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="company.state"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  placeholder="State"
+                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  name="address-level1"
+                                  autoComplete="address-level1"
+                                  data-testid="input-company-state"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                            <FormField
-                              control={form.control}
-                              name="company.postalCode"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="ZIP code"
-                                      className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      name="postal-code"
-                                      autoComplete="postal-code"
-                                      data-testid="input-company-postal-code"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </>
-                      )}
+                        <FormField
+                          control={form.control}
+                          name="company.postalCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  placeholder="ZIP code"
+                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  name="postal-code"
+                                  autoComplete="postal-code"
+                                  data-testid="input-company-postal-code"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       {/* Next Step Button */}
                       <Button
