@@ -540,6 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map((place: any) => {
           // Parse address components to get structured address
           let street = '';
+          let addressLine2 = ''; // Suite, Apt, Unit, etc.
           let city = '';
           let state = '';
           let postalCode = '';
@@ -554,6 +555,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               if (types.includes('route')) {
                 street = street + component.longText;
+              }
+              if (types.includes('subpremise')) {
+                // Suite, Apt, Unit, Floor, etc.
+                addressLine2 = component.longText;
               }
               if (types.includes('locality')) {
                 city = component.longText;
@@ -592,6 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Structured address for form population
             address: {
               street: street,
+              addressLine2: addressLine2, // Suite, Apt, Unit, etc.
               city: city,
               state: state,
               postalCode: postalCode,

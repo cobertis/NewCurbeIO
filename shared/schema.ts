@@ -13,7 +13,8 @@ export const companies = pgTable("companies", {
   slug: text("slug").notNull().unique(), // URL-friendly identifier
   email: text("email").notNull(), // Company contact email
   phone: text("phone").notNull(), // Company phone number
-  address: text("address").notNull(), // Company address
+  address: text("address").notNull(), // Company address (street address)
+  addressLine2: text("address_line_2"), // Suite, Apt, Unit, etc.
   domain: text("domain"), // Custom domain
   logo: text("logo"), // Logo URL
   website: text("website"),
