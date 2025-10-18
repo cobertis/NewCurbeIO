@@ -439,19 +439,84 @@ export default function CompanyDetail() {
           <CardContent className="space-y-4">
             {subscriptionData?.subscription && plansData?.plans ? (
               <>
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Current Plan</p>
-                    <p className="text-lg font-semibold">
-                      {plansData.plans.find(p => p.id === subscriptionData.subscription.planId)?.name || "No plan"}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Status: <span className="capitalize">{subscriptionData.subscription.status}</span>
-                    </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Current Plan</p>
+                      <p className="text-xl font-bold">
+                        {plansData.plans.find(p => p.id === subscriptionData.subscription.planId)?.name || "No plan"}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {plansData.plans.find(p => p.id === subscriptionData.subscription.planId)?.description}
+                      </p>
+                    </div>
+                    <Button onClick={() => setAssignPlanOpen(true)} data-testid="button-change-plan">
+                      Change Plan
+                    </Button>
                   </div>
-                  <Button onClick={() => setAssignPlanOpen(true)} data-testid="button-change-plan">
-                    Change Plan
-                  </Button>
+
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Price</p>
+                      <p className="text-lg font-semibold">
+                        ${((plansData.plans.find(p => p.id === subscriptionData.subscription.planId)?.price || 0) / 100).toFixed(2)}
+                        <span className="text-sm text-muted-foreground font-normal">
+                          /{plansData.plans.find(p => p.id === subscriptionData.subscription.planId)?.billingCycle}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <Badge 
+                        variant={
+                          subscriptionData.subscription.status === 'active' ? 'default' :
+                          subscriptionData.subscription.status === 'trialing' ? 'secondary' :
+                          subscriptionData.subscription.status === 'past_due' ? 'destructive' :
+                          'outline'
+                        }
+                        className="mt-1"
+                      >
+                        {subscriptionData.subscription.status}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {subscriptionData.subscription.trialEnd && new Date(subscriptionData.subscription.trialEnd) > new Date() && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Trial Period</p>
+                      <p className="text-sm">
+                        Ends on {new Date(subscriptionData.subscription.trialEnd).toLocaleDateString('en-US', { 
+                          month: 'long', 
+                          day: 'numeric', 
+                          year: 'numeric' 
+                        })}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {Math.ceil((new Date(subscriptionData.subscription.trialEnd).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
+                      </p>
+                    </div>
+                  )}
+
+                  {subscriptionData.subscription.currentPeriodEnd && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Next Billing Date</p>
+                      <p className="text-sm font-medium">
+                        {new Date(subscriptionData.subscription.currentPeriodEnd).toLocaleDateString('en-US', { 
+                          month: 'long', 
+                          day: 'numeric', 
+                          year: 'numeric' 
+                        })}
+                      </p>
+                    </div>
+                  )}
+
+                  {subscriptionData.subscription.cancelAtPeriodEnd && (
+                    <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-900">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                        ⚠️ Subscription will cancel at period end
+                      </p>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
