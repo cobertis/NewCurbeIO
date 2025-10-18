@@ -654,28 +654,16 @@ export default function Billing() {
 
               {/* Trial Banner */}
               {subscription.status === 'trialing' && trialDaysRemaining > 0 && (
-                <Alert className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
-                  <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <AlertTitle className="text-blue-900 dark:text-blue-100">
-                    Free Trial Active - {trialDaysRemaining} {trialDaysRemaining === 1 ? 'Day' : 'Days'} Remaining
-                  </AlertTitle>
-                  <AlertDescription className="text-blue-700 dark:text-blue-300 space-y-3">
-                    <p>
-                      Your trial ends on {formatDate(new Date(subscription.trialEnd))}. 
-                      {subscription.billingCycle === 'yearly' 
-                        ? ` You'll be charged ${formatCurrency(subscription.plan.annualPrice || subscription.plan.price, subscription.plan.currency)} annually after the trial ends.`
-                        : ` You'll be charged ${formatCurrency(subscription.plan.price, subscription.plan.currency)} per month after the trial ends.`
-                      }
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/10">
+                  <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-blue-900 dark:text-blue-100">
+                      <span className="font-semibold">{trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'} left in trial</span>
+                      <span className="text-blue-700 dark:text-blue-300"> • Ends {formatDate(new Date(subscription.trialEnd))}</span>
                     </p>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>Trial Progress</span>
-                        <span className="font-medium">{Math.round(trialProgress)}%</span>
-                      </div>
-                      <Progress value={trialProgress} className="h-2" />
-                    </div>
-                  </AlertDescription>
-                </Alert>
+                  </div>
+                  <Progress value={trialProgress} className="h-1.5 w-24 shrink-0" />
+                </div>
               )}
 
               {/* Active Discount Alert */}
