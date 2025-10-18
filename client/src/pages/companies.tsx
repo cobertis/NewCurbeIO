@@ -17,6 +17,7 @@ import { useState, useRef } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { formatPhoneInput, formatPhoneDisplay } from "@/lib/phone-formatter";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 
 // Function to generate slug from company name
 function generateSlug(name: string): string {
@@ -599,13 +600,21 @@ export default function Companies() {
                   control={createForm.control}
                   name="company.address"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Street Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="123 Main St" {...field} data-testid="input-create-company-address" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <AddressAutocomplete
+                      value={field.value}
+                      onChange={field.onChange}
+                      onAddressSelect={(address) => {
+                        createForm.setValue("company.address", address.street);
+                        createForm.setValue("company.city", address.city);
+                        createForm.setValue("company.state", address.state);
+                        createForm.setValue("company.postalCode", address.postalCode);
+                        createForm.setValue("company.country", address.country);
+                      }}
+                      label="Street Address"
+                      placeholder="Start typing an address..."
+                      testId="input-create-company-address"
+                      error={createForm.formState.errors.company?.address?.message}
+                    />
                   )}
                 />
                 <div className="grid grid-cols-2 gap-3">
@@ -824,13 +833,21 @@ export default function Companies() {
                 control={editForm.control}
                 name="address"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Street Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="123 Main St" {...field} value={field.value ?? ""} data-testid="input-edit-company-address" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  <AddressAutocomplete
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onAddressSelect={(address) => {
+                      editForm.setValue("address", address.street);
+                      editForm.setValue("city", address.city);
+                      editForm.setValue("state", address.state);
+                      editForm.setValue("postalCode", address.postalCode);
+                      editForm.setValue("country", address.country);
+                    }}
+                    label="Street Address"
+                    placeholder="Start typing an address..."
+                    testId="input-edit-company-address"
+                    error={editForm.formState.errors.address?.message}
+                  />
                 )}
               />
               <div className="grid grid-cols-2 gap-3">

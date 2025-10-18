@@ -340,6 +340,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // ==================== LOCATIONIQ AUTOCOMPLETE ====================
+
+  app.get("/api/locationiq/autocomplete", async (req: Request, res: Response) => {
+    try {
+      const { q } = req.query;
+      
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+
+      if (!process.env.LOCATIONIQ_API_KEY) {
+        console.error("LOCATIONIQ_API_KEY not configured");
+        return res.status(500).json({ message: "Address autocomplete service not configured" });
+      }
+
+      const url = new URL("https://api.locationiq.com/v1/autocomplete");
+      url.searchParams.set("key", process.env.LOCATIONIQ_API_KEY);
+      url.searchParams.set("q", q);
+      url.searchParams.set("limit", "5");
+      url.searchParams.set("countrycodes", "us"); // Limit to US addresses
+      url.searchParams.set("normalizecity", "1");
+
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        console.error("LocationIQ API error:", response.status, response.statusText);
+        return res.status(response.status).json({ message: "Failed to fetch address suggestions" });
+      }
+
+      const data = await response.json();
+      res.json({ results: data });
+    } catch (error) {
+      console.error("LocationIQ autocomplete error:", error);
+      res.status(500).json({ message: "Failed to fetch address suggestions" });
+    }
+  });
+
   // ==================== 2FA/OTP ENDPOINTS ====================
 
   app.post("/api/auth/send-otp", async (req: Request, res: Response) => {
