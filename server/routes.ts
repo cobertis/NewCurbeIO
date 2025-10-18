@@ -2770,6 +2770,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
 
+        // Send notification about trial start (even for updated subscriptions)
+        try {
+          await notificationService.notifyTrialStarted(
+            companyId, 
+            plan.name, 
+            subscriptionData.trialEnd
+          );
+        } catch (notifError) {
+          console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
+        }
+
         res.json({ subscription: updatedSubscription });
       } else {
         // Create new subscription
@@ -2791,6 +2802,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             stripeSubscriptionId: stripeSubscription.id,
           },
         });
+
+        // Send notification about trial start
+        try {
+          await notificationService.notifyTrialStarted(
+            companyId, 
+            plan.name, 
+            subscriptionData.trialEnd
+          );
+        } catch (notifError) {
+          console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
+        }
 
         res.json({ subscription: newSubscription });
       }
