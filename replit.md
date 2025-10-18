@@ -61,6 +61,11 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - Includes formatted payment amounts and invoice numbers
         - Links directly to billing page for action
         - Deduplication logic to prevent duplicate notifications from Stripe events
+    -   **Trial Notifications:** Automatic notifications when trial subscriptions start:
+        - Notifies all admins and superadmins of the company
+        - Displays days remaining in trial period
+        - Only triggered for subscriptions in 'trialing' status with valid trial end date
+        - Appears in notification panel (not just toast)
     -   **Customer Portal:** Self-service Stripe portal for payment method management and invoice access.
     -   **Superadmin Multi-Tenancy:** All billing endpoints support superadmin management of any company's subscription via companyId parameters.
     -   **Superadmin Billing Dashboard:** Comprehensive billing tab in company details page (`/companies/:id`) featuring:

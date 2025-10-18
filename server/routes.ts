@@ -2770,15 +2770,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
 
-        // Send notification about trial start (even for updated subscriptions)
-        try {
-          await notificationService.notifyTrialStarted(
-            companyId, 
-            plan.name, 
-            subscriptionData.trialEnd
-          );
-        } catch (notifError) {
-          console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
+        // Send notification about trial start only if subscription is in trialing status
+        if (subscriptionData.status === 'trialing' && subscriptionData.trialEnd) {
+          try {
+            await notificationService.notifyTrialStarted(
+              companyId, 
+              plan.name, 
+              subscriptionData.trialEnd
+            );
+          } catch (notifError) {
+            console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
+          }
         }
 
         res.json({ subscription: updatedSubscription });
@@ -2803,15 +2805,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
 
-        // Send notification about trial start
-        try {
-          await notificationService.notifyTrialStarted(
-            companyId, 
-            plan.name, 
-            subscriptionData.trialEnd
-          );
-        } catch (notifError) {
-          console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
+        // Send notification about trial start only if subscription is in trialing status
+        if (subscriptionData.status === 'trialing' && subscriptionData.trialEnd) {
+          try {
+            await notificationService.notifyTrialStarted(
+              companyId, 
+              plan.name, 
+              subscriptionData.trialEnd
+            );
+          } catch (notifError) {
+            console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
+          }
         }
 
         res.json({ subscription: newSubscription });
