@@ -213,6 +213,7 @@ export default function Billing() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [pendingSkipTrial, setPendingSkipTrial] = useState(false);
   const [showModifyDialog, setShowModifyDialog] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   // Fetch session data to get user info
   const { data: sessionData } = useQuery({
@@ -1105,7 +1106,12 @@ export default function Billing() {
       </AlertDialog>
 
       {/* Modify Subscription Dialog */}
-      <Dialog open={showModifyDialog} onOpenChange={setShowModifyDialog}>
+      <Dialog open={showModifyDialog} onOpenChange={(open) => {
+        setShowModifyDialog(open);
+        if (!open) {
+          setShowMoreOptions(false); // Reset when dialog closes
+        }
+      }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1172,17 +1178,65 @@ export default function Billing() {
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </button>
 
-            {/* Show More Button */}
+            {/* Additional Options (shown when expanded) */}
+            {showMoreOptions && (
+              <>
+                {/* Downgrade Plan Option */}
+                <button
+                  onClick={() => {
+                    setShowModifyDialog(false);
+                    setLocation('/select-plan');
+                  }}
+                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-downgrade-plan"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                      <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Downgrade Plan</p>
+                      <p className="text-sm text-muted-foreground">
+                        I wish to downgrade my subscription to a lower plan
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+
+                {/* Cancel Plan Option */}
+                <button
+                  onClick={() => {
+                    setShowModifyDialog(false);
+                    setShowCancelDialog(true);
+                  }}
+                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-cancel-plan"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                      <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Cancel Plan</p>
+                      <p className="text-sm text-muted-foreground">
+                        I still want to cancel my subscription
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+              </>
+            )}
+
+            {/* Show More / Collapse Button */}
             <button
-              onClick={() => {
-                setShowModifyDialog(false);
-                setShowCancelDialog(true);
-              }}
+              onClick={() => setShowMoreOptions(!showMoreOptions)}
               className="w-full flex items-center justify-center gap-2 p-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              data-testid="button-show-more"
+              data-testid="button-toggle-more"
             >
-              <span>Show more</span>
-              <ChevronRight className="h-4 w-4 rotate-90" />
+              <span>{showMoreOptions ? 'Collapse' : 'Show more'}</span>
+              <ChevronRight className={`h-4 w-4 transition-transform ${showMoreOptions ? '-rotate-90' : 'rotate-90'}`} />
             </button>
           </div>
         </DialogContent>
