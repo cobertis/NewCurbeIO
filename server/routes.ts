@@ -201,6 +201,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Please activate your account first. Check your email for the activation link." });
       }
 
+      // Check if user account is active
+      if (!user.isActive) {
+        await logger.logAuth({
+          req,
+          action: "login_failed",
+          userId: user.id,
+          email,
+          metadata: { reason: "Account deactivated" },
+        });
+        return res.status(401).json({ message: "Your account has been deactivated. Please check your email for more information or contact support." });
+      }
+
       // Check if user's company is active (for non-superadmin users)
       if (user.companyId && user.role !== "superadmin") {
         const company = await storage.getCompany(user.companyId);
