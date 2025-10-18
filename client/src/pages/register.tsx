@@ -15,14 +15,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Building2, Loader2, MapPin, Phone, Globe, Check, ChevronLeft } from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
+import { formatPhoneInput, formatPhoneDisplay } from "@/lib/phone-formatter";
 
 const registerSchema = z.object({
   company: z.object({
     name: z.string().min(1, "Company name is required"),
     slug: z.string().min(1),
     phone: z.string().min(1, "Phone number is required").refine(
-      (val) => val.replace(/\D/g, '').length === 10,
-      "Valid 10-digit phone number is required"
+      (val) => {
+        const digits = val.replace(/\D/g, '');
+        return digits.length === 11 && digits.startsWith('1');
+      },
+      "Valid phone number is required"
     ),
     website: z.string().optional().or(z.literal("")),
     address: z.string().min(1, "Address is required"),
@@ -37,8 +41,11 @@ const registerSchema = z.object({
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
     phone: z.string().min(1, "Phone number is required").refine(
-      (val) => val.replace(/\D/g, '').length === 10,
-      "Valid 10-digit phone number is required"
+      (val) => {
+        const digits = val.replace(/\D/g, '');
+        return digits.length === 11 && digits.startsWith('1');
+      },
+      "Valid phone number is required"
     ),
   }),
 });
@@ -53,24 +60,6 @@ const generateSlug = (name: string): string => {
     .substring(0, 50);
 };
 
-const formatPhoneNumber = (value: string): string => {
-  // Remove all non-numeric characters
-  let phoneNumber = value.replace(/\D/g, '');
-  
-  // Remove leading country code (1) if present
-  if (phoneNumber.length === 11 && phoneNumber.startsWith('1')) {
-    phoneNumber = phoneNumber.substring(1);
-  }
-  
-  // Format as (XXX) XXX-XXXX for 10-digit US numbers
-  if (phoneNumber.length <= 3) {
-    return phoneNumber;
-  } else if (phoneNumber.length <= 6) {
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
-  } else {
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
-  }
-};
 
 interface BusinessResult {
   id: string;
@@ -175,8 +164,8 @@ export default function Register() {
     setSearchResults([]);
     setSearchQuery(business.name);
     
-    // Format phone number if it exists
-    const formattedPhone = business.phone ? formatPhoneNumber(business.phone) : "";
+    // Format phone number if it exists using system standard
+    const formattedPhone = business.phone ? formatPhoneDisplay(business.phone) : "";
     
     form.setValue("company.name", business.name);
     form.setValue("company.slug", generateSlug(business.name));
@@ -547,7 +536,7 @@ export default function Register() {
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
                                 {...field}
                                 onChange={(e) => {
-                                  const formatted = formatPhoneNumber(e.target.value);
+                                  const formatted = formatPhoneInput(e.target.value);
                                   field.onChange(formatted);
                                 }}
                                 autoComplete="tel"
@@ -789,7 +778,7 @@ export default function Register() {
                             {...field}
                             value={field.value ?? ""}
                             onChange={(e) => {
-                              const formatted = formatPhoneNumber(e.target.value);
+                              const formatted = formatPhoneInput(e.target.value);
                               field.onChange(formatted);
                             }}
                             autoComplete="tel"
