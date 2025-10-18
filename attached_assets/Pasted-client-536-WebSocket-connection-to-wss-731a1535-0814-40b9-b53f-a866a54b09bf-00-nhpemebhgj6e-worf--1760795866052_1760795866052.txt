@@ -1,0 +1,255 @@
+client:536 WebSocket connection to 'wss://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/?token=3lNkVg3957Sk' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=3lNkVg3957Sk' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+chunk-RPCDYKBN.js?v=14844611:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+use-websocket.ts:27 WebSocket connected
+billing.tsx:434 Uncaught TypeError: subscription.plan.features?.map is not a function
+    at Billing (billing.tsx:434:50)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=14844611:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=14844611:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=14844611:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=14844611:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=14844611:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=14844611:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=14844611:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=14844611:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=14844611:19137:13)
+Billing @ billing.tsx:434
+renderWithHooks @ chunk-RPCDYKBN.js?v=14844611:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=14844611:14582
+beginWork @ chunk-RPCDYKBN.js?v=14844611:15924
+callCallback2 @ chunk-RPCDYKBN.js?v=14844611:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=14844611:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=14844611:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=14844611:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=14844611:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=14844611:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=14844611:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=14844611:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=14844611:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=14844611:555
+flush @ @tanstack_react-query.js?v=14844611:569
+batch @ @tanstack_react-query.js?v=14844611:587
+dispatch_fn @ @tanstack_react-query.js?v=14844611:996
+setData @ @tanstack_react-query.js?v=14844611:696
+onSuccess @ @tanstack_react-query.js?v=14844611:897
+resolve @ @tanstack_react-query.js?v=14844611:456
+Promise.then
+run @ @tanstack_react-query.js?v=14844611:498
+start @ @tanstack_react-query.js?v=14844611:536
+fetch @ @tanstack_react-query.js?v=14844611:926
+executeFetch_fn @ @tanstack_react-query.js?v=14844611:2211
+onSubscribe @ @tanstack_react-query.js?v=14844611:1898
+subscribe @ @tanstack_react-query.js?v=14844611:24
+(anonymous) @ @tanstack_react-query.js?v=14844611:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=14844611:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=14844611:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=14844611:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=14844611:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=14844611:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=14844611:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=14844611:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=14844611:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=14844611:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=14844611:19432
+commitRoot @ chunk-RPCDYKBN.js?v=14844611:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=14844611:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18718
+workLoop @ chunk-RPCDYKBN.js?v=14844611:197
+flushWork @ chunk-RPCDYKBN.js?v=14844611:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=14844611:384Understand this error
+billing.tsx:434 Uncaught TypeError: subscription.plan.features?.map is not a function
+    at Billing (billing.tsx:434:50)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=14844611:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=14844611:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=14844611:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=14844611:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=14844611:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=14844611:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=14844611:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=14844611:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=14844611:19137:13)
+Billing @ billing.tsx:434
+renderWithHooks @ chunk-RPCDYKBN.js?v=14844611:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=14844611:14582
+beginWork @ chunk-RPCDYKBN.js?v=14844611:15924
+callCallback2 @ chunk-RPCDYKBN.js?v=14844611:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=14844611:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=14844611:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=14844611:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=14844611:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=14844611:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=14844611:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=14844611:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=14844611:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=14844611:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=14844611:555
+flush @ @tanstack_react-query.js?v=14844611:569
+batch @ @tanstack_react-query.js?v=14844611:587
+dispatch_fn @ @tanstack_react-query.js?v=14844611:996
+setData @ @tanstack_react-query.js?v=14844611:696
+onSuccess @ @tanstack_react-query.js?v=14844611:897
+resolve @ @tanstack_react-query.js?v=14844611:456
+Promise.then
+run @ @tanstack_react-query.js?v=14844611:498
+start @ @tanstack_react-query.js?v=14844611:536
+fetch @ @tanstack_react-query.js?v=14844611:926
+executeFetch_fn @ @tanstack_react-query.js?v=14844611:2211
+onSubscribe @ @tanstack_react-query.js?v=14844611:1898
+subscribe @ @tanstack_react-query.js?v=14844611:24
+(anonymous) @ @tanstack_react-query.js?v=14844611:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=14844611:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=14844611:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=14844611:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=14844611:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=14844611:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=14844611:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=14844611:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=14844611:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=14844611:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=14844611:19432
+commitRoot @ chunk-RPCDYKBN.js?v=14844611:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=14844611:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18718
+workLoop @ chunk-RPCDYKBN.js?v=14844611:197
+flushWork @ chunk-RPCDYKBN.js?v=14844611:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=14844611:384Understand this error
+chunk-RPCDYKBN.js?v=14844611:14032 The above error occurred in the <Billing> component:
+
+    at Billing (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/src/pages/billing.tsx:69:21)
+    at main
+    at div
+    at div
+    at div
+    at Provider (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=14844611:38:15)
+    at TooltipProvider (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=14844611:64:5)
+    at SidebarProvider (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/src/components/ui/sidebar.tsx:59:3)
+    at DashboardLayout (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/src/App.tsx?v=s95iklJMz5qp5KeS6QE3k:96:28)
+    at ProtectedRoute (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/src/components/protected-route.tsx:20:34)
+    at Route (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=14844611:323:16)
+    at Switch (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=14844611:379:17)
+    at Router
+    at Provider (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=14844611:38:15)
+    at TooltipProvider (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=14844611:64:5)
+    at ThemeProvider (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/src/components/theme-provider.tsx:21:3)
+    at QueryClientProvider (https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=14844611:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=14844611:14032
+update.callback @ chunk-RPCDYKBN.js?v=14844611:14052
+callCallback @ chunk-RPCDYKBN.js?v=14844611:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=14844611:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=14844611:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=14844611:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=14844611:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=14844611:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=14844611:19353
+commitRoot @ chunk-RPCDYKBN.js?v=14844611:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=14844611:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=14844611:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=14844611:555
+flush @ @tanstack_react-query.js?v=14844611:569
+batch @ @tanstack_react-query.js?v=14844611:587
+dispatch_fn @ @tanstack_react-query.js?v=14844611:996
+setData @ @tanstack_react-query.js?v=14844611:696
+onSuccess @ @tanstack_react-query.js?v=14844611:897
+resolve @ @tanstack_react-query.js?v=14844611:456
+Promise.then
+run @ @tanstack_react-query.js?v=14844611:498
+start @ @tanstack_react-query.js?v=14844611:536
+fetch @ @tanstack_react-query.js?v=14844611:926
+executeFetch_fn @ @tanstack_react-query.js?v=14844611:2211
+onSubscribe @ @tanstack_react-query.js?v=14844611:1898
+subscribe @ @tanstack_react-query.js?v=14844611:24
+(anonymous) @ @tanstack_react-query.js?v=14844611:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=14844611:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=14844611:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=14844611:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=14844611:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=14844611:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=14844611:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=14844611:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=14844611:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=14844611:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=14844611:19432
+commitRoot @ chunk-RPCDYKBN.js?v=14844611:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=14844611:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18718
+workLoop @ chunk-RPCDYKBN.js?v=14844611:197
+flushWork @ chunk-RPCDYKBN.js?v=14844611:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=14844611:384Understand this error
+chunk-RPCDYKBN.js?v=14844611:9129 Uncaught TypeError: subscription.plan.features?.map is not a function
+    at Billing (billing.tsx:434:50)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=14844611:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=14844611:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=14844611:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=14844611:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=14844611:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=14844611:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=14844611:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=14844611:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js?v=14844611:18879:28)
+Billing @ billing.tsx:434
+renderWithHooks @ chunk-RPCDYKBN.js?v=14844611:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=14844611:14582
+beginWork @ chunk-RPCDYKBN.js?v=14844611:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=14844611:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=14844611:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=14844611:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=14844611:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=14844611:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=14844611:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=14844611:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=14844611:555
+flush @ @tanstack_react-query.js?v=14844611:569
+batch @ @tanstack_react-query.js?v=14844611:587
+dispatch_fn @ @tanstack_react-query.js?v=14844611:996
+setData @ @tanstack_react-query.js?v=14844611:696
+onSuccess @ @tanstack_react-query.js?v=14844611:897
+resolve @ @tanstack_react-query.js?v=14844611:456
+Promise.then
+run @ @tanstack_react-query.js?v=14844611:498
+start @ @tanstack_react-query.js?v=14844611:536
+fetch @ @tanstack_react-query.js?v=14844611:926
+executeFetch_fn @ @tanstack_react-query.js?v=14844611:2211
+onSubscribe @ @tanstack_react-query.js?v=14844611:1898
+subscribe @ @tanstack_react-query.js?v=14844611:24
+(anonymous) @ @tanstack_react-query.js?v=14844611:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=14844611:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=14844611:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=14844611:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=14844611:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=14844611:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=14844611:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=14844611:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=14844611:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=14844611:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=14844611:19432
+commitRoot @ chunk-RPCDYKBN.js?v=14844611:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=14844611:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=14844611:18718
+workLoop @ chunk-RPCDYKBN.js?v=14844611:197
+flushWork @ chunk-RPCDYKBN.js?v=14844611:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=14844611:384Understand this error
+use-websocket.ts:45 

@@ -26,6 +26,7 @@ interface Plan {
   stripePriceId?: string;
   stripeAnnualPriceId?: string;
   features: string[];
+  trialDays?: number;
 }
 
 type BillingPeriod = "monthly" | "yearly";
@@ -53,10 +54,34 @@ export default function PlanSelection() {
       });
       return result.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // Find the selected plan details
+      const selectedPlan = plans.find(p => p.id === variables.planId);
+      const trialDays = selectedPlan?.trialDays || 14; // Default to 14 days if not specified
+      const planName = selectedPlan?.name || "plan";
+      
+      // Calculate trial end date
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + trialDays);
+      const formattedDate = trialEndDate.toLocaleDateString('en-US', { 
+        month: 'long', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+      
+      // Get pricing information
+      const monthlyPrice = selectedPlan ? formatCurrency(
+        variables.billingPeriod === "yearly" 
+          ? selectedPlan.price * 0.8 
+          : selectedPlan.price,
+        selectedPlan.currency
+      ) : "";
+      const billingCycle = variables.billingPeriod === "yearly" ? "yearly" : "monthly";
+      
       toast({
-        title: "Success!",
-        description: "Your plan has been activated. Welcome aboard!",
+        title: "🎉 Free Trial Started!",
+        description: `Your ${trialDays}-day free trial of the ${planName} plan has begun! You'll be charged ${monthlyPrice}/${billingCycle === "yearly" ? "month (billed annually)" : "month"} starting on ${formattedDate}. You can cancel anytime before then.`,
+        duration: 8000, // Show for 8 seconds since it's important
       });
       queryClient.invalidateQueries({ queryKey: ['/api/session'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/subscription'] });
