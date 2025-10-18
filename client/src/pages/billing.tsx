@@ -468,7 +468,7 @@ export default function Billing() {
                     <p className="text-sm text-muted-foreground">{subscription.plan.description}</p>
                   )}
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {subscription.plan.features?.map((feature, index) => (
+                    {subscription.plan.features && Array.isArray(subscription.plan.features) && subscription.plan.features.map((feature, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         {feature}
