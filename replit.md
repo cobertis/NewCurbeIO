@@ -34,6 +34,7 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
     -   **Payment Method Management:** Add, view, set default, and delete multiple payment methods via Stripe Elements.
     -   **Billing Address Management:** Separate billing address storage with automatic Stripe customer updates.
     -   **Payment & Trial Notifications:** Real-time notifications for payment success/failure and trial start, informing relevant admins.
+    -   **Automated Payment Emails:** Automatic email confirmations for successful payments and payment failures, with professional templates and actionable next steps.
     -   **Customer Portal:** Self-service Stripe portal for payment method management and invoice access.
     -   **Superadmin Billing Dashboard:** Comprehensive billing tab in company details page for superadmin management of any company's billing.
     -   **Superadmin Invoice Management:** System-wide invoice viewing for superadmins, with filtering of $0.00 trial invoices from UI.
