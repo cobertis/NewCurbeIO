@@ -3191,14 +3191,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Update local subscription to sync with Stripe
-      // Use toDate helper to safely handle all timestamp fields including trial_end which may be undefined
-      // IMPORTANT: Always update all fields to maintain perfect sync with Stripe
-      // currentPeriod fields are required (not null in schema), so provide defaults if Stripe doesn't send them
+      // IMPORTANT: DO NOT update trialStart/trialEnd when changing plans
+      // The trial period must remain from the original activation date, not reset when plan changes
+      // Only update: plan, status, and current period dates
       await storage.updateSubscription(subscription.id, {
         planId: plan.id,
         status: stripeSubscription.status,
-        trialStart: toDate(stripeSubscription.trial_start),
-        trialEnd: toDate(stripeSubscription.trial_end),
         currentPeriodStart: toDate(stripeSubscription.current_period_start) || new Date(),
         currentPeriodEnd: toDate(stripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
