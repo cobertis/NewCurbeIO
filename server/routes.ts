@@ -3485,6 +3485,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 'succeeded',
                 stripeInvoice.payment_method_types?.[0] || 'card'
               );
+              
+              // Only send notification for invoice.paid to avoid duplicates
+              // (Stripe sends both invoice.paid and invoice.payment_succeeded for the same payment)
+              if (event.type === 'invoice.paid') {
+                const { notificationService } = await import("./notification-service");
+                await notificationService.notifyPaymentSucceeded(
+                  invoice.companyId,
+                  stripeInvoice.amount_paid || stripeInvoice.total,
+                  stripeInvoice.currency,
+                  invoice.invoiceNumber
+                );
+                console.log('[NOTIFICATION] Payment success notification sent to company:', invoice.companyId);
+              }
             }
           }
           break;
@@ -3494,7 +3507,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log('[WEBHOOK] Invoice payment failed:', stripeInvoice.id);
             
             // Sync invoice to update status
-            await syncInvoiceFromStripe(stripeInvoice.id);
+            const invoice = await syncInvoiceFromStripe(stripeInvoice.id);
+            
+            // Notify company admins about failed payment
+            if (invoice) {
+              const { notificationService } = await import("./notification-service");
+              await notificationService.notifyPaymentFailed(
+                invoice.companyId,
+                stripeInvoice.amount_due || stripeInvoice.total,
+                stripeInvoice.currency,
+                invoice.invoiceNumber
+              );
+              console.log('[NOTIFICATION] Payment failure notification sent to company:', invoice.companyId);
+            }
           }
           break;
         case 'payment_intent.succeeded':

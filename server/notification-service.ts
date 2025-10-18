@@ -264,6 +264,74 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for when a payment is successfully processed
+   * Notifies all admins and superadmins of the company
+   */
+  async notifyPaymentSucceeded(companyId: string, amount: number, currency: string, invoiceNumber?: string) {
+    // Get all admin and superadmin users for this company
+    const users = await storage.getUsersByCompany(companyId);
+    const adminUsers = users.filter(u => u.role === "admin" || u.role === "superadmin");
+    
+    if (adminUsers.length === 0) {
+      console.warn('[NOTIFICATION] No admin users found for company:', companyId);
+      return [];
+    }
+    
+    // Format amount
+    const formattedAmount = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    }).format(amount / 100); // Stripe amounts are in cents
+    
+    const notifications = adminUsers.map(user => ({
+      userId: user.id,
+      type: "success",
+      title: "Payment Processed Successfully",
+      message: invoiceNumber 
+        ? `Payment of ${formattedAmount} for invoice ${invoiceNumber} has been processed successfully.`
+        : `Payment of ${formattedAmount} has been processed successfully.`,
+      link: "/billing",
+      isRead: false,
+    }));
+
+    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+  }
+
+  /**
+   * Create a notification for when a payment fails
+   * Notifies all admins and superadmins of the company
+   */
+  async notifyPaymentFailed(companyId: string, amount: number, currency: string, invoiceNumber?: string) {
+    // Get all admin and superadmin users for this company
+    const users = await storage.getUsersByCompany(companyId);
+    const adminUsers = users.filter(u => u.role === "admin" || u.role === "superadmin");
+    
+    if (adminUsers.length === 0) {
+      console.warn('[NOTIFICATION] No admin users found for company:', companyId);
+      return [];
+    }
+    
+    // Format amount
+    const formattedAmount = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    }).format(amount / 100); // Stripe amounts are in cents
+    
+    const notifications = adminUsers.map(user => ({
+      userId: user.id,
+      type: "error",
+      title: "Payment Failed",
+      message: invoiceNumber 
+        ? `Payment of ${formattedAmount} for invoice ${invoiceNumber} failed. Please update your payment method.`
+        : `Payment of ${formattedAmount} failed. Please update your payment method.`,
+      link: "/billing",
+      isRead: false,
+    }));
+
+    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {
