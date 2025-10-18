@@ -53,6 +53,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { StripeCardForm } from "@/components/stripe-card-form";
 import { ManagePaymentMethodsDialog } from "@/components/manage-payment-methods-dialog";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
@@ -194,6 +204,8 @@ export default function Billing() {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [showSkipTrialDialog, setShowSkipTrialDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Fetch session data to get user info
   const { data: sessionData } = useQuery({
@@ -710,11 +722,7 @@ export default function Billing() {
                 {subscription.status === 'trialing' && trialDaysRemaining > 0 && (
                   <Button
                     variant="default"
-                    onClick={() => {
-                      if (confirm("Skip trial and activate your subscription now? Your card will be charged immediately.")) {
-                        skipTrialMutation.mutate();
-                      }
-                    }}
+                    onClick={() => setShowSkipTrialDialog(true)}
                     disabled={skipTrialMutation.isPending}
                     data-testid="button-skip-trial"
                   >
@@ -733,11 +741,7 @@ export default function Billing() {
                 {!subscription.cancelAtPeriodEnd && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      if (confirm("Are you sure you want to cancel your subscription?")) {
-                        cancelSubscriptionMutation.mutate();
-                      }
-                    }}
+                    onClick={() => setShowCancelDialog(true)}
                     className="text-red-600 hover:text-red-700"
                     data-testid="button-cancel-subscription"
                   >
@@ -1177,6 +1181,54 @@ export default function Billing() {
         onOpenChange={setShowManageCards}
         paymentMethods={paymentMethods || []}
       />
+
+      {/* Skip Trial Confirmation Dialog */}
+      <AlertDialog open={showSkipTrialDialog} onOpenChange={setShowSkipTrialDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Skip Trial & Activate Now?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your trial will end immediately and your card will be charged for the subscription. You can still cancel anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                skipTrialMutation.mutate();
+                setShowSkipTrialDialog(false);
+              }}
+              disabled={skipTrialMutation.isPending}
+            >
+              {skipTrialMutation.isPending ? 'Activating...' : 'Activate Now'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Subscription Confirmation Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your subscription will remain active until the end of your current billing period. You can reactivate anytime before then.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                cancelSubscriptionMutation.mutate();
+                setShowCancelDialog(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Cancel Subscription
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
