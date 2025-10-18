@@ -15,7 +15,19 @@ The frontend is built with React 18, TypeScript, Vite, Shadcn/ui (New York style
 The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Query for state management. The backend is built with Express.js and TypeScript, providing a RESTful API with session-based authentication and role-based access control (RBAC).
 
 **Key Features:**
--   **User & Company Management:** Comprehensive CRUD operations for users and companies, including role-based access, 2FA, profile management, and email-based activation flows. Superadmins manage companies and assign subscription plans. Business autocomplete with Google Places API for simplified registration - includes "My business is not listed" checkbox for manual entry. Company slugs are auto-generated internally (not shown to users).
+-   **User & Company Management:** Comprehensive CRUD operations for users and companies, including role-based access, 2FA, profile management, and email-based activation flows. Superadmins manage companies and assign subscription plans. 
+    -   **Google Places Business Autocomplete:** Smart business search with automatic data population:
+        - Real-time business search with 400ms debounce
+        - Automatic extraction of business details (name, phone, website, address)
+        - **Suite/Apartment Number Support:** Extracts secondary address information (addressLine2) from Google Places API 'subpremise' component type
+        - Populates all company fields including street address, suite/apt, city, state, zip, country
+        - "My business is not listed" checkbox for manual entry fallback
+        - Used in both registration flow and company creation dialog
+    -   **Address Display:** Company listings and detail pages display full addresses with proper formatting:
+        - Street address on first line
+        - Suite/apartment number on second line (if present)
+        - City, state, zip on third line
+    -   **Company Slugs:** Auto-generated internally (not shown to users)
 -   **Timezone System:** User-selected timezones for date displays, with intelligent fallbacks.
 -   **Authentication & Security:** Bcrypt hashing, secure email activation, OTP-based 2FA, session-based authentication, login/failed attempt notifications for security monitoring, and enhanced account status management system:
     -   **User Status System:** Three distinct account states for clear lifecycle management:
