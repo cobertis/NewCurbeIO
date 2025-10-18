@@ -93,6 +93,12 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - Company name column displayed for superadmin to identify invoice origin
         - Regular users see only their company's invoices
         - Efficient frontend mapping using company data for name display
+    -   **Invoice Filtering:** Smart filtering of trial invoices from billing history:
+        - $0.00 invoices (trial period invoices) are hidden from billing history UI
+        - All invoices preserved in database for audit compliance
+        - Filtering applied at API layer in `/api/billing/invoices` endpoint
+        - Filter logic: `invoices.filter(invoice => invoice.total > 0)`
+        - Maintains clean billing history while ensuring complete audit trail
 
 ### System Design Choices
 The system is built on a clear separation of concerns, utilizing PostgreSQL with Drizzle ORM for data management and strict multi-tenancy. Security is enforced through robust password management, account activation, and 2FA. The modular feature system provides high flexibility and extensibility.
