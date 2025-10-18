@@ -338,17 +338,19 @@ class NotificationService {
 
   /**
    * Create a notification for when a payment is successfully processed
-   * Notifies all admins and superadmins of the company
+   * Notifies all admins of the company AND all superadmins in the system
    */
   async notifyPaymentSucceeded(companyId: string, amount: number, currency: string, invoiceNumber?: string) {
-    // Get all admin and superadmin users for this company
+    // Get company information for notification message
+    const company = await storage.getCompanyById(companyId);
+    const companyName = company?.name || 'Unknown Company';
+    
+    // Get all admin users for this company
     const users = await storage.getUsersByCompany(companyId);
     const adminUsers = users.filter(u => u.role === "admin" || u.role === "superadmin");
     
-    if (adminUsers.length === 0) {
-      console.warn('[NOTIFICATION] No admin users found for company:', companyId);
-      return [];
-    }
+    // Get ALL superadmin users in the system (not just company superadmins)
+    const allSuperadmins = await this.getSuperadminUserIds();
     
     // Format amount
     const formattedAmount = new Intl.NumberFormat('en-US', {
@@ -356,35 +358,66 @@ class NotificationService {
       currency: currency.toUpperCase(),
     }).format(amount / 100); // Stripe amounts are in cents
     
-    const notifications = adminUsers.map(user => ({
-      userId: user.id,
-      type: "success",
-      title: "Payment Processed Successfully",
-      message: invoiceNumber 
-        ? `Payment of ${formattedAmount} for invoice ${invoiceNumber} has been processed successfully.`
-        : `Payment of ${formattedAmount} has been processed successfully.`,
-      link: "/billing",
-      isRead: false,
-    }));
+    const notifications: any[] = [];
+    
+    // 1. Notify company admins with simple message
+    adminUsers.forEach(user => {
+      notifications.push({
+        userId: user.id,
+        type: "success",
+        title: "Payment Processed Successfully",
+        message: invoiceNumber 
+          ? `Payment of ${formattedAmount} for invoice ${invoiceNumber} has been processed successfully.`
+          : `Payment of ${formattedAmount} has been processed successfully.`,
+        link: "/billing",
+        isRead: false,
+      });
+    });
+    
+    // 2. Notify ALL superadmins with company context
+    allSuperadmins.forEach(superadminId => {
+      // Don't duplicate notification if superadmin is already in company admins
+      const alreadyNotified = adminUsers.some(u => u.id === superadminId);
+      if (!alreadyNotified) {
+        notifications.push({
+          userId: superadminId,
+          type: "success",
+          title: "Payment Received",
+          message: invoiceNumber 
+            ? `${companyName} paid ${formattedAmount} for invoice ${invoiceNumber}.`
+            : `${companyName} paid ${formattedAmount}.`,
+          link: `/companies/${companyId}?tab=billing`,
+          isRead: false,
+        });
+      }
+    });
+
+    if (notifications.length === 0) {
+      console.warn('[NOTIFICATION] No users to notify for payment success');
+      return [];
+    }
 
     const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
     broadcastNotificationUpdate();
+    console.log(`[NOTIFICATION] Payment success: Notified ${notifications.length} users (${adminUsers.length} company admins + ${allSuperadmins.length - adminUsers.filter(u => u.role === 'superadmin').length} global superadmins)`);
     return result;
   }
 
   /**
    * Create a notification for when a payment fails
-   * Notifies all admins and superadmins of the company
+   * Notifies all admins of the company AND all superadmins in the system
    */
   async notifyPaymentFailed(companyId: string, amount: number, currency: string, invoiceNumber?: string) {
-    // Get all admin and superadmin users for this company
+    // Get company information for notification message
+    const company = await storage.getCompanyById(companyId);
+    const companyName = company?.name || 'Unknown Company';
+    
+    // Get all admin users for this company
     const users = await storage.getUsersByCompany(companyId);
     const adminUsers = users.filter(u => u.role === "admin" || u.role === "superadmin");
     
-    if (adminUsers.length === 0) {
-      console.warn('[NOTIFICATION] No admin users found for company:', companyId);
-      return [];
-    }
+    // Get ALL superadmin users in the system (not just company superadmins)
+    const allSuperadmins = await this.getSuperadminUserIds();
     
     // Format amount
     const formattedAmount = new Intl.NumberFormat('en-US', {
@@ -392,19 +425,48 @@ class NotificationService {
       currency: currency.toUpperCase(),
     }).format(amount / 100); // Stripe amounts are in cents
     
-    const notifications = adminUsers.map(user => ({
-      userId: user.id,
-      type: "error",
-      title: "Payment Failed",
-      message: invoiceNumber 
-        ? `Payment of ${formattedAmount} for invoice ${invoiceNumber} failed. Please update your payment method.`
-        : `Payment of ${formattedAmount} failed. Please update your payment method.`,
-      link: "/billing",
-      isRead: false,
-    }));
+    const notifications: any[] = [];
+    
+    // 1. Notify company admins with actionable message
+    adminUsers.forEach(user => {
+      notifications.push({
+        userId: user.id,
+        type: "error",
+        title: "Payment Failed",
+        message: invoiceNumber 
+          ? `Payment of ${formattedAmount} for invoice ${invoiceNumber} failed. Please update your payment method.`
+          : `Payment of ${formattedAmount} failed. Please update your payment method.`,
+        link: "/billing",
+        isRead: false,
+      });
+    });
+    
+    // 2. Notify ALL superadmins with company context
+    allSuperadmins.forEach(superadminId => {
+      // Don't duplicate notification if superadmin is already in company admins
+      const alreadyNotified = adminUsers.some(u => u.id === superadminId);
+      if (!alreadyNotified) {
+        notifications.push({
+          userId: superadminId,
+          type: "error",
+          title: "Payment Failed",
+          message: invoiceNumber 
+            ? `${companyName} payment of ${formattedAmount} for invoice ${invoiceNumber} failed.`
+            : `${companyName} payment of ${formattedAmount} failed.`,
+          link: `/companies/${companyId}?tab=billing`,
+          isRead: false,
+        });
+      }
+    });
+
+    if (notifications.length === 0) {
+      console.warn('[NOTIFICATION] No users to notify for payment failure');
+      return [];
+    }
 
     const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
     broadcastNotificationUpdate();
+    console.log(`[NOTIFICATION] Payment failed: Notified ${notifications.length} users (${adminUsers.length} company admins + ${allSuperadmins.length - adminUsers.filter(u => u.role === 'superadmin').length} global superadmins)`);
     return result;
   }
 
