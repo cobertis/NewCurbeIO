@@ -18,6 +18,16 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
           credentials: "include",
         });
 
+        // Handle trial expiration (HTTP 402)
+        if (response.status === 402) {
+          const data = await response.json();
+          if (data.trialExpired && location !== "/select-plan") {
+            console.log("[TRIAL-EXPIRED] Trial has expired, redirecting to plan selection");
+            setLocation("/select-plan");
+            return;
+          }
+        }
+
         if (response.ok) {
           const data = await response.json();
           setIsAuthenticated(true);
@@ -39,9 +49,8 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
               const subscriptionData = await subscriptionResponse.json();
               const subscription = subscriptionData?.subscription;
               
-              // Redirect only if no subscription or if subscription is cancelled/canceled
-              // Valid statuses that should NOT redirect: trialing, active, incomplete, past_due, unpaid
-              const invalidStatuses = ['cancelled', 'canceled'];
+              // Redirect if no subscription, cancelled, or past_due (trial expired)
+              const invalidStatuses = ['cancelled', 'canceled', 'past_due'];
               if (!subscription || invalidStatuses.includes(subscription.status)) {
                 setLocation("/select-plan");
                 return;
