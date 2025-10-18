@@ -2031,8 +2031,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!stripeCustomerId) {
         console.log('[SUBSCRIPTION] Creating Stripe customer for company:', company.name);
+        
+        // Get company admin for representative information
+        const companyUsers = await storage.getUsersByCompany(companyId);
+        const admin = companyUsers.find(u => u.role === 'admin');
+        
         const { createStripeCustomer } = await import("./stripe");
-        const stripeCustomer = await createStripeCustomer(company);
+        const stripeCustomer = await createStripeCustomer({
+          ...company,
+          representativeFirstName: admin?.firstName || null,
+          representativeLastName: admin?.lastName || null,
+          representativeEmail: admin?.email || company.email,
+          representativePhone: admin?.phone || company.phone,
+        });
         stripeCustomerId = stripeCustomer.id;
         
         // Update company with Stripe customer ID
@@ -2210,8 +2221,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!stripeCustomerId) {
         console.log('[SELECT-PLAN] Creating Stripe customer for company:', company.name);
+        
+        // Get company admin for representative information
+        const companyUsers = await storage.getUsersByCompany(companyId);
+        const admin = companyUsers.find(u => u.role === 'admin');
+        
         const { createStripeCustomer } = await import("./stripe");
-        const stripeCustomer = await createStripeCustomer(company);
+        const stripeCustomer = await createStripeCustomer({
+          ...company,
+          representativeFirstName: admin?.firstName || null,
+          representativeLastName: admin?.lastName || null,
+          representativeEmail: admin?.email || company.email,
+          representativePhone: admin?.phone || company.phone,
+        });
         stripeCustomerId = stripeCustomer.id;
         
         // Update company with Stripe customer ID
@@ -2441,8 +2463,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get or create Stripe customer
       let customerId = company.stripeCustomerId;
       if (!customerId) {
+        // Get company admin for representative information
+        const companyUsers = await storage.getUsersByCompany(companyId);
+        const admin = companyUsers.find(u => u.role === 'admin');
+        
         const { createStripeCustomer } = await import("./stripe");
-        const customer = await createStripeCustomer(company);
+        const customer = await createStripeCustomer({
+          ...company,
+          representativeFirstName: admin?.firstName || null,
+          representativeLastName: admin?.lastName || null,
+          representativeEmail: admin?.email || company.email,
+          representativePhone: admin?.phone || company.phone,
+        });
         customerId = customer.id;
         
         // Update company with Stripe customer ID

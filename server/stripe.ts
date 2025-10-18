@@ -43,7 +43,16 @@ export async function createStripeCustomer(company: {
 }) {
   // Build customer data with complete information
   // Individual name uses representative's full name
-  const individualName = `${company.representativeFirstName || ''} ${company.representativeLastName || ''}`.trim();
+  let individualName = `${company.representativeFirstName || ''} ${company.representativeLastName || ''}`.trim();
+  
+  // If no representative name provided, find company admin
+  if (!individualName) {
+    const companyUsers = await storage.getUsersByCompany(company.id);
+    const admin = companyUsers.find(u => u.role === 'admin');
+    if (admin && (admin.firstName || admin.lastName)) {
+      individualName = `${admin.firstName || ''} ${admin.lastName || ''}`.trim();
+    }
+  }
   
   // Generate invoice prefix from company name initials (first 3 letters, uppercase)
   // Stripe requires 1-12 uppercase letters or numbers only (no special characters)
