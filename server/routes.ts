@@ -399,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue with registration even if Stripe fails - can be fixed later
       }
 
-      // Create admin user for the company - account starts as NOT activated (no password yet)
+      // Create admin user for the company - account starts as pending activation
       const newUser = await storage.createUser({
         email: adminData.email,
         firstName: adminData.firstName || '',
@@ -407,6 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: adminData.phone || null,
         role: 'admin',
         companyId: newCompany.id,
+        status: 'pending_activation', // Account pending activation until user clicks email link
         isActive: false, // Account starts inactive until email verification
         password: null, // No password until user activates account via email link
       });
