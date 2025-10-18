@@ -69,6 +69,11 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - Real-time status badges for subscriptions, invoices, and payments
         - Billing period display (monthly/yearly)
         - All billing data restricted to superadmin role via backend authorization
+    -   **Superadmin Invoice Management:** System-wide invoice viewing at `/invoices`:
+        - Superadmin sees all invoices from all companies in one view
+        - Company name column displayed for superadmin to identify invoice origin
+        - Regular users see only their company's invoices
+        - Efficient frontend mapping using company data for name display
 
 ### System Design Choices
 The system is built on a clear separation of concerns, utilizing PostgreSQL with Drizzle ORM for data management and strict multi-tenancy. Security is enforced through robust password management, account activation, and 2FA. The modular feature system provides high flexibility and extensibility.
