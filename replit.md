@@ -35,6 +35,21 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 -   **Modular Feature System:** Superadmins can define and assign features to different companies.
 -   **Audit Logging:** Centralized service for tracking critical actions.
 -   **Campaign System:** Unified interface for managing Email Campaigns, SMS Campaigns, and Contact Lists. Includes detailed reports, contact management with bulk operations, rich HTML editor for emails, targeted sending, and analytics.
+-   **Real-Time Notifications:** Comprehensive WebSocket-based notification system providing instant updates:
+    -   **WebSocket Broadcasting:** All notification events broadcast immediately via WebSocket (`notification_update` messages)
+    -   **Automatic Notifications:** System generates notifications for 13+ events including:
+        - User creation and activation
+        - Company creation and deactivation
+        - Login attempts (successful and failed)
+        - Payment processing (success and failure)
+        - Trial subscription start
+        - Campaign sends (success and failure)
+        - User subscription to SMS
+        - Contact list creation
+    -   **Instant Client Updates:** Client-side WebSocket listener invalidates notification cache immediately upon receiving broadcast
+    -   **Polling Fallback:** 30-second polling as backup when WebSocket connection drops (paused when tab inactive)
+    -   **Sound Notifications:** Audio alerts for new notifications via client-side sound playback
+    -   **Broadcast System:** Superadmin can send manual system-wide broadcasts to all users
 -   **SMS Chat Application:** Bidirectional, real-time SMS chat with a three-column layout, WebSocket-based updates, contact integration, conversation management (search, delete, new), unread badge system, and internal notes for conversations. Includes comprehensive backend APIs for chat functionalities.
 -   **SMS Subscription Management:** `smsSubscribed` field, automatic unsubscribe via Twilio webhook (STOP keywords), and manual toggle for superadmins.
 -   **Billing & Stripe Integration:** 
