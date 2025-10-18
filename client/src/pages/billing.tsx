@@ -417,57 +417,112 @@ export default function Billing() {
         )}
       </div>
 
-      {/* Trial Status Banner */}
-      {subscription?.status === 'trialing' && trialDaysRemaining > 0 && subscription.trialEnd && (
-        <Alert className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
-          <Rocket className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          <AlertTitle className="text-blue-900 dark:text-blue-100">
-            Trial Period - {trialDaysRemaining} days remaining
-          </AlertTitle>
-          <AlertDescription className="text-blue-700 dark:text-blue-300">
-            Your trial will end on {formatDate(new Date(subscription.trialEnd))}. 
-            After that, you'll be charged {formatCurrency(subscription.plan.price, subscription.plan.currency)} per {subscription.plan.billingCycle}.
-          </AlertDescription>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Button
-              size="sm"
-              onClick={() => skipTrialMutation.mutate()}
-              disabled={skipTrialMutation.isPending}
-              data-testid="button-skip-trial"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Skip Trial & Activate Now
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowAddCard(true)}
-              data-testid="button-add-payment"
-              className="bg-white dark:bg-gray-900"
-            >
-              <CreditCard className="h-4 w-4 mr-2" />
-              Add Payment Method
-            </Button>
+      {/* Account Header */}
+      {subscription && (
+        <div className="space-y-6">
+          {/* Plan Name and Price */}
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">{subscription.plan.name}</h1>
+              {appliedCoupon && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                  <Trophy className="h-4 w-4" />
+                  {appliedCoupon.percentOff 
+                    ? `${appliedCoupon.percentOff}% discount applied`
+                    : `${formatCurrency(appliedCoupon.amountOff)} discount applied`
+                  }
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl font-bold">
+                  {formatCurrency(subscription.plan.price, subscription.plan.currency)}
+                </span>
+                <span className="text-lg text-muted-foreground">
+                  per {subscription.plan.billingCycle}
+                </span>
+              </div>
+            </div>
           </div>
-          <Progress value={trialProgress} className="h-2 mt-4" />
-        </Alert>
+
+          {/* Trial Banner */}
+          {subscription.status === 'trialing' && trialDaysRemaining > 0 && subscription.trialEnd && (
+            <Card className="border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/30">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900">
+                      <Gift className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-blue-900 dark:text-blue-100">
+                        Claim your {trialDaysRemaining} Free Days
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        Get {trialDaysRemaining} days free, if you upgrade to annual subscription
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => setShowChangePlan(true)}
+                    data-testid="button-claim-trial"
+                  >
+                    Claim Now
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action Cards */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Modify/Cancel Card */}
+            <Card className="hover-elevate cursor-pointer" onClick={() => setShowChangePlan(true)}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">Want to modify / cancel your subscription?</p>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Billing Question Card */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-1">
+                  <p className="font-medium">Have a Billing Question?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Contact us at{' '}
+                    <a href="mailto:billing@curbe.com" className="text-primary hover:underline">
+                      billing@curbe.com
+                    </a>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Next Invoice Date */}
+          <div className="text-center py-4">
+            <p className="text-sm text-muted-foreground">
+              Your next invoice is scheduled on{' '}
+              <span className="font-medium text-foreground">
+                {formatDate(new Date(subscription.currentPeriodEnd))}
+              </span>
+            </p>
+          </div>
+        </div>
       )}
 
-      {/* Current Plan with Sidebar */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Current Plan Card - 2 columns */}
-        {subscription && (
-          <Card className="border-2 lg:col-span-2">
-            <CardHeader className="pb-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-2xl">Current Plan</CardTitle>
-                  <CardDescription>Your subscription details and usage</CardDescription>
-                </div>
-                {getStatusBadge(subscription.status)}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
+      {/* Expandable Details Section */}
+      {subscription && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Subscription Details</CardTitle>
+            <CardDescription>Manage your subscription settings and view detailed information</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
               {/* Plan Details */}
               <div className="flex items-start justify-between p-4 rounded-lg bg-muted/50">
                 <div className="space-y-1">
@@ -596,29 +651,23 @@ export default function Billing() {
                   </AlertDescription>
                 </Alert>
               )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Payment Method & Discount Sidebar - 1 column stacked */}
-        <div className="space-y-6">
-          {/* Payment Method Card */}
-          <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>Payment Method</CardTitle>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setShowManageCards(true)}
-              data-testid="button-edit-payment"
-            >
-              <Pencil className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {paymentMethods && paymentMethods.length > 0 ? (
-              <div className="space-y-3">
-                {paymentMethods.map((method) => (
+            {/* Payment Methods */}
+            <div>
+              <h3 className="font-semibold mb-4 flex items-center justify-between">
+                <span>Payment Methods</span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowManageCards(true)}
+                  data-testid="button-manage-cards"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Manage Cards
+                </Button>
+              </h3>
+              {paymentMethods && paymentMethods.length > 0 ? (
+                <div className="space-y-3">
+                  {paymentMethods.map((method) => (
                     <div key={method.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
                       <CardBrandLogo brand={method.brand || ''} />
                       <div className="flex-1 min-w-0">
@@ -637,70 +686,63 @@ export default function Billing() {
                         </p>
                       </div>
                     </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-sm text-muted-foreground mb-4">
-                  No payment method on file
-                </p>
-                <Button
-                  onClick={() => setShowAddCard(true)}
-                  data-testid="button-add-first-card"
-                >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Add Payment Method
-                </Button>
-              </div>
-            )}
-          </CardContent>
-          </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 border rounded-lg bg-muted/30">
+                  <CreditCard className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-4">
+                    No payment method on file
+                  </p>
+                  <Button
+                    onClick={() => setShowAddCard(true)}
+                    data-testid="button-add-first-card"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Add Payment Method
+                  </Button>
+                </div>
+              )}
+            </div>
 
-          {/* Apply Discount Card */}
-          <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5" />
-              Apply Discount
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {appliedCoupon ? (
-              <Alert>
-                <Trophy className="h-4 w-4" />
-                <AlertTitle>Discount Active</AlertTitle>
-                <AlertDescription>
-                  {appliedCoupon.percentOff 
-                    ? `${appliedCoupon.percentOff}% off`
-                    : formatCurrency(appliedCoupon.amountOff)
-                  } applied to your subscription!
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="space-y-2">
-                <Input
-                  placeholder="Enter coupon code"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  data-testid="input-coupon-code"
-                />
-                <Button
-                  className="w-full"
-                  onClick={() => applyCouponMutation.mutate(couponCode)}
-                  disabled={!couponCode || applyCouponMutation.isPending}
-                  data-testid="button-apply-coupon"
-                >
-                  Apply Coupon
-                </Button>
-              </div>
-            )}
-          </CardContent>
+            {/* Apply Coupon */}
+            <div>
+              <h3 className="font-semibold mb-4">Apply Discount Code</h3>
+              {appliedCoupon ? (
+                <Alert>
+                  <Trophy className="h-4 w-4" />
+                  <AlertTitle>Discount Active</AlertTitle>
+                  <AlertDescription>
+                    {appliedCoupon.percentOff 
+                      ? `${appliedCoupon.percentOff}% off`
+                      : formatCurrency(appliedCoupon.amountOff)
+                    } applied to your subscription!
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Enter coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    data-testid="input-coupon-code"
+                  />
+                  <Button
+                    className="w-full"
+                    onClick={() => applyCouponMutation.mutate(couponCode)}
+                    disabled={!couponCode || applyCouponMutation.isPending}
+                    data-testid="button-apply-coupon"
+                  >
+                    Apply Coupon
+                  </Button>
+                </div>
+              )}
+            </div>
+            </CardContent>
           </Card>
-        </div>
-      </div>
+        )}
 
-      {/* Billing History Tabs */}
+      {/* Billing History */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
