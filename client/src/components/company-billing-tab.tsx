@@ -1,10 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CreditCard, FileText, Receipt, MapPin, Calendar, DollarSign, CheckCircle2, XCircle, Clock, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
+import { CreditCard, FileText, Receipt, MapPin, Calendar, DollarSign, CheckCircle2, XCircle, Clock, AlertCircle, Percent, Tag } from "lucide-react";
+import { format, differenceInDays } from "date-fns";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface CompanyBillingTabProps {
   companyId: string;
@@ -76,11 +83,129 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
     enabled: !!companyId,
   });
 
+  // Fetch active discount
+  const { data: discountData, isLoading: isLoadingDiscount } = useQuery({
+    queryKey: ["/api/billing/active-discount", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/billing/active-discount?companyId=${companyId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch discount");
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
   const subscription = subscriptionData?.subscription;
   const invoices = invoicesData?.invoices || [];
   const payments = paymentsData?.payments || [];
   const paymentMethods = paymentMethodsData?.paymentMethods || [];
   const billingAddress = billingAddressData?.billingAddress;
+  const activeDiscount = discountData?.discount;
+
+  // State for discount dialog
+  const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState("");
+  const [discountMonths, setDiscountMonths] = useState("");
+  const { toast } = useToast();
+
+  // Mutation for applying discount
+  const applyDiscountMutation = useMutation({
+    mutationFn: async (data: { percentOff: number; months: number }) => {
+      const response = await apiRequest("/api/billing/apply-temporary-discount", {
+        method: "POST",
+        body: JSON.stringify({
+          companyId,
+          percentOff: data.percentOff,
+          months: data.months,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to apply discount");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Discount Applied",
+        description: data.message,
+      });
+      setIsDiscountDialogOpen(false);
+      setDiscountPercentage("");
+      setDiscountMonths("");
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/active-discount", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription", companyId] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for removing discount
+  const removeDiscountMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/billing/remove-discount", {
+        method: "POST",
+        body: JSON.stringify({ companyId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to remove discount");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Discount Removed",
+        description: "The discount has been removed successfully.",
+      });
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/active-discount", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription", companyId] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleApplyDiscount = () => {
+    const percentage = parseInt(discountPercentage);
+    const months = parseInt(discountMonths);
+
+    if (isNaN(percentage) || percentage < 1 || percentage > 100) {
+      toast({
+        title: "Invalid Percentage",
+        description: "Please enter a percentage between 1 and 100",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isNaN(months) || months < 1 || months > 36) {
+      toast({
+        title: "Invalid Duration",
+        description: "Please enter duration between 1 and 36 months",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    applyDiscountMutation.mutate({ percentOff: percentage, months });
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -171,6 +296,120 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                       </Badge>
                     </div>
                   )}
+                </div>
+
+                {/* Active Discount Section */}
+                {activeDiscount && (
+                  <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <div>
+                          <p className="font-semibold text-green-900 dark:text-green-100">
+                            {activeDiscount.percentOff}% discount applied
+                          </p>
+                          <p className="text-sm text-green-700 dark:text-green-300">
+                            {activeDiscount.durationInMonths ? (
+                              <>
+                                Active for {activeDiscount.durationInMonths} month{activeDiscount.durationInMonths > 1 ? 's' : ''}
+                                {activeDiscount.end && (
+                                  <> • Expires {format(new Date(activeDiscount.end), "MMM dd, yyyy")}</>
+                                )}
+                              </>
+                            ) : (
+                              activeDiscount.duration === 'forever' ? 'Permanent discount' : 
+                              activeDiscount.duration === 'once' ? 'One-time discount' : 
+                              'Active discount'
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => removeDiscountMutation.mutate()}
+                        disabled={removeDiscountMutation.isPending}
+                        data-testid="button-remove-discount"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Discount Management for Superadmin */}
+                <div className="mt-4 flex gap-2">
+                  <Dialog open={isDiscountDialogOpen} onOpenChange={setIsDiscountDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        data-testid="button-manage-discount"
+                        disabled={!!activeDiscount}
+                      >
+                        <Percent className="h-4 w-4 mr-2" />
+                        {activeDiscount ? 'Discount Active' : 'Apply Discount'}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Apply Temporary Discount</DialogTitle>
+                        <DialogDescription>
+                          Apply a percentage discount for a specific number of months to this company's subscription.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="discount-percentage">Discount Percentage (%)</Label>
+                          <Input
+                            id="discount-percentage"
+                            type="number"
+                            min="1"
+                            max="100"
+                            placeholder="e.g., 20"
+                            value={discountPercentage}
+                            onChange={(e) => setDiscountPercentage(e.target.value)}
+                            data-testid="input-discount-percentage"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="discount-months">Duration (months)</Label>
+                          <Input
+                            id="discount-months"
+                            type="number"
+                            min="1"
+                            max="36"
+                            placeholder="e.g., 3"
+                            value={discountMonths}
+                            onChange={(e) => setDiscountMonths(e.target.value)}
+                            data-testid="input-discount-months"
+                          />
+                        </div>
+                        {discountPercentage && discountMonths && (
+                          <Alert>
+                            <AlertDescription>
+                              This will apply a {discountPercentage}% discount for {discountMonths} month{discountMonths === "1" ? "" : "s"} to the customer's subscription.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setIsDiscountDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleApplyDiscount}
+                          disabled={applyDiscountMutation.isPending || !discountPercentage || !discountMonths}
+                          data-testid="button-apply-discount"
+                        >
+                          {applyDiscountMutation.isPending ? 'Applying...' : 'Apply Discount'}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
             ) : (
