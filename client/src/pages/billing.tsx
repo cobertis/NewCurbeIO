@@ -99,6 +99,7 @@ interface Plan {
   name: string;
   description?: string;
   price: number;
+  annualPrice?: number;
   billingCycle: string;
   currency: string;
   features?: string[];
@@ -1154,7 +1155,7 @@ export default function Billing() {
                     <div className="text-right">
                       <p className="text-2xl font-bold">
                         {formatCurrency(
-                          billingPeriod === 'yearly' ? plan.price * 12 * 0.8 : plan.price,
+                          billingPeriod === 'yearly' ? (plan.annualPrice || plan.price) : plan.price,
                           plan.currency
                         )}
                       </p>
