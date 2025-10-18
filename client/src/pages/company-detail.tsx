@@ -304,14 +304,6 @@ export default function CompanyDetail() {
                     </div>
                   </div>
                 )}
-
-                {/* Country */}
-                {company.country && (
-                  <div className="pl-8">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Country</p>
-                    <p className="text-sm text-gray-900 dark:text-white">{company.country}</p>
-                  </div>
-                )}
               </div>
             )}
           </CardContent>
