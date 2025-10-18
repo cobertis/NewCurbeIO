@@ -927,3 +927,92 @@ export async function getPaymentMethods(customerId: string) {
     throw error;
   }
 }
+
+// =====================================================
+// TEMPORARY DISCOUNTS
+// =====================================================
+
+export async function createTemporaryDiscountCoupon(
+  percentOff: number,
+  durationInMonths: number,
+  companyName: string
+): Promise<Stripe.Coupon> {
+  try {
+    console.log('[STRIPE] Creating temporary discount coupon');
+    console.log('[STRIPE] Percent off:', percentOff);
+    console.log('[STRIPE] Duration:', durationInMonths, 'months');
+    
+    const couponId = `DISCOUNT_${percentOff}_${durationInMonths}M_${Date.now()}`;
+    
+    const coupon = await stripe.coupons.create({
+      id: couponId,
+      percent_off: percentOff,
+      duration: 'repeating',
+      duration_in_months: durationInMonths,
+      metadata: {
+        company_name: companyName,
+        created_for: 'temporary_discount',
+        months: durationInMonths.toString(),
+      },
+    });
+    
+    console.log('[STRIPE] Temporary discount coupon created:', coupon.id);
+    return coupon;
+  } catch (error) {
+    console.error('[STRIPE] Error creating temporary discount coupon:', error);
+    throw error;
+  }
+}
+
+export async function applyTemporaryDiscount(
+  stripeSubscriptionId: string,
+  couponId: string
+): Promise<Stripe.Subscription> {
+  try {
+    console.log('[STRIPE] Applying temporary discount to subscription:', stripeSubscriptionId);
+    console.log('[STRIPE] Coupon ID:', couponId);
+    
+    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+      coupon: couponId,
+    });
+    
+    console.log('[STRIPE] Temporary discount applied successfully');
+    return subscription;
+  } catch (error) {
+    console.error('[STRIPE] Error applying temporary discount:', error);
+    throw error;
+  }
+}
+
+export async function removeDiscount(stripeSubscriptionId: string): Promise<Stripe.Subscription> {
+  try {
+    console.log('[STRIPE] Removing discount from subscription:', stripeSubscriptionId);
+    
+    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+      coupon: null as any, // Remove the discount
+    });
+    
+    console.log('[STRIPE] Discount removed successfully');
+    return subscription;
+  } catch (error) {
+    console.error('[STRIPE] Error removing discount:', error);
+    throw error;
+  }
+}
+
+export async function getSubscriptionDiscount(
+  stripeSubscriptionId: string
+): Promise<Stripe.Discount | null> {
+  try {
+    console.log('[STRIPE] Getting discount for subscription:', stripeSubscriptionId);
+    
+    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+      expand: ['discount.coupon'],
+    });
+    
+    return subscription.discount;
+  } catch (error) {
+    console.error('[STRIPE] Error getting subscription discount:', error);
+    throw error;
+  }
+}
