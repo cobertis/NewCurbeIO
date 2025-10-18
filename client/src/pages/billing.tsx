@@ -233,6 +233,119 @@ export default function Billing() {
     queryKey: ['/api/billing/payment-methods'],
   });
 
+  // Fetch billing address
+  const { data: billingAddressData } = useQuery({
+    queryKey: ['/api/billing/address'],
+  });
+
+  const billingAddress = billingAddressData?.billingAddress;
+
+  // Billing address form state
+  const [billingForm, setBillingForm] = useState({
+    fullName: '',
+    country: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+  });
+
+  // Update form when billing address or company data loads
+  useEffect(() => {
+    if (billingAddress) {
+      // If billing address exists, use it
+      setBillingForm({
+        fullName: billingAddress.fullName || '',
+        country: billingAddress.country || '',
+        addressLine1: billingAddress.addressLine1 || '',
+        addressLine2: billingAddress.addressLine2 || '',
+        city: billingAddress.city || '',
+        state: billingAddress.state || '',
+        postalCode: billingAddress.postalCode || '',
+      });
+    } else if (company) {
+      // Otherwise, use company data as default
+      const fullName = company.representativeFirstName && company.representativeLastName
+        ? `${company.representativeFirstName} ${company.representativeLastName}`
+        : user?.firstName && user?.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : '';
+      
+      setBillingForm({
+        fullName,
+        country: company.country || '',
+        addressLine1: company.address || '',
+        addressLine2: company.addressLine2 || '',
+        city: company.city || '',
+        state: company.state || '',
+        postalCode: company.postalCode || '',
+      });
+    }
+  }, [billingAddress, company, user]);
+
+  // Save billing address mutation
+  const saveBillingAddressMutation = useMutation({
+    mutationFn: async (data: typeof billingForm) => {
+      const result = await apiRequest("POST", "/api/billing/address", data);
+      return result.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Billing information saved successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/address'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save billing information",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleBillingFormChange = (field: string, value: string) => {
+    setBillingForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBillingFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveBillingAddressMutation.mutate(billingForm);
+  };
+
+  const handleBillingFormCancel = () => {
+    // Reset form to original values
+    if (billingAddress) {
+      setBillingForm({
+        fullName: billingAddress.fullName || '',
+        country: billingAddress.country || '',
+        addressLine1: billingAddress.addressLine1 || '',
+        addressLine2: billingAddress.addressLine2 || '',
+        city: billingAddress.city || '',
+        state: billingAddress.state || '',
+        postalCode: billingAddress.postalCode || '',
+      });
+    } else if (company) {
+      const fullName = company.representativeFirstName && company.representativeLastName
+        ? `${company.representativeFirstName} ${company.representativeLastName}`
+        : user?.firstName && user?.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : '';
+      
+      setBillingForm({
+        fullName,
+        country: company.country || '',
+        addressLine1: company.address || '',
+        addressLine2: company.addressLine2 || '',
+        city: company.city || '',
+        state: company.state || '',
+        postalCode: company.postalCode || '',
+      });
+    }
+  };
+
   // Create customer portal session
   const portalMutation = useMutation({
     mutationFn: async () => {
@@ -668,19 +781,14 @@ export default function Billing() {
             <CardDescription>Update your billing information</CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4">
+            <form onSubmit={handleBillingFormSubmit} className="space-y-4">
               {/* Full Name */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Full Name</label>
                 <Input
                   placeholder="John Doe"
-                  defaultValue={
-                    company?.representativeFirstName && company?.representativeLastName
-                      ? `${company.representativeFirstName} ${company.representativeLastName}`
-                      : user?.firstName && user?.lastName
-                      ? `${user.firstName} ${user.lastName}`
-                      : ''
-                  }
+                  value={billingForm.fullName}
+                  onChange={(e) => handleBillingFormChange('fullName', e.target.value)}
                   data-testid="input-billing-name"
                 />
               </div>
@@ -690,7 +798,8 @@ export default function Billing() {
                 <label className="text-sm font-medium">Country Or Region</label>
                 <Input
                   placeholder="United States"
-                  defaultValue={company?.country || ''}
+                  value={billingForm.country}
+                  onChange={(e) => handleBillingFormChange('country', e.target.value)}
                   data-testid="input-billing-country"
                 />
               </div>
@@ -700,7 +809,8 @@ export default function Billing() {
                 <label className="text-sm font-medium">Address Line 1</label>
                 <Input
                   placeholder="123 Main Street"
-                  defaultValue={company?.address || ''}
+                  value={billingForm.addressLine1}
+                  onChange={(e) => handleBillingFormChange('addressLine1', e.target.value)}
                   data-testid="input-billing-address1"
                 />
               </div>
@@ -710,7 +820,8 @@ export default function Billing() {
                 <label className="text-sm font-medium">Address Line 2</label>
                 <Input
                   placeholder="Apt., suite, unit number, etc. (optional)"
-                  defaultValue={company?.addressLine2 || ''}
+                  value={billingForm.addressLine2}
+                  onChange={(e) => handleBillingFormChange('addressLine2', e.target.value)}
                   data-testid="input-billing-address2"
                 />
               </div>
@@ -720,7 +831,8 @@ export default function Billing() {
                 <label className="text-sm font-medium">City</label>
                 <Input
                   placeholder="New York"
-                  defaultValue={company?.city || ''}
+                  value={billingForm.city}
+                  onChange={(e) => handleBillingFormChange('city', e.target.value)}
                   data-testid="input-billing-city"
                 />
               </div>
@@ -731,7 +843,8 @@ export default function Billing() {
                   <label className="text-sm font-medium">State</label>
                   <Input
                     placeholder="NY"
-                    defaultValue={company?.state || ''}
+                    value={billingForm.state}
+                    onChange={(e) => handleBillingFormChange('state', e.target.value)}
                     data-testid="input-billing-state"
                   />
                 </div>
@@ -739,7 +852,8 @@ export default function Billing() {
                   <label className="text-sm font-medium">ZIP Code</label>
                   <Input
                     placeholder="10001"
-                    defaultValue={company?.postalCode || ''}
+                    value={billingForm.postalCode}
+                    onChange={(e) => handleBillingFormChange('postalCode', e.target.value)}
                     data-testid="input-billing-zip"
                   />
                 </div>
@@ -751,6 +865,7 @@ export default function Billing() {
                   type="button"
                   variant="outline"
                   className="flex-1"
+                  onClick={handleBillingFormCancel}
                   data-testid="button-billing-cancel"
                 >
                   Cancel
@@ -758,9 +873,10 @@ export default function Billing() {
                 <Button
                   type="submit"
                   className="flex-1"
+                  disabled={saveBillingAddressMutation.isPending}
                   data-testid="button-billing-save"
                 >
-                  Save
+                  {saveBillingAddressMutation.isPending ? "Saving..." : "Save"}
                 </Button>
               </div>
             </form>

@@ -399,6 +399,39 @@ export const payments = pgTable("payments", {
 });
 
 // =====================================================
+// BILLING ADDRESSES
+// =====================================================
+
+export const billingAddresses = pgTable("billing_addresses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
+  
+  // Billing contact information
+  fullName: text("full_name").notNull(),
+  
+  // Address details
+  country: text("country").notNull(),
+  addressLine1: text("address_line_1").notNull(),
+  addressLine2: text("address_line_2"),
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  postalCode: text("postal_code").notNull(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertBillingAddressSchema = createInsertSchema(billingAddresses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type BillingAddress = typeof billingAddresses.$inferSelect;
+export type InsertBillingAddress = z.infer<typeof insertBillingAddressSchema>;
+
+// =====================================================
 // INVITATIONS
 // =====================================================
 

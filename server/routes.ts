@@ -3332,6 +3332,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get billing address for company
+  app.get("/api/billing/address", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const billingAddress = await storage.getBillingAddress(companyId);
+      res.json({ billingAddress });
+    } catch (error: any) {
+      console.error('[BILLING] Error fetching billing address:', error);
+      res.status(500).json({ message: "Failed to fetch billing address" });
+    }
+  });
+
+  // Create or update billing address
+  app.post("/api/billing/address", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can update billing address
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    const { fullName, country, addressLine1, addressLine2, city, state, postalCode } = req.body;
+
+    // Validate required fields
+    if (!fullName || !country || !addressLine1 || !city || !state || !postalCode) {
+      return res.status(400).json({ message: "Missing required billing address fields" });
+    }
+
+    try {
+      // Check if billing address already exists
+      const existingAddress = await storage.getBillingAddress(companyId);
+
+      let billingAddress;
+      if (existingAddress) {
+        // Update existing address
+        billingAddress = await storage.updateBillingAddress(companyId, {
+          fullName,
+          country,
+          addressLine1,
+          addressLine2: addressLine2 || null,
+          city,
+          state,
+          postalCode,
+        });
+      } else {
+        // Create new address
+        billingAddress = await storage.createBillingAddress({
+          companyId,
+          fullName,
+          country,
+          addressLine1,
+          addressLine2: addressLine2 || null,
+          city,
+          state,
+          postalCode,
+        });
+      }
+
+      // Update Stripe customer with new billing information
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (subscription?.stripeCustomerId) {
+        const { stripe } = await import("./stripe");
+        
+        await stripe.customers.update(subscription.stripeCustomerId, {
+          name: fullName,
+          address: {
+            line1: addressLine1,
+            line2: addressLine2 || undefined,
+            city,
+            state,
+            postal_code: postalCode,
+            country,
+          },
+        });
+        
+        console.log('[BILLING] Updated Stripe customer billing information:', subscription.stripeCustomerId);
+      }
+
+      res.json({ billingAddress, message: "Billing address saved successfully" });
+    } catch (error: any) {
+      console.error('[BILLING] Error saving billing address:', error);
+      res.status(500).json({ message: "Failed to save billing address" });
+    }
+  });
+
   // ===================================================================
   // STRIPE WEBHOOKS
   // ===================================================================

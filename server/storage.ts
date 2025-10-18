@@ -15,6 +15,8 @@ import {
   type InsertInvoiceItem,
   type Payment,
   type InsertPayment,
+  type BillingAddress,
+  type InsertBillingAddress,
   type ActivityLog,
   type InsertActivityLog,
   type Invitation,
@@ -72,6 +74,7 @@ import {
   invoices,
   invoiceItems,
   payments,
+  billingAddresses,
   activityLogs, 
   invitations, 
   apiKeys, 
@@ -158,6 +161,11 @@ export interface IStorage {
   getPaymentsByInvoice(invoiceId: string): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined>;
+  
+  // Billing Addresses
+  getBillingAddress(companyId: string): Promise<BillingAddress | undefined>;
+  createBillingAddress(address: InsertBillingAddress): Promise<BillingAddress>;
+  updateBillingAddress(companyId: string, data: Partial<InsertBillingAddress>): Promise<BillingAddress | undefined>;
   
   // Activity Logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
@@ -619,6 +627,26 @@ export class DbStorage implements IStorage {
 
   async updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined> {
     const result = await db.update(payments).set(data).where(eq(payments.id, id)).returning();
+    return result[0];
+  }
+
+  // ==================== BILLING ADDRESSES ====================
+  
+  async getBillingAddress(companyId: string): Promise<BillingAddress | undefined> {
+    const result = await db.select().from(billingAddresses).where(eq(billingAddresses.companyId, companyId));
+    return result[0];
+  }
+
+  async createBillingAddress(insertAddress: InsertBillingAddress): Promise<BillingAddress> {
+    const result = await db.insert(billingAddresses).values(insertAddress).returning();
+    return result[0];
+  }
+
+  async updateBillingAddress(companyId: string, data: Partial<InsertBillingAddress>): Promise<BillingAddress | undefined> {
+    const result = await db.update(billingAddresses)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(billingAddresses.companyId, companyId))
+      .returning();
     return result[0];
   }
 
