@@ -205,20 +205,6 @@ export default function CompanyDetail() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setLocation("/companies")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{company.name}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">@{company.slug}</p>
-        </div>
-        <Badge variant={company.isActive ? "default" : "destructive"}>
-          {company.isActive ? "Active" : "Inactive"}
-        </Badge>
-      </div>
-
       {/* Company Information */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
