@@ -658,11 +658,11 @@ export default function Billing() {
                   <div>
                     <p className="font-medium">Have a Billing Question?</p>
                     <a 
-                      href="tel:+18887324197" 
+                      href="tel:+18449995077" 
                       className="text-sm text-primary hover:underline"
                       data-testid="link-billing-phone"
                     >
-                      Contact us at +1(888)732-4197
+                      Contact us at +1 (844) 999-5077
                     </a>
                   </div>
                 </div>
