@@ -3116,6 +3116,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create SetupIntent for adding a new payment method
+  app.post("/api/billing/create-setup-intent", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can add payment methods
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      
+      if (!subscription || !subscription.stripeCustomerId) {
+        return res.status(400).json({ message: "No active subscription found" });
+      }
+
+      const { stripe } = await import("./stripe");
+      
+      // Create a SetupIntent for this customer
+      const setupIntent = await stripe.setupIntents.create({
+        customer: subscription.stripeCustomerId,
+        payment_method_types: ['card'],
+        usage: 'off_session', // Save for future use
+        metadata: {
+          companyId,
+          userId: currentUser.id
+        }
+      });
+
+      res.json({ 
+        clientSecret: setupIntent.client_secret,
+        customerId: subscription.stripeCustomerId
+      });
+    } catch (error: any) {
+      console.error('[STRIPE] Error creating setup intent:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Attach payment method and set as default
+  app.post("/api/billing/attach-payment-method", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { paymentMethodId } = req.body;
+
+    // Only admin or superadmin can manage payment methods
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    if (!paymentMethodId) {
+      return res.status(400).json({ message: "Payment method ID required" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      
+      if (!subscription || !subscription.stripeCustomerId) {
+        return res.status(400).json({ message: "No active subscription found" });
+      }
+
+      const { stripe } = await import("./stripe");
+      
+      // Set this payment method as the default for the customer
+      await stripe.customers.update(subscription.stripeCustomerId, {
+        invoice_settings: {
+          default_payment_method: paymentMethodId,
+        },
+      });
+
+      // If the subscription exists, update its default payment method
+      if (subscription.stripeSubscriptionId) {
+        await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+          default_payment_method: paymentMethodId,
+        });
+      }
+
+      res.json({ success: true, message: "Payment method added successfully" });
+    } catch (error: any) {
+      console.error('[STRIPE] Error attaching payment method:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===================================================================
   // STRIPE WEBHOOKS
   // ===================================================================

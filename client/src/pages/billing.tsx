@@ -50,6 +50,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { StripeCardForm } from "@/components/stripe-card-form";
 
 interface Subscription {
   id: string;
@@ -940,35 +941,33 @@ export default function Billing() {
 
       {/* Add Payment Method Dialog */}
       <Dialog open={showAddCard} onOpenChange={setShowAddCard}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Add Payment Method</DialogTitle>
             <DialogDescription>
-              Add a new payment method to your account. This will be used for future charges.
+              Enter your card details below. Your payment information is securely processed by Stripe.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-6">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>Secure Payment</AlertTitle>
-              <AlertDescription>
-                Click the button below to securely add your payment method through Stripe.
-                Your card information is never stored on our servers.
-              </AlertDescription>
-            </Alert>
+          <div className="py-4">
+            <StripeCardForm
+              onSuccess={() => {
+                toast({
+                  title: "Success!",
+                  description: "Payment method added successfully.",
+                });
+                setShowAddCard(false);
+                // Refresh payment methods
+                queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
+              }}
+              onError={(error) => {
+                toast({
+                  title: "Error",
+                  description: error,
+                  variant: "destructive",
+                });
+              }}
+            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddCard(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => portalMutation.mutate()}
-              disabled={portalMutation.isPending}
-            >
-              <Shield className="h-4 w-4 mr-2" />
-              {portalMutation.isPending ? "Opening..." : "Add Card via Stripe"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
