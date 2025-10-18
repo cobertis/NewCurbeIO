@@ -595,6 +595,7 @@ export const createCompanyWithAdminSchema = z.object({
     phone: z.string().min(1, "Phone is required"),
     website: z.string().url("Must be a valid URL").optional().or(z.literal("")),
     address: z.string().min(1, "Address is required"),
+    addressLine2: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
     postalCode: z.string().optional(),
