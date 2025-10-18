@@ -2227,8 +2227,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return null;
       };
       
-      const currentPeriodStart = toDate(stripeSubData.current_period_start);
-      const currentPeriodEnd = toDate(stripeSubData.current_period_end);
+      // For subscriptions in trial, Stripe should provide current period dates
+      // but we ensure we always have valid dates for current period fields
+      const currentPeriodStart = toDate(stripeSubData.current_period_start) || new Date();
+      const currentPeriodEnd = toDate(stripeSubData.current_period_end) || 
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days from now
       const trialStart = toDate(stripeSubData.trial_start);
       const trialEnd = toDate(stripeSubData.trial_end);
 
@@ -2455,8 +2458,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: mapStatus(stripeSubscription.status),
         trialStart: toDate(stripeSubData.trial_start),
         trialEnd: toDate(stripeSubData.trial_end),
-        currentPeriodStart: toDate(stripeSubData.current_period_start),
-        currentPeriodEnd: toDate(stripeSubData.current_period_end),
+        currentPeriodStart: toDate(stripeSubData.current_period_start) || new Date(),
+        currentPeriodEnd: toDate(stripeSubData.current_period_end) || 
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default to 30 days from now
         stripeCustomerId,
         stripeSubscriptionId: stripeSubscription.id,
         stripeLatestInvoiceId: typeof stripeSubscription.latest_invoice === 'string' 
