@@ -255,6 +255,7 @@ export const plans = pgTable("plans", {
   
   // Pricing
   price: integer("price").notNull(), // in cents (monthly price)
+  annualPrice: integer("annual_price"), // in cents (annual price if available)
   currency: text("currency").notNull().default("usd"),
   billingCycle: text("billing_cycle").notNull().default("monthly"), // monthly, yearly
   

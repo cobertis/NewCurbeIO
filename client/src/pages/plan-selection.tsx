@@ -20,6 +20,7 @@ interface Plan {
   name: string;
   description: string;
   price: number;
+  annualPrice?: number;
   billingCycle: string;
   currency: string;
   isActive: boolean;
@@ -71,8 +72,8 @@ export default function PlanSelection() {
       
       // Get pricing information
       const monthlyPrice = selectedPlan ? formatCurrency(
-        variables.billingPeriod === "yearly" 
-          ? selectedPlan.price * 0.8 
+        variables.billingPeriod === "yearly" && selectedPlan.annualPrice
+          ? selectedPlan.annualPrice / 12
           : selectedPlan.price,
         selectedPlan.currency
       ) : "";
@@ -108,18 +109,19 @@ export default function PlanSelection() {
   };
 
   const getDisplayPrice = (plan: Plan) => {
-    const monthlyPrice = plan.price;
-    if (billingPeriod === "yearly") {
-      // Apply 20% discount for yearly
-      return monthlyPrice * 0.8;
+    if (billingPeriod === "yearly" && plan.annualPrice) {
+      // Show monthly equivalent of annual price
+      return plan.annualPrice / 12;
     }
-    return monthlyPrice;
+    return plan.price;
   };
 
   const getYearlyPrice = (plan: Plan) => {
-    const monthlyPrice = plan.price;
-    // Yearly with 20% discount
-    return (monthlyPrice * 0.8) * 12;
+    if (plan.annualPrice) {
+      return plan.annualPrice;
+    }
+    // Fallback: calculate annual from monthly if no annual price exists
+    return plan.price * 12;
   };
 
   if (isLoading) {
@@ -169,7 +171,7 @@ export default function PlanSelection() {
                   : "bg-primary/20 text-primary hover:bg-primary/20"
               }`}
             >
-              -20%
+              Save
             </Badge>
           </Button>
         </div>
@@ -211,15 +213,15 @@ export default function PlanSelection() {
                     </span>
                   </div>
 
-                  {billingPeriod === "yearly" && (
+                  {billingPeriod === "yearly" && plan.annualPrice && (
                     <p className="text-sm text-muted-foreground">
-                      or {formatCurrency(yearlyTotal, plan.currency)}/year billed annually
+                      {formatCurrency(yearlyTotal, plan.currency)}/year billed annually
                     </p>
                   )}
 
-                  {billingPeriod === "monthly" && (
+                  {billingPeriod === "monthly" && plan.annualPrice && (
                     <p className="text-sm text-muted-foreground">
-                      or {formatCurrency(displayPrice * 0.8, plan.currency)}/month billed yearly
+                      or {formatCurrency(plan.annualPrice / 12, plan.currency)}/month billed yearly
                     </p>
                   )}
 

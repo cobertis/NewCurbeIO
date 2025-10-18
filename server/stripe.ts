@@ -80,12 +80,12 @@ export async function syncProductsFromStripe() {
 
   try {
     // Get ALL active products with manual pagination
-    const allProducts = [];
+    const allProducts: Stripe.Product[] = [];
     let hasMore = true;
     let startingAfter: string | undefined = undefined;
 
     while (hasMore) {
-      const productsPage = await stripe.products.list({
+      const productsPage: Stripe.ApiList<Stripe.Product> = await stripe.products.list({
         active: true,
         limit: 100,
         starting_after: startingAfter,
@@ -107,12 +107,12 @@ export async function syncProductsFromStripe() {
         console.log(`[STRIPE-SYNC] Processing product: ${product.name}`);
         
         // Get ALL prices for this product with manual pagination
-        const allPrices = [];
+        const allPrices: Stripe.Price[] = [];
         let pricesHasMore = true;
         let pricesStartingAfter: string | undefined = undefined;
 
         while (pricesHasMore) {
-          const pricesPage = await stripe.prices.list({
+          const pricesPage: Stripe.ApiList<Stripe.Price> = await stripe.prices.list({
             product: product.id,
             active: true,
             limit: 100,
@@ -165,7 +165,8 @@ export async function syncProductsFromStripe() {
         const planData = {
           name: product.name,
           description: product.description || null,
-          price: primaryPrice!.unit_amount || 0,
+          price: monthlyPrice?.unit_amount || annualPrice!.unit_amount || 0,
+          annualPrice: annualPrice?.unit_amount || null,
           billingCycle: primaryBillingCycle,
           currency: primaryPrice!.currency || 'usd',
           features: features.length > 0 ? features : ['All core features included'],
