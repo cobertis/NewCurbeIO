@@ -116,12 +116,6 @@ export default function PlanSelection() {
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Select the perfect plan for your business needs. You can upgrade or downgrade at any time.
           </p>
-          
-          {/* No Credit Card Required Banner */}
-          <div className="mt-6 flex items-center justify-center gap-2 text-sm font-medium text-primary" data-testid="text-no-credit-card">
-            <CreditCard className="h-5 w-5" />
-            <span className="text-base">No credit card required to start your free trial</span>
-          </div>
         </div>
 
         {/* Billing Period Toggle */}
@@ -257,6 +251,34 @@ export default function PlanSelection() {
               </Card>
             );
           })}
+        </div>
+
+        {/* No Credit Card Required Banner with Glow Effect */}
+        <div className="my-8 flex items-center justify-center">
+          <div 
+            className="relative group flex items-center justify-center gap-2 px-6 py-3 rounded-full 
+                       bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 
+                       border border-primary/20 hover:border-primary/30 transition-all duration-500
+                       animate-pulse-glow"
+            data-testid="text-no-credit-card"
+          >
+            {/* Glow effect background */}
+            <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl opacity-0 
+                          group-hover:opacity-50 transition-opacity duration-500"></div>
+            
+            {/* Animated gradient overlay */}
+            <div className="absolute inset-0 rounded-full overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent 
+                            animate-shimmer"></div>
+            </div>
+            
+            {/* Content */}
+            <CreditCard className="h-5 w-5 text-primary relative z-10" />
+            <span className="text-base font-medium bg-gradient-to-r from-primary to-primary/80 
+                           bg-clip-text text-transparent relative z-10">
+              No credit card required to start your free trial
+            </span>
+          </div>
         </div>
 
         {/* Footer Note */}
