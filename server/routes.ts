@@ -2424,6 +2424,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  // Sync plans from Stripe (superadmin only - RECOMMENDED METHOD)
+  app.post("/api/plans/sync-from-stripe", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      console.log('[SYNC-FROM-STRIPE] Starting synchronization...');
+      const { syncProductsFromStripe } = await import("./stripe");
+      const syncedProducts = await syncProductsFromStripe();
+
+      const results = {
+        created: [] as any[],
+        updated: [] as any[],
+        skipped: [] as any[],
+      };
+
+      for (const product of syncedProducts) {
+        // Check if plan already exists by stripeProductId
+        const existingPlans = await storage.getAllPlans();
+        const existingPlan = existingPlans.find(p => 
+          (p as any).stripeProductId === product.productId
+        );
+
+        if (existingPlan) {
+          // Update existing plan
+          console.log(`[SYNC-FROM-STRIPE] Updating existing plan: ${product.productName}`);
+          const updated = await storage.updatePlan(existingPlan.id, product.planData);
+          results.updated.push(updated);
+        } else {
+          // Create new plan
+          console.log(`[SYNC-FROM-STRIPE] Creating new plan: ${product.productName}`);
+          const created = await storage.createPlan(product.planData);
+          results.created.push(created);
+        }
+      }
+
+      console.log('[SYNC-FROM-STRIPE] Synchronization complete:', {
+        created: results.created.length,
+        updated: results.updated.length,
+      });
+
+      res.json({
+        success: true,
+        message: `Synchronized ${syncedProducts.length} products from Stripe`,
+        results: {
+          created: results.created.length,
+          updated: results.updated.length,
+          total: syncedProducts.length,
+        },
+        plans: [...results.created, ...results.updated],
+      });
+    } catch (error: any) {
+      console.error("Error syncing from Stripe:", error);
+      res.status(500).json({ 
+        message: "Failed to sync from Stripe", 
+        error: error.message 
+      });
+    }
+  });
+
   // List all Stripe prices (superadmin only - for debugging/syncing)
   app.get("/api/stripe/list-prices", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;

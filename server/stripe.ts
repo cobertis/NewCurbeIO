@@ -62,6 +62,84 @@ export async function validateStripePrice(priceId: string): Promise<boolean> {
   }
 }
 
+/**
+ * Sync products and prices from Stripe to database
+ * This is the SOURCE OF TRUTH - Stripe products/prices are imported into DB
+ */
+export async function syncProductsFromStripe() {
+  console.log('[STRIPE-SYNC] Starting product synchronization from Stripe...');
+  
+  // Get all active products with their prices
+  const products = await stripe.products.list({
+    active: true,
+    expand: ['data.default_price'],
+  });
+
+  const syncedPlans = [];
+
+  for (const product of products.data) {
+    console.log(`[STRIPE-SYNC] Processing product: ${product.name}`);
+    
+    // Get all prices for this product
+    const prices = await stripe.prices.list({
+      product: product.id,
+      active: true,
+    });
+
+    // Separate monthly and annual prices
+    const monthlyPrice = prices.data.find(p => 
+      p.recurring?.interval === 'month' && p.recurring?.interval_count === 1
+    );
+    const annualPrice = prices.data.find(p => 
+      p.recurring?.interval === 'year' && p.recurring?.interval_count === 1
+    );
+
+    if (!monthlyPrice) {
+      console.log(`[STRIPE-SYNC] Skipping ${product.name} - no monthly price found`);
+      continue;
+    }
+
+    // Extract features from product metadata or description
+    let features: string[] = [];
+    if (product.metadata?.features) {
+      try {
+        features = JSON.parse(product.metadata.features);
+      } catch (e) {
+        // If not JSON, split by comma or newline
+        features = product.metadata.features.split(/[,\n]/).map(f => f.trim()).filter(Boolean);
+      }
+    } else if (product.description) {
+      // Try to extract features from description
+      features = product.description.split('\n').map(f => f.trim()).filter(Boolean);
+    }
+
+    const planData = {
+      name: product.name,
+      description: product.description || null,
+      price: monthlyPrice.unit_amount || 0,
+      billingCycle: 'monthly',
+      currency: monthlyPrice.currency || 'usd',
+      features: features.length > 0 ? features : ['All core features included'],
+      stripePriceId: monthlyPrice.id,
+      stripeAnnualPriceId: annualPrice?.id || null,
+      stripeProductId: product.id,
+      isActive: true,
+      trialDays: 14, // Default trial period
+    };
+
+    syncedPlans.push({
+      productId: product.id,
+      productName: product.name,
+      monthlyPriceId: monthlyPrice.id,
+      annualPriceId: annualPrice?.id,
+      planData,
+    });
+  }
+
+  console.log(`[STRIPE-SYNC] Completed sync. Found ${syncedPlans.length} products`);
+  return syncedPlans;
+}
+
 // =====================================================
 // SUBSCRIPTION MANAGEMENT
 // =====================================================
@@ -512,8 +590,8 @@ export async function handleSubscriptionCreated(stripeSubscription: Stripe.Subsc
     status: mapStripeSubscriptionStatus(stripeSubscription.status),
     trialStart: toDate(stripeSubscription.trial_start),
     trialEnd: toDate(stripeSubscription.trial_end),
-    currentPeriodStart: toDate(stripeSubscription.current_period_start) || new Date(),
-    currentPeriodEnd: toDate(stripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    currentPeriodStart: toDate((stripeSubscription as any).current_period_start as number) || new Date(),
+    currentPeriodEnd: toDate((stripeSubscription as any).current_period_end as number) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     stripeCustomerId: stripeSubscription.customer as string,
     stripeSubscriptionId: stripeSubscription.id,
     stripeLatestInvoiceId: stripeSubscription.latest_invoice as string || undefined,
@@ -918,13 +996,16 @@ export async function applyCoupon(stripeSubscriptionId: string, promoCode: strin
     const promotionCodes = await stripe.promotionCodes.list({
       code: promoCode,
       limit: 1,
+      expand: ['data.coupon'],
     });
     
     let couponId: string;
     
     if (promotionCodes.data.length > 0) {
       // Found a promotion code, get the coupon ID
-      couponId = promotionCodes.data[0].coupon.id;
+      const promoCode = promotionCodes.data[0] as any;
+      const coupon = promoCode.coupon as string | Stripe.Coupon;
+      couponId = typeof coupon === 'string' ? coupon : coupon.id;
       console.log('[STRIPE] Found promotion code, using coupon:', couponId);
     } else {
       // No promotion code found, assume it's a direct coupon ID
@@ -942,7 +1023,7 @@ export async function applyCoupon(stripeSubscriptionId: string, promoCode: strin
     }
     
     const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
-      coupon: couponId,
+      discounts: [{ coupon: couponId }],
     });
     
     console.log('[STRIPE] Coupon applied successfully');
@@ -1015,7 +1096,7 @@ export async function applyTemporaryDiscount(
     console.log('[STRIPE] Coupon ID:', couponId);
     
     const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
-      coupon: couponId,
+      discounts: [{ coupon: couponId }],
     });
     
     console.log('[STRIPE] Temporary discount applied successfully');
@@ -1031,7 +1112,7 @@ export async function removeDiscount(stripeSubscriptionId: string): Promise<Stri
     console.log('[STRIPE] Removing discount from subscription:', stripeSubscriptionId);
     
     const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
-      coupon: null as any, // Remove the discount
+      discounts: [], // Remove all discounts
     });
     
     console.log('[STRIPE] Discount removed successfully');
@@ -1049,10 +1130,14 @@ export async function getSubscriptionDiscount(
     console.log('[STRIPE] Getting discount for subscription:', stripeSubscriptionId);
     
     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
-      expand: ['discount.coupon'],
+      expand: ['discounts.coupon'],
     });
     
-    return subscription.discount;
+    if (subscription.discounts && subscription.discounts.length > 0) {
+      const discount = subscription.discounts[0];
+      return typeof discount === 'string' ? null : discount;
+    }
+    return null;
   } catch (error) {
     console.error('[STRIPE] Error getting subscription discount:', error);
     throw error;
