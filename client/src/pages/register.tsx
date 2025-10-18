@@ -9,16 +9,12 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  UserPlus,
-  CheckCircle,
-} from "lucide-react";
+import { UserPlus, CheckCircle } from "lucide-react";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { BusinessAutocomplete } from "@/components/business-autocomplete";
 import logo from "@assets/logo no fondo_1760457183587.png";
@@ -144,6 +140,7 @@ export default function Register() {
       "company.name",
       "company.slug",
       "company.phone",
+      "company.address",
     ]);
     
     if (companyValid) {
@@ -157,7 +154,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
-      {/* Logo in top left */}
+      {/* Logo in top left - identical to login */}
       <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
         <img 
           src={logo} 
@@ -166,36 +163,26 @@ export default function Register() {
         />
       </div>
 
-      {/* Registration Card */}
-      <div className="w-full max-w-lg">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
-          {/* Icon */}
+      {/* Registration Card - same width and padding as login */}
+      <div className="w-full max-w-md">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
+          {/* Icon - same style as login */}
           <div className="flex justify-center mb-6">
             <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
               <UserPlus className="w-6 h-6 text-gray-600 dark:text-gray-300" />
             </div>
           </div>
 
-          {/* Title */}
-          <div className="text-center mb-6">
+          {/* Title - same style as login */}
+          <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
               {currentStep === 1 ? "Create your account" : "Admin information"}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {currentStep === 1 
-                ? "Start with your business information" 
+                ? "Search for your business or enter details manually" 
                 : "Who will manage this account?"}
             </p>
-            
-            {/* Progress indicator */}
-            <div className="flex justify-center gap-2 mt-4">
-              <div className={`h-1 w-12 rounded-full transition-all ${
-                currentStep >= 1 ? 'bg-gray-600' : 'bg-gray-300'
-              }`}></div>
-              <div className={`h-1 w-12 rounded-full transition-all ${
-                currentStep >= 2 ? 'bg-gray-600' : 'bg-gray-300'
-              }`}></div>
-            </div>
           </div>
 
           {/* Form */}
@@ -404,6 +391,19 @@ export default function Register() {
                   >
                     Next
                   </Button>
+
+                  {/* Register Link - same style as login */}
+                  <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/login")}
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                      data-testid="link-login"
+                    >
+                      Sign in
+                    </button>
+                  </div>
                 </>
               ) : (
                 <>
@@ -495,19 +495,19 @@ export default function Register() {
                       <div className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
                         <p className="text-sm text-gray-600 dark:text-gray-300">
-                          We'll send you an activation email to verify your account
+                          We'll send you an activation email
                         </p>
                       </div>
                       <div className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
                         <p className="text-sm text-gray-600 dark:text-gray-300">
-                          After activation, you'll select your plan and start your free trial
+                          Select your plan and start your free trial
                         </p>
                       </div>
                       <div className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
                         <p className="text-sm text-gray-600 dark:text-gray-300">
-                          No credit card required for the first 7 days
+                          No credit card required for 7 days
                         </p>
                       </div>
                     </div>
@@ -536,21 +536,6 @@ export default function Register() {
               )}
             </form>
           </Form>
-
-          {/* Sign In Link */}
-          {currentStep === 1 && (
-            <div className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={() => setLocation("/login")}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                data-testid="link-login"
-              >
-                Sign in
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
