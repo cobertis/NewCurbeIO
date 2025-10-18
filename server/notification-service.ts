@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import type { InsertNotification } from "@shared/schema";
+import { broadcastNotificationUpdate } from "./websocket";
 
 /**
  * NotificationService - Creates system notifications for important events
@@ -31,7 +32,9 @@ class NotificationService {
       },
     ];
     
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -48,7 +51,9 @@ class NotificationService {
       isRead: false,
     }));
 
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -63,7 +68,9 @@ class NotificationService {
       link: `/campaigns/${campaignId}/stats`,
       isRead: false,
     };
-    return await storage.createNotification(notification);
+    const result = await storage.createNotification(notification);
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -78,7 +85,9 @@ class NotificationService {
       link: `/campaigns/${campaignId}/stats`,
       isRead: false,
     };
-    return await storage.createNotification(notification);
+    const result = await storage.createNotification(notification);
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -94,7 +103,9 @@ class NotificationService {
       isRead: false,
     }));
 
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -109,7 +120,9 @@ class NotificationService {
       link: "/companies",
       isRead: false,
     };
-    return await storage.createNotification(notification);
+    const result = await storage.createNotification(notification);
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -124,7 +137,9 @@ class NotificationService {
       link: "/campaigns",
       isRead: false,
     };
-    return await storage.createNotification(notification);
+    const result = await storage.createNotification(notification);
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -143,7 +158,9 @@ class NotificationService {
       isRead: false,
     }));
 
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -200,7 +217,9 @@ class NotificationService {
       }
     });
     
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -260,7 +279,9 @@ class NotificationService {
       }
     });
 
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -294,7 +315,9 @@ class NotificationService {
       isRead: false,
     }));
 
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -328,7 +351,9 @@ class NotificationService {
       isRead: false,
     }));
 
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
@@ -361,7 +386,9 @@ class NotificationService {
       isRead: false,
     }));
 
-    return await Promise.all(notifications.map(n => storage.createNotification(n)));
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
   }
 
   /**
