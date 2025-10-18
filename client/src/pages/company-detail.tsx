@@ -481,7 +481,7 @@ export default function CompanyDetail() {
                     </div>
                   </div>
 
-                  {subscriptionData.subscription.trialEnd && new Date(subscriptionData.subscription.trialEnd) > new Date() && (
+                  {subscriptionData.subscription.status === 'trialing' && subscriptionData.subscription.trialEnd && new Date(subscriptionData.subscription.trialEnd) > new Date() && (
                     <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900">
                       <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Trial Period</p>
                       <p className="text-sm">
