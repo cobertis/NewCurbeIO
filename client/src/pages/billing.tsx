@@ -133,6 +133,15 @@ interface PaymentMethod {
 
 // Helper component to render card brand logo
 const CardBrandLogo = ({ brand }: { brand: string }) => {
+  if (!brand) {
+    // Fallback when brand is not provided
+    return (
+      <div className="flex items-center justify-center w-16 h-10 bg-muted rounded border border-border">
+        <CreditCard className="h-5 w-5 text-muted-foreground" />
+      </div>
+    );
+  }
+  
   const brandLower = brand.toLowerCase();
   
   // Return styled brand name with appropriate colors
@@ -468,7 +477,7 @@ export default function Billing() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="text-lg font-semibold">
-                          {method.brand.charAt(0).toUpperCase() + method.brand.slice(1)} •••• {method.last4}
+                          {method.brand ? (method.brand.charAt(0).toUpperCase() + method.brand.slice(1)) : 'Card'} •••• {method.last4}
                         </p>
                         {method.isDefault && (
                           <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">

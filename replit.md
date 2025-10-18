@@ -42,6 +42,12 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - Change plans with automatic proration
         - Cancel subscription (immediate or at period end)
         - Apply coupon/promo codes (with promotion code resolution)
+    -   **Payment Method Management:** Comprehensive multi-card management system:
+        - Add multiple payment methods via Stripe Elements
+        - View all saved cards with brand logos (Visa, Mastercard, Amex, Discover)
+        - Set any card as primary/default payment method
+        - Delete non-primary cards with protection against removing default card
+        - Modal dialog interface for managing all payment methods
     -   **Customer Portal:** Self-service Stripe portal for payment method management and invoice access.
     -   **Superadmin Multi-Tenancy:** All billing endpoints support superadmin management of any company's subscription via companyId parameters.
 
