@@ -3413,7 +3413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Apply temporary discount (superadmin only)
-  app.post("/api/billing/apply-temporary-discount", requireUser, async (req: Request, res: Response) => {
+  app.post("/api/billing/apply-temporary-discount", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
     // Only superadmin can apply temporary discounts
@@ -3560,7 +3560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Remove discount
-  app.post("/api/billing/remove-discount", requireUser, async (req: Request, res: Response) => {
+  app.post("/api/billing/remove-discount", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
     // Only superadmin can remove discounts
