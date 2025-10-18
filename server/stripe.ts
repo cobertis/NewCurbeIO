@@ -1075,10 +1075,11 @@ export async function changePlan(
     }
     
     // Step 4: Preserve active discount if it exists
-    if (activeDiscount && activeDiscount.coupon) {
-      const couponId = typeof activeDiscount.coupon === 'string' 
-        ? activeDiscount.coupon 
-        : activeDiscount.coupon.id;
+    if (activeDiscount && (activeDiscount as any).coupon) {
+      const discountCoupon = (activeDiscount as any).coupon;
+      const couponId = typeof discountCoupon === 'string' 
+        ? discountCoupon 
+        : discountCoupon.id;
       
       subscriptionData.discounts = [{
         coupon: couponId
@@ -1248,12 +1249,12 @@ export async function getSubscriptionDiscount(
       if (typeof discount !== 'string') {
         console.log('[STRIPE] Found discount:', discount);
         // Expand the coupon information
-        const expandedDiscount = discount as Stripe.Discount;
+        const expandedDiscount = discount as any;
         if (typeof expandedDiscount.coupon === 'string') {
           const coupon = await stripe.coupons.retrieve(expandedDiscount.coupon);
           expandedDiscount.coupon = coupon;
         }
-        return expandedDiscount;
+        return expandedDiscount as Stripe.Discount;
       }
     }
     
