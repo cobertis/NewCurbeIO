@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Building2, Loader2 } from "lucide-react";
+import { UserPlus, Building2, Loader2, MapPin, Phone, Globe } from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
 
 const registerSchema = z.object({
@@ -321,14 +321,21 @@ export default function Register() {
                 </>
               ) : (
                 <>
-                  {/* Show selected business */}
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
+                  {/* Show selected business - Company Summary */}
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {selectedBusiness.name}
-                        </span>
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                            {selectedBusiness.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Company Information
+                          </p>
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -336,11 +343,56 @@ export default function Register() {
                           setSelectedBusiness(null);
                           setSearchQuery("");
                         }}
-                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
                         data-testid="button-change-business"
                       >
                         Change
                       </button>
+                    </div>
+
+                    {/* Company Details */}
+                    <div className="space-y-2.5">
+                      {selectedBusiness.address.street && (
+                        <div className="flex items-start gap-2.5">
+                          <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              {selectedBusiness.shortFormattedAddress || selectedBusiness.formattedAddress}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {selectedBusiness.phone && (
+                        <div className="flex items-center gap-2.5">
+                          <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {selectedBusiness.phone}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {selectedBusiness.website && (
+                        <div className="flex items-center gap-2.5">
+                          <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                          <a 
+                            href={selectedBusiness.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate"
+                          >
+                            {selectedBusiness.website.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+
+                      {selectedBusiness.id === 'manual' && (
+                        <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                            Manual entry - Please fill in the details below
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
