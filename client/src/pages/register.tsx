@@ -13,10 +13,17 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, CheckCircle } from "lucide-react";
-import { AddressAutocomplete } from "@/components/address-autocomplete";
-import { BusinessAutocomplete } from "@/components/business-autocomplete";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  UserPlus,
+  Search,
+  Building2,
+  MapPin,
+  Phone,
+  Globe,
+  Check,
+  Edit2
+} from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
 
 // Schema matching exactly what dashboard uses
@@ -44,10 +51,8 @@ type CreateCompanyForm = z.infer<typeof createCompanyWithAdminSchema>;
 
 // Helper function to format phone number
 const formatPhoneInput = (input: string): string => {
-  // Remove all non-numeric characters
   const cleaned = input.replace(/\D/g, '');
   
-  // Apply formatting based on length
   if (cleaned.length <= 3) {
     return cleaned;
   } else if (cleaned.length <= 6) {
@@ -55,7 +60,6 @@ const formatPhoneInput = (input: string): string => {
   } else if (cleaned.length <= 10) {
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   } else {
-    // Include country code
     return `+${cleaned.slice(0, 1)} (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7, 11)}`;
   }
 };
@@ -69,11 +73,34 @@ const generateSlug = (name: string): string => {
     .substring(0, 50);
 };
 
+interface BusinessResult {
+  id: string;
+  name: string;
+  formattedAddress: string;
+  shortFormattedAddress: string;
+  phone: string;
+  website: string;
+  type: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+}
+
 export default function Register() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [businessSearch, setBusinessSearch] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<BusinessResult[]>([]);
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessResult | null>(null);
+  const [notListed, setNotListed] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const form = useForm<CreateCompanyForm>({
     resolver: zodResolver(createCompanyWithAdminSchema),
@@ -98,6 +125,55 @@ export default function Register() {
     },
   });
 
+  const searchBusinesses = async () => {
+    if (!businessSearch.trim() || businessSearch.length < 2) return;
+    
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `/api/google-places/search-business?q=${encodeURIComponent(businessSearch)}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data.results || []);
+      } else {
+        console.error("Failed to fetch business suggestions");
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch business suggestions:", error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectBusiness = (business: BusinessResult) => {
+    setSelectedBusiness(business);
+    setSearchResults([]);
+    
+    // Populate form with business data
+    form.setValue("company.name", business.name);
+    form.setValue("company.phone", business.phone);
+    form.setValue("company.website", business.website);
+    form.setValue("company.address", business.address.street);
+    form.setValue("company.city", business.address.city);
+    form.setValue("company.state", business.address.state);
+    form.setValue("company.postalCode", business.address.postalCode);
+    form.setValue("company.country", business.address.country);
+    
+    // Generate slug
+    const generatedSlug = generateSlug(business.name);
+    form.setValue("company.slug", generatedSlug);
+  };
+
+  const clearBusinessSelection = () => {
+    setSelectedBusiness(null);
+    setBusinessSearch("");
+    setShowManualEntry(false);
+  };
+
   const onSubmit = async (data: CreateCompanyForm) => {
     setIsLoading(true);
     
@@ -119,7 +195,6 @@ export default function Register() {
         description: "Your account has been created. Please check your email for activation instructions.",
       });
       
-      // Redirect to login after 2 seconds
       setTimeout(() => {
         setLocation("/login");
       }, 2000);
@@ -163,7 +238,7 @@ export default function Register() {
         />
       </div>
 
-      {/* Registration Card - same width and padding as login */}
+      {/* Registration Card - same style as login */}
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
           {/* Icon - same style as login */}
@@ -191,208 +266,281 @@ export default function Register() {
               {currentStep === 1 ? (
                 <>
                   {/* Step 1: Company Info */}
-                  <BusinessAutocomplete
-                    value={form.watch("company.name")}
-                    label=""
-                    placeholder="Search for your business..."
-                    onChange={(value) => {
-                      form.setValue("company.name", value);
-                      const generatedSlug = generateSlug(value);
-                      form.setValue("company.slug", generatedSlug);
-                    }}
-                    onBusinessSelect={(business) => {
-                      form.setValue("company.name", business.name);
-                      form.setValue("company.phone", business.phone);
-                      form.setValue("company.website", business.website);
-                      form.setValue("company.address", business.address);
-                      form.setValue("company.city", business.city);
-                      form.setValue("company.state", business.state);
-                      form.setValue("company.postalCode", business.postalCode);
-                      form.setValue("company.country", business.country);
-                      const generatedSlug = generateSlug(business.name);
-                      form.setValue("company.slug", generatedSlug);
-                    }}
-                    testId="input-business-search"
-                  />
+                  
+                  {/* Smart Search Section */}
+                  {!selectedBusiness && !showManualEntry && (
+                    <>
+                      <div className="relative">
+                        <Input
+                          type="text"
+                          placeholder="Search for your business..."
+                          value={businessSearch}
+                          onChange={(e) => setBusinessSearch(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              searchBusinesses();
+                            }
+                          }}
+                          className="h-12 pl-12 pr-4 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                          data-testid="input-business-search"
+                        />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Button
+                          type="button"
+                          onClick={searchBusinesses}
+                          disabled={isSearching || businessSearch.length < 2}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 text-xs"
+                          data-testid="button-search"
+                        >
+                          {isSearching ? "Searching..." : "Search"}
+                        </Button>
+                      </div>
 
-                  <FormField
-                    control={form.control}
-                    name="company.name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="Company name"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              const generatedSlug = generateSlug(e.target.value);
-                              form.setValue('company.slug', generatedSlug);
-                            }}
-                            data-testid="input-company-name"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="company.phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="Company phone"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                            {...field}
-                            onChange={(e) => {
-                              const formatted = formatPhoneInput(e.target.value);
-                              field.onChange(formatted);
-                            }}
-                            data-testid="input-company-phone"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="company.website"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="Website (optional)"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                            {...field}
-                            value={field.value ?? ""}
-                            data-testid="input-company-website"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <AddressAutocomplete
-                    value={form.watch("company.address")}
-                    onChange={(value) => form.setValue("company.address", value)}
-                    onAddressSelect={(address) => {
-                      form.setValue("company.address", address.street);
-                      form.setValue("company.city", address.city);
-                      form.setValue("company.state", address.state);
-                      form.setValue("company.postalCode", address.postalCode);
-                      form.setValue("company.country", address.country);
-                    }}
-                    label=""
-                    placeholder="Street address"
-                    testId="input-company-address"
-                    error={form.formState.errors.company?.address?.message}
-                  />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField
-                      control={form.control}
-                      name="company.city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input
-                              placeholder="City"
-                              className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                              {...field}
-                              value={field.value ?? ""}
-                              data-testid="input-company-city"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                      {/* Search Results */}
+                      {searchResults.length > 0 && (
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-700">
+                          {searchResults.map((business) => (
+                            <button
+                              key={business.id}
+                              type="button"
+                              onClick={() => selectBusiness(business)}
+                              className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                              data-testid={`business-result-${business.id}`}
+                            >
+                              <div className="font-medium text-gray-900 dark:text-gray-100">
+                                {business.name}
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                {business.shortFormattedAddress || business.formattedAddress}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
                       )}
-                    />
 
-                    <FormField
-                      control={form.control}
-                      name="company.state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input
-                              placeholder="State"
-                              className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                              {...field}
-                              value={field.value ?? ""}
-                              data-testid="input-company-state"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                      {/* Not Listed Checkbox */}
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="not-listed" 
+                          checked={notListed}
+                          onCheckedChange={(checked) => {
+                            setNotListed(checked as boolean);
+                            if (checked) {
+                              setShowManualEntry(true);
+                              setSearchResults([]);
+                            } else {
+                              setShowManualEntry(false);
+                            }
+                          }}
+                          data-testid="checkbox-not-listed"
+                        />
+                        <label 
+                          htmlFor="not-listed" 
+                          className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer"
+                        >
+                          My business is not listed
+                        </label>
+                      </div>
+                    </>
+                  )}
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField
-                      control={form.control}
-                      name="company.postalCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input
-                              placeholder="ZIP Code"
-                              className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                              {...field}
-                              value={field.value ?? ""}
-                              data-testid="input-company-zip"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Selected Business Summary */}
+                  {selectedBusiness && (
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 relative">
+                      <button
+                        type="button"
+                        onClick={clearBusinessSelection}
+                        className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        data-testid="button-edit-business"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                          <Building2 className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                            {selectedBusiness.name}
+                          </h3>
+                          <div className="mt-2 space-y-1">
+                            {selectedBusiness.address.street && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <MapPin className="h-3.5 w-3.5" />
+                                <span>{selectedBusiness.shortFormattedAddress || selectedBusiness.formattedAddress}</span>
+                              </div>
+                            )}
+                            {selectedBusiness.phone && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <Phone className="h-3.5 w-3.5" />
+                                <span>{selectedBusiness.phone}</span>
+                              </div>
+                            )}
+                            {selectedBusiness.website && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <Globe className="h-3.5 w-3.5" />
+                                <span>Website available</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 mt-3 text-xs text-green-600 dark:text-green-400">
+                            <Check className="h-3.5 w-3.5" />
+                            <span>Business information auto-filled</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                    <FormField
-                      control={form.control}
-                      name="company.country"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <SelectTrigger 
+                  {/* Manual Entry Fields */}
+                  {(showManualEntry && !selectedBusiness) && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="company.name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="Company name"
                                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                data-testid="select-company-country"
-                              >
-                                <SelectValue placeholder="Country" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="United States">United States</SelectItem>
-                                <SelectItem value="Canada">Canada</SelectItem>
-                                <SelectItem value="Mexico">Mexico</SelectItem>
-                                <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                                {...field}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  const generatedSlug = generateSlug(e.target.value);
+                                  form.setValue('company.slug', generatedSlug);
+                                }}
+                                data-testid="input-company-name"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
+                      <FormField
+                        control={form.control}
+                        name="company.phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="Phone number"
+                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                {...field}
+                                onChange={(e) => {
+                                  const formatted = formatPhoneInput(e.target.value);
+                                  field.onChange(formatted);
+                                }}
+                                data-testid="input-company-phone"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="company.website"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="Website (optional)"
+                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                {...field}
+                                value={field.value ?? ""}
+                                data-testid="input-company-website"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="company.address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="Street address"
+                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                {...field}
+                                data-testid="input-company-address"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="company.city"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  placeholder="City"
+                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  data-testid="input-company-city"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="company.state"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  placeholder="State / ZIP"
+                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Check if it looks like a ZIP code
+                                    if (/^\d/.test(value)) {
+                                      form.setValue('company.postalCode', value);
+                                    } else {
+                                      field.onChange(value);
+                                    }
+                                  }}
+                                  data-testid="input-company-state"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Next Button */}
                   <Button
                     type="button"
                     onClick={handleNext}
                     className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
                     data-testid="button-next"
                   >
-                    Next
+                    Continue
                   </Button>
 
-                  {/* Register Link - same style as login */}
+                  {/* Sign In Link - same style as login */}
                   <div className="text-center text-sm text-gray-600 dark:text-gray-400">
                     Already have an account?{" "}
                     <button
@@ -488,29 +636,10 @@ export default function Register() {
                     )}
                   />
 
-                  {/* What happens next */}
-                  <div className="rounded-lg bg-gray-50 dark:bg-gray-700/50 p-4 space-y-2">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">What happens next?</p>
-                    <div className="space-y-1">
-                      <div className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          We'll send you an activation email
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          Select your plan and start your free trial
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          No credit card required for 7 days
-                        </p>
-                      </div>
-                    </div>
+                  {/* Simple info */}
+                  <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1 py-2">
+                    <p>• We'll send you an activation email</p>
+                    <p>• 7-day free trial, no credit card required</p>
                   </div>
 
                   <div className="flex gap-3">
@@ -529,7 +658,7 @@ export default function Register() {
                       className="flex-1 h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
                       data-testid="button-register"
                     >
-                      {isLoading ? "Creating account..." : "Create Account"}
+                      {isLoading ? "Creating..." : "Create Account"}
                     </Button>
                   </div>
                 </>
