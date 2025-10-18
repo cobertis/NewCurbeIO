@@ -17,7 +17,19 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 **Key Features:**
 -   **User & Company Management:** Comprehensive CRUD operations for users and companies, including role-based access, 2FA, profile management, and email-based activation flows. Superadmins manage companies and assign subscription plans. Business autocomplete with Google Places API for simplified registration - includes "My business is not listed" checkbox for manual entry. Company slugs are auto-generated internally (not shown to users).
 -   **Timezone System:** User-selected timezones for date displays, with intelligent fallbacks.
--   **Authentication & Security:** Bcrypt hashing, secure email activation, OTP-based 2FA, session-based authentication, login/failed attempt notifications for security monitoring, and inactive account detection with clear error messaging.
+-   **Authentication & Security:** Bcrypt hashing, secure email activation, OTP-based 2FA, session-based authentication, login/failed attempt notifications for security monitoring, and enhanced account status management system:
+    -   **User Status System:** Three distinct account states for clear lifecycle management:
+        - `pending_activation`: New users awaiting email verification (password=null, isActive=false)
+        - `active`: Fully activated users with access (password set, isActive=true)
+        - `deactivated`: Disabled accounts (password preserved, isActive=false)
+    -   **Status Synchronization:** Automatic sync between `status` and `isActive` fields:
+        - Admin deactivation (`isActive=false`) automatically sets `status='deactivated'`
+        - Admin reactivation (`isActive=true`) automatically sets `status='active'` (if password exists)
+        - Legacy fallback: Login validates `isActive` and auto-corrects status if out of sync
+    -   **Clear Error Messages:** Login flow provides specific, actionable feedback:
+        - Pending activation → "Please activate your account first. Check your email for the activation link."
+        - Deactivated account → "Your account has been deactivated. Please contact support for assistance."
+        - Invalid credentials → Standard authentication error
 -   **Multi-tenancy:** Strict data isolation using `companyId` for all non-superadmin access, with superadmins having cross-company oversight.
 -   **Email System:** Global SMTP configuration, database-driven templates, and automated sending for system events.
 -   **Modular Feature System:** Superadmins can define and assign features to different companies.
