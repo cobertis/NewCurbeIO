@@ -242,6 +242,14 @@ export default function Billing() {
 
   const billingAddress = billingAddressData?.billingAddress;
 
+  // Fetch active discount
+  const { data: discountData } = useQuery({
+    queryKey: ['/api/billing/active-discount'],
+    enabled: !!subscriptionData?.subscription,
+  });
+
+  const activeDiscount = discountData?.discount;
+
   // Billing address form state
   const [billingForm, setBillingForm] = useState({
     fullName: '',
@@ -617,8 +625,40 @@ export default function Billing() {
                       Save {formatCurrency(calculateAnnualSavings(subscription.plan.price), subscription.plan.currency)}/year with annual
                     </p>
                   )}
+                  {activeDiscount && activeDiscount.percentOff && (
+                    <Badge className="mt-2 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                      <Gift className="h-3 w-3 mr-1" />
+                      {activeDiscount.percentOff}% discount applied
+                    </Badge>
+                  )}
                 </div>
               </div>
+
+              {/* Active Discount Alert */}
+              {activeDiscount && activeDiscount.percentOff && (
+                <Alert className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20">
+                  <Gift className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <AlertTitle className="text-green-900 dark:text-green-100">
+                    {activeDiscount.percentOff}% Discount Active
+                  </AlertTitle>
+                  <AlertDescription className="text-green-700 dark:text-green-300">
+                    {activeDiscount.durationInMonths ? (
+                      <>
+                        You have a {activeDiscount.percentOff}% discount applied for {activeDiscount.durationInMonths} month{activeDiscount.durationInMonths > 1 ? 's' : ''}.
+                        {activeDiscount.end && (
+                          <> This discount will expire on {formatDate(new Date(activeDiscount.end))}.</>
+                        )}
+                      </>
+                    ) : (
+                      activeDiscount.duration === 'forever' ? 
+                        `You have a permanent ${activeDiscount.percentOff}% discount on your subscription.` : 
+                        activeDiscount.duration === 'once' ? 
+                        `You have a one-time ${activeDiscount.percentOff}% discount applied to your current billing period.` :
+                        `You have a ${activeDiscount.percentOff}% discount active on your subscription.`
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <Separator />
 
