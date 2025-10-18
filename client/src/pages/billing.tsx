@@ -128,7 +128,7 @@ interface PaymentMethod {
   last4: string;
   expMonth: number;
   expYear: number;
-  isDefault?: boolean;
+  isDefault: boolean;
 }
 
 // Helper component to render card brand logo
@@ -453,9 +453,11 @@ export default function Billing() {
         </Alert>
       )}
 
-      {/* Current Plan Card - Full Width */}
-      {subscription && (
-        <Card className="border-2">
+      {/* Current Plan with Sidebar */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Current Plan Card - 2 columns */}
+        {subscription && (
+          <Card className="border-2 lg:col-span-2">
             <CardHeader className="pb-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -598,10 +600,10 @@ export default function Billing() {
           </Card>
         )}
 
-      {/* Payment Method & Discount Section */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Payment Method Card */}
-        <Card>
+        {/* Payment Method & Discount Sidebar - 1 column stacked */}
+        <div className="space-y-6">
+          {/* Payment Method Card */}
+          <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>Payment Method</CardTitle>
             <Button 
@@ -653,10 +655,10 @@ export default function Billing() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
 
-        {/* Apply Discount Card */}
-        <Card>
+          {/* Apply Discount Card */}
+          <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Gift className="h-5 w-5" />
@@ -694,7 +696,8 @@ export default function Billing() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </div>
       </div>
 
       {/* Billing History Tabs */}
