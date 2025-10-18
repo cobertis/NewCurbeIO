@@ -368,10 +368,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email already registered" });
       }
 
-      // Generate temporary password - will be replaced when user activates account
-      const tempPassword = randomBytes(32).toString('hex');
-      const hashedPassword = await bcrypt.hash(tempPassword, 10);
-      
       // Create company first (using admin email as company email)
       const newCompany = await storage.createCompany({
         name: companyData.name,
@@ -403,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue with registration even if Stripe fails - can be fixed later
       }
 
-      // Create admin user for the company - account starts as NOT activated
+      // Create admin user for the company - account starts as NOT activated (no password yet)
       const newUser = await storage.createUser({
         email: adminData.email,
         firstName: adminData.firstName || '',
@@ -412,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: 'admin',
         companyId: newCompany.id,
         isActive: false, // Account starts inactive until email verification
-        password: hashedPassword, // Store the hashed temporary password
+        password: null, // No password until user activates account via email link
       });
 
       // Send activation email using existing function
