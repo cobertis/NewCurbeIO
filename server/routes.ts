@@ -198,6 +198,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email,
           metadata: { reason: "Account pending activation" },
         });
+        
+        // Notify user and superadmins about unactivated login attempt
+        const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip || null;
+        const userAgent = req.headers['user-agent'] || null;
+        await notificationService.notifyUnactivatedLoginAttempt(email, ipAddress, userAgent, user.id);
+        
         return res.status(401).json({ message: "Please activate your account first. Check your email for the activation link." });
       }
 

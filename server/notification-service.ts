@@ -223,6 +223,58 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for when a user tries to login without activating their account
+   * Notifies the user and superadmins
+   */
+  async notifyUnactivatedLoginAttempt(email: string, ipAddress: string | null, userAgent: string | null, userId: string) {
+    const ip = ipAddress || 'Unknown IP';
+    
+    let deviceInfo = 'Unknown device';
+    if (userAgent) {
+      if (userAgent.includes('Edg')) deviceInfo = 'Edge';
+      else if (userAgent.includes('Chrome')) deviceInfo = 'Chrome';
+      else if (userAgent.includes('Firefox')) deviceInfo = 'Firefox';
+      else if (userAgent.includes('Safari')) deviceInfo = 'Safari';
+      
+      if (userAgent.includes('Windows')) deviceInfo += ' on Windows';
+      else if (userAgent.includes('Mac')) deviceInfo += ' on Mac';
+      else if (userAgent.includes('Linux')) deviceInfo += ' on Linux';
+      else if (userAgent.includes('Android')) deviceInfo += ' on Android';
+      else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) deviceInfo += ' on iOS';
+    }
+    
+    const notifications: InsertNotification[] = [];
+    
+    // Notify the user about the unactivated login attempt
+    notifications.push({
+      userId: userId,
+      type: "warning",
+      title: "Unactivated Login Attempt",
+      message: `Someone tried to login to your account from IP: ${ip} • ${deviceInfo}. Please activate your account to login. Check your email for the activation link.`,
+      link: "/activate-account",
+      isRead: false,
+    });
+    
+    // Get superadmins to notify
+    const superadminUserIds = await this.getSuperadminUserIds();
+    
+    superadminUserIds.forEach(adminId => {
+      notifications.push({
+        userId: adminId,
+        type: "warning",
+        title: "Unactivated Login Attempt",
+        message: `User ${email} tried to login without activating their account from IP: ${ip} • ${deviceInfo}`,
+        link: "/users",
+        isRead: false,
+      });
+    });
+
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
+  }
+
+  /**
    * Create a notification for failed login attempt
    * Notifies the user (if exists) AND all superadmins
    * Shows IP address, device information, and attempted email

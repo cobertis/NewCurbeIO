@@ -37,10 +37,10 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 -   **Campaign System:** Unified interface for managing Email Campaigns, SMS Campaigns, and Contact Lists. Includes detailed reports, contact management with bulk operations, rich HTML editor for emails, targeted sending, and analytics.
 -   **Real-Time Notifications:** Comprehensive WebSocket-based notification system providing instant updates:
     -   **WebSocket Broadcasting:** All notification events broadcast immediately via WebSocket (`notification_update` messages)
-    -   **Automatic Notifications:** System generates notifications for 13+ events including:
+    -   **Automatic Notifications:** System generates notifications for 14+ events including:
         - User creation and activation
         - Company creation and deactivation
-        - Login attempts (successful and failed)
+        - Login attempts (successful, failed, and unactivated account attempts)
         - Payment processing (success and failure)
         - Trial subscription start
         - Campaign sends (success and failure)
