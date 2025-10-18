@@ -103,6 +103,38 @@ export default function PlansPage() {
     },
   });
 
+  const syncFromStripeMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/plans/sync-from-stripe", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to sync plans from Stripe");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plans"] });
+      const created = data.created?.length || 0;
+      const updated = data.updated?.length || 0;
+      const failed = data.failed?.length || 0;
+      
+      toast({ 
+        title: "Plans synced from Stripe", 
+        description: `Created: ${created}, Updated: ${updated}${failed > 0 ? `, Failed: ${failed}` : ''}`
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to sync plans", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
   const syncStripeMutation = useMutation({
     mutationFn: async (planId: string) => {
       const response = await fetch(`/api/plans/${planId}/sync-stripe`, {
@@ -198,9 +230,13 @@ export default function PlansPage() {
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
             <CardTitle>Subscription Plans</CardTitle>
-            <Button onClick={handleCreate} data-testid="button-create-plan">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Plan
+            <Button 
+              onClick={() => syncFromStripeMutation.mutate()} 
+              disabled={syncFromStripeMutation.isPending}
+              data-testid="button-sync-stripe"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncFromStripeMutation.isPending ? 'animate-spin' : ''}`} />
+              {syncFromStripeMutation.isPending ? 'Syncing...' : 'Sync from Stripe'}
             </Button>
           </div>
         </CardHeader>
@@ -218,11 +254,10 @@ export default function PlansPage() {
       ) : plans.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No plans created yet</p>
-            <Button onClick={handleCreate} variant="outline" data-testid="button-create-first-plan">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Plan
-            </Button>
+            <p className="text-muted-foreground mb-4">No plans found</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Click "Sync from Stripe" above to import your plans from Stripe
+            </p>
           </CardContent>
         </Card>
       ) : (
