@@ -803,6 +803,13 @@ export async function changePlan(
     
     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
     
+    // If subscription is canceled, we cannot change the plan
+    if (subscription.status === 'canceled') {
+      console.log('[STRIPE] Subscription is canceled, cannot change plan');
+      throw new Error('Cannot change plan for a canceled subscription. Please create a new subscription instead.');
+    }
+    
+    // Update the existing subscription
     const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
       items: [{
         id: subscription.items.data[0].id,

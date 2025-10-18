@@ -3156,6 +3156,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      // Helper function to safely convert Stripe timestamps to Date objects
+      const toDate = (unixTimestamp?: number | null): Date | null => {
+        if (typeof unixTimestamp === 'number' && unixTimestamp > 0) {
+          return new Date(unixTimestamp * 1000);
+        }
+        return null;
+      };
+
       const subscription = await storage.getSubscriptionByCompany(companyId);
       if (!subscription || !subscription.stripeSubscriptionId) {
         return res.status(404).json({ message: "No active subscription found" });
@@ -3183,11 +3191,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Update local subscription to sync with Stripe
+      // Use toDate helper to safely handle all timestamp fields including trial_end which may be undefined
+      // IMPORTANT: Always update all fields to maintain perfect sync with Stripe
+      // currentPeriod fields are required (not null in schema), so provide defaults if Stripe doesn't send them
       await storage.updateSubscription(subscription.id, {
         planId: plan.id,
-        currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
         status: stripeSubscription.status,
+        trialStart: toDate(stripeSubscription.trial_start),
+        trialEnd: toDate(stripeSubscription.trial_end),
+        currentPeriodStart: toDate(stripeSubscription.current_period_start) || new Date(),
+        currentPeriodEnd: toDate(stripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
 
       res.json({ message: "Plan changed successfully", subscription: stripeSubscription });
