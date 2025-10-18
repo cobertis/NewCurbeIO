@@ -3412,6 +3412,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apply temporary discount (superadmin only)
+  app.post("/api/billing/apply-temporary-discount", requireUser, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmin can apply temporary discounts
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Only superadmin can apply temporary discounts" });
+    }
+
+    const { companyId, percentOff, months } = req.body;
+
+    if (!companyId || !percentOff || !months) {
+      return res.status(400).json({ 
+        message: "Company ID, discount percentage, and duration in months are required" 
+      });
+    }
+
+    if (percentOff < 1 || percentOff > 100) {
+      return res.status(400).json({ message: "Discount percentage must be between 1 and 100" });
+    }
+
+    if (months < 1 || months > 36) {
+      return res.status(400).json({ message: "Duration must be between 1 and 36 months" });
+    }
+
+    try {
+      // Get company and subscription
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No active subscription found for this company" });
+      }
+
+      // Create coupon in Stripe
+      const { createTemporaryDiscountCoupon, applyTemporaryDiscount } = await import("./stripe");
+      const coupon = await createTemporaryDiscountCoupon(percentOff, months, company.name);
+
+      // Apply the coupon to the subscription
+      const stripeSubscription = await applyTemporaryDiscount(subscription.stripeSubscriptionId, coupon.id);
+
+      // Calculate discount end date
+      const discountEndDate = new Date();
+      discountEndDate.setMonth(discountEndDate.getMonth() + months);
+
+      // Save discount in our database
+      await storage.createSubscriptionDiscount({
+        subscriptionId: subscription.id,
+        companyId: companyId,
+        stripeCouponId: coupon.id,
+        discountPercentage: percentOff,
+        discountMonths: months,
+        discountEndDate: discountEndDate,
+        appliedBy: currentUser.id,
+        status: 'active'
+      });
+
+      // Create notification for all company admins
+      const companyUsers = await storage.getUsersByCompany(companyId);
+      const adminsAndSuperadmins = companyUsers.filter(u => 
+        u.role === 'admin' || u.role === 'superadmin'
+      );
+
+      for (const user of adminsAndSuperadmins) {
+        await storage.createNotification({
+          userId: user.id,
+          type: 'success',
+          title: 'Discount Applied',
+          message: `A ${percentOff}% discount has been applied to your subscription for ${months} month${months > 1 ? 's' : ''}. ${months > 1 ? `This discount will remain active for the next ${months} months.` : 'This discount will be active for the current billing period.'}`,
+        });
+      }
+
+      // Broadcast notification update via WebSocket
+      io.emit('notification_update', { type: 'discount_applied' });
+
+      res.json({ 
+        message: `${percentOff}% discount applied for ${months} month${months > 1 ? 's' : ''}`,
+        discount: {
+          percentOff,
+          months,
+          endDate: discountEndDate,
+          couponId: coupon.id
+        }
+      });
+    } catch (error: any) {
+      console.error('Error applying temporary discount:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get active discount for a company
+  app.get("/api/billing/active-discount", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company discount information" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription) {
+        return res.json({ discount: null });
+      }
+
+      // Check for active discount in our database
+      const activeDiscount = await storage.getActiveDiscountForCompany(companyId);
+
+      // Also get discount from Stripe to verify
+      if (subscription.stripeSubscriptionId) {
+        const { getSubscriptionDiscount } = await import("./stripe");
+        const stripeDiscount = await getSubscriptionDiscount(subscription.stripeSubscriptionId);
+
+        if (stripeDiscount && stripeDiscount.coupon) {
+          const coupon = stripeDiscount.coupon as any;
+          res.json({
+            discount: {
+              percentOff: coupon.percent_off,
+              amountOff: coupon.amount_off,
+              duration: coupon.duration,
+              durationInMonths: coupon.duration_in_months,
+              end: stripeDiscount.end ? new Date(stripeDiscount.end * 1000) : null,
+              localDiscount: activeDiscount
+            }
+          });
+        } else {
+          res.json({ discount: null });
+        }
+      } else {
+        res.json({ discount: null });
+      }
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Remove discount
+  app.post("/api/billing/remove-discount", requireUser, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmin can remove discounts
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Only superadmin can remove discounts" });
+    }
+
+    const { companyId } = req.body;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No active subscription found" });
+      }
+
+      // Remove discount from Stripe
+      const { removeDiscount } = await import("./stripe");
+      await removeDiscount(subscription.stripeSubscriptionId);
+
+      // Update local discount status
+      const activeDiscount = await storage.getActiveDiscountForCompany(companyId);
+      if (activeDiscount) {
+        await storage.updateDiscountStatus(activeDiscount.id, 'expired');
+      }
+
+      res.json({ message: "Discount removed successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get payment methods
   app.get("/api/billing/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
