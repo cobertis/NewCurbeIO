@@ -466,9 +466,9 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                           className="flex items-center justify-between p-3 border rounded-lg text-sm"
                           data-testid={`card-discount-${discount.id}`}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold">{discount.percentOff}% off</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-semibold">{discount.discountPercentage}% off</span>
                               <Badge variant={discount.status === 'active' ? 'default' : 'secondary'} className="text-xs">
                                 {discount.status}
                               </Badge>
@@ -481,8 +481,8 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                               }
                             </div>
                           </div>
-                          <div className="text-right text-xs text-muted-foreground">
-                            {discount.durationMonths} {discount.durationMonths === 1 ? 'month' : 'months'}
+                          <div className="text-right text-xs text-muted-foreground whitespace-nowrap ml-2">
+                            {discount.discountMonths} {discount.discountMonths === 1 ? 'month' : 'months'}
                           </div>
                         </div>
                       ))}
@@ -510,9 +510,9 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                           className="flex items-center justify-between p-3 border rounded-lg text-sm"
                           data-testid={`card-discount-${discount.id}`}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold">{discount.percentOff}% off</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-semibold">{discount.discountPercentage}% off</span>
                               <Badge variant={discount.status === 'active' ? 'default' : 'secondary'} className="text-xs">
                                 {discount.status}
                               </Badge>
@@ -525,8 +525,8 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                               }
                             </div>
                           </div>
-                          <div className="text-right text-xs text-muted-foreground">
-                            {discount.durationMonths} {discount.durationMonths === 1 ? 'month' : 'months'}
+                          <div className="text-right text-xs text-muted-foreground whitespace-nowrap ml-2">
+                            {discount.discountMonths} {discount.discountMonths === 1 ? 'month' : 'months'}
                           </div>
                         </div>
                       ))}

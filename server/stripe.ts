@@ -1251,10 +1251,33 @@ export async function getSubscriptionDiscount(
         console.log('[STRIPE] Found discount:', discount);
         // Expand the coupon information
         const expandedDiscount = discount as any;
+        
+        console.log('[STRIPE] Discount.coupon type:', typeof expandedDiscount.coupon);
+        console.log('[STRIPE] Discount.source:', expandedDiscount.source);
+        
+        // Handle different coupon locations in Stripe API
+        let couponId: string | null = null;
         if (typeof expandedDiscount.coupon === 'string') {
-          const coupon = await stripe.coupons.retrieve(expandedDiscount.coupon);
-          expandedDiscount.coupon = coupon;
+          console.log('[STRIPE] Coupon is a string ID');
+          couponId = expandedDiscount.coupon;
+        } else if (expandedDiscount.source && typeof expandedDiscount.source.coupon === 'string') {
+          console.log('[STRIPE] Coupon is in source.coupon');
+          couponId = expandedDiscount.source.coupon;
+        } else if (expandedDiscount.coupon && typeof expandedDiscount.coupon === 'object') {
+          console.log('[STRIPE] Coupon is already an object, returning as-is');
+          return expandedDiscount as Stripe.Discount;
         }
+        
+        // Fetch and attach the full coupon object
+        if (couponId) {
+          console.log('[STRIPE] Fetching coupon details for:', couponId);
+          const coupon = await stripe.coupons.retrieve(couponId);
+          expandedDiscount.coupon = coupon;
+          return expandedDiscount as Stripe.Discount;
+        }
+        
+        // If no coupon found but we have a discount, return it anyway
+        console.log('[STRIPE] No coupon found, returning discount as-is');
         return expandedDiscount as Stripe.Discount;
       }
     }
