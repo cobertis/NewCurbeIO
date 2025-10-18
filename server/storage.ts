@@ -356,6 +356,7 @@ export interface IStorage {
   createSubscriptionDiscount(discount: InsertSubscriptionDiscount): Promise<SubscriptionDiscount>;
   getActiveDiscountForSubscription(subscriptionId: string): Promise<SubscriptionDiscount | undefined>;
   getActiveDiscountForCompany(companyId: string): Promise<SubscriptionDiscount | undefined>;
+  getDiscountHistoryForCompany(companyId: string): Promise<SubscriptionDiscount[]>;
   updateDiscountStatus(id: string, status: string): Promise<void>;
   expireOldDiscounts(): Promise<void>;
 }
@@ -2041,6 +2042,15 @@ export class DbStorage implements IStorage {
       .orderBy(desc(subscriptionDiscounts.appliedAt))
       .limit(1);
     return discount;
+  }
+
+  async getDiscountHistoryForCompany(companyId: string): Promise<SubscriptionDiscount[]> {
+    const discounts = await db
+      .select()
+      .from(subscriptionDiscounts)
+      .where(eq(subscriptionDiscounts.companyId, companyId))
+      .orderBy(desc(subscriptionDiscounts.appliedAt));
+    return discounts;
   }
 
   async updateDiscountStatus(id: string, status: string): Promise<void> {

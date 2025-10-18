@@ -96,12 +96,26 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
     enabled: !!companyId,
   });
 
+  // Fetch discount history
+  const { data: discountHistoryData, isLoading: isLoadingDiscountHistory } = useQuery<{ discounts: any[] }>({
+    queryKey: ["/api/billing/discount-history", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/billing/discount-history?companyId=${companyId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch discount history");
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
   const subscription = subscriptionData?.subscription;
   const invoices = invoicesData?.invoices || [];
   const payments = paymentsData?.payments || [];
   const paymentMethods = paymentMethodsData?.paymentMethods || [];
   const billingAddress = billingAddressData?.billingAddress;
   const activeDiscount = discountData?.discount;
+  const discountHistory = discountHistoryData?.discounts || [];
 
   // State for discount dialog
   const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
@@ -136,6 +150,7 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["/api/billing/active-discount", companyId] });
       queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/discount-history", companyId] });
     },
     onError: (error: Error) => {
       toast({
@@ -168,6 +183,7 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["/api/billing/active-discount", companyId] });
       queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/discount-history", companyId] });
     },
     onError: (error: Error) => {
       toast({
@@ -426,31 +442,210 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
           </CardContent>
         </Card>
 
-        {/* Billing Address */}
+        {/* Discount Management */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Billing Address
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Percent className="h-5 w-5" />
+                <div>
+                  <CardTitle>Discount Management</CardTitle>
+                  <CardDescription>Apply and manage subscription discounts</CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Dialog open={isDiscountDialogOpen} onOpenChange={setIsDiscountDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-apply-discount-trigger">
+                      <Tag className="h-4 w-4 mr-2" />
+                      Apply Discount
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Apply Temporary Discount</DialogTitle>
+                      <DialogDescription>
+                        Configure a temporary percentage discount for this company's subscription
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div>
+                        <Label htmlFor="discount-percentage">Discount Percentage</Label>
+                        <Input
+                          id="discount-percentage"
+                          type="number"
+                          min="1"
+                          max="100"
+                          placeholder="e.g., 20"
+                          value={discountPercentage}
+                          onChange={(e) => setDiscountPercentage(e.target.value)}
+                          data-testid="input-discount-percentage"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="discount-months">Duration (months)</Label>
+                        <Input
+                          id="discount-months"
+                          type="number"
+                          min="1"
+                          max="36"
+                          placeholder="e.g., 3"
+                          value={discountMonths}
+                          onChange={(e) => setDiscountMonths(e.target.value)}
+                          data-testid="input-discount-months"
+                        />
+                      </div>
+                      {discountPercentage && discountMonths && (
+                        <Alert>
+                          <AlertDescription>
+                            This will apply a {discountPercentage}% discount for {discountMonths} month{discountMonths === "1" ? "" : "s"} to the customer's subscription.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsDiscountDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleApplyDiscount}
+                        disabled={applyDiscountMutation.isPending || !discountPercentage || !discountMonths}
+                        data-testid="button-apply-discount"
+                      >
+                        {applyDiscountMutation.isPending ? 'Applying...' : 'Apply Discount'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                {activeDiscount && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => removeDiscountMutation.mutate()}
+                    disabled={removeDiscountMutation.isPending}
+                    data-testid="button-remove-discount"
+                  >
+                    {removeDiscountMutation.isPending ? 'Removing...' : 'Remove Discount'}
+                  </Button>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            {isLoadingBillingAddress ? (
+            {isLoadingDiscount ? (
               <Skeleton className="h-32 w-full" />
-            ) : billingAddress ? (
-              <div className="space-y-2 text-sm">
-                <p className="font-semibold" data-testid="text-billing-fullname">{billingAddress.fullName}</p>
-                <p data-testid="text-billing-address1">{billingAddress.addressLine1}</p>
-                {billingAddress.addressLine2 && (
-                  <p data-testid="text-billing-address2">{billingAddress.addressLine2}</p>
+            ) : activeDiscount ? (
+              <div className="space-y-4">
+                <div className="p-4 border rounded-lg bg-primary/5 border-primary/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-lg">Active Discount</h4>
+                    <Badge variant="default">Active</Badge>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Discount:</span>
+                      <span className="font-semibold">{activeDiscount.percentOff}% off</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Duration:</span>
+                      <span className="font-semibold">
+                        {activeDiscount.duration === 'repeating' 
+                          ? `${activeDiscount.durationInMonths} months` 
+                          : activeDiscount.duration}
+                      </span>
+                    </div>
+                    {activeDiscount.end && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Expires:</span>
+                        <span className="font-semibold">{format(new Date(activeDiscount.end), "MMM dd, yyyy")}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Discount History */}
+                {isLoadingDiscountHistory ? (
+                  <Skeleton className="h-40 w-full" />
+                ) : discountHistory.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-3">Discount History</h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {discountHistory.map((discount: any) => (
+                        <div
+                          key={discount.id}
+                          className="flex items-center justify-between p-3 border rounded-lg text-sm"
+                          data-testid={`card-discount-${discount.id}`}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold">{discount.percentOff}% off</span>
+                              <Badge variant={discount.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                                {discount.status}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {format(new Date(discount.appliedAt), "MMM dd, yyyy")} - {
+                                discount.discountEndDate 
+                                  ? format(new Date(discount.discountEndDate), "MMM dd, yyyy")
+                                  : 'No end date'
+                              }
+                            </div>
+                          </div>
+                          <div className="text-right text-xs text-muted-foreground">
+                            {discount.durationMonths} {discount.durationMonths === 1 ? 'month' : 'months'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                <p data-testid="text-billing-city-state-zip">
-                  {billingAddress.city}, {billingAddress.state} {billingAddress.postalCode}
-                </p>
               </div>
             ) : (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                No billing address on file
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">No active discount</p>
+                <p className="text-sm text-muted-foreground">
+                  Click "Apply Discount" to create a temporary discount for this company
+                </p>
+                
+                {/* Show discount history even if no active discount */}
+                {isLoadingDiscountHistory ? (
+                  <Skeleton className="h-40 w-full mt-6" />
+                ) : discountHistory.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-3 text-left">Discount History</h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {discountHistory.map((discount: any) => (
+                        <div
+                          key={discount.id}
+                          className="flex items-center justify-between p-3 border rounded-lg text-sm"
+                          data-testid={`card-discount-${discount.id}`}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold">{discount.percentOff}% off</span>
+                              <Badge variant={discount.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                                {discount.status}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {format(new Date(discount.appliedAt), "MMM dd, yyyy")} - {
+                                discount.discountEndDate 
+                                  ? format(new Date(discount.discountEndDate), "MMM dd, yyyy")
+                                  : 'No end date'
+                              }
+                            </div>
+                          </div>
+                          <div className="text-right text-xs text-muted-foreground">
+                            {discount.durationMonths} {discount.durationMonths === 1 ? 'month' : 'months'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

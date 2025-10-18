@@ -3700,6 +3700,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get discount history for a company
+  app.get("/api/billing/discount-history", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmin can view discount history for any company
+    const companyId = currentUser.role === "superadmin" 
+      ? req.query.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company discount history" });
+    }
+
+    try {
+      const discounts = await storage.getDiscountHistoryForCompany(companyId);
+      res.json({ discounts });
+    } catch (error: any) {
+      console.error('[BILLING] Error fetching discount history:', error);
+      res.status(500).json({ message: "Failed to fetch discount history" });
+    }
+  });
+
   // Remove discount
   app.post("/api/billing/remove-discount", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
