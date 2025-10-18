@@ -63,6 +63,12 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         - Deduplication logic to prevent duplicate notifications from Stripe events
     -   **Customer Portal:** Self-service Stripe portal for payment method management and invoice access.
     -   **Superadmin Multi-Tenancy:** All billing endpoints support superadmin management of any company's subscription via companyId parameters.
+    -   **Superadmin Billing Dashboard:** Comprehensive billing tab in company details page (`/companies/:id`) featuring:
+        - Tab-based interface with "Overview" and "Billing" tabs
+        - Complete billing information for any company including subscription details, payment methods, invoices, payments, and billing address
+        - Real-time status badges for subscriptions, invoices, and payments
+        - Billing period display (monthly/yearly)
+        - All billing data restricted to superadmin role via backend authorization
 
 ### System Design Choices
 The system is built on a clear separation of concerns, utilizing PostgreSQL with Drizzle ORM for data management and strict multi-tenancy. Security is enforced through robust password management, account activation, and 2FA. The modular feature system provides high flexibility and extensibility.
