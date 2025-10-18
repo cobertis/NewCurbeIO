@@ -898,7 +898,7 @@ export default function Billing() {
               {changePlanMutation.isPending ? "Changing..." : "Change Plan"}
             </Button>
           </DialogFooter>
-        </Dialog>
+        </DialogContent>
       </Dialog>
 
       {/* Add Payment Method Dialog */}
@@ -932,7 +932,7 @@ export default function Billing() {
               {portalMutation.isPending ? "Opening..." : "Add Card via Stripe"}
             </Button>
           </DialogFooter>
-        </Dialog>
+        </DialogContent>
       </Dialog>
     </div>
   );
