@@ -335,6 +335,9 @@ export default function Billing() {
   const payments: Payment[] = (paymentsData as any)?.payments || [];
   const paymentMethods: PaymentMethod[] = (paymentMethodsData as any)?.paymentMethods || [];
 
+  // Debug: Log payment methods data
+  console.log('Payment Methods Data:', paymentMethods);
+
   // Calculate trial days remaining
   const calculateTrialDaysRemaining = () => {
     if (!subscription || subscription.status !== 'trialing' || !subscription.trialEnd) {
@@ -435,26 +438,29 @@ export default function Billing() {
           <CardContent>
             {paymentMethods && paymentMethods.length > 0 ? (
               <div className="space-y-4">
-                {paymentMethods.map((method) => (
-                  <div key={method.id} className="flex items-center gap-4">
-                    <CardBrandLogo brand={method.brand} />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-lg font-semibold">
-                          {method.brand ? (method.brand.charAt(0).toUpperCase() + method.brand.slice(1)) : 'Card'} •••• {method.last4}
+                {paymentMethods.map((method) => {
+                  console.log('Rendering method:', method);
+                  return (
+                    <div key={method.id} className="flex items-center gap-4">
+                      <CardBrandLogo brand={method.brand || ''} />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-lg font-semibold">
+                            {method.brand ? (method.brand.charAt(0).toUpperCase() + method.brand.slice(1)) : 'Card'} •••• {method.last4 || '****'}
+                          </p>
+                          {method.isDefault && (
+                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
+                              Primary Card
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Expires {method.expMonth || '**'}/{method.expYear || '****'}
                         </p>
-                        {method.isDefault && (
-                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
-                            Primary Card
-                          </Badge>
-                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Expires {method.expMonth}/{method.expYear}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">

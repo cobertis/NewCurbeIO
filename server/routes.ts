@@ -3117,15 +3117,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
 
       // Transform Stripe payment methods to match frontend interface
-      const paymentMethods = stripePaymentMethods.map((pm: any) => ({
-        id: pm.id,
-        brand: pm.card?.brand || '',
-        last4: pm.card?.last4 || '',
-        expMonth: pm.card?.exp_month || 0,
-        expYear: pm.card?.exp_year || 0,
-        isDefault: pm.id === defaultPaymentMethodId
-      }));
+      const paymentMethods = stripePaymentMethods.map((pm: any) => {
+        console.log('[DEBUG] Stripe Payment Method:', JSON.stringify(pm, null, 2));
+        return {
+          id: pm.id,
+          brand: pm.card?.brand || '',
+          last4: pm.card?.last4 || '',
+          expMonth: pm.card?.exp_month || 0,
+          expYear: pm.card?.exp_year || 0,
+          isDefault: pm.id === defaultPaymentMethodId
+        };
+      });
 
+      console.log('[DEBUG] Transformed Payment Methods:', JSON.stringify(paymentMethods, null, 2));
       res.json({ paymentMethods });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
