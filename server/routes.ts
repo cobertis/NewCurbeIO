@@ -3107,8 +3107,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ paymentMethods: [] });
       }
 
-      const { getPaymentMethods } = await import("./stripe");
-      const paymentMethods = await getPaymentMethods(subscription.stripeCustomerId);
+      const { getPaymentMethods, stripe } = await import("./stripe");
+      const stripePaymentMethods = await getPaymentMethods(subscription.stripeCustomerId);
+      
+      // Get customer to find default payment method
+      const customer = await stripe.customers.retrieve(subscription.stripeCustomerId) as any;
+      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+
+      // Transform Stripe payment methods to match frontend interface
+      const paymentMethods = stripePaymentMethods.map((pm: any) => ({
+        id: pm.id,
+        brand: pm.card?.brand || '',
+        last4: pm.card?.last4 || '',
+        expMonth: pm.card?.exp_month || 0,
+        expYear: pm.card?.exp_year || 0,
+        isDefault: pm.id === defaultPaymentMethodId
+      }));
 
       res.json({ paymentMethods });
     } catch (error: any) {
