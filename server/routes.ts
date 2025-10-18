@@ -2424,6 +2424,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  // List all Stripe prices (superadmin only - for debugging/syncing)
+  app.get("/api/stripe/list-prices", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const { listAllStripePrices } = await import("./stripe");
+      const prices = await listAllStripePrices();
+      
+      // Also get current plans from database
+      const plans = await storage.getAllPlans();
+      
+      res.json({ 
+        stripePrices: prices,
+        currentPlans: plans.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          stripePriceId: p.stripePriceId,
+          stripeAnnualPriceId: (p as any).stripeAnnualPriceId,
+        }))
+      });
+    } catch (error: any) {
+      console.error("Error listing Stripe prices:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===================================================================
   // INVOICES & PAYMENTS
   // ===================================================================

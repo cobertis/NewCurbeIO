@@ -21,6 +21,48 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 // =====================================================
+// PRICE & PRODUCT MANAGEMENT
+// =====================================================
+
+/**
+ * List all prices from Stripe (for syncing with database)
+ */
+export async function listAllStripePrices() {
+  const prices = await stripe.prices.list({
+    limit: 100,
+    expand: ['data.product'],
+  });
+  
+  return prices.data.map((price) => {
+    const product = price.product as Stripe.Product;
+    return {
+      priceId: price.id,
+      productId: product.id,
+      productName: product.name,
+      amount: price.unit_amount,
+      currency: price.currency,
+      recurring: price.recurring ? {
+        interval: price.recurring.interval,
+        intervalCount: price.recurring.interval_count,
+      } : null,
+      active: price.active,
+    };
+  });
+}
+
+/**
+ * Validate that a price exists in Stripe
+ */
+export async function validateStripePrice(priceId: string): Promise<boolean> {
+  try {
+    await stripe.prices.retrieve(priceId);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+// =====================================================
 // SUBSCRIPTION MANAGEMENT
 // =====================================================
 
