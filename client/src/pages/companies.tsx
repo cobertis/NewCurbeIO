@@ -597,6 +597,24 @@ export default function Companies() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={createForm.control}
+                    name="company.website"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://example.com" 
+                            {...field}
+                            value={field.value ?? ""}
+                            data-testid="input-create-company-website" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
                 <FormField
                   control={createForm.control}
@@ -825,6 +843,24 @@ export default function Companies() {
                           field.onChange(formatted);
                         }}
                         data-testid="input-edit-company-phone" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Website</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="https://example.com" 
+                        {...field} 
+                        value={field.value ?? ""}
+                        data-testid="input-edit-company-website" 
                       />
                     </FormControl>
                     <FormMessage />
