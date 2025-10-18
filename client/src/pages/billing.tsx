@@ -39,7 +39,8 @@ import {
   Sparkles,
   ArrowRight,
   CreditCard as CardIcon,
-  Building2
+  Building2,
+  Pencil
 } from "lucide-react";
 import { formatDate } from "@/lib/date-formatter";
 import {
