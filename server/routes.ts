@@ -4368,9 +4368,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log('[WEBHOOK] No payment intent found, skipping payment record creation');
               }
               
-              // Only send notification for invoice.paid to avoid duplicates
-              // (Stripe sends both invoice.paid and invoice.payment_succeeded for the same payment)
-              if (event.type === 'invoice.paid') {
+              // Send notifications and email for both invoice.paid and invoice.payment_succeeded
+              // Use a flag to prevent duplicates if both webhooks arrive
+              const notificationKey = `payment_notification_${invoice.id}`;
+              
+              // Only send if we haven't sent for this invoice in the last 60 seconds
+              const lastNotification = (global as any)[notificationKey];
+              const now = Date.now();
+              
+              if (!lastNotification || (now - lastNotification) > 60000) {
                 console.log('[WEBHOOK] Sending payment success notification to company:', invoice.companyId);
                 const { notificationService } = await import("./notification-service");
                 await notificationService.notifyPaymentSucceeded(
@@ -4396,6 +4402,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 } else {
                   console.error('[EMAIL] Failed to send payment confirmation email');
                 }
+                
+                // Mark as sent
+                (global as any)[notificationKey] = now;
+              } else {
+                console.log('[WEBHOOK] Skipping duplicate notification for invoice:', invoice.id);
               }
             } else {
               console.error('[WEBHOOK] Invoice sync failed - invoice is null');
