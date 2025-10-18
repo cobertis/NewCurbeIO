@@ -250,7 +250,16 @@ export default function PlanSelection() {
         {/* Footer Note */}
         <div className="text-center text-sm text-muted-foreground space-y-1">
           <p>All plans include a 7-day money-back guarantee</p>
-          <p>Need help choosing? Contact our sales team</p>
+          <p>
+            Need help choosing?{' '}
+            <a 
+              href="mailto:hello@curbe.io" 
+              className="text-primary hover:underline"
+              data-testid="link-contact-sales"
+            >
+              Contact our sales team
+            </a>
+          </p>
         </div>
       </div>
     </div>
