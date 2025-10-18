@@ -275,11 +275,21 @@ export function CompanyBillingTab({ companyId }: CompanyBillingTabProps) {
                       {subscription.plan ? formatCurrency(subscription.plan.price, subscription.plan.currency) : "-"}
                     </p>
                   </div>
-                  {subscription.currentPeriodEnd && (
+                  {/* Show trialEnd as Next Billing Date if in trial, otherwise currentPeriodEnd */}
+                  {(subscription.status === 'trialing' 
+                    ? subscription.trialEnd 
+                    : subscription.currentPeriodEnd) && (
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-muted-foreground">Next Billing Date</p>
                       <p className="text-sm font-medium" data-testid="text-next-billing">
-                        {format(new Date(subscription.currentPeriodEnd), "MMM dd, yyyy")}
+                        {format(
+                          new Date(
+                            subscription.status === 'trialing' && subscription.trialEnd
+                              ? subscription.trialEnd
+                              : subscription.currentPeriodEnd
+                          ), 
+                          "MMM dd, yyyy"
+                        )}
                       </p>
                     </div>
                   )}

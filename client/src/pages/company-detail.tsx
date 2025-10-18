@@ -497,11 +497,18 @@ export default function CompanyDetail() {
                     </div>
                   )}
 
-                  {subscriptionData.subscription.currentPeriodEnd && (
+                  {/* Show trialEnd as Next Billing Date if in trial, otherwise currentPeriodEnd */}
+                  {(subscriptionData.subscription.status === 'trialing' 
+                    ? subscriptionData.subscription.trialEnd 
+                    : subscriptionData.subscription.currentPeriodEnd) && (
                     <div>
                       <p className="text-xs text-muted-foreground">Next Billing Date</p>
                       <p className="text-sm font-medium">
-                        {new Date(subscriptionData.subscription.currentPeriodEnd).toLocaleDateString('en-US', { 
+                        {new Date(
+                          subscriptionData.subscription.status === 'trialing' && subscriptionData.subscription.trialEnd
+                            ? subscriptionData.subscription.trialEnd
+                            : subscriptionData.subscription.currentPeriodEnd
+                        ).toLocaleDateString('en-US', { 
                           month: 'long', 
                           day: 'numeric', 
                           year: 'numeric' 
