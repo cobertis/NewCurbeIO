@@ -471,6 +471,24 @@ export async function createStripeSubscription(
 }
 
 export async function cancelStripeSubscription(stripeSubscriptionId: string, cancelAtPeriodEnd: boolean = false) {
+  // First, retrieve the subscription with schedule to check if there's an active schedule
+  const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+    expand: ['schedule'],
+  });
+  
+  // If subscription has an active schedule, we need to handle it differently
+  if (subscription.schedule) {
+    console.log('[STRIPE] Subscription has active schedule, releasing it first...');
+    const scheduleId = typeof subscription.schedule === 'string' 
+      ? subscription.schedule 
+      : subscription.schedule.id;
+    
+    // Release the schedule (which returns control to the subscription)
+    await stripe.subscriptionSchedules.release(scheduleId);
+    console.log('[STRIPE] Schedule released:', scheduleId);
+  }
+  
+  // Now cancel the subscription
   if (cancelAtPeriodEnd) {
     return await stripe.subscriptions.update(stripeSubscriptionId, {
       cancel_at_period_end: true,
