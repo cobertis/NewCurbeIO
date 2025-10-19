@@ -3630,38 +3630,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const amount = stripeSubscription.items.data[0].price.unit_amount || 0;
       const currency = stripeSubscription.items.data[0].price.currency || 'usd';
 
-      // Step 3: Test payment method with a pre-authorization BEFORE ending trial
-      console.log('[SKIP-TRIAL] Testing payment method with pre-authorization hold');
+      // Step 3: Create and capture payment in ONE transaction
+      console.log('[SKIP-TRIAL] Creating pre-authorization for subscription amount');
       try {
-        // Create a PaymentIntent with manual capture - this creates a HOLD (pre-authorization)
-        // instead of an actual charge. The hold will appear as "pending" and then disappear.
+        // Create a PaymentIntent with manual capture
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount,
           currency: currency,
           customer: subscription.stripeCustomerId,
           payment_method: defaultPaymentMethodId,
           off_session: true,
-          confirm: true, // Immediately attempt to confirm
-          capture_method: 'manual', // THIS IS KEY: Creates authorization hold instead of charge
-          description: 'Payment verification for trial activation',
+          confirm: true,
+          capture_method: 'manual', // Pre-authorize first
+          description: 'Subscription update',
         });
 
         if (paymentIntent.status !== 'requires_capture') {
-          // Authorization failed
           console.log('[SKIP-TRIAL] Pre-authorization failed, status:', paymentIntent.status);
           return res.status(402).json({ 
             message: "Payment declined. Please update your payment method and try again." 
           });
         }
 
-        // Pre-authorization succeeded! Cancel the hold since this was just a verification
-        console.log('[SKIP-TRIAL] Pre-authorization succeeded, canceling hold');
-        await stripe.paymentIntents.cancel(paymentIntent.id);
+        // CAPTURE the payment immediately (converts pre-auth to actual charge)
+        console.log('[SKIP-TRIAL] Capturing payment for subscription');
+        const capturedPayment = await stripe.paymentIntents.capture(paymentIntent.id);
+        console.log('[SKIP-TRIAL] Payment captured successfully:', capturedPayment.id);
 
-        // Now we can safely skip the trial - this will create the REAL invoice
-        console.log('[SKIP-TRIAL] Payment method verified, now skipping trial');
-        const { skipTrial } = await import("./stripe");
-        const updatedSubscription = await skipTrial(subscription.stripeSubscriptionId);
+        // End trial WITHOUT creating another invoice (prevent double-billing)
+        console.log('[SKIP-TRIAL] Ending trial without creating new invoice');
+        const updatedSubscription = await stripe.subscriptions.update(
+          subscription.stripeSubscriptionId,
+          {
+            trial_end: 'now', // End trial immediately
+            proration_behavior: 'none', // CRITICAL: Don't create new charges/invoices
+          }
+        );
 
         // Helper to safely convert Stripe timestamps
         const toDate = (timestamp: number | null | undefined): Date | undefined => {
