@@ -32,11 +32,38 @@ export default function Settings() {
     enabled: userData?.user?.role === "admin" || userData?.user?.role === "superadmin",
   });
 
+  const { data: subscriptionData } = useQuery<{ subscription: any }>({
+    queryKey: ["/api/billing/subscription"],
+  });
+
+  const { data: plansData } = useQuery<{ plans: any[] }>({
+    queryKey: ["/api/plans"],
+  });
+
   const [emailTestAddress, setEmailTestAddress] = useState("");
   
   const user = userData?.user;
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+  // Get current plan name
+  const getCurrentPlanName = () => {
+    if (!subscriptionData?.subscription) return "Free";
+    const subscription = subscriptionData.subscription;
+    
+    // If subscription has plan object
+    if (subscription.plan?.name) {
+      return subscription.plan.name;
+    }
+    
+    // Otherwise find plan by ID
+    if (subscription.planId && plansData?.plans) {
+      const plan = plansData.plans.find((p: any) => p.id === subscription.planId);
+      return plan?.name || "Free";
+    }
+    
+    return "Free";
+  };
 
   // Determine active tab from URL
   const getCurrentTab = () => {
@@ -236,9 +263,15 @@ export default function Settings() {
               </div>
 
               <div className="pt-4 border-t">
-                <div className="p-3 rounded-md bg-muted/50 text-center">
-                  <p className="text-xs text-muted-foreground">Estado de Cuenta</p>
-                  <p className="text-sm font-semibold text-green-600 dark:text-green-400">Activo</p>
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="p-3 rounded-md bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Estado</p>
+                    <p className="text-sm font-semibold text-green-600 dark:text-green-400">Activo</p>
+                  </div>
+                  <div className="p-3 rounded-md bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Plan</p>
+                    <p className="text-sm font-semibold">{getCurrentPlanName()}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
