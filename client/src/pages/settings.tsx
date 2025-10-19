@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -219,7 +220,9 @@ export default function Settings() {
                   <h2 className="text-xl font-semibold">
                     {user?.firstName} {user?.lastName}
                   </h2>
-                  <p className="text-sm text-muted-foreground">{getRoleDisplay()}</p>
+                  <Badge variant="secondary" className="mt-2">
+                    {getRoleDisplay()}
+                  </Badge>
                 </div>
               </div>
             </CardHeader>
