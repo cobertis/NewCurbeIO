@@ -389,6 +389,9 @@ export default function Settings() {
   const [notificationTypeFilter, setNotificationTypeFilter] = useState<string>("all");
   const [notificationStatusFilter, setNotificationStatusFilter] = useState<string>("all");
   
+  // Track which company section is currently saving
+  const [savingSection, setSavingSection] = useState<string | null>(null);
+  
   const user = userData?.user;
 
   // Fetch company data if user has a companyId
@@ -699,6 +702,10 @@ export default function Settings() {
         variant: "destructive",
       });
     },
+    onSettled: () => {
+      // Clear the saving section state after mutation completes
+      setSavingSection(null);
+    },
   });
 
   // Mark notification as read mutation
@@ -766,6 +773,7 @@ export default function Settings() {
 
   // Handler for Company Information Save
   const handleSaveCompanyInformation = () => {
+    setSavingSection("companyInfo");
     const data: any = {};
     
     if (companyNameRef.current?.value) data.name = companyNameRef.current.value;
@@ -783,6 +791,7 @@ export default function Settings() {
 
   // Handler for Physical Address Save
   const handleSavePhysicalAddress = () => {
+    setSavingSection("physicalAddress");
     const data: any = {};
     
     if (addressRef.current?.value) data.address = addressRef.current.value;
@@ -797,6 +806,7 @@ export default function Settings() {
 
   // Handler for Branding Save
   const handleSaveBranding = () => {
+    setSavingSection("branding");
     const data: any = {};
     
     if (logoRef.current?.value) data.logo = logoRef.current.value;
@@ -1616,10 +1626,10 @@ export default function Settings() {
                     </div>
                     <Button 
                       onClick={handleSaveCompanyInformation}
-                      disabled={updateCompanyMutation.isPending}
+                      disabled={updateCompanyMutation.isPending && savingSection === "companyInfo"}
                       data-testid="button-save-company-information"
                     >
-                      {updateCompanyMutation.isPending ? "Saving..." : "Save"}
+                      {updateCompanyMutation.isPending && savingSection === "companyInfo" ? "Saving..." : "Save"}
                     </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1835,10 +1845,10 @@ export default function Settings() {
                     </div>
                     <Button 
                       onClick={handleSavePhysicalAddress}
-                      disabled={updateCompanyMutation.isPending}
+                      disabled={updateCompanyMutation.isPending && savingSection === "physicalAddress"}
                       data-testid="button-save-physical-address"
                     >
-                      {updateCompanyMutation.isPending ? "Saving..." : "Save"}
+                      {updateCompanyMutation.isPending && savingSection === "physicalAddress" ? "Saving..." : "Save"}
                     </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1918,10 +1928,10 @@ export default function Settings() {
                     </div>
                     <Button 
                       onClick={handleSaveBranding}
-                      disabled={updateCompanyMutation.isPending}
+                      disabled={updateCompanyMutation.isPending && savingSection === "branding"}
                       data-testid="button-save-branding"
                     >
-                      {updateCompanyMutation.isPending ? "Saving..." : "Save"}
+                      {updateCompanyMutation.isPending && savingSection === "branding" ? "Saving..." : "Save"}
                     </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
