@@ -27,6 +27,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -87,6 +97,7 @@ export default function TicketsPage() {
   const [location] = useLocation();
   const [selectedTicket, setSelectedTicket] = useState<FinancialSupportTicket | null>(null);
   const [showTicketDialog, setShowTicketDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [adminResponse, setAdminResponse] = useState("");
   const [ticketStatus, setTicketStatus] = useState<string>("");
@@ -159,6 +170,7 @@ export default function TicketsPage() {
         title: "Success",
         description: "Ticket deleted successfully",
       });
+      setShowDeleteDialog(false);
       setShowTicketDialog(false);
     },
     onError: (error: any) => {
@@ -167,6 +179,7 @@ export default function TicketsPage() {
         description: error.message || "Failed to delete ticket",
         variant: "destructive",
       });
+      setShowDeleteDialog(false);
     },
   });
 
@@ -527,15 +540,11 @@ export default function TicketsPage() {
           <DialogFooter className="flex justify-between items-center">
             <Button 
               variant="destructive" 
-              onClick={() => {
-                if (selectedTicket && confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
-                  deleteTicketMutation.mutate(selectedTicket.id);
-                }
-              }}
+              onClick={() => setShowDeleteDialog(true)}
               disabled={deleteTicketMutation.isPending}
               data-testid="button-delete-ticket"
             >
-              {deleteTicketMutation.isPending ? "Deleting..." : "Delete"}
+              Delete
             </Button>
             <div className="flex gap-2">
               <Button 
@@ -556,6 +565,33 @@ export default function TicketsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this financial support ticket. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedTicket) {
+                  deleteTicketMutation.mutate(selectedTicket.id);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteTicketMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteTicketMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
