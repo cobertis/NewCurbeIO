@@ -743,7 +743,7 @@ export async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subsc
     const priceId = stripeSubscription.items.data[0]?.price.id;
     if (priceId) {
       // Find plan with this Stripe price ID
-      const plans = await storage.getPlans();
+      const plans = await storage.getAllPlans();
       const matchedPlan = plans.find(p => p.stripePriceId === priceId || p.stripeAnnualPriceId === priceId);
       
       if (matchedPlan && matchedPlan.id !== subscription.planId) {
