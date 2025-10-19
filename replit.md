@@ -29,6 +29,8 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 -   **Billing & Stripe Integration:**
     -   **Automated Customer & Subscription Creation:** Stripe customers created upon company creation, and actual Stripe subscriptions upon plan selection.
     -   **Webhook Processing:** Handles Stripe events (subscriptions, invoices, payments) for synchronization.
+    -   **Skip Trial Pre-Authorization:** Single transaction flow - creates PaymentIntent with `capture_method: 'manual'`, captures it for actual charge, then ends trial with `proration_behavior: 'none'` to prevent double billing.
+    -   **Subscription Reactivation:** Users can cancel scheduled cancellations via "Keep Subscription" button in billing dashboard, which reactivates the subscription before period end.
     -   **Professional Billing Dashboard:** Comprehensive `/billing` page with tabbed interface separating subscription management from payment/billing information:
         -   **Subscriptions Tab:** Subscription details (plan name, price, status, trial info), quick actions (Change Plan, Skip Trial, Cancel), and billing history with nested tabs for Invoices and Payments tables.
         -   **Transactions Tab:** Complete transaction history displaying all invoices and payments in a clean, organized format with nested tabs for easy navigation between invoice and payment data.

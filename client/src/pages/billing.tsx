@@ -934,7 +934,7 @@ export default function Billing() {
                       className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 font-semibold shadow-sm"
                       data-testid="button-reactivate-subscription"
                     >
-                      {reactivateSubscriptionMutation.isPending ? 'Reactivating...' : 'Keep Subscription'}
+                      {reactivateSubscriptionMutation.isPending ? 'Processing...' : "Don't Cancel Subscription"}
                     </Button>
                   )}
                 </div>
