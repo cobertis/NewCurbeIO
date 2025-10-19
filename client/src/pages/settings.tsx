@@ -196,8 +196,6 @@ export default function Settings() {
       federallyFacilitatedMarketplace?: string;
       referredBy?: string;
     }) => {
-      console.log("[DEBUG] Insurance form data received:", data);
-      
       // Only send fields that have actual values (not empty strings)
       const dataToSend: any = {};
       if (data.agentInternalCode !== undefined && data.agentInternalCode !== "") {
@@ -215,9 +213,6 @@ export default function Settings() {
       if (data.referredBy !== undefined && data.referredBy !== "") {
         dataToSend.referredBy = data.referredBy;
       }
-      
-      console.log("[DEBUG] Filtered data to send:", dataToSend);
-      console.log("[DEBUG] Number of fields:", Object.keys(dataToSend).length);
       
       // Ensure at least one field has a value
       if (Object.keys(dataToSend).length === 0) {

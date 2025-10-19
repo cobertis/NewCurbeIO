@@ -460,10 +460,6 @@ export class DbStorage implements IStorage {
     if (data.federallyFacilitatedMarketplace !== undefined) mappedData.federallyFacilitatedMarketplace = data.federallyFacilitatedMarketplace;
     if (data.referredBy !== undefined) mappedData.referredBy = data.referredBy;
     
-    console.log("[STORAGE DEBUG] updateUser - data received:", data);
-    console.log("[STORAGE DEBUG] updateUser - mappedData:", mappedData);
-    console.log("[STORAGE DEBUG] updateUser - mappedData keys:", Object.keys(mappedData));
-    
     const result = await db.update(users).set(mappedData).where(eq(users.id, id)).returning();
     return result[0];
   }
