@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -342,6 +342,29 @@ export default function Settings() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Empresa</p>
                       <p className="text-sm font-medium">{companyData?.company?.name || user.companyId}</p>
+                    </div>
+                  </div>
+                )}
+
+                {companyData?.company?.address && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground">Dirección</p>
+                      <div className="text-sm font-medium space-y-0.5">
+                        <p>{companyData.company.address}</p>
+                        {companyData.company.addressLine2 && (
+                          <p>{companyData.company.addressLine2}</p>
+                        )}
+                        <p>
+                          {companyData.company.city}
+                          {companyData.company.state && `, ${companyData.company.state}`}
+                          {companyData.company.postalCode && ` ${companyData.company.postalCode}`}
+                        </p>
+                        {companyData.company.country && (
+                          <p>{companyData.company.country}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
