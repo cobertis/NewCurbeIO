@@ -592,6 +592,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Get all active sessions for the current user
+  app.get("/api/user/sessions", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      const currentSessionId = req.sessionID;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      if (!process.env.DATABASE_URL) {
+        console.error("DATABASE_URL not configured");
+        return res.status(500).json({ message: "Database not configured" });
+      }
+
+      // Import neon client for raw SQL query
+      const { neon } = await import("@neondatabase/serverless");
+      const sql = neon(process.env.DATABASE_URL);
+      
+      // Get all sessions for this user from the session table
+      const sessions = await sql`
+        SELECT sid, sess, expire 
+        FROM session 
+        WHERE sess->>'userId' = ${userId}
+        ORDER BY expire DESC
+      `;
+
+      // Parse and format session data
+      const formattedSessions = sessions.map((session: any) => {
+        const isCurrentSession = session.sid === currentSessionId;
+        const sessionData = session.sess;
+        
+        // Use cookie expiry as proxy for last activity
+        // Note: This represents when the session will expire, not exact last activity time
+        const expiryDate = new Date(session.expire);
+        
+        return {
+          id: session.sid,
+          isCurrent: isCurrentSession,
+          lastActive: expiryDate.toISOString(),
+          expiresAt: expiryDate.toISOString(),
+          deviceInfo: sessionData.deviceInfo || 'Unknown Device',
+          ipAddress: sessionData.ipAddress || 'Unknown IP',
+        };
+      });
+
+      res.json({ sessions: formattedSessions });
+    } catch (error) {
+      console.error("Error fetching user sessions:", error);
+      res.status(500).json({ message: "Failed to fetch sessions" });
+    }
+  });
+
   // Logout from all sessions across all devices
   app.post("/api/logout-all-sessions", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -1276,6 +1329,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clear pending user and set authenticated user
       delete req.session.pendingUserId;
       req.session.userId = user.id;
+
+      // Capture device info and IP address
+      req.session.deviceInfo = req.get('user-agent') || 'Unknown Device';
+      req.session.ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
 
       // Set session duration - always 7 days since we use trusted device tokens
       const sessionDuration = 7 * 24 * 60 * 60 * 1000; // 7 days

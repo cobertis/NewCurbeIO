@@ -5,6 +5,8 @@ declare module "express-session" {
   interface SessionData {
     userId?: string;
     pendingUserId?: string;
+    deviceInfo?: string;
+    ipAddress?: string;
   }
 }
 

@@ -22,6 +22,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 
 // Business categories
 const categories = [
@@ -352,6 +353,19 @@ export default function Settings() {
   // Fetch notifications for the current user
   const { data: notificationsData, isLoading: isLoadingNotifications } = useQuery<{ notifications: any[] }>({
     queryKey: ["/api/notifications"],
+  });
+
+  // Fetch active sessions for the current user
+  const { data: sessionsData, isLoading: isLoadingSessions } = useQuery<{ sessions: Array<{
+    id: string;
+    isCurrent: boolean;
+    lastActive: string;
+    expiresAt: string;
+    deviceInfo: string;
+    ipAddress: string;
+  }> }>({
+    queryKey: ["/api/user/sessions"],
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   const [emailTestAddress, setEmailTestAddress] = useState("");
@@ -1584,25 +1598,60 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-4 p-4 rounded-lg border">
-                        <div className="flex-1">
-                          <p className="font-medium">Current Session</p>
-                          <p className="text-sm text-muted-foreground">
-                            This device • Active now
-                          </p>
+                    <div className="space-y-3">
+                      {isLoadingSessions ? (
+                        <div className="space-y-3">
+                          <Skeleton className="h-16 w-full" />
+                          <Skeleton className="h-16 w-full" />
                         </div>
-                        <Badge variant="secondary">Active</Badge>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        className="w-full" 
-                        onClick={() => logoutAllSessionsMutation.mutate()}
-                        disabled={logoutAllSessionsMutation.isPending}
-                        data-testid="button-sign-out-all"
-                      >
-                        {logoutAllSessionsMutation.isPending ? "Signing Out..." : "Sign Out of All Other Sessions"}
-                      </Button>
+                      ) : sessionsData?.sessions && sessionsData.sessions.length > 0 ? (
+                        <>
+                          {sessionsData.sessions.map((session) => (
+                            <div 
+                              key={session.id} 
+                              className="flex items-center gap-3 p-3 rounded-md border bg-card"
+                              data-testid={`session-${session.isCurrent ? 'current' : 'other'}`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm">
+                                    {session.isCurrent ? "Current Session" : "Other Device"}
+                                  </p>
+                                  {session.isCurrent && (
+                                    <Badge variant="default" className="text-xs px-1.5 py-0">
+                                      Active
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Last active {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate" data-testid="text-device-info">
+                                  {session.deviceInfo}
+                                </p>
+                                <p className="text-xs text-muted-foreground" data-testid="text-ip-address">
+                                  IP: {session.ipAddress}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                          {sessionsData.sessions.length > 1 && (
+                            <Button 
+                              variant="outline" 
+                              className="w-full mt-2" 
+                              onClick={() => logoutAllSessionsMutation.mutate()}
+                              disabled={logoutAllSessionsMutation.isPending}
+                              data-testid="button-sign-out-all"
+                            >
+                              {logoutAllSessionsMutation.isPending ? "Signing Out..." : "Sign Out of All Other Sessions"}
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-4 text-sm text-muted-foreground">
+                          No active sessions found
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
