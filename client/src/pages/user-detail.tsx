@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ArrowLeft, User as UserIcon, MapPin, Building2, Bell, Loader2 } from "lucide-react";
+import { ArrowLeft, User as UserIcon, MapPin, Building2, Bell, Loader2, Briefcase } from "lucide-react";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +48,14 @@ const notificationPreferencesSchema = z.object({
   smsSubscribed: z.boolean().optional(),
   emailNotifications: z.boolean().optional(),
   invoiceAlerts: z.boolean().optional(),
+});
+
+const insuranceProfileSchema = z.object({
+  agentInternalCode: z.string().optional(),
+  instructionLevel: z.string().optional(),
+  nationalProducerNumber: z.string().optional(),
+  federallyFacilitatedMarketplace: z.string().optional(),
+  referredBy: z.string().optional(),
 });
 
 export default function UserDetail() {
@@ -122,6 +130,17 @@ export default function UserDetail() {
     },
   });
 
+  const insuranceProfileForm = useForm({
+    resolver: zodResolver(insuranceProfileSchema),
+    defaultValues: {
+      agentInternalCode: "",
+      instructionLevel: "",
+      nationalProducerNumber: "",
+      federallyFacilitatedMarketplace: "",
+      referredBy: "",
+    },
+  });
+
   // Update forms when user data changes - using useEffect to prevent infinite re-renders
   useEffect(() => {
     if (user) {
@@ -148,6 +167,14 @@ export default function UserDetail() {
         smsSubscribed: user.smsSubscribed ?? true,
         emailNotifications: user.emailNotifications ?? true,
         invoiceAlerts: user.invoiceAlerts ?? true,
+      });
+
+      insuranceProfileForm.reset({
+        agentInternalCode: (user as any).agentInternalCode || "",
+        instructionLevel: (user as any).instructionLevel || "",
+        nationalProducerNumber: (user as any).nationalProducerNumber || "",
+        federallyFacilitatedMarketplace: (user as any).federallyFacilitatedMarketplace || "",
+        referredBy: (user as any).referredBy || "",
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,12 +273,35 @@ export default function UserDetail() {
     },
   });
 
+  // Update Insurance Profile Mutation
+  const updateInsuranceProfileMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof insuranceProfileSchema>) => {
+      return apiRequest("PATCH", `/api/users/${userId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Insurance Profile Updated",
+        description: "Insurance profile has been updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Check if any mutation is pending to disable all save buttons
   const isAnyMutationPending = 
     updatePersonalMutation.isPending || 
     updateContactMutation.isPending || 
     updateAccountMutation.isPending || 
-    updateNotificationMutation.isPending;
+    updateNotificationMutation.isPending ||
+    updateInsuranceProfileMutation.isPending;
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -830,6 +880,137 @@ export default function UserDetail() {
                   data-testid="button-save-notifications"
                 >
                   {updateNotificationMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {/* Insurance Profile Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Insurance Profile Information
+            </CardTitle>
+            <CardDescription>
+              Manage insurance industry specific information
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...insuranceProfileForm}>
+              <form onSubmit={insuranceProfileForm.handleSubmit((data) => updateInsuranceProfileMutation.mutate(data))} className="space-y-4">
+                <FormField
+                  control={insuranceProfileForm.control}
+                  name="agentInternalCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Agent Internal Code</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter an internal code"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-agentInternalCode"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={insuranceProfileForm.control}
+                  name="instructionLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Instruction Level</FormLabel>
+                      <Select 
+                        value={field.value || ""} 
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-instructionLevel">
+                            <SelectValue placeholder="Select instruction level" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="Licensed insurance agent">Licensed insurance agent</SelectItem>
+                          <SelectItem value="Broker">Broker</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={insuranceProfileForm.control}
+                  name="nationalProducerNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>National Producer Number (NPN)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="17925766"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-nationalProducerNumber"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={insuranceProfileForm.control}
+                  name="federallyFacilitatedMarketplace"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Federally Facilitated Marketplace (FFM)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter an FFM"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-federallyFacilitatedMarketplace"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={insuranceProfileForm.control}
+                  name="referredBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Referred By</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter a referred"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-referredBy"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  disabled={isAnyMutationPending}
+                  data-testid="button-save-insurance"
+                >
+                  {updateInsuranceProfileMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Saving...
