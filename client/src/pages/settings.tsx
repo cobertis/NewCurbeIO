@@ -268,6 +268,28 @@ export default function Settings() {
     return roleMap[user.role] || user.role;
   };
 
+  // Get status display text
+  const getStatusDisplay = () => {
+    if (!user?.status) return "Desconocido";
+    const statusMap: { [key: string]: string } = {
+      active: "Activo",
+      pending_activation: "Pendiente de Activación",
+      deactivated: "Desactivado",
+    };
+    return statusMap[user.status] || user.status;
+  };
+
+  // Get status color
+  const getStatusColor = () => {
+    if (!user?.status) return "text-gray-600 dark:text-gray-400";
+    const colorMap: { [key: string]: string } = {
+      active: "text-green-600 dark:text-green-400",
+      pending_activation: "text-yellow-600 dark:text-yellow-400",
+      deactivated: "text-red-600 dark:text-red-400",
+    };
+    return colorMap[user.status] || "text-gray-600 dark:text-gray-400";
+  };
+
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -389,7 +411,7 @@ export default function Settings() {
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="p-3 rounded-md bg-muted/50">
                     <p className="text-xs text-muted-foreground">Estado</p>
-                    <p className="text-sm font-semibold text-green-600 dark:text-green-400">Activo</p>
+                    <p className={`text-sm font-semibold ${getStatusColor()}`}>{getStatusDisplay()}</p>
                   </div>
                   <div className="p-3 rounded-md bg-muted/50">
                     <p className="text-xs text-muted-foreground">Plan</p>
