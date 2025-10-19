@@ -1220,9 +1220,13 @@ export async function changePlan(
     ];
     
     // Update the schedule with both phases
+    // Set end_behavior to 'release' so after phases complete, subscription continues normally
     const updatedSchedule = await stripe.subscriptionSchedules.update(
       schedule.id,
-      { phases: phases }
+      { 
+        phases: phases,
+        end_behavior: 'release'
+      }
     );
     
     console.log('[STRIPE] Subscription schedule updated successfully');
