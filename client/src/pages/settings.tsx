@@ -49,7 +49,6 @@ export default function Settings() {
   // Company Information refs
   const companyNameRef = useRef<HTMLInputElement>(null);
   const slugRef = useRef<HTMLInputElement>(null);
-  const legalNameRef = useRef<HTMLInputElement>(null);
   const businessCategoryRef = useRef<HTMLSelectElement>(null);
   const businessNicheRef = useRef<HTMLSelectElement>(null);
   const companyEmailRef = useRef<HTMLInputElement>(null);
@@ -383,7 +382,6 @@ export default function Settings() {
     
     if (companyNameRef.current?.value) data.name = companyNameRef.current.value;
     if (slugRef.current?.value) data.slug = slugRef.current.value;
-    if (legalNameRef.current?.value) data.legalName = legalNameRef.current.value;
     if (businessCategoryRef.current?.value) data.businessCategory = businessCategoryRef.current.value;
     if (businessNicheRef.current?.value) data.businessNiche = businessNicheRef.current.value;
     if (companyEmailRef.current?.value) data.email = companyEmailRef.current.value;
@@ -1144,15 +1142,6 @@ export default function Settings() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="legalName">Legal Name</Label>
-                        <Input
-                          id="legalName"
-                          ref={legalNameRef}
-                          defaultValue={companyData?.company?.legalName || ""}
-                          data-testid="input-legal-name"
-                        />
-                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="businessCategory">Business Category</Label>
                         <select
