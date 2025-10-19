@@ -411,10 +411,10 @@ export default function Settings() {
 
                 {/* Bottom Section - Contact Info */}
                 <div className="pt-6 border-t space-y-4">
-                  {/* User Email and Phone */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <AtSign className="h-4 w-4 text-muted-foreground" />
+                  {/* User Email and Phone - Side by Side */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-start gap-3">
+                      <AtSign className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-muted-foreground">Email</p>
                         <p className="text-sm font-medium truncate">{user?.email}</p>
@@ -422,8 +422,8 @@ export default function Settings() {
                     </div>
 
                     {user?.phone && (
-                      <div className="flex items-center gap-3">
-                        <PhoneIcon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-start gap-3">
+                        <PhoneIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-muted-foreground">Phone</p>
                           <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
