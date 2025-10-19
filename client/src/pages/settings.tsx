@@ -369,6 +369,10 @@ export default function Settings() {
   const postalCodeRef = useRef<HTMLInputElement>(null);
   const countryRef = useRef<HTMLInputElement>(null);
   
+  // Branding refs
+  const logoRef = useRef<HTMLInputElement>(null);
+  const domainRef = useRef<HTMLInputElement>(null);
+  
   // Combobox state
   const [openCategory, setOpenCategory] = useState(false);
   const [openNiche, setOpenNiche] = useState(false);
@@ -705,6 +709,16 @@ export default function Settings() {
     if (stateRef.current?.value) data.state = stateRef.current.value;
     if (postalCodeRef.current?.value) data.postalCode = postalCodeRef.current.value;
     if (countryRef.current?.value) data.country = countryRef.current.value;
+    
+    updateCompanyMutation.mutate(data);
+  };
+
+  // Handler for Branding Save
+  const handleSaveBranding = () => {
+    const data: any = {};
+    
+    if (logoRef.current?.value) data.logo = logoRef.current.value;
+    if (domainRef.current?.value) data.domain = domainRef.current.value;
     
     updateCompanyMutation.mutate(data);
   };
@@ -1803,11 +1817,20 @@ export default function Settings() {
 
                 {/* Branding */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Branding</CardTitle>
-                    <CardDescription>
-                      Company logo and visual identity
-                    </CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                    <div className="space-y-1">
+                      <CardTitle>Branding</CardTitle>
+                      <CardDescription>
+                        Company logo and visual identity
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      onClick={handleSaveBranding}
+                      disabled={updateCompanyMutation.isPending}
+                      data-testid="button-save-branding"
+                    >
+                      {updateCompanyMutation.isPending ? "Saving..." : "Save"}
+                    </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1815,6 +1838,7 @@ export default function Settings() {
                         <Label htmlFor="logo">Logo URL</Label>
                         <Input
                           id="logo"
+                          ref={logoRef}
                           type="url"
                           placeholder="https://example.com/logo.png"
                           defaultValue={companyData?.company?.logo || ""}
@@ -1825,16 +1849,13 @@ export default function Settings() {
                         <Label htmlFor="domain">Custom Domain</Label>
                         <Input
                           id="domain"
+                          ref={domainRef}
                           placeholder="app.example.com"
                           defaultValue={companyData?.company?.domain || ""}
                           data-testid="input-domain"
                         />
                       </div>
                     </div>
-
-                    <Button variant="default" data-testid="button-save-company-settings">
-                      Save All Changes
-                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
