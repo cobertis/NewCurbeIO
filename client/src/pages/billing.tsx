@@ -1562,7 +1562,7 @@ export default function Billing() {
                       htmlFor="confirm1"
                       className="text-sm leading-tight cursor-pointer"
                     >
-                      I understand that I can't use SaaS Mode on the{' '}
+                      I understand that the{' '}
                       {nextLowerPlan && (
                         <>
                           {nextLowerPlan.name} plan ({formatCurrency(
@@ -1573,6 +1573,7 @@ export default function Billing() {
                           )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'})
                         </>
                       )}
+                      {' '}has fewer features than my current plan
                     </label>
                   </div>
                   <div className="flex items-start gap-2">
@@ -1586,7 +1587,7 @@ export default function Billing() {
                       htmlFor="confirm2"
                       className="text-sm leading-tight cursor-pointer"
                     >
-                      I confirm that I have turned off SaaS Mode on all sub-accounts and have discussed this with all my SaaS clients
+                      I confirm that I understand the limitations of the lower plan and accept any feature restrictions that may apply
                     </label>
                   </div>
                 </div>
@@ -2490,7 +2491,7 @@ export default function Billing() {
                       htmlFor="confirm1"
                       className="text-sm leading-tight cursor-pointer"
                     >
-                      I understand that I can't use SaaS Mode on the{' '}
+                      I understand that the{' '}
                       {nextLowerPlan && (
                         <>
                           {nextLowerPlan.name} plan ({formatCurrency(
@@ -2501,6 +2502,7 @@ export default function Billing() {
                           )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'})
                         </>
                       )}
+                      {' '}has fewer features than my current plan
                     </label>
                   </div>
                   <div className="flex items-start gap-2">
@@ -2514,7 +2516,7 @@ export default function Billing() {
                       htmlFor="confirm2"
                       className="text-sm leading-tight cursor-pointer"
                     >
-                      I confirm that I have turned off SaaS Mode on all sub-accounts and have discussed this with all my SaaS clients
+                      I confirm that I understand the limitations of the lower plan and accept any feature restrictions that may apply
                     </label>
                   </div>
                 </div>
