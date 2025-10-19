@@ -3765,10 +3765,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: `${billingPeriod} pricing not available for this plan` });
       }
 
-      // Cancel current subscription and create new one with new plan
-      // IMPORTANT: Preserve trial dates from original activation
+      // Update subscription with proration (Stripe handles credit automatically)
       const { changePlan } = await import("./stripe");
-      const newStripeSubscription = await changePlan(
+      const updatedStripeSubscription = await changePlan(
         subscription.stripeCustomerId,
         subscription.stripeSubscriptionId,
         stripePriceId,
@@ -3777,22 +3776,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscription.trialEnd
       );
 
-      // Update local subscription with new Stripe subscription ID and dates
-      // IMPORTANT: Preserve the original trial dates (they're already preserved in Stripe)
+      // Update local subscription with new plan and dates
+      // NOTE: Subscription ID stays the same (we're updating, not replacing)
       await storage.updateSubscription(subscription.id, {
         planId: plan.id,
         billingCycle: billingPeriod, // Update billing cycle to match new selection
-        stripeSubscriptionId: newStripeSubscription.id, // NEW subscription ID
-        status: newStripeSubscription.status,
-        // Preserve trial dates from local subscription (not from Stripe response)
-        // because we want to keep the original activation dates
+        status: updatedStripeSubscription.status,
+        // Preserve trial dates from local subscription
         trialStart: subscription.trialStart,
         trialEnd: subscription.trialEnd,
-        currentPeriodStart: toDate(newStripeSubscription.current_period_start) || new Date(),
-        currentPeriodEnd: toDate(newStripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        currentPeriodStart: toDate(updatedStripeSubscription.current_period_start) || new Date(),
+        currentPeriodEnd: toDate(updatedStripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
 
-      res.json({ message: "Plan changed successfully", subscription: newStripeSubscription });
+      res.json({ message: "Plan changed successfully with automatic proration", subscription: updatedStripeSubscription });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

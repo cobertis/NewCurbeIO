@@ -1063,73 +1063,94 @@ export async function changePlan(
     console.log('[STRIPE] Customer ID:', stripeCustomerId);
     console.log('[STRIPE] New price ID:', newStripePriceId);
     
-    // Step 1: Check current subscription and get any active discounts
+    // Retrieve current subscription with all items
     const currentSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
-      expand: ['discounts'],
+      expand: ['items.data', 'discounts'],
     });
     
-    // Capture active discount before canceling
-    let activeDiscount: Stripe.Discount | null = null;
+    console.log('[STRIPE] Current subscription status:', currentSubscription.status);
+    console.log('[STRIPE] Current items:', currentSubscription.items.data.length);
+    
+    // Get the current subscription item (should be only one)
+    const currentItem = currentSubscription.items.data[0];
+    if (!currentItem) {
+      throw new Error('No subscription items found');
+    }
+    
+    console.log('[STRIPE] Current price ID:', currentItem.price.id);
+    console.log('[STRIPE] New price ID:', newStripePriceId);
+    
+    // Check if already on this price
+    if (currentItem.price.id === newStripePriceId) {
+      console.log('[STRIPE] Already on this plan, no changes needed');
+      return currentSubscription;
+    }
+    
+    // Prepare update data
+    const updateData: any = {
+      items: [{
+        id: currentItem.id,
+        price: newStripePriceId,
+      }],
+      // Proration behavior: Stripe will automatically:
+      // 1. Calculate credit for unused time on old plan
+      // 2. Charge for new plan (prorated for remaining period)
+      // 3. Store excess credit in customer balance
+      // 4. Apply credit to future invoices automatically
+      proration_behavior: 'create_prorations',
+      // Bill immediately for the change
+      billing_cycle_anchor: 'unchanged',
+    };
+    
+    // Preserve active discount if it exists
     if (currentSubscription.discounts && currentSubscription.discounts.length > 0) {
       const discount = currentSubscription.discounts[0];
       if (typeof discount !== 'string') {
-        activeDiscount = discount as Stripe.Discount;
-        console.log('[STRIPE] Found active discount to preserve:', activeDiscount.id);
+        const activeDiscount = discount as Stripe.Discount;
+        const discountCoupon = (activeDiscount as any).coupon;
+        const couponId = typeof discountCoupon === 'string' 
+          ? discountCoupon 
+          : discountCoupon.id;
+        
+        updateData.discounts = [{
+          coupon: couponId
+        }];
+        console.log('[STRIPE] Preserving discount with coupon:', couponId);
       }
     }
     
-    if (currentSubscription.status !== 'canceled') {
-      console.log('[STRIPE] Canceling current subscription...');
-      await stripe.subscriptions.cancel(stripeSubscriptionId);
-      console.log('[STRIPE] Current subscription canceled');
-    } else {
-      console.log('[STRIPE] Subscription already canceled, skipping cancellation');
-    }
+    console.log('[STRIPE] Updating subscription with proration...');
+    const updatedSubscription = await stripe.subscriptions.update(
+      stripeSubscriptionId,
+      updateData
+    );
     
-    // Step 2: Create a new subscription with the new plan
-    console.log('[STRIPE] Creating new subscription with new plan...');
-    const subscriptionData: any = {
-      customer: stripeCustomerId,
-      items: [{ price: newStripePriceId }],
-      payment_behavior: 'default_incomplete',
-      payment_settings: { save_default_payment_method: 'on_subscription' },
-    };
+    console.log('[STRIPE] Plan changed successfully with proration');
+    console.log('[STRIPE] New subscription status:', updatedSubscription.status);
     
-    // Step 3: Preserve trial ONLY if subscription is currently in trialing status
-    // IMPORTANT: Don't preserve trial if user has skipped it or it has ended
-    if (currentSubscription.status === 'trialing' && currentTrialEnd) {
-      const now = new Date();
-      const trialEndDate = new Date(currentTrialEnd);
+    // Log proration details if available
+    if (updatedSubscription.latest_invoice) {
+      const invoiceId = typeof updatedSubscription.latest_invoice === 'string'
+        ? updatedSubscription.latest_invoice
+        : updatedSubscription.latest_invoice.id;
       
-      // Only preserve trial if it's actually in the future
-      if (trialEndDate > now) {
-        const trialEndTimestamp = Math.floor(trialEndDate.getTime() / 1000);
-        subscriptionData.trial_end = trialEndTimestamp;
-        console.log('[STRIPE] Preserving trial until:', trialEndDate.toISOString());
-      } else {
-        console.log('[STRIPE] Trial date is in the past, not preserving');
+      const invoice = await stripe.invoices.retrieve(invoiceId, {
+        expand: ['lines.data'],
+      });
+      
+      console.log('[STRIPE] Proration invoice created:', invoice.id);
+      console.log('[STRIPE] Invoice total:', invoice.total / 100, invoice.currency.toUpperCase());
+      console.log('[STRIPE] Customer balance after proration:', invoice.ending_balance / 100);
+      
+      // Log line items to see proration details
+      if (invoice.lines && invoice.lines.data) {
+        invoice.lines.data.forEach((line: any) => {
+          console.log(`[STRIPE] Line: ${line.description} - ${line.amount / 100} ${invoice.currency.toUpperCase()}`);
+        });
       }
-    } else {
-      console.log('[STRIPE] Subscription is not in trial status, not preserving trial');
     }
     
-    // Step 4: Preserve active discount if it exists
-    if (activeDiscount && (activeDiscount as any).coupon) {
-      const discountCoupon = (activeDiscount as any).coupon;
-      const couponId = typeof discountCoupon === 'string' 
-        ? discountCoupon 
-        : discountCoupon.id;
-      
-      subscriptionData.discounts = [{
-        coupon: couponId
-      }];
-      console.log('[STRIPE] Preserving discount with coupon:', couponId);
-    }
-    
-    const newSubscription = await stripe.subscriptions.create(subscriptionData);
-    
-    console.log('[STRIPE] New subscription created successfully:', newSubscription.id);
-    return newSubscription;
+    return updatedSubscription;
   } catch (error) {
     console.error('[STRIPE] Error changing plan:', error);
     throw error;
