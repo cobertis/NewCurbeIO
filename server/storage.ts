@@ -453,6 +453,12 @@ export class DbStorage implements IStorage {
     if (data.invoiceAlerts !== undefined) mappedData.invoiceAlerts = data.invoiceAlerts;
     // Timezone preference
     if (data.timezone !== undefined) mappedData.timezone = data.timezone;
+    // Insurance Profile Information
+    if (data.agentInternalCode !== undefined) mappedData.agentInternalCode = data.agentInternalCode;
+    if (data.instructionLevel !== undefined) mappedData.instructionLevel = data.instructionLevel;
+    if (data.nationalProducerNumber !== undefined) mappedData.nationalProducerNumber = data.nationalProducerNumber;
+    if (data.federallyFacilitatedMarketplace !== undefined) mappedData.federallyFacilitatedMarketplace = data.federallyFacilitatedMarketplace;
+    if (data.referredBy !== undefined) mappedData.referredBy = data.referredBy;
     
     const result = await db.update(users).set(mappedData).where(eq(users.id, id)).returning();
     return result[0];
