@@ -365,6 +365,22 @@ export interface IStorage {
   
   // Financial Support Tickets
   createFinancialSupportTicket(ticket: InsertFinancialSupportTicket): Promise<FinancialSupportTicket>;
+  getAllFinancialSupportTickets(): Promise<Array<FinancialSupportTicket & { 
+    company: { id: string; name: string; };
+    user: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    responder?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+  }>>;
+  getFinancialSupportTicket(id: string): Promise<(FinancialSupportTicket & { 
+    company: { id: string; name: string; };
+    user: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    responder?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+  }) | undefined>;
+  updateFinancialSupportTicket(id: string, data: {
+    status?: string;
+    adminResponse?: string;
+    respondedBy?: string;
+    respondedAt?: Date;
+  }): Promise<FinancialSupportTicket | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -2084,6 +2100,124 @@ export class DbStorage implements IStorage {
   async createFinancialSupportTicket(ticket: InsertFinancialSupportTicket): Promise<FinancialSupportTicket> {
     const [created] = await db.insert(financialSupportTickets).values(ticket).returning();
     return created;
+  }
+
+  async getAllFinancialSupportTickets(): Promise<Array<FinancialSupportTicket & { 
+    company: { id: string; name: string; };
+    user: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    responder?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+  }>> {
+    const tickets = await db
+      .select({
+        ticket: financialSupportTickets,
+        company: {
+          id: companies.id,
+          name: companies.name,
+        },
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(financialSupportTickets)
+      .leftJoin(companies, eq(financialSupportTickets.companyId, companies.id))
+      .leftJoin(users, eq(financialSupportTickets.userId, users.id))
+      .orderBy(desc(financialSupportTickets.createdAt));
+
+    // Now get responders for each ticket
+    const results = await Promise.all(
+      tickets.map(async (item) => {
+        let responder = null;
+        if (item.ticket.respondedBy) {
+          const responderUser = await this.getUser(item.ticket.respondedBy);
+          if (responderUser) {
+            responder = {
+              id: responderUser.id,
+              firstName: responderUser.firstName,
+              lastName: responderUser.lastName,
+              email: responderUser.email,
+            };
+          }
+        }
+        return {
+          ...item.ticket,
+          company: item.company,
+          user: item.user,
+          responder,
+        };
+      })
+    );
+
+    return results as any;
+  }
+
+  async getFinancialSupportTicket(id: string): Promise<(FinancialSupportTicket & { 
+    company: { id: string; name: string; };
+    user: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    responder?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+  }) | undefined> {
+    const [ticket] = await db
+      .select({
+        ticket: financialSupportTickets,
+        company: {
+          id: companies.id,
+          name: companies.name,
+        },
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(financialSupportTickets)
+      .leftJoin(companies, eq(financialSupportTickets.companyId, companies.id))
+      .leftJoin(users, eq(financialSupportTickets.userId, users.id))
+      .where(eq(financialSupportTickets.id, id))
+      .limit(1);
+
+    if (!ticket) {
+      return undefined;
+    }
+
+    let responder = null;
+    if (ticket.ticket.respondedBy) {
+      const responderUser = await this.getUser(ticket.ticket.respondedBy);
+      if (responderUser) {
+        responder = {
+          id: responderUser.id,
+          firstName: responderUser.firstName,
+          lastName: responderUser.lastName,
+          email: responderUser.email,
+        };
+      }
+    }
+
+    return {
+      ...ticket.ticket,
+      company: ticket.company,
+      user: ticket.user,
+      responder,
+    } as any;
+  }
+
+  async updateFinancialSupportTicket(id: string, data: {
+    status?: string;
+    adminResponse?: string;
+    respondedBy?: string;
+    respondedAt?: Date;
+  }): Promise<FinancialSupportTicket | undefined> {
+    const [updated] = await db
+      .update(financialSupportTickets)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(financialSupportTickets.id, id))
+      .returning();
+    return updated;
   }
 }
 
