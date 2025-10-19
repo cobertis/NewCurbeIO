@@ -592,6 +592,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Logout from all sessions across all devices
+  app.post("/api/logout-all-sessions", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      // Import neon client for raw SQL query
+      const { neon } = await import("@neondatabase/serverless");
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Delete all sessions for this user from the session table
+      // connect-pg-simple stores userId in sess JSON column
+      await sql`
+        DELETE FROM session 
+        WHERE sess->>'userId' = ${userId}
+      `;
+
+      await logger.logAuth({
+        req,
+        action: "logout",
+        userId: userId,
+        email: user?.email || "unknown",
+        metadata: {
+          type: "all_sessions",
+          message: "User logged out from all sessions across all devices"
+        }
+      });
+
+      // Destroy current session as well
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Error destroying current session:", err);
+          return res.status(500).json({ message: "Failed to logout from all sessions" });
+        }
+        res.json({ 
+          success: true,
+          message: "Successfully logged out from all devices"
+        });
+      });
+    } catch (error) {
+      console.error("Error logging out from all sessions:", error);
+      res.status(500).json({ message: "Failed to logout from all sessions" });
+    }
+  });
+
   // Public registration endpoint - no auth required
   app.post("/api/register", async (req: Request, res: Response) => {
     try {

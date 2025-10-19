@@ -777,6 +777,30 @@ export default function Settings() {
     },
   });
 
+  // Logout from all sessions mutation
+  const logoutAllSessionsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/logout-all-sessions", {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Successfully logged out from all devices",
+      });
+      // Redirect to login after successful logout
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000);
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to logout from all sessions",
+      });
+    },
+  });
+
   // Handler for Company Information Save
   const handleSaveCompanyInformation = async () => {
     setSavingSection("companyInfo");
@@ -1570,8 +1594,14 @@ export default function Settings() {
                         </div>
                         <Badge variant="secondary">Active</Badge>
                       </div>
-                      <Button variant="outline" className="w-full" data-testid="button-sign-out-all">
-                        Sign Out of All Other Sessions
+                      <Button 
+                        variant="outline" 
+                        className="w-full" 
+                        onClick={() => logoutAllSessionsMutation.mutate()}
+                        disabled={logoutAllSessionsMutation.isPending}
+                        data-testid="button-sign-out-all"
+                      >
+                        {logoutAllSessionsMutation.isPending ? "Signing Out..." : "Sign Out of All Other Sessions"}
                       </Button>
                     </div>
                   </CardContent>
