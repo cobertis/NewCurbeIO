@@ -983,60 +983,338 @@ export default function Settings() {
             {/* Company Settings Tab */}
             {isAdmin && (
               <TabsContent value="company" className="space-y-4">
+                {/* Company Information */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Company Settings</CardTitle>
+                    <CardTitle>Company Information</CardTitle>
                     <CardDescription>
-                      Manage your company settings and preferences.
+                      Basic company details and contact information
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <Label>Company Name</Label>
-                      <Input
-                        value={companySettingsData?.settings?.companyId || ""}
-                        disabled
-                        className="bg-muted"
-                        data-testid="input-company-name"
-                      />
-                    </div>
+                  <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="primaryColor">Primary Color</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="primaryColor"
-                            type="color"
-                            defaultValue={companySettingsData?.settings?.primaryColor || "#2196F3"}
-                            className="h-10 w-20"
-                            data-testid="input-primary-color"
-                          />
-                          <Input
-                            defaultValue={companySettingsData?.settings?.primaryColor || "#2196F3"}
-                            className="flex-1"
-                            readOnly
-                          />
-                        </div>
+                        <Label htmlFor="companyName">Company Name</Label>
+                        <Input
+                          id="companyName"
+                          value={companyData?.company?.name || ""}
+                          disabled
+                          className="bg-muted"
+                          data-testid="input-company-name"
+                        />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="secondaryColor">Secondary Color</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="secondaryColor"
-                            type="color"
-                            defaultValue={companySettingsData?.settings?.secondaryColor || "#1976D2"}
-                            className="h-10 w-20"
-                            data-testid="input-secondary-color"
-                          />
-                          <Input
-                            defaultValue={companySettingsData?.settings?.secondaryColor || "#1976D2"}
-                            className="flex-1"
-                            readOnly
-                          />
-                        </div>
+                        <Label htmlFor="legalName">Legal Name</Label>
+                        <Input
+                          id="legalName"
+                          defaultValue={companyData?.company?.legalName || ""}
+                          data-testid="input-legal-name"
+                        />
                       </div>
                     </div>
-                    <Button data-testid="button-save-company">Save Settings</Button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="companyEmail">Company Email</Label>
+                        <Input
+                          id="companyEmail"
+                          type="email"
+                          defaultValue={companyData?.company?.email || ""}
+                          data-testid="input-company-email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="companyPhone">Company Phone</Label>
+                        <Input
+                          id="companyPhone"
+                          type="tel"
+                          defaultValue={companyData?.company?.phone || ""}
+                          data-testid="input-company-phone"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="website">Website</Label>
+                        <Input
+                          id="website"
+                          type="url"
+                          placeholder="https://example.com"
+                          defaultValue={companyData?.company?.website || ""}
+                          data-testid="input-website"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="industry">Industry</Label>
+                        <Input
+                          id="industry"
+                          defaultValue={companyData?.company?.industry || ""}
+                          data-testid="input-industry"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="companySize">Company Size</Label>
+                        <select
+                          id="companySize"
+                          defaultValue={companyData?.company?.companySize || ""}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          data-testid="select-company-size"
+                        >
+                          <option value="">Select company size</option>
+                          <option value="1-10">1-10 employees</option>
+                          <option value="11-50">11-50 employees</option>
+                          <option value="51-200">51-200 employees</option>
+                          <option value="201-500">201-500 employees</option>
+                          <option value="501+">501+ employees</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="timezone">Timezone</Label>
+                        <Input
+                          id="timezone"
+                          defaultValue={companyData?.company?.timezone || "UTC"}
+                          data-testid="input-timezone"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="currency">Currency</Label>
+                        <Input
+                          id="currency"
+                          defaultValue={companyData?.company?.currency || "USD"}
+                          data-testid="input-currency"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="platformLanguage">Platform Language</Label>
+                        <Input
+                          id="platformLanguage"
+                          defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
+                          data-testid="input-platform-language"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Physical Address */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Physical Address</CardTitle>
+                    <CardDescription>
+                      Company address and location details
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Street Address</Label>
+                      <Input
+                        id="address"
+                        defaultValue={companyData?.company?.address || ""}
+                        data-testid="input-address"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="addressLine2">Address Line 2</Label>
+                      <Input
+                        id="addressLine2"
+                        placeholder="Suite, Apt, Unit, etc."
+                        defaultValue={companyData?.company?.addressLine2 || ""}
+                        data-testid="input-address-line-2"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          defaultValue={companyData?.company?.city || ""}
+                          data-testid="input-city"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="state">State / Province</Label>
+                        <Input
+                          id="state"
+                          defaultValue={companyData?.company?.state || ""}
+                          data-testid="input-state"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Input
+                          id="postalCode"
+                          defaultValue={companyData?.company?.postalCode || ""}
+                          data-testid="input-postal-code"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="country">Country</Label>
+                        <Input
+                          id="country"
+                          defaultValue={companyData?.company?.country || "United States"}
+                          data-testid="input-country"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Business Profile */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Business Profile</CardTitle>
+                    <CardDescription>
+                      Legal business information and registration details
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="businessType">Business Type</Label>
+                        <Input
+                          id="businessType"
+                          placeholder="e.g., LLC, Corporation"
+                          defaultValue={companyData?.company?.businessType || ""}
+                          data-testid="input-business-type"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="registrationIdType">Registration ID Type</Label>
+                        <Input
+                          id="registrationIdType"
+                          placeholder="e.g., EIN, VAT"
+                          defaultValue={companyData?.company?.registrationIdType || ""}
+                          data-testid="input-registration-id-type"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="registrationNumber">Registration Number</Label>
+                      <Input
+                        id="registrationNumber"
+                        defaultValue={companyData?.company?.registrationNumber || ""}
+                        data-testid="input-registration-number"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="outboundLanguage">Outbound Communication Language</Label>
+                      <Input
+                        id="outboundLanguage"
+                        defaultValue={companyData?.company?.outboundLanguage || "Spanish (United States)"}
+                        data-testid="input-outbound-language"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Authorized Representative */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Authorized Representative</CardTitle>
+                    <CardDescription>
+                      Contact information for the company's authorized representative
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="representativeFirstName">First Name</Label>
+                        <Input
+                          id="representativeFirstName"
+                          defaultValue={companyData?.company?.representativeFirstName || ""}
+                          data-testid="input-representative-first-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="representativeLastName">Last Name</Label>
+                        <Input
+                          id="representativeLastName"
+                          defaultValue={companyData?.company?.representativeLastName || ""}
+                          data-testid="input-representative-last-name"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="representativeEmail">Email</Label>
+                        <Input
+                          id="representativeEmail"
+                          type="email"
+                          defaultValue={companyData?.company?.representativeEmail || ""}
+                          data-testid="input-representative-email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="representativePhone">Phone</Label>
+                        <Input
+                          id="representativePhone"
+                          type="tel"
+                          defaultValue={companyData?.company?.representativePhone || ""}
+                          data-testid="input-representative-phone"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="representativePosition">Position / Title</Label>
+                      <Input
+                        id="representativePosition"
+                        defaultValue={companyData?.company?.representativePosition || ""}
+                        data-testid="input-representative-position"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Branding */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Branding</CardTitle>
+                    <CardDescription>
+                      Company logo and visual identity
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="logo">Logo URL</Label>
+                        <Input
+                          id="logo"
+                          type="url"
+                          placeholder="https://example.com/logo.png"
+                          defaultValue={companyData?.company?.logo || ""}
+                          data-testid="input-logo"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="domain">Custom Domain</Label>
+                        <Input
+                          id="domain"
+                          placeholder="app.example.com"
+                          defaultValue={companyData?.company?.domain || ""}
+                          data-testid="input-domain"
+                        />
+                      </div>
+                    </div>
+
+                    <Button variant="default" data-testid="button-save-company-settings">
+                      Save All Changes
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
