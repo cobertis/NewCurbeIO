@@ -399,43 +399,45 @@ export default function Settings() {
                   </div>
 
                   {/* Name and Role */}
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-semibold">
-                      {user?.firstName} {user?.lastName}
-                    </h2>
-                    <Badge variant="secondary" className="mt-2">
-                      {getRoleDisplay()}
-                    </Badge>
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div>
+                      <h2 className="text-xl font-semibold">
+                        {user?.firstName} {user?.lastName}
+                      </h2>
+                      <Badge variant="secondary" className="mt-2">
+                        {getRoleDisplay()}
+                      </Badge>
+                    </div>
+
+                    {/* Email and Phone - Vertical Stack */}
+                    <div className="space-y-2 pt-2">
+                      <div className="flex items-center gap-2">
+                        <AtSign className="h-3.5 w-3.5 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-muted-foreground">Email</p>
+                          <p className="text-sm font-medium truncate">{user?.email}</p>
+                        </div>
+                      </div>
+
+                      {user?.phone && (
+                        <div className="flex items-center gap-2">
+                          <PhoneIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-muted-foreground">Phone</p>
+                            <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Bottom Section - Contact Info */}
-                <div className="pt-6 border-t space-y-4">
-                  {/* User Email and Phone - Side by Side */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-start gap-3">
-                      <AtSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-muted-foreground">Email</p>
-                        <p className="text-sm font-medium truncate">{user?.email}</p>
-                      </div>
-                    </div>
-
-                    {user?.phone && (
-                      <div className="flex items-start gap-3">
-                        <PhoneIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-muted-foreground">Phone</p>
-                          <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
+                {/* Business Profile and Status Section */}
+                <div className="space-y-4">
                   {/* Business Profile Section */}
                   {(user?.companyId || companyData?.company?.phone || companyData?.company?.website || companyData?.company?.address) && (
-                    <div className="pt-4 border-t">
-                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Business Profile</h3>
+                    <div className="pt-6 border-t">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Business Profile</h3>
                       <div className="space-y-3">
                         {/* Company */}
                         {user?.companyId && (
