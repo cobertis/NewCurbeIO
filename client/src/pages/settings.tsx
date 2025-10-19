@@ -777,75 +777,77 @@ export default function Settings() {
                 </CardHeader>
                 <CardContent>
                   <form id="insurance-profile-form" onSubmit={handleInsuranceProfileSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="agentInternalCode">
-                        Agent internal code
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="ml-2 text-muted-foreground cursor-help">ⓘ</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>This is a code assigned by your agency</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </Label>
-                      <Input
-                        id="agentInternalCode"
-                        name="agentInternalCode"
-                        placeholder="Enter an internal code"
-                        value={insuranceForm.agentInternalCode || ""}
-                        onChange={(e) => setInsuranceForm({ ...insuranceForm, agentInternalCode: e.target.value })}
-                        data-testid="input-agent-internal-code"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="agentInternalCode">
+                          Agent internal code
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="ml-2 text-muted-foreground cursor-help">ⓘ</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>This is a code assigned by your agency</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </Label>
+                        <Input
+                          id="agentInternalCode"
+                          name="agentInternalCode"
+                          placeholder="Enter an internal code"
+                          value={insuranceForm.agentInternalCode || ""}
+                          onChange={(e) => setInsuranceForm({ ...insuranceForm, agentInternalCode: e.target.value })}
+                          data-testid="input-agent-internal-code"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="instructionLevel">Instruction level</Label>
+                        <select
+                          id="instructionLevel"
+                          name="instructionLevel"
+                          value={insuranceForm.instructionLevel || ""}
+                          onChange={(e) => setInsuranceForm({ ...insuranceForm, instructionLevel: e.target.value })}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          data-testid="select-instruction-level"
+                        >
+                          <option value="">Select instruction level</option>
+                          <option value="Licensed insurance agent">Licensed insurance agent</option>
+                          <option value="Broker">Broker</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="instructionLevel">Instruction level</Label>
-                      <select
-                        id="instructionLevel"
-                        name="instructionLevel"
-                        value={insuranceForm.instructionLevel || ""}
-                        onChange={(e) => setInsuranceForm({ ...insuranceForm, instructionLevel: e.target.value })}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        data-testid="select-instruction-level"
-                      >
-                        <option value="">Select instruction level</option>
-                        <option value="Licensed insurance agent">Licensed insurance agent</option>
-                        <option value="Broker">Broker</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="nationalProducerNumber">National Producer Number (NPN)</Label>
-                      <Input
-                        id="nationalProducerNumber"
-                        name="nationalProducerNumber"
-                        type="text"
-                        placeholder="17925766"
-                        value={insuranceForm.nationalProducerNumber || ""}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '');
-                          if (value.length <= 10) {
-                            setInsuranceForm({ ...insuranceForm, nationalProducerNumber: value });
-                          }
-                        }}
-                        maxLength={10}
-                        data-testid="input-national-producer-number"
-                      />
-                      <p className="text-xs text-muted-foreground">6-10 digits only</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="federallyFacilitatedMarketplace">Federally Facilitated Marketplace (FFM)</Label>
-                      <Input
-                        id="federallyFacilitatedMarketplace"
-                        name="federallyFacilitatedMarketplace"
-                        placeholder="Enter an FFM"
-                        value={insuranceForm.federallyFacilitatedMarketplace || ""}
-                        onChange={(e) => setInsuranceForm({ ...insuranceForm, federallyFacilitatedMarketplace: e.target.value })}
-                        data-testid="input-ffm"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="nationalProducerNumber">National Producer Number (NPN)</Label>
+                        <Input
+                          id="nationalProducerNumber"
+                          name="nationalProducerNumber"
+                          type="text"
+                          placeholder="17925766"
+                          value={insuranceForm.nationalProducerNumber || ""}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '');
+                            if (value.length <= 10) {
+                              setInsuranceForm({ ...insuranceForm, nationalProducerNumber: value });
+                            }
+                          }}
+                          maxLength={10}
+                          data-testid="input-national-producer-number"
+                        />
+                        <p className="text-xs text-muted-foreground">6-10 digits only</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="federallyFacilitatedMarketplace">Federally Facilitated Marketplace (FFM)</Label>
+                        <Input
+                          id="federallyFacilitatedMarketplace"
+                          name="federallyFacilitatedMarketplace"
+                          placeholder="Enter an FFM"
+                          value={insuranceForm.federallyFacilitatedMarketplace || ""}
+                          onChange={(e) => setInsuranceForm({ ...insuranceForm, federallyFacilitatedMarketplace: e.target.value })}
+                          data-testid="input-ffm"
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
