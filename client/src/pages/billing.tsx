@@ -488,6 +488,28 @@ export default function Billing() {
     },
   });
 
+  // Reactivate subscription mutation
+  const reactivateSubscriptionMutation = useMutation({
+    mutationFn: async () => {
+      const result = await apiRequest("POST", "/api/billing/reactivate", {});
+      return result.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscription Reactivated",
+        description: "Your subscription will continue as normal",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/subscription'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reactivate subscription",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Apply coupon mutation
   const applyCouponMutation = useMutation({
     mutationFn: async (code: string) => {
@@ -850,7 +872,7 @@ export default function Billing() {
                     </Button>
                   </div>
                 </div>
-              ) : subscription.status === 'active' ? (
+              ) : subscription.status === 'active' && !subscription.cancelAtPeriodEnd ? (
                 <div className="flex items-center justify-between p-4 rounded-lg border border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
@@ -905,6 +927,16 @@ export default function Billing() {
                       </p>
                     </div>
                   </div>
+                  {subscription.cancelAtPeriodEnd && (
+                    <Button
+                      onClick={() => reactivateSubscriptionMutation.mutate()}
+                      disabled={reactivateSubscriptionMutation.isPending}
+                      className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 font-semibold shadow-sm"
+                      data-testid="button-reactivate-subscription"
+                    >
+                      {reactivateSubscriptionMutation.isPending ? 'Reactivating...' : 'Keep Subscription'}
+                    </Button>
+                  )}
                 </div>
               ) : null}
 

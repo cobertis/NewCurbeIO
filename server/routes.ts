@@ -3856,6 +3856,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reactivate subscription
+  app.post("/api/billing/reactivate", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only admin or superadmin can reactivate subscription
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const companyId = currentUser.role === "superadmin" 
+      ? req.body.companyId as string
+      : currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    // SECURITY: For non-superadmins, verify the company matches the user's company
+    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
+      return res.status(403).json({ message: "Unauthorized access to company subscription" });
+    }
+
+    try {
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No active subscription found" });
+      }
+
+      if (!subscription.cancelAtPeriodEnd) {
+        return res.status(400).json({ message: "Subscription is not scheduled for cancellation" });
+      }
+
+      // Reactivate the subscription in Stripe
+      const updatedSubscription = await stripe.subscriptions.update(
+        subscription.stripeSubscriptionId,
+        {
+          cancel_at_period_end: false,
+        }
+      );
+
+      // Update local subscription
+      await storage.updateSubscription(subscription.id, {
+        cancelAtPeriodEnd: false,
+        cancelledAt: null,
+      });
+
+      res.json({ 
+        message: "Subscription reactivated successfully",
+        subscription: updatedSubscription 
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Apply coupon/promo code
   app.post("/api/billing/apply-coupon", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
