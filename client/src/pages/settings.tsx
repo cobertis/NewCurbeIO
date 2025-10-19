@@ -66,12 +66,6 @@ export default function Settings() {
   const postalCodeRef = useRef<HTMLInputElement>(null);
   const countryRef = useRef<HTMLInputElement>(null);
   
-  // Authorized Representative refs
-  const representativeFirstNameRef = useRef<HTMLInputElement>(null);
-  const representativeLastNameRef = useRef<HTMLInputElement>(null);
-  const representativeEmailRef = useRef<HTMLInputElement>(null);
-  const representativePhoneRef = useRef<HTMLInputElement>(null);
-  const representativePositionRef = useRef<HTMLInputElement>(null);
   
   const user = userData?.user;
 
@@ -396,19 +390,6 @@ export default function Settings() {
     if (stateRef.current?.value) data.state = stateRef.current.value;
     if (postalCodeRef.current?.value) data.postalCode = postalCodeRef.current.value;
     if (countryRef.current?.value) data.country = countryRef.current.value;
-    
-    updateCompanyMutation.mutate(data);
-  };
-
-  // Handler for Authorized Representative Save
-  const handleSaveAuthorizedRepresentative = () => {
-    const data: any = {};
-    
-    if (representativeFirstNameRef.current?.value) data.representativeFirstName = representativeFirstNameRef.current.value;
-    if (representativeLastNameRef.current?.value) data.representativeLastName = representativeLastNameRef.current.value;
-    if (representativeEmailRef.current?.value) data.representativeEmail = representativeEmailRef.current.value;
-    if (representativePhoneRef.current?.value) data.representativePhone = representativePhoneRef.current.value;
-    if (representativePositionRef.current?.value) data.representativePosition = representativePositionRef.current.value;
     
     updateCompanyMutation.mutate(data);
   };
@@ -1627,80 +1608,6 @@ export default function Settings() {
                           data-testid="input-country"
                         />
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Authorized Representative */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Authorized Representative</CardTitle>
-                      <CardDescription>
-                        Contact information for the company's authorized representative
-                      </CardDescription>
-                    </div>
-                    <Button 
-                      onClick={handleSaveAuthorizedRepresentative}
-                      disabled={updateCompanyMutation.isPending}
-                      data-testid="button-save-authorized-representative"
-                    >
-                      {updateCompanyMutation.isPending ? "Saving..." : "Save"}
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="representativeFirstName">First Name</Label>
-                        <Input
-                          id="representativeFirstName"
-                          ref={representativeFirstNameRef}
-                          defaultValue={companyData?.company?.representativeFirstName || ""}
-                          data-testid="input-representative-first-name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="representativeLastName">Last Name</Label>
-                        <Input
-                          id="representativeLastName"
-                          ref={representativeLastNameRef}
-                          defaultValue={companyData?.company?.representativeLastName || ""}
-                          data-testid="input-representative-last-name"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="representativeEmail">Email</Label>
-                        <Input
-                          id="representativeEmail"
-                          ref={representativeEmailRef}
-                          type="email"
-                          defaultValue={companyData?.company?.representativeEmail || ""}
-                          data-testid="input-representative-email"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="representativePhone">Phone</Label>
-                        <Input
-                          id="representativePhone"
-                          ref={representativePhoneRef}
-                          type="tel"
-                          defaultValue={companyData?.company?.representativePhone || ""}
-                          data-testid="input-representative-phone"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="representativePosition">Position / Title</Label>
-                      <Input
-                        id="representativePosition"
-                        ref={representativePositionRef}
-                        defaultValue={companyData?.company?.representativePosition || ""}
-                        data-testid="input-representative-position"
-                      />
                     </div>
                   </CardContent>
                 </Card>
