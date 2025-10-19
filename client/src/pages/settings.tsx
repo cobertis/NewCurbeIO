@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -342,6 +342,24 @@ export default function Settings() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Empresa</p>
                       <p className="text-sm font-medium">{companyData?.company?.name || user.companyId}</p>
+                    </div>
+                  </div>
+                )}
+
+                {companyData?.company?.website && (
+                  <div className="flex items-start gap-3">
+                    <Globe className="h-4 w-4 text-muted-foreground mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground">Sitio Web</p>
+                      <a 
+                        href={companyData.company.website.startsWith('http') ? companyData.company.website : `https://${companyData.company.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-primary hover:underline truncate block"
+                        data-testid="link-company-website"
+                      >
+                        {companyData.company.website}
+                      </a>
                     </div>
                   </div>
                 )}
