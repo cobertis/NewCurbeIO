@@ -1,0 +1,56 @@
+ 
+ PATCH https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/api/settings/profile 400 (Bad Request)
+apply	@	injected.js:204
+apiRequest	@	queryClient.ts:21
+mutationFn	@	settings.tsx:188
+fn	@	@tanstack_react-query.js:1189
+run	@	@tanstack_react-query.js:494
+start	@	@tanstack_react-query.js:536
+execute	@	@tanstack_react-query.js:1225
+await in execute		
+mutate	@	@tanstack_react-query.js:2630
+(anonymous)	@	@tanstack_react-query.js:3295
+handleInsuranceProfileSubmit	@	settings.tsx:245
+callCallback2	@	chunk-RPCDYKBN.js:3674
+invokeGuardedCallbackDev	@	chunk-RPCDYKBN.js:3699
+invokeGuardedCallback	@	chunk-RPCDYKBN.js:3733
+invokeGuardedCallbackAndCatchFirstError	@	chunk-RPCDYKBN.js:3736
+executeDispatch	@	chunk-RPCDYKBN.js:7014
+processDispatchQueueItemsInOrder	@	chunk-RPCDYKBN.js:7034
+processDispatchQueue	@	chunk-RPCDYKBN.js:7043
+dispatchEventsForPlugins	@	chunk-RPCDYKBN.js:7051
+(anonymous)	@	chunk-RPCDYKBN.js:7174
+batchedUpdates$1	@	chunk-RPCDYKBN.js:18913
+batchedUpdates	@	chunk-RPCDYKBN.js:3579
+dispatchEventForPluginEventSystem	@	chunk-RPCDYKBN.js:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay	@	chunk-RPCDYKBN.js:5478
+dispatchEvent	@	chunk-RPCDYKBN.js:5472
+dispatchDiscreteEvent	@	chunk-RPCDYKBN.js:5449
+
+faviconV2?client=SOC…5-0814-40b9-b53f…:1 
+ GET https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=T…1a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev&size=32 404 (Not Found)
+faviconV2?client=SOC…35-0814-40b9-b53…:1 
+ GET https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=T…a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/&size=32 404 (Not Found)
+Image		
+oY	@	framework-4ca1e485f3149550.js:1
+e	@	framework-4ca1e485f3149550.js:1
+(anonymous)	@	framework-4ca1e485f3149550.js:1
+uO	@	framework-4ca1e485f3149550.js:1
+u_	@	framework-4ca1e485f3149550.js:1
+r6	@	framework-4ca1e485f3149550.js:1
+(anonymous)	@	framework-4ca1e485f3149550.js:1
+client:536 WebSocket connection to 'wss://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/?token=j1a1D6ZwTPcy' failed: 
+setupWebSocket	@	client:536
+(anonymous)	@	client:531
+ WebSocket connection to 'wss://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/?token=j1a1D6ZwTPcy' failed: 
+setupWebSocket	@	client:536
+(anonymous)	@	client:531
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=j1a1D6ZwTPcy' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket	@	client:536
+fallback	@	client:509
+(anonymous)	@	client:555
+﻿
+
