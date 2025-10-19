@@ -1169,16 +1169,31 @@ export async function changePlan(
       if (currentSubscription.discounts && currentSubscription.discounts.length > 0) {
         const discount = currentSubscription.discounts[0];
         if (typeof discount !== 'string') {
-          const activeDiscount = discount as Stripe.Discount;
-          const discountCoupon = (activeDiscount as any).coupon;
-          const couponId = typeof discountCoupon === 'string' 
-            ? discountCoupon 
-            : discountCoupon.id;
+          const activeDiscount = discount as any;
           
-          updateData.discounts = [{
-            coupon: couponId
-          }];
-          console.log('[STRIPE] Preserving discount with coupon:', couponId);
+          // Get coupon ID - Stripe structure can vary:
+          // New: discount.source.coupon (string or object)
+          // Old: discount.coupon (string or object)
+          let couponId: string | undefined;
+          
+          if (activeDiscount.source?.coupon) {
+            // New structure: discount.source.coupon
+            couponId = typeof activeDiscount.source.coupon === 'string'
+              ? activeDiscount.source.coupon
+              : activeDiscount.source.coupon?.id;
+          } else if (activeDiscount.coupon) {
+            // Old structure: discount.coupon
+            couponId = typeof activeDiscount.coupon === 'string'
+              ? activeDiscount.coupon
+              : activeDiscount.coupon?.id;
+          }
+          
+          if (couponId) {
+            updateData.discounts = [{
+              coupon: couponId
+            }];
+            console.log('[STRIPE] Preserving discount with coupon:', couponId);
+          }
         }
       }
       
