@@ -211,12 +211,12 @@ export default function TicketsPage() {
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Tickets</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="under_review">Under Review</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
+              <SelectItem value="all" data-testid="option-filter-all">All Tickets</SelectItem>
+              <SelectItem value="pending" data-testid="option-filter-pending">Pending</SelectItem>
+              <SelectItem value="under_review" data-testid="option-filter-under-review">Under Review</SelectItem>
+              <SelectItem value="approved" data-testid="option-filter-approved">Approved</SelectItem>
+              <SelectItem value="rejected" data-testid="option-filter-rejected">Rejected</SelectItem>
+              <SelectItem value="closed" data-testid="option-filter-closed">Closed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -438,11 +438,11 @@ export default function TicketsPage() {
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="under_review">Under Review</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
+                      <SelectItem value="pending" data-testid="option-status-pending">Pending</SelectItem>
+                      <SelectItem value="under_review" data-testid="option-status-under-review">Under Review</SelectItem>
+                      <SelectItem value="approved" data-testid="option-status-approved">Approved</SelectItem>
+                      <SelectItem value="rejected" data-testid="option-status-rejected">Rejected</SelectItem>
+                      <SelectItem value="closed" data-testid="option-status-closed">Closed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
