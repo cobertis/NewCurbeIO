@@ -97,6 +97,11 @@ export default function Settings() {
     phone: "",
     dateOfBirth: "",
     preferredLanguage: "",
+    agentInternalCode: "",
+    instructionLevel: "",
+    nationalProducerNumber: "",
+    federallyFacilitatedMarketplace: "",
+    referredBy: "",
   });
 
   // Update form when user data changes
@@ -109,13 +114,30 @@ export default function Settings() {
         phone: user.phone ? formatPhoneDisplay(user.phone) : "",
         dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
         preferredLanguage: user.preferredLanguage || "en",
+        agentInternalCode: (user as any).agentInternalCode || "",
+        instructionLevel: (user as any).instructionLevel || "",
+        nationalProducerNumber: (user as any).nationalProducerNumber || "",
+        federallyFacilitatedMarketplace: (user as any).federallyFacilitatedMarketplace || "",
+        referredBy: (user as any).referredBy || "",
       });
     }
   }, [user]);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone?: string; dateOfBirth?: string; preferredLanguage?: string }) => {
+    mutationFn: async (data: { 
+      firstName: string; 
+      lastName: string; 
+      email: string; 
+      phone?: string; 
+      dateOfBirth?: string; 
+      preferredLanguage?: string;
+      agentInternalCode?: string;
+      instructionLevel?: string;
+      nationalProducerNumber?: string;
+      federallyFacilitatedMarketplace?: string;
+      referredBy?: string;
+    }) => {
       // Convert phone to E.164 format before sending
       const dataToSend = {
         ...data,
@@ -552,15 +574,17 @@ export default function Settings() {
 
             {/* Profile Tab */}
             <TabsContent value="profile" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>
-                    Update your personal information and contact details.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleProfileSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Profile Information Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Profile Information</CardTitle>
+                    <CardDescription>
+                      Update your personal information and contact details.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleProfileSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
@@ -682,7 +706,89 @@ export default function Settings() {
                   </form>
                 </CardContent>
               </Card>
-            </TabsContent>
+
+              {/* Insurance Profile Information Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Insurance Profile Information</CardTitle>
+                  <CardDescription>
+                    This is a code assigned by your agency
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleProfileSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="agentInternalCode">
+                        Agent internal code
+                        <span className="ml-2 text-muted-foreground">ⓘ</span>
+                      </Label>
+                      <Input
+                        id="agentInternalCode"
+                        name="agentInternalCode"
+                        placeholder="Enter an internal code"
+                        value={profileForm.agentInternalCode || ""}
+                        onChange={(e) => setProfileForm({ ...profileForm, agentInternalCode: e.target.value })}
+                        data-testid="input-agent-internal-code"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="instructionLevel">Instruction level</Label>
+                      <select
+                        id="instructionLevel"
+                        name="instructionLevel"
+                        value={profileForm.instructionLevel || ""}
+                        onChange={(e) => setProfileForm({ ...profileForm, instructionLevel: e.target.value })}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        data-testid="select-instruction-level"
+                      >
+                        <option value="">Select instruction level</option>
+                        <option value="Licensed insurance agent">Licensed insurance agent</option>
+                        <option value="Broker">Broker</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="nationalProducerNumber">National Producer Number (NPN)</Label>
+                      <Input
+                        id="nationalProducerNumber"
+                        name="nationalProducerNumber"
+                        placeholder="17925766"
+                        value={profileForm.nationalProducerNumber || ""}
+                        onChange={(e) => setProfileForm({ ...profileForm, nationalProducerNumber: e.target.value })}
+                        data-testid="input-national-producer-number"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="federallyFacilitatedMarketplace">Federally Facilitated Marketplace (FFM)</Label>
+                      <Input
+                        id="federallyFacilitatedMarketplace"
+                        name="federallyFacilitatedMarketplace"
+                        placeholder="Enter an FFM"
+                        value={profileForm.federallyFacilitatedMarketplace || ""}
+                        onChange={(e) => setProfileForm({ ...profileForm, federallyFacilitatedMarketplace: e.target.value })}
+                        data-testid="input-ffm"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="referredBy">Referred by</Label>
+                      <Input
+                        id="referredBy"
+                        name="referredBy"
+                        placeholder="Enter a referred"
+                        value={profileForm.referredBy || ""}
+                        onChange={(e) => setProfileForm({ ...profileForm, referredBy: e.target.value })}
+                        data-testid="input-referred-by"
+                      />
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
             {/* Preferences Tab */}
             <TabsContent value="preferences" className="space-y-4">

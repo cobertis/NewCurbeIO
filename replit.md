@@ -15,7 +15,7 @@ The frontend utilizes React 18, TypeScript, Vite, Shadcn/ui (New York style), Ra
 The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Query for state management. The backend is built with Express.js and TypeScript, providing a RESTful API with session-based authentication and role-based access control (RBAC).
 
 **Key Features:**
--   **User & Company Management:** Comprehensive CRUD operations, role-based access, 2FA, profile management, and email activation. Includes Google Places Business Autocomplete for company data, and a robust account status system (`pending_activation`, `active`, `deactivated`).
+-   **User & Company Management:** Comprehensive CRUD operations, role-based access, 2FA, profile management, and email activation. Includes Google Places Business Autocomplete for company data, and a robust account status system (`pending_activation`, `active`, `deactivated`). User profiles include Insurance Profile Information fields for insurance industry users (agent internal code, instruction level, national producer number, federally facilitated marketplace, and referral tracking).
 -   **Timezone System:** User-selected timezones for date displays.
 -   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session-based authentication, and account status management with clear login feedback.
 -   **Multi-tenancy:** Strict data isolation using `companyId` for all non-superadmin access, with superadmins having cross-company oversight.

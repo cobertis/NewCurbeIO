@@ -149,6 +149,13 @@ export const users = pgTable("users", {
   timezone: text("timezone").default("America/New_York"), // User's timezone preference
   address: text("address"), // Office address
   
+  // Insurance Profile Information
+  agentInternalCode: text("agent_internal_code"), // Agent internal code assigned by agency
+  instructionLevel: text("instruction_level"), // Licensed insurance agent, etc.
+  nationalProducerNumber: text("national_producer_number"), // NPN
+  federallyFacilitatedMarketplace: text("federally_facilitated_marketplace"), // FFM
+  referredBy: text("referred_by"), // Referred by
+  
   // Role within the company
   role: text("role").notNull().default("member"), // superadmin, admin, member, viewer
   
@@ -695,6 +702,11 @@ export const updateUserSchema = z.object({
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
   isActive: z.boolean().optional(),
+  agentInternalCode: z.string().optional(),
+  instructionLevel: z.string().optional(),
+  nationalProducerNumber: z.string().optional(),
+  federallyFacilitatedMarketplace: z.string().optional(),
+  referredBy: z.string().optional(),
 }).refine(data => Object.values(data).some(v => v !== undefined), {
   message: "At least one field must be provided",
 });

@@ -2458,6 +2458,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         avatar: req.body.avatar,
         dateOfBirth: req.body.dateOfBirth,
         preferredLanguage: req.body.preferredLanguage,
+        agentInternalCode: req.body.agentInternalCode,
+        instructionLevel: req.body.instructionLevel,
+        nationalProducerNumber: req.body.nationalProducerNumber,
+        federallyFacilitatedMarketplace: req.body.federallyFacilitatedMarketplace,
+        referredBy: req.body.referredBy,
       };
 
       // Validate using updateUserSchema (validates phone E.164 format, email, etc.)
