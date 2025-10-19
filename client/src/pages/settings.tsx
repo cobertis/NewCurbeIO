@@ -56,7 +56,6 @@ export default function Settings() {
   const websiteRef = useRef<HTMLInputElement>(null);
   const companySizeRef = useRef<HTMLSelectElement>(null);
   const timezoneRef = useRef<HTMLInputElement>(null);
-  const currencyRef = useRef<HTMLInputElement>(null);
   const platformLanguageRef = useRef<HTMLInputElement>(null);
   
   // Physical Address refs
@@ -382,7 +381,6 @@ export default function Settings() {
     if (websiteRef.current?.value) data.website = websiteRef.current.value;
     if (companySizeRef.current?.value) data.companySize = companySizeRef.current.value;
     if (timezoneRef.current?.value) data.timezone = timezoneRef.current.value;
-    if (currencyRef.current?.value) data.currency = currencyRef.current.value;
     if (platformLanguageRef.current?.value) data.platformLanguage = platformLanguageRef.current.value;
     
     updateCompanyMutation.mutate(data);
@@ -1685,25 +1683,14 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="currency">Currency</Label>
-                        <Input
-                          id="currency"
-                          ref={currencyRef}
-                          defaultValue={companyData?.company?.currency || "USD"}
-                          data-testid="input-currency"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="platformLanguage">Platform Language</Label>
-                        <Input
-                          id="platformLanguage"
-                          ref={platformLanguageRef}
-                          defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
-                          data-testid="input-platform-language"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="platformLanguage">Platform Language</Label>
+                      <Input
+                        id="platformLanguage"
+                        ref={platformLanguageRef}
+                        defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
+                        data-testid="input-platform-language"
+                      />
                     </div>
                   </CardContent>
                 </Card>
