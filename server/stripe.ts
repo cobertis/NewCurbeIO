@@ -1167,10 +1167,10 @@ export async function changePlan(
     
     // Step 1: Create subscription schedule FROM the existing subscription
     // Note: When using from_subscription, Stripe creates the first phase automatically
+    // Cannot set end_behavior when using from_subscription
     console.log('[STRIPE] Step 1: Creating subscription schedule from existing subscription...');
     const schedule = await stripe.subscriptionSchedules.create({
       from_subscription: stripeSubscriptionId,
-      end_behavior: 'release',
     });
     
     console.log('[STRIPE] Schedule created:', schedule.id);
