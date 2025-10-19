@@ -4554,6 +4554,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { status, adminResponse } = req.body;
 
+      // Get the current ticket state before updating
+      const currentTicket = await storage.getFinancialSupportTicket(req.params.id);
+      if (!currentTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
       // Build update data
       const updateData: any = {};
       
@@ -4576,22 +4582,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get full ticket details with relations
       const fullTicket = await storage.getFinancialSupportTicket(ticket.id);
 
-      // If we have a response, notify the user who created the ticket
-      if (adminResponse && fullTicket) {
-        const { notificationService } = await import("./notification-service");
-        
-        await storage.createNotification({
-          userId: fullTicket.userId,
-          type: 'financial_support_response',
-          title: 'Response to Your Financial Support Request',
-          message: adminResponse,
-          link: '/my-support-tickets',
-          isRead: false,
-        });
-
-        // Broadcast notification update
+      // Notify the user about changes
+      if (fullTicket) {
         const { broadcastNotificationUpdate } = await import("./websocket");
-        broadcastNotificationUpdate();
+        
+        // If status changed, notify about status change
+        if (status && status !== currentTicket.status) {
+          const statusMessages: Record<string, { title: string; message: string }> = {
+            pending: {
+              title: 'Financial Support Request Received',
+              message: 'Your financial support request has been received and is pending review.',
+            },
+            under_review: {
+              title: 'Financial Support Request Under Review',
+              message: 'Your financial support request is now under review by our team. We will get back to you soon.',
+            },
+            approved: {
+              title: 'Financial Support Request Approved',
+              message: 'Great news! Your financial support request has been approved. Check your ticket for details.',
+            },
+            rejected: {
+              title: 'Financial Support Request Update',
+              message: 'Your financial support request has been reviewed. Please check your ticket for more information.',
+            },
+            closed: {
+              title: 'Financial Support Request Closed',
+              message: 'Your financial support request has been closed.',
+            },
+          };
+
+          const statusNotification = statusMessages[status];
+          if (statusNotification) {
+            await storage.createNotification({
+              userId: fullTicket.userId,
+              type: 'financial_support_status',
+              title: statusNotification.title,
+              message: statusNotification.message,
+              link: '/my-support-tickets',
+              isRead: false,
+            });
+            broadcastNotificationUpdate();
+          }
+        }
+
+        // If we have a response, notify the user about the response
+        if (adminResponse && adminResponse !== currentTicket.adminResponse) {
+          await storage.createNotification({
+            userId: fullTicket.userId,
+            type: 'financial_support_response',
+            title: 'Response to Your Financial Support Request',
+            message: adminResponse,
+            link: '/my-support-tickets',
+            isRead: false,
+          });
+          broadcastNotificationUpdate();
+        }
       }
 
       res.json({ ticket: fullTicket });
