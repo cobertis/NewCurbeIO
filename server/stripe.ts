@@ -1156,32 +1156,6 @@ export async function changePlan(
     
     console.log('[STRIPE] Current period ends at:', new Date(periodEndTimestamp * 1000).toISOString());
     
-    // Prepare the new phase with discount if exists
-    const newPhase: any = {
-      items: [{
-        price: newStripePriceId,
-        quantity: 1,
-      }],
-      start_date: periodEndTimestamp,
-    };
-    
-    // Preserve active discount if it exists
-    if (currentSubscription.discounts && currentSubscription.discounts.length > 0) {
-      const discount = currentSubscription.discounts[0];
-      if (typeof discount !== 'string') {
-        const activeDiscount = discount as Stripe.Discount;
-        const discountCoupon = (activeDiscount as any).coupon;
-        const couponId = typeof discountCoupon === 'string' 
-          ? discountCoupon 
-          : discountCoupon.id;
-        
-        newPhase.discounts = [{
-          coupon: couponId
-        }];
-        console.log('[STRIPE] Preserving discount with coupon:', couponId);
-      }
-    }
-    
     // Check if there's an existing schedule
     if (currentSubscription.schedule) {
       console.log('[STRIPE] Canceling existing schedule');
@@ -1191,29 +1165,47 @@ export async function changePlan(
       await stripe.subscriptionSchedules.release(scheduleId);
     }
     
+    // Prepare phases for the subscription schedule
+    const phases: any[] = [
+      // Phase 1: Current plan until period end
+      {
+        items: [{
+          price: currentItem.price.id,
+          quantity: 1,
+        }],
+        end_date: periodEndTimestamp,
+        // Preserve discount in current phase if exists
+        ...(currentSubscription.discounts && currentSubscription.discounts.length > 0 && {
+          discounts: currentSubscription.discounts.map((d: any) => {
+            const coupon = d.coupon;
+            return { coupon: typeof coupon === 'string' ? coupon : coupon.id };
+          })
+        }),
+      },
+      // Phase 2: New plan starting at period end
+      {
+        items: [{
+          price: newStripePriceId,
+          quantity: 1,
+        }],
+        // Preserve active discount if it exists
+        ...(currentSubscription.discounts && currentSubscription.discounts.length > 0 && {
+          discounts: currentSubscription.discounts.map((d: any) => {
+            const coupon = d.coupon;
+            const couponId = typeof coupon === 'string' ? coupon : coupon.id;
+            console.log('[STRIPE] Preserving discount with coupon:', couponId);
+            return { coupon: couponId };
+          })
+        }),
+      },
+    ];
+    
     // Create a subscription schedule that will change the plan at period end
     console.log('[STRIPE] Creating subscription schedule for plan change...');
     const schedule = await stripe.subscriptionSchedules.create({
       from_subscription: stripeSubscriptionId,
       end_behavior: 'release',
-      phases: [
-        {
-          items: [{
-            price: currentItem.price.id,
-            quantity: 1,
-          }],
-          start_date: Math.floor(Date.now() / 1000),
-          end_date: periodEndTimestamp,
-          // Preserve discount in current phase if exists
-          ...(currentSubscription.discounts && currentSubscription.discounts.length > 0 && {
-            discounts: currentSubscription.discounts.map((d: any) => {
-              const coupon = d.coupon;
-              return { coupon: typeof coupon === 'string' ? coupon : coupon.id };
-            })
-          }),
-        },
-        newPhase,
-      ],
+      phases: phases,
     });
     
     console.log('[STRIPE] Subscription schedule created:', schedule.id);
