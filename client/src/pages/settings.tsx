@@ -54,7 +54,6 @@ export default function Settings() {
   const companyEmailRef = useRef<HTMLInputElement>(null);
   const companyPhoneRef = useRef<HTMLInputElement>(null);
   const websiteRef = useRef<HTMLInputElement>(null);
-  const industryRef = useRef<HTMLInputElement>(null);
   const companySizeRef = useRef<HTMLSelectElement>(null);
   const timezoneRef = useRef<HTMLInputElement>(null);
   const currencyRef = useRef<HTMLInputElement>(null);
@@ -387,7 +386,6 @@ export default function Settings() {
     if (companyEmailRef.current?.value) data.email = companyEmailRef.current.value;
     if (companyPhoneRef.current?.value) data.phone = companyPhoneRef.current.value;
     if (websiteRef.current?.value) data.website = websiteRef.current.value;
-    if (industryRef.current?.value) data.industry = industryRef.current.value;
     if (companySizeRef.current?.value) data.companySize = companySizeRef.current.value;
     if (timezoneRef.current?.value) data.timezone = timezoneRef.current.value;
     if (currencyRef.current?.value) data.currency = currencyRef.current.value;
@@ -1650,27 +1648,16 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="website">Website</Label>
-                        <Input
-                          id="website"
-                          ref={websiteRef}
-                          type="url"
-                          placeholder="https://example.com"
-                          defaultValue={companyData?.company?.website || ""}
-                          data-testid="input-website"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="industry">Industry</Label>
-                        <Input
-                          id="industry"
-                          ref={industryRef}
-                          defaultValue={companyData?.company?.industry || ""}
-                          data-testid="input-industry"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="website">Website</Label>
+                      <Input
+                        id="website"
+                        ref={websiteRef}
+                        type="url"
+                        placeholder="https://example.com"
+                        defaultValue={companyData?.company?.website || ""}
+                        data-testid="input-website"
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
