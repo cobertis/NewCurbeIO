@@ -230,7 +230,7 @@ export default function TicketsPage() {
             <Ticket className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tickets.length}</div>
+            <div className="text-2xl font-bold" data-testid="stat-total-tickets">{tickets.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -239,7 +239,7 @@ export default function TicketsPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold" data-testid="stat-pending-tickets">
               {tickets.filter(t => t.status === 'pending').length}
             </div>
           </CardContent>
@@ -250,7 +250,7 @@ export default function TicketsPage() {
             <Eye className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold" data-testid="stat-under-review-tickets">
               {tickets.filter(t => t.status === 'under_review').length}
             </div>
           </CardContent>
@@ -261,7 +261,7 @@ export default function TicketsPage() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold" data-testid="stat-approved-tickets">
               {tickets.filter(t => t.status === 'approved').length}
             </div>
           </CardContent>
@@ -272,7 +272,7 @@ export default function TicketsPage() {
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold" data-testid="stat-rejected-tickets">
               {tickets.filter(t => t.status === 'rejected').length}
             </div>
           </CardContent>
@@ -311,13 +311,13 @@ export default function TicketsPage() {
                 <TableBody>
                   {filteredTickets.map((ticket) => (
                     <TableRow key={ticket.id} data-testid={`ticket-row-${ticket.id}`}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium" data-testid={`text-company-${ticket.id}`}>
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
                           {ticket.company.name}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`text-user-${ticket.id}`}>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <div>
@@ -326,14 +326,14 @@ export default function TicketsPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`status-ticket-${ticket.id}`}>{getStatusBadge(ticket.status)}</TableCell>
+                      <TableCell data-testid={`text-created-${ticket.id}`}>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
                           {formatDate(ticket.createdAt)}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`text-responder-${ticket.id}`}>
                         {ticket.responder ? (
                           <div className="text-sm">
                             {getUserName(ticket.responder)}
@@ -391,20 +391,20 @@ export default function TicketsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Company</Label>
-                  <p className="text-sm font-medium mt-1">{selectedTicket.company.name}</p>
+                  <p className="text-sm font-medium mt-1" data-testid="text-dialog-company">{selectedTicket.company.name}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">User</Label>
-                  <p className="text-sm font-medium mt-1">{getUserName(selectedTicket.user)}</p>
+                  <p className="text-sm font-medium mt-1" data-testid="text-dialog-user">{getUserName(selectedTicket.user)}</p>
                   <p className="text-xs text-muted-foreground">{selectedTicket.user.email}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Created</Label>
-                  <p className="text-sm font-medium mt-1">{formatDate(selectedTicket.createdAt)}</p>
+                  <p className="text-sm font-medium mt-1" data-testid="text-dialog-created">{formatDate(selectedTicket.createdAt)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Current Status</Label>
-                  <div className="mt-1">{getStatusBadge(selectedTicket.status)}</div>
+                  <div className="mt-1" data-testid="status-dialog-ticket">{getStatusBadge(selectedTicket.status)}</div>
                 </div>
               </div>
 
@@ -415,14 +415,14 @@ export default function TicketsPage() {
                 <div>
                   <Label className="text-sm font-medium">Financial Situation</Label>
                   <div className="mt-2 p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm whitespace-pre-wrap">{selectedTicket.situation}</p>
+                    <p className="text-sm whitespace-pre-wrap" data-testid="text-dialog-situation">{selectedTicket.situation}</p>
                   </div>
                 </div>
 
                 <div>
                   <Label className="text-sm font-medium">Proposed Solution</Label>
                   <div className="mt-2 p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm whitespace-pre-wrap">{selectedTicket.proposedSolution}</p>
+                    <p className="text-sm whitespace-pre-wrap" data-testid="text-dialog-solution">{selectedTicket.proposedSolution}</p>
                   </div>
                 </div>
               </div>
