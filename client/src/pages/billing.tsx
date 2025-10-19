@@ -808,8 +808,8 @@ export default function Billing() {
                 </div>
               </div>
 
-              {/* Trial Banner */}
-              {subscription.status === 'trialing' && trialDaysRemaining > 0 && (
+              {/* Status Banner */}
+              {subscription.status === 'trialing' && trialDaysRemaining > 0 ? (
                 <div className="flex items-center justify-between p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -849,7 +849,63 @@ export default function Billing() {
                     </Button>
                   </div>
                 </div>
-              )}
+              ) : subscription.status === 'active' ? (
+                <div className="flex items-center justify-between p-4 rounded-lg border border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-900 dark:text-green-100">
+                        Plan Active
+                      </p>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        Your subscription is active and in good standing. Next billing on {formatDate(new Date(subscription.currentPeriodEnd))}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : subscription.status === 'past_due' ? (
+                <div className="flex items-center justify-between p-4 rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                      <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-orange-900 dark:text-orange-100">
+                        Payment Required
+                      </p>
+                      <p className="text-sm text-orange-700 dark:text-orange-300">
+                        Your payment is past due. Please update your payment method to continue service.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setShowAddCard(true)}
+                    className="bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 font-semibold shadow-sm"
+                  >
+                    Update Payment
+                  </Button>
+                </div>
+              ) : subscription.status === 'cancelled' || subscription.cancelAtPeriodEnd ? (
+                <div className="flex items-center justify-between p-4 rounded-lg border border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                      <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-red-900 dark:text-red-100">
+                        {subscription.status === 'cancelled' ? 'Subscription Cancelled' : 'Cancellation Scheduled'}
+                      </p>
+                      <p className="text-sm text-red-700 dark:text-red-300">
+                        {subscription.cancelAtPeriodEnd 
+                          ? `Your subscription will end on ${formatDate(new Date(subscription.currentPeriodEnd))}.`
+                          : 'Your subscription has been cancelled.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
