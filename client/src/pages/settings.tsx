@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, CreditCard } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -418,10 +418,18 @@ export default function Settings() {
     if (location === "/settings/company") return "company";
     if (location === "/settings/system") return "system";
     if (location === "/settings/security") return "security";
+    if (location === "/settings/billing") return "billing";
     return "profile"; // default
   };
 
   const activeTab = getCurrentTab();
+
+  // Redirect to billing page when billing tab is accessed
+  useEffect(() => {
+    if (activeTab === "billing") {
+      setLocation("/billing");
+    }
+  }, [activeTab, setLocation]);
 
   // Profile form state (personal information only)
   const [profileForm, setProfileForm] = useState({
@@ -1033,7 +1041,7 @@ export default function Settings() {
         {/* Right Column - Settings Tabs */}
         <div className="lg:col-span-8 xl:col-span-9">
           <Tabs value={activeTab} onValueChange={(value) => setLocation(`/settings/${value}`)} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 lg:w-auto">
               <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
                 <UserIcon className="h-4 w-4" />
                 Profile
@@ -1052,6 +1060,12 @@ export default function Settings() {
                 <Bell className="h-4 w-4" />
                 Preferences
               </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="billing" className="gap-2" data-testid="tab-billing">
+                  <CreditCard className="h-4 w-4" />
+                  Billing
+                </TabsTrigger>
+              )}
               {isSuperAdmin && (
                 <TabsTrigger value="system" className="gap-2" data-testid="tab-system">
                   <Mail className="h-4 w-4" />
