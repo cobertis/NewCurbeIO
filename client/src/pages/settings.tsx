@@ -95,6 +95,9 @@ export default function Settings() {
     lastName: "",
     email: "",
     phone: "",
+    dateOfBirth: "",
+    preferredLanguage: "",
+    address: "",
   });
 
   // Update form when user data changes
@@ -105,17 +108,21 @@ export default function Settings() {
         lastName: user.lastName || "",
         email: user.email || "",
         phone: user.phone ? formatPhoneDisplay(user.phone) : "",
+        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
+        preferredLanguage: user.preferredLanguage || "en",
+        address: user.address || "",
       });
     }
   }, [user]);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone?: string }) => {
+    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone?: string; dateOfBirth?: string; preferredLanguage?: string; address?: string }) => {
       // Convert phone to E.164 format before sending
       const dataToSend = {
         ...data,
         phone: data.phone ? formatPhoneE164(data.phone) : undefined,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
       };
       return apiRequest("PATCH", "/api/settings/profile", dataToSend);
     },
@@ -583,6 +590,74 @@ export default function Settings() {
                       />
                       <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671. Required for SMS two-factor authentication</p>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                        <Input
+                          id="dateOfBirth"
+                          name="dateOfBirth"
+                          type="date"
+                          value={profileForm.dateOfBirth}
+                          onChange={(e) => setProfileForm({ ...profileForm, dateOfBirth: e.target.value })}
+                          data-testid="input-date-of-birth"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="preferredLanguage">Preferred Language</Label>
+                        <select
+                          id="preferredLanguage"
+                          name="preferredLanguage"
+                          value={profileForm.preferredLanguage}
+                          onChange={(e) => setProfileForm({ ...profileForm, preferredLanguage: e.target.value })}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          data-testid="select-preferred-language"
+                        >
+                          <option value="en">English</option>
+                          <option value="es">Spanish</option>
+                          <option value="fr">French</option>
+                          <option value="de">German</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Office Address (Optional)</Label>
+                      <Input
+                        id="address"
+                        name="address"
+                        placeholder="123 Main St, City, State, ZIP"
+                        value={profileForm.address}
+                        onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                        data-testid="input-address"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="company">Company</Label>
+                        <Input
+                          id="company"
+                          name="company"
+                          value={companyData?.company?.name || ""}
+                          disabled
+                          className="bg-muted"
+                          data-testid="input-company"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="role">Role</Label>
+                        <Input
+                          id="role"
+                          name="role"
+                          value={getRoleDisplay()}
+                          disabled
+                          className="bg-muted"
+                          data-testid="input-role"
+                        />
+                      </div>
+                    </div>
+
                     <Button
                       type="submit"
                       disabled={updateProfileMutation.isPending}

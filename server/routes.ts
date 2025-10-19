@@ -713,6 +713,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: user.companyId,
         companyName: companyName,
         timezone: user.timezone,
+        dateOfBirth: user.dateOfBirth,
+        preferredLanguage: user.preferredLanguage,
+        address: user.address,
       },
     });
   });
@@ -2454,6 +2457,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: req.body.email,
         phone: req.body.phone,
         avatar: req.body.avatar,
+        dateOfBirth: req.body.dateOfBirth,
+        preferredLanguage: req.body.preferredLanguage,
+        address: req.body.address,
       };
 
       // Validate using updateUserSchema (validates phone E.164 format, email, etc.)
