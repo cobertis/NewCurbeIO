@@ -48,6 +48,7 @@ import SystemAlerts from "@/pages/system-alerts";
 import Unsubscribe from "@/pages/unsubscribe";
 import Billing from "@/pages/billing";
 import PlanSelection from "@/pages/plan-selection";
+import Tickets from "@/pages/tickets";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -72,6 +73,7 @@ const getPageTitle = (path: string): string => {
     '/contacts': 'Email Contacts',
     '/campaigns': 'Campaigns',
     '/incoming-sms': 'Incoming SMS',
+    '/tickets': 'Support Tickets',
   };
   
   if (path.startsWith('/campaigns/') && path.includes('/stats')) {
@@ -943,6 +945,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <AuditLogs />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/tickets">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Tickets />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
