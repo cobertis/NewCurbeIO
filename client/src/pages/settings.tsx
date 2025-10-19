@@ -130,8 +130,8 @@ export default function Settings() {
     }
   }, [user]);
 
-  // Update profile mutation
-  const updateProfileMutation = useMutation({
+  // Update profile info mutation (personal information)
+  const updateProfileInfoMutation = useMutation({
     mutationFn: async (data: { 
       firstName?: string; 
       lastName?: string; 
@@ -139,34 +139,68 @@ export default function Settings() {
       phone?: string; 
       dateOfBirth?: string; 
       preferredLanguage?: string;
+    }) => {
+      // Filter out empty values and convert phone to E.164 format
+      const dataToSend: any = {};
+      if (data.firstName) dataToSend.firstName = data.firstName;
+      if (data.lastName) dataToSend.lastName = data.lastName;
+      if (data.email) dataToSend.email = data.email;
+      if (data.phone) dataToSend.phone = formatPhoneE164(data.phone);
+      if (data.dateOfBirth) dataToSend.dateOfBirth = new Date(data.dateOfBirth).toISOString();
+      if (data.preferredLanguage) dataToSend.preferredLanguage = data.preferredLanguage;
+      
+      return apiRequest("PATCH", "/api/settings/profile", dataToSend);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update profile information.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update insurance profile mutation
+  const updateInsuranceProfileMutation = useMutation({
+    mutationFn: async (data: { 
       agentInternalCode?: string;
       instructionLevel?: string;
       nationalProducerNumber?: string;
       federallyFacilitatedMarketplace?: string;
       referredBy?: string;
     }) => {
-      // Convert phone to E.164 format before sending
-      const dataToSend = {
-        ...data,
-        phone: data.phone ? formatPhoneE164(data.phone) : undefined,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : undefined,
-      };
+      // Filter out empty values
+      const dataToSend: any = {};
+      if (data.agentInternalCode) dataToSend.agentInternalCode = data.agentInternalCode;
+      if (data.instructionLevel) dataToSend.instructionLevel = data.instructionLevel;
+      if (data.nationalProducerNumber) dataToSend.nationalProducerNumber = data.nationalProducerNumber;
+      if (data.federallyFacilitatedMarketplace) dataToSend.federallyFacilitatedMarketplace = data.federallyFacilitatedMarketplace;
+      if (data.referredBy) dataToSend.referredBy = data.referredBy;
+      
       return apiRequest("PATCH", "/api/settings/profile", dataToSend);
     },
     onSuccess: () => {
-      // Invalidate both session and users cache to keep data synced
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
+        title: "Insurance Profile Updated",
+        description: "Your insurance profile has been updated successfully.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to update profile.",
+        description: "Failed to update insurance profile.",
         variant: "destructive",
       });
     },
@@ -211,13 +245,13 @@ export default function Settings() {
   // Handler for Profile Information form
   const handleProfileInfoSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    updateProfileMutation.mutate(profileForm);
+    updateProfileInfoMutation.mutate(profileForm);
   };
 
   // Handler for Insurance Profile Information form
   const handleInsuranceProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    updateProfileMutation.mutate(insuranceForm);
+    updateInsuranceProfileMutation.mutate(insuranceForm);
   };
 
   const handleSendTestEmail = (e: React.FormEvent) => {
@@ -601,10 +635,10 @@ export default function Settings() {
                     <Button
                       type="submit"
                       form="profile-info-form"
-                      disabled={updateProfileMutation.isPending}
+                      disabled={updateProfileInfoMutation.isPending}
                       data-testid="button-save-profile"
                     >
-                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                      {updateProfileInfoMutation.isPending ? "Saving..." : "Save Changes"}
                     </Button>
                   </CardHeader>
                   <CardContent>
@@ -735,10 +769,10 @@ export default function Settings() {
                   <Button
                     type="submit"
                     form="insurance-profile-form"
-                    disabled={updateProfileMutation.isPending}
+                    disabled={updateInsuranceProfileMutation.isPending}
                     data-testid="button-save-insurance"
                   >
-                    {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                    {updateInsuranceProfileMutation.isPending ? "Saving..." : "Save Changes"}
                   </Button>
                 </CardHeader>
                 <CardContent>
