@@ -1510,6 +1510,24 @@ export default function Billing() {
               </DialogHeader>
               
               <div className="space-y-4 py-4">
+                {/* Proration Information */}
+                <div className="p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+                  <div className="flex gap-3">
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">How downgrade works</p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        Your downgrade will take effect at the end of your current billing period on{' '}
+                        <span className="font-semibold">
+                          {subscription?.currentPeriodEnd ? formatDate(new Date(subscription.currentPeriodEnd)) : 'your next renewal date'}
+                        </span>. 
+                        You'll continue to enjoy all features of your current plan until then, and the new lower-priced plan will begin on your next renewal. 
+                        You won't lose any time you've already paid for.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Reason Textarea */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
@@ -2423,6 +2441,24 @@ export default function Billing() {
               </DialogHeader>
               
               <div className="space-y-4 py-4">
+                {/* Proration Information */}
+                <div className="p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+                  <div className="flex gap-3">
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">How downgrade works</p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        Your downgrade will take effect at the end of your current billing period on{' '}
+                        <span className="font-semibold">
+                          {subscription?.currentPeriodEnd ? formatDate(new Date(subscription.currentPeriodEnd)) : 'your next renewal date'}
+                        </span>. 
+                        You'll continue to enjoy all features of your current plan until then, and the new lower-priced plan will begin on your next renewal. 
+                        You won't lose any time you've already paid for.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Reason Textarea */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
