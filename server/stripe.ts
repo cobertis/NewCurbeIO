@@ -1056,7 +1056,8 @@ export async function changePlan(
   newStripePriceId: string,
   billingPeriod: 'monthly' | 'yearly',
   currentTrialStart: Date | null,
-  currentTrialEnd: Date | null
+  currentTrialEnd: Date | null,
+  immediate: boolean = false
 ) {
   try {
     console.log('[STRIPE] Changing plan for subscription:', stripeSubscriptionId);
@@ -1085,6 +1086,51 @@ export async function changePlan(
       console.log('[STRIPE] Already on this plan, no changes needed');
       return currentSubscription;
     }
+    
+    // If immediate upgrade, use simple proration
+    if (immediate) {
+      console.log('[STRIPE] Performing immediate upgrade with proration...');
+      
+      const updateData: any = {
+        items: [{
+          id: currentItem.id,
+          price: newStripePriceId,
+        }],
+        // Enable proration - Stripe will:
+        // 1. Credit unused time on current plan
+        // 2. Charge for new plan (prorated)
+        // 3. Customer pays the difference
+        proration_behavior: 'create_prorations',
+      };
+      
+      // Preserve active discount if it exists
+      if (currentSubscription.discounts && currentSubscription.discounts.length > 0) {
+        const discount = currentSubscription.discounts[0];
+        if (typeof discount !== 'string') {
+          const activeDiscount = discount as Stripe.Discount;
+          const discountCoupon = (activeDiscount as any).coupon;
+          const couponId = typeof discountCoupon === 'string' 
+            ? discountCoupon 
+            : discountCoupon.id;
+          
+          updateData.discounts = [{
+            coupon: couponId
+          }];
+          console.log('[STRIPE] Preserving discount with coupon:', couponId);
+        }
+      }
+      
+      const updatedSubscription = await stripe.subscriptions.update(
+        stripeSubscriptionId,
+        updateData
+      );
+      
+      console.log('[STRIPE] Immediate upgrade completed with proration');
+      return updatedSubscription;
+    }
+    
+    // Otherwise, schedule the change for end of period
+    console.log('[STRIPE] Scheduling plan change for end of billing period...');
     
     // Get current period end timestamp
     const periodEndTimestamp = (currentSubscription as any).current_period_end;

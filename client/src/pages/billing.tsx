@@ -217,7 +217,7 @@ export default function Billing() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [pendingSkipTrial, setPendingSkipTrial] = useState(false);
   const [showModifyDialog, setShowModifyDialog] = useState(false);
-  const [modifyDialogView, setModifyDialogView] = useState<'main' | 'financial-ineligible' | 'financial-support' | 'downgrade' | 'cancel'>('main');
+  const [modifyDialogView, setModifyDialogView] = useState<'main' | 'financial-ineligible' | 'financial-support' | 'downgrade' | 'upgrade' | 'cancel'>('main');
   const [downgradeReason, setDowngradeReason] = useState("");
   const [downgradeConfirm1, setDowngradeConfirm1] = useState(false);
   const [downgradeConfirm2, setDowngradeConfirm2] = useState(false);
@@ -1259,10 +1259,7 @@ export default function Billing() {
                       </div>
                     </div>
                     <Button 
-                      onClick={() => {
-                        setShowModifyDialog(false);
-                        setLocation('/select-plan');
-                      }}
+                      onClick={() => setModifyDialogView('upgrade')}
                       data-testid="button-upgrade-plan"
                     >
                       Upgrade
@@ -1484,6 +1481,99 @@ export default function Billing() {
             </>
           )}
 
+          {/* Upgrade View */}
+          {modifyDialogView === 'upgrade' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                    <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  Upgrade to {nextHigherPlan?.name}
+                </DialogTitle>
+                <DialogDescription>
+                  Choose when you'd like your upgrade to take effect
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                {/* Immediate Upgrade Option */}
+                <button
+                  onClick={() => {
+                    if (nextHigherPlan && subscription && subscription.billingCycle) {
+                      changePlanMutation.mutate({
+                        planId: nextHigherPlan.id,
+                        billingPeriod: subscription.billingCycle,
+                        immediate: true
+                      });
+                      setShowModifyDialog(false);
+                    }
+                  }}
+                  className="flex flex-col p-4 rounded-lg border border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20 hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-upgrade-immediate"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <span className="font-semibold text-green-900 dark:text-green-100">Upgrade Immediately</span>
+                    </div>
+                    <Badge variant="default" className="bg-green-600">Recommended</Badge>
+                  </div>
+                  <p className="text-sm text-green-800 dark:text-green-200 mb-3">
+                    Get instant access to all premium features. We'll calculate a credit for your unused time on the current plan and apply it to your first payment.
+                  </p>
+                  <div className="p-3 rounded-md bg-white/50 dark:bg-black/20 border border-green-200 dark:border-green-800">
+                    <p className="text-xs font-semibold text-green-900 dark:text-green-100 mb-1">How it works:</p>
+                    <ul className="text-xs text-green-800 dark:text-green-200 space-y-1">
+                      <li>• Credit for unused time on current plan</li>
+                      <li>• Charge for new plan (prorated for remaining period)</li>
+                      <li>• Pay only the difference today</li>
+                      <li>• Start using premium features immediately</li>
+                    </ul>
+                  </div>
+                </button>
+
+                {/* Scheduled Upgrade Option */}
+                <button
+                  onClick={() => {
+                    if (nextHigherPlan && subscription && subscription.billingCycle) {
+                      changePlanMutation.mutate({
+                        planId: nextHigherPlan.id,
+                        billingPeriod: subscription.billingCycle,
+                        immediate: false
+                      });
+                      setShowModifyDialog(false);
+                    }
+                  }}
+                  className="flex flex-col p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-upgrade-scheduled"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-semibold">Upgrade at Next Renewal</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Schedule your upgrade for{' '}
+                    <span className="font-semibold">
+                      {subscription?.currentPeriodEnd ? formatDate(new Date(subscription.currentPeriodEnd)) : 'your next renewal date'}
+                    </span>.
+                    Continue using your current plan until then.
+                  </p>
+                </button>
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setModifyDialogView('main')}
+                  data-testid="button-upgrade-back"
+                >
+                  Back
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
           {/* Downgrade View */}
           {modifyDialogView === 'downgrade' && (
             <>
@@ -1613,7 +1703,7 @@ export default function Billing() {
                 </Button>
                 <Button
                   onClick={() => {
-                    if (nextLowerPlan && subscription) {
+                    if (nextLowerPlan && subscription && subscription.billingCycle) {
                       changePlanMutation.mutate({
                         planId: nextLowerPlan.id,
                         billingPeriod: subscription.billingCycle
@@ -2190,10 +2280,7 @@ export default function Billing() {
                       </div>
                     </div>
                     <Button 
-                      onClick={() => {
-                        setShowModifyDialog(false);
-                        setLocation('/select-plan');
-                      }}
+                      onClick={() => setModifyDialogView('upgrade')}
                       data-testid="button-upgrade-plan"
                     >
                       Upgrade
@@ -2415,6 +2502,99 @@ export default function Billing() {
             </>
           )}
 
+          {/* Upgrade View */}
+          {modifyDialogView === 'upgrade' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                    <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  Upgrade to {nextHigherPlan?.name}
+                </DialogTitle>
+                <DialogDescription>
+                  Choose when you'd like your upgrade to take effect
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                {/* Immediate Upgrade Option */}
+                <button
+                  onClick={() => {
+                    if (nextHigherPlan && subscription && subscription.billingCycle) {
+                      changePlanMutation.mutate({
+                        planId: nextHigherPlan.id,
+                        billingPeriod: subscription.billingCycle,
+                        immediate: true
+                      });
+                      setShowModifyDialog(false);
+                    }
+                  }}
+                  className="flex flex-col p-4 rounded-lg border border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20 hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-upgrade-immediate"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <span className="font-semibold text-green-900 dark:text-green-100">Upgrade Immediately</span>
+                    </div>
+                    <Badge variant="default" className="bg-green-600">Recommended</Badge>
+                  </div>
+                  <p className="text-sm text-green-800 dark:text-green-200 mb-3">
+                    Get instant access to all premium features. We'll calculate a credit for your unused time on the current plan and apply it to your first payment.
+                  </p>
+                  <div className="p-3 rounded-md bg-white/50 dark:bg-black/20 border border-green-200 dark:border-green-800">
+                    <p className="text-xs font-semibold text-green-900 dark:text-green-100 mb-1">How it works:</p>
+                    <ul className="text-xs text-green-800 dark:text-green-200 space-y-1">
+                      <li>• Credit for unused time on current plan</li>
+                      <li>• Charge for new plan (prorated for remaining period)</li>
+                      <li>• Pay only the difference today</li>
+                      <li>• Start using premium features immediately</li>
+                    </ul>
+                  </div>
+                </button>
+
+                {/* Scheduled Upgrade Option */}
+                <button
+                  onClick={() => {
+                    if (nextHigherPlan && subscription && subscription.billingCycle) {
+                      changePlanMutation.mutate({
+                        planId: nextHigherPlan.id,
+                        billingPeriod: subscription.billingCycle,
+                        immediate: false
+                      });
+                      setShowModifyDialog(false);
+                    }
+                  }}
+                  className="flex flex-col p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-upgrade-scheduled"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-semibold">Upgrade at Next Renewal</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Schedule your upgrade for{' '}
+                    <span className="font-semibold">
+                      {subscription?.currentPeriodEnd ? formatDate(new Date(subscription.currentPeriodEnd)) : 'your next renewal date'}
+                    </span>.
+                    Continue using your current plan until then.
+                  </p>
+                </button>
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setModifyDialogView('main')}
+                  data-testid="button-upgrade-back"
+                >
+                  Back
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
           {/* Downgrade View */}
           {modifyDialogView === 'downgrade' && (
             <>
@@ -2544,7 +2724,7 @@ export default function Billing() {
                 </Button>
                 <Button
                   onClick={() => {
-                    if (nextLowerPlan && subscription) {
+                    if (nextLowerPlan && subscription && subscription.billingCycle) {
                       changePlanMutation.mutate({
                         planId: nextLowerPlan.id,
                         billingPeriod: subscription.billingCycle

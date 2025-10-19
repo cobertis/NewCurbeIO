@@ -3732,7 +3732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Unauthorized access to company subscription" });
     }
 
-    const { planId, billingPeriod } = req.body;
+    const { planId, billingPeriod, immediate = false } = req.body;
     if (!planId || !billingPeriod) {
       return res.status(400).json({ message: "Plan ID and billing period required" });
     }
@@ -3765,7 +3765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: `${billingPeriod} pricing not available for this plan` });
       }
 
-      // Update subscription with proration (Stripe handles credit automatically)
+      // Update subscription - immediate for upgrades, scheduled for downgrades
       const { changePlan } = await import("./stripe");
       const updatedStripeSubscription = await changePlan(
         subscription.stripeCustomerId,
@@ -3773,7 +3773,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripePriceId,
         billingPeriod as 'monthly' | 'yearly',
         subscription.trialStart,
-        subscription.trialEnd
+        subscription.trialEnd,
+        immediate
       );
 
       // Update local subscription with new plan and dates
@@ -3789,7 +3790,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentPeriodEnd: toDate(updatedStripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
 
-      res.json({ message: "Plan changed successfully with automatic proration", subscription: updatedStripeSubscription });
+      const message = immediate 
+        ? "Plan upgraded successfully with proration"
+        : "Plan change scheduled for end of billing period";
+      res.json({ message, subscription: updatedStripeSubscription });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
