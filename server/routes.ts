@@ -174,11 +174,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return false;
       }
 
-      // Format amount
+      // Format amount (amount is already in dollars, NOT cents)
       const formattedAmount = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency.toUpperCase(),
-      }).format(amount / 100);
+      }).format(amount);
 
       // Format payment date
       const paymentDate = new Date().toLocaleDateString('en-US', {

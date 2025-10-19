@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useWebSocket } from "@/hooks/use-websocket";
 import { 
   CreditCard, 
   FileText, 
@@ -278,6 +279,44 @@ export default function Billing() {
   });
 
   const activeDiscount = discountData?.discount;
+
+  // Track last shown payment failure notification to avoid duplicates
+  const lastPaymentFailureRef = useRef<string | null>(null);
+
+  // WebSocket listener for payment failures
+  const handleWebSocketMessage = useCallback((message: any) => {
+    if (message.type === 'notification_update') {
+      // Refetch notifications to get the latest
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      
+      // Also refetch subscription to update status
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/subscription'] });
+      
+      // Check for payment failure notification
+      queryClient.fetchQuery({ queryKey: ['/api/notifications'] }).then((data: any) => {
+        if (data?.notifications) {
+          // Find the most recent payment_failed notification
+          const paymentFailedNotif = data.notifications.find(
+            (n: any) => n.type === 'payment_failed' && n.id !== lastPaymentFailureRef.current
+          );
+          
+          if (paymentFailedNotif) {
+            lastPaymentFailureRef.current = paymentFailedNotif.id;
+            toast({
+              title: "Payment Failed",
+              description: "Your payment was declined. Please update your payment method.",
+              variant: "destructive",
+            });
+          }
+        }
+      });
+    } else if (message.type === 'subscription_update') {
+      // Refresh subscription data when updated
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/subscription'] });
+    }
+  }, [toast]);
+
+  useWebSocket(handleWebSocketMessage);
 
   // Billing address form state
   const [billingForm, setBillingForm] = useState({
