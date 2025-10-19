@@ -3608,42 +3608,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeSubscriptionId) {
+      if (!subscription || !subscription.stripeSubscriptionId || !subscription.stripeCustomerId) {
         return res.status(404).json({ message: "No active subscription found" });
       }
 
-      const { skipTrial } = await import("./stripe");
-      const stripeSubscription = await skipTrial(subscription.stripeSubscriptionId);
+      const { stripe } = await import("./stripe");
+      
+      // Step 1: Check if customer has a payment method
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: subscription.stripeCustomerId,
+        type: 'card',
+      });
 
-      // Helper to safely convert Stripe timestamps
-      const toDate = (timestamp: number | null | undefined): Date | undefined => {
-        if (typeof timestamp === 'number' && timestamp > 0) {
-          return new Date(timestamp * 1000);
+      if (!paymentMethods.data || paymentMethods.data.length === 0) {
+        return res.status(400).json({ 
+          message: "Please add a payment method before activating your subscription" 
+        });
+      }
+
+      // Get the default payment method
+      const customer = await stripe.customers.retrieve(subscription.stripeCustomerId) as any;
+      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method || paymentMethods.data[0].id;
+
+      // Step 2: Get the subscription to find the price
+      const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+      
+      if (!stripeSubscription.items.data || stripeSubscription.items.data.length === 0) {
+        return res.status(400).json({ message: "Invalid subscription configuration" });
+      }
+
+      const amount = stripeSubscription.items.data[0].price.unit_amount || 0;
+      const currency = stripeSubscription.items.data[0].price.currency || 'usd';
+
+      // Step 3: Test payment method with a PaymentIntent BEFORE ending trial
+      console.log('[SKIP-TRIAL] Testing payment method with PaymentIntent');
+      try {
+        // Create a PaymentIntent to test the card
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: currency,
+          customer: subscription.stripeCustomerId,
+          payment_method: defaultPaymentMethodId,
+          off_session: true,
+          confirm: true, // Immediately attempt to confirm
+          description: 'Payment verification for trial activation',
+        });
+
+        if (paymentIntent.status !== 'succeeded') {
+          // Payment failed
+          console.log('[SKIP-TRIAL] Payment test failed, status:', paymentIntent.status);
+          return res.status(402).json({ 
+            message: "Payment declined. Please update your payment method and try again." 
+          });
         }
-        return undefined;
-      };
 
-      // Update local subscription to sync with Stripe
-      const updateData: any = {
-        status: stripeSubscription.status as 'active' | 'trialing' | 'past_due' | 'cancelled' | 'unpaid',
-      };
-      
-      // Only update dates if they have valid values
-      if (stripeSubscription.current_period_start) {
-        updateData.currentPeriodStart = toDate(stripeSubscription.current_period_start);
-      }
-      if (stripeSubscription.current_period_end) {
-        updateData.currentPeriodEnd = toDate(stripeSubscription.current_period_end);
-      }
-      
-      // Clear trial dates since trial is skipped
-      updateData.trialEnd = undefined;
-      updateData.trialStart = undefined;
-      
-      await storage.updateSubscription(subscription.id, updateData);
+        // Payment succeeded! Refund it immediately since this was just a test
+        console.log('[SKIP-TRIAL] Payment test succeeded, refunding test charge');
+        await stripe.refunds.create({
+          payment_intent: paymentIntent.id,
+          reason: 'requested_by_customer',
+        });
 
-      res.json({ message: "Trial period ended successfully", subscription: stripeSubscription });
+        // Now we can safely skip the trial - this will create the REAL invoice
+        console.log('[SKIP-TRIAL] Payment method verified, now skipping trial');
+        const { skipTrial } = await import("./stripe");
+        const updatedSubscription = await skipTrial(subscription.stripeSubscriptionId);
+
+        // Helper to safely convert Stripe timestamps
+        const toDate = (timestamp: number | null | undefined): Date | undefined => {
+          if (typeof timestamp === 'number' && timestamp > 0) {
+            return new Date(timestamp * 1000);
+          }
+          return undefined;
+        };
+
+        // Update local subscription to sync with Stripe
+        const updateData: any = {
+          status: updatedSubscription.status as 'active' | 'trialing' | 'past_due' | 'cancelled' | 'unpaid',
+        };
+        
+        // Only update dates if they have valid values
+        if (updatedSubscription.current_period_start) {
+          updateData.currentPeriodStart = toDate(updatedSubscription.current_period_start);
+        }
+        if (updatedSubscription.current_period_end) {
+          updateData.currentPeriodEnd = toDate(updatedSubscription.current_period_end);
+        }
+        
+        // Clear trial dates since trial is skipped
+        updateData.trialEnd = undefined;
+        updateData.trialStart = undefined;
+        
+        await storage.updateSubscription(subscription.id, updateData);
+
+        res.json({ message: "Trial period ended successfully", subscription: updatedSubscription });
+      } catch (paymentError: any) {
+        // Payment test failed - return error without modifying subscription
+        console.error('[SKIP-TRIAL] Payment test failed:', paymentError.message);
+        
+        // Extract more user-friendly error message
+        let errorMessage = "Payment declined. Please update your payment method and try again.";
+        if (paymentError.type === 'StripeCardError') {
+          errorMessage = paymentError.message || errorMessage;
+        }
+        
+        return res.status(402).json({ message: errorMessage });
+      }
     } catch (error: any) {
+      console.error('[SKIP-TRIAL] Error:', error.message);
       res.status(500).json({ message: error.message });
     }
   });
