@@ -3630,10 +3630,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const amount = stripeSubscription.items.data[0].price.unit_amount || 0;
       const currency = stripeSubscription.items.data[0].price.currency || 'usd';
 
-      // Step 3: Test payment method with a PaymentIntent BEFORE ending trial
-      console.log('[SKIP-TRIAL] Testing payment method with PaymentIntent');
+      // Step 3: Test payment method with a pre-authorization BEFORE ending trial
+      console.log('[SKIP-TRIAL] Testing payment method with pre-authorization hold');
       try {
-        // Create a PaymentIntent to test the card
+        // Create a PaymentIntent with manual capture - this creates a HOLD (pre-authorization)
+        // instead of an actual charge. The hold will appear as "pending" and then disappear.
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount,
           currency: currency,
@@ -3641,23 +3642,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           payment_method: defaultPaymentMethodId,
           off_session: true,
           confirm: true, // Immediately attempt to confirm
+          capture_method: 'manual', // THIS IS KEY: Creates authorization hold instead of charge
           description: 'Payment verification for trial activation',
         });
 
-        if (paymentIntent.status !== 'succeeded') {
-          // Payment failed
-          console.log('[SKIP-TRIAL] Payment test failed, status:', paymentIntent.status);
+        if (paymentIntent.status !== 'requires_capture') {
+          // Authorization failed
+          console.log('[SKIP-TRIAL] Pre-authorization failed, status:', paymentIntent.status);
           return res.status(402).json({ 
             message: "Payment declined. Please update your payment method and try again." 
           });
         }
 
-        // Payment succeeded! Refund it immediately since this was just a test
-        console.log('[SKIP-TRIAL] Payment test succeeded, refunding test charge');
-        await stripe.refunds.create({
-          payment_intent: paymentIntent.id,
-          reason: 'requested_by_customer',
-        });
+        // Pre-authorization succeeded! Cancel the hold since this was just a verification
+        console.log('[SKIP-TRIAL] Pre-authorization succeeded, canceling hold');
+        await stripe.paymentIntents.cancel(paymentIntent.id);
 
         // Now we can safely skip the trial - this will create the REAL invoice
         console.log('[SKIP-TRIAL] Payment method verified, now skipping trial');
