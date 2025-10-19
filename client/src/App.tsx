@@ -406,6 +406,22 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   {/* Menu Items */}
                   <div className="space-y-1">
                     <DropdownMenuItem 
+                      onClick={() => setLocation("/settings")} 
+                      data-testid="menu-item-settings"
+                      className="py-2.5 px-3 cursor-pointer rounded-md"
+                    >
+                      <SettingsIcon className="mr-3 h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm font-medium">Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => setLocation("/billing")} 
+                      data-testid="menu-item-billing"
+                      className="py-2.5 px-3 cursor-pointer rounded-md"
+                    >
+                      <CreditCard className="mr-3 h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm font-medium">Billing</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
                       onClick={() => setTimezoneDialogOpen(true)} 
                       data-testid="menu-item-timezone"
                       className="py-2.5 px-3 cursor-pointer rounded-md"
@@ -441,22 +457,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                           )}
                         </span>
                       </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setLocation("/billing")} 
-                      data-testid="menu-item-billing"
-                      className="py-2.5 px-3 cursor-pointer rounded-md"
-                    >
-                      <CreditCard className="mr-3 h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium">Billing</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setLocation("/settings")} 
-                      data-testid="menu-item-settings"
-                      className="py-2.5 px-3 cursor-pointer rounded-md"
-                    >
-                      <SettingsIcon className="mr-3 h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium">Settings</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={handleLogout} 
