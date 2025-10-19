@@ -61,7 +61,7 @@ const menuItems = [
     icon: Settings,
   },
   {
-    title: "Email Configuration",
+    title: "Email Settings",
     url: "/email-configuration",
     icon: Mail,
     superAdminOnly: true,
