@@ -1800,36 +1800,36 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="website">Website</Label>
-                      <Input
-                        id="website"
-                        ref={websiteRef}
-                        type="url"
-                        placeholder="https://example.com"
-                        defaultValue={companyData?.company?.website || ""}
-                        data-testid="input-website"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="timezone">Timezone</Label>
-                      <Input
-                        id="timezone"
-                        ref={timezoneRef}
-                        defaultValue={companyData?.company?.timezone || "UTC"}
-                        data-testid="input-timezone"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="platformLanguage">Platform Language</Label>
-                      <Input
-                        id="platformLanguage"
-                        ref={platformLanguageRef}
-                        defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
-                        data-testid="input-platform-language"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="website">Website</Label>
+                        <Input
+                          id="website"
+                          ref={websiteRef}
+                          type="url"
+                          placeholder="https://example.com"
+                          defaultValue={companyData?.company?.website || ""}
+                          data-testid="input-website"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="timezone">Timezone</Label>
+                        <Input
+                          id="timezone"
+                          ref={timezoneRef}
+                          defaultValue={companyData?.company?.timezone || "UTC"}
+                          data-testid="input-timezone"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="platformLanguage">Platform Language</Label>
+                        <Input
+                          id="platformLanguage"
+                          ref={platformLanguageRef}
+                          defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
+                          data-testid="input-platform-language"
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
