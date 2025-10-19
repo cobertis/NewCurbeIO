@@ -3888,6 +3888,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Subscription is not scheduled for cancellation" });
       }
 
+      // Import Stripe
+      const { stripe } = await import("./stripe");
+
       // Reactivate the subscription in Stripe
       const updatedSubscription = await stripe.subscriptions.update(
         subscription.stripeSubscriptionId,
