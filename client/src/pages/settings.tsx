@@ -2017,6 +2017,56 @@ export default function Settings() {
                     />
                   </CardContent>
                 </Card>
+
+                {/* Business Branding */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                    <div className="space-y-1">
+                      <CardTitle>Business Branding</CardTitle>
+                      <CardDescription>
+                        Company logo and custom domain settings
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      onClick={handleSaveBranding}
+                      disabled={updateCompanyMutation.isPending && savingSection === "branding"}
+                      data-testid="button-save-branding"
+                    >
+                      {updateCompanyMutation.isPending && savingSection === "branding" ? "Saving..." : "Save"}
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="logo">Logo URL</Label>
+                      <Input
+                        id="logo"
+                        ref={logoRef}
+                        type="url"
+                        placeholder="https://example.com/logo.png"
+                        defaultValue={companyData?.company?.logo || ""}
+                        data-testid="input-logo"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enter the URL of your company logo. Recommended size: 200x200px
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="domain">Custom Domain</Label>
+                      <Input
+                        id="domain"
+                        ref={domainRef}
+                        type="text"
+                        placeholder="app.yourcompany.com"
+                        defaultValue={companyData?.company?.domain || ""}
+                        data-testid="input-domain"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Custom domain for your company portal (optional)
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             )}
 
