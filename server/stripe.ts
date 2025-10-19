@@ -714,6 +714,44 @@ export async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subsc
     updateData.cancelledAt = new Date(stripeSubscription.canceled_at * 1000);
   }
 
+  // IMPORTANT: Only update the plan if there is NO active schedule
+  // When a schedule is active, Stripe shows the scheduled plan in items, but the plan hasn't actually changed yet
+  // The plan should only update when the schedule executes (which will trigger another webhook)
+  if (!stripeSubscription.schedule) {
+    // No schedule - plan change is immediate, so update the plan
+    console.log('[WEBHOOK] No active schedule, checking for plan change...');
+    
+    // Get the current price from subscription items
+    const priceId = stripeSubscription.items.data[0]?.price.id;
+    if (priceId) {
+      // Find plan with this Stripe price ID
+      const plans = await storage.getPlans();
+      const matchedPlan = plans.find(p => p.stripePriceId === priceId || p.stripeAnnualPriceId === priceId);
+      
+      if (matchedPlan && matchedPlan.id !== subscription.planId) {
+        console.log('[WEBHOOK] Plan changed from', subscription.planId, 'to', matchedPlan.id);
+        updateData.planId = matchedPlan.id;
+        
+        // Update billing cycle based on which price matched
+        if (matchedPlan.stripePriceId === priceId) {
+          updateData.billingCycle = 'monthly';
+        } else if (matchedPlan.stripeAnnualPriceId === priceId) {
+          updateData.billingCycle = 'yearly';
+        }
+        
+        // Update current period dates
+        if ((stripeSubscription as any).current_period_start) {
+          updateData.currentPeriodStart = new Date((stripeSubscription as any).current_period_start * 1000);
+        }
+        if ((stripeSubscription as any).current_period_end) {
+          updateData.currentPeriodEnd = new Date((stripeSubscription as any).current_period_end * 1000);
+        }
+      }
+    }
+  } else {
+    console.log('[WEBHOOK] Active schedule detected - preserving current plan until schedule executes');
+  }
+
   await storage.updateSubscription(subscription.id, updateData);
   
   // Broadcast subscription update to all connected clients
