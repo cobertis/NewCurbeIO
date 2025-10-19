@@ -981,7 +981,6 @@ export default function UserDetail() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
                           <SelectItem value="Licensed insurance agent">Licensed insurance agent</SelectItem>
                           <SelectItem value="Broker">Broker</SelectItem>
                           <SelectItem value="Other">Other</SelectItem>
