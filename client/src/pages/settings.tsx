@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, CreditCard, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
@@ -391,6 +392,8 @@ export default function Settings() {
   const [notificationSearch, setNotificationSearch] = useState("");
   const [notificationTypeFilter, setNotificationTypeFilter] = useState<string>("all");
   const [notificationStatusFilter, setNotificationStatusFilter] = useState<string>("all");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
   
   // Track which company section is currently saving
   const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -432,7 +435,6 @@ export default function Settings() {
     if (location === "/settings" || location === "/settings/profile") return "profile";
     if (location === "/settings/preferences") return "preferences";
     if (location === "/settings/company") return "company";
-    if (location === "/settings/system") return "system";
     if (location === "/settings/security") return "security";
     if (location === "/settings/billing") return "billing";
     if (location === "/settings/notifications") return "notifications";
@@ -1201,12 +1203,6 @@ export default function Settings() {
                 <TabsTrigger value="billing" className="gap-2" data-testid="tab-billing">
                   <CreditCard className="h-4 w-4" />
                   Billing
-                </TabsTrigger>
-              )}
-              {isSuperAdmin && (
-                <TabsTrigger value="system" className="gap-2" data-testid="tab-system">
-                  <Mail className="h-4 w-4" />
-                  Email
                 </TabsTrigger>
               )}
             </TabsList>
@@ -2338,9 +2334,8 @@ export default function Settings() {
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => {
-                                        if (confirm('Are you sure you want to delete this notification?')) {
-                                          deleteNotificationMutation.mutate(notification.id);
-                                        }
+                                        setNotificationToDelete(notification.id);
+                                        setDeleteDialogOpen(true);
                                       }}
                                       disabled={deleteNotificationMutation.isPending}
                                       data-testid={`button-delete-${notification.id}`}
@@ -2364,28 +2359,39 @@ export default function Settings() {
                   })()}
                 </CardContent>
               </Card>
-            </TabsContent>
 
-            {/* System Settings Tab (Superadmin only) */}
-            {isSuperAdmin && (
-              <TabsContent value="system" className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Email and SMTP Configuration</CardTitle>
-                      <CardDescription>
-                        Configure system email notification settings.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Email and SMTP configuration settings will be displayed here.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            )}
+              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent data-testid="dialog-delete-notification">
+                  <DialogHeader>
+                    <DialogTitle>Delete Notification</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete this notification? This action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setDeleteDialogOpen(false)}
+                      data-testid="button-cancel-delete"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        if (notificationToDelete) {
+                          deleteNotificationMutation.mutate(notificationToDelete);
+                          setDeleteDialogOpen(false);
+                        }
+                      }}
+                      data-testid="button-confirm-delete"
+                    >
+                      Delete
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </TabsContent>
           </Tabs>
         </div>
       </div>

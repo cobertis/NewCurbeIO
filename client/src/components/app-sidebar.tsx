@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare, Bell, Ticket } from "lucide-react";
+import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare, Bell, Ticket, Mail } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -59,6 +59,12 @@ const menuItems = [
     title: "Settings",
     url: "/settings",
     icon: Settings,
+  },
+  {
+    title: "Email Configuration",
+    url: "/email-configuration",
+    icon: Mail,
+    superAdminOnly: true,
   },
   {
     title: "Audit Logs",
