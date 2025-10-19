@@ -4550,18 +4550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user's own financial support tickets
-  app.get("/api/my-support-tickets", requireAuth, async (req: Request, res: Response) => {
-    const currentUser = req.user!;
-
-    try {
-      const tickets = await storage.getFinancialSupportTicketsByUser(currentUser.id);
-      res.json({ tickets });
-    } catch (error) {
-      console.error('[TICKETS] Error fetching user tickets:', error);
-      res.status(500).json({ message: "Error fetching your support tickets" });
-    }
-  });
+  // Removed /api/my-support-tickets endpoint - users no longer have access to view their tickets directly
 
   // Get all financial support tickets (superadmin only)
   app.get("/api/tickets", requireAuth, async (req: Request, res: Response) => {
@@ -4650,54 +4639,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // If status changed, notify about status change
         if (status && status !== currentTicket.status) {
-          const statusMessages: Record<string, { title: string; message: string }> = {
-            pending: {
-              title: 'Financial Support Request Received',
-              message: 'Your financial support request has been received and is pending review.',
-            },
-            under_review: {
-              title: 'Financial Support Request Under Review',
-              message: 'Your financial support request is now under review by our team. We will get back to you soon.',
-            },
-            approved: {
-              title: 'Financial Support Request Approved',
-              message: 'Great news! Your financial support request has been approved. Check your ticket for details.',
-            },
-            rejected: {
-              title: 'Financial Support Request Update',
-              message: 'Your financial support request has been reviewed. Please check your ticket for more information.',
-            },
-            closed: {
-              title: 'Financial Support Request Closed',
-              message: 'Your financial support request has been closed.',
-            },
-          };
-
-          const statusNotification = statusMessages[status];
-          if (statusNotification) {
+          // Only send notifications for approved and rejected statuses
+          if (status === 'approved') {
+            // For approved tickets, show the resolution in the notification
+            const resolutionMessage = adminResponse || 'Your financial support request has been approved.';
             await storage.createNotification({
               userId: fullTicket.userId,
-              type: 'financial_support_status',
-              title: statusNotification.title,
-              message: statusNotification.message,
-              link: '/my-support-tickets',
+              type: 'success',
+              title: 'Financial Support Request Approved ✓',
+              message: `Great news! Your request has been approved. Resolution: ${resolutionMessage}`,
+              link: '/billing',
+              isRead: false,
+            });
+            broadcastNotificationUpdate();
+          } else if (status === 'rejected') {
+            // For rejected tickets, show simple rejection message
+            const rejectionMessage = adminResponse || 'Your financial support request has been reviewed and we are unable to approve it at this time.';
+            await storage.createNotification({
+              userId: fullTicket.userId,
+              type: 'error',
+              title: 'Financial Support Request Update',
+              message: rejectionMessage,
+              link: '/billing',
               isRead: false,
             });
             broadcastNotificationUpdate();
           }
-        }
-
-        // If we have a response, notify the user about the response
-        if (adminResponse && adminResponse !== currentTicket.adminResponse) {
-          await storage.createNotification({
-            userId: fullTicket.userId,
-            type: 'financial_support_response',
-            title: 'Response to Your Financial Support Request',
-            message: adminResponse,
-            link: '/my-support-tickets',
-            isRead: false,
-          });
-          broadcastNotificationUpdate();
+          // No notifications for pending, under_review, or closed statuses
         }
       }
 
