@@ -46,7 +46,8 @@ import {
   CreditCard as CardIcon,
   Building2,
   Pencil,
-  MapPin
+  MapPin,
+  Plus
 } from "lucide-react";
 import { formatDate } from "@/lib/date-formatter";
 import {
@@ -1811,9 +1812,19 @@ export default function Billing() {
         <TabsContent value="payments" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
-            <CardHeader>
-              <CardTitle>Payment Methods</CardTitle>
-              <CardDescription>Manage your payment methods and billing information</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+              <div>
+                <CardTitle>Payment Methods</CardTitle>
+                <CardDescription>Manage your payment methods and billing information</CardDescription>
+              </div>
+              <Button 
+                onClick={() => setShowAddCard(true)}
+                size="sm"
+                data-testid="button-add-payment-method"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Card
+              </Button>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Payment Methods List */}
@@ -1872,16 +1883,6 @@ export default function Billing() {
                   </p>
                 </div>
               )}
-
-              {/* Add Payment Method Button */}
-              <Button 
-                onClick={() => setShowAddCard(true)}
-                className="w-full"
-                data-testid="button-add-payment-method"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Add Payment Method
-              </Button>
 
               {/* Manage Payment Methods Dialog Button */}
               {paymentMethods && paymentMethods.length > 0 && (
