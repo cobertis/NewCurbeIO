@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,7 +14,6 @@ import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as Phone
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
-import { UploadAvatarDialog } from "@/components/upload-avatar-dialog";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
 
 export default function Settings() {
@@ -43,7 +42,7 @@ export default function Settings() {
   });
 
   const [emailTestAddress, setEmailTestAddress] = useState("");
-  const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const user = userData?.user;
 
@@ -183,6 +182,73 @@ export default function Settings() {
     }
   };
 
+  // Update avatar mutation
+  const updateAvatarMutation = useMutation({
+    mutationFn: async (avatar: string) => {
+      const response = await apiRequest("PATCH", "/api/settings/profile", { avatar });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      toast({
+        title: "Éxito",
+        description: "Foto de perfil actualizada exitosamente",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar la foto de perfil",
+      });
+    },
+  });
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Archivo inválido",
+        description: "Por favor selecciona un archivo de imagen (JPG, PNG, GIF, etc.)",
+      });
+      return;
+    }
+
+    // Validar tamaño (máx 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        variant: "destructive",
+        title: "Archivo muy grande",
+        description: "Por favor selecciona una imagen menor a 5MB",
+      });
+      return;
+    }
+
+    // Leer archivo y convertir a data URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      updateAvatarMutation.mutate(result);
+    };
+    reader.onerror = () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo leer el archivo de imagen",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Get user initials for avatar
   const getUserInitials = () => {
     if (!user) return "U";
@@ -212,7 +278,7 @@ export default function Settings() {
               <div className="flex flex-col items-center gap-4">
                 <div 
                   className="relative group cursor-pointer"
-                  onClick={() => setUploadAvatarOpen(true)}
+                  onClick={handleAvatarClick}
                   data-testid="button-change-avatar"
                 >
                   <Avatar className="h-24 w-24">
@@ -223,6 +289,14 @@ export default function Settings() {
                   <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Pencil className="h-6 w-6 text-white" />
                   </div>
+                  {/* Input de archivo oculto */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                 </div>
                 <div className="text-center w-full">
                   <h2 className="text-xl font-semibold">
@@ -752,14 +826,6 @@ export default function Settings() {
           </Tabs>
         </div>
       </div>
-
-      {/* Upload Avatar Dialog */}
-      <UploadAvatarDialog
-        open={uploadAvatarOpen}
-        onOpenChange={setUploadAvatarOpen}
-        currentAvatar={user?.avatar || ""}
-        userInitial={getUserInitials()}
-      />
     </div>
   );
 }
