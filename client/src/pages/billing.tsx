@@ -217,7 +217,8 @@ export default function Billing() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [pendingSkipTrial, setPendingSkipTrial] = useState(false);
   const [showModifyDialog, setShowModifyDialog] = useState(false);
-  const [modifyDialogView, setModifyDialogView] = useState<'main' | 'financial-ineligible' | 'financial-support' | 'downgrade' | 'upgrade' | 'cancel'>('main');
+  const [modifyDialogView, setModifyDialogView] = useState<'main' | 'financial-ineligible' | 'financial-support' | 'downgrade' | 'upgrade' | 'upgrade-timing' | 'cancel'>('main');
+  const [selectedUpgradePlan, setSelectedUpgradePlan] = useState<typeof plans[0] | null>(null);
   const [downgradeReason, setDowngradeReason] = useState("");
   const [downgradeConfirm1, setDowngradeConfirm1] = useState(false);
   const [downgradeConfirm2, setDowngradeConfirm2] = useState(false);
@@ -609,9 +610,9 @@ export default function Billing() {
     return yearlyPrice - discountedYearlyPrice;
   };
 
-  // Get next higher plan for upgrade (step-by-step upgrade)
-  const getNextHigherPlan = () => {
-    if (!subscription || !plans.length) return null;
+  // Get all higher plans for upgrade
+  const getAllHigherPlans = () => {
+    if (!subscription || !plans.length) return [];
     
     // Sort plans by monthly price (ascending)
     const sortedPlans = [...plans]
@@ -620,10 +621,16 @@ export default function Billing() {
     
     // Find current plan index
     const currentIndex = sortedPlans.findIndex(p => p.id === subscription.planId);
-    if (currentIndex === -1) return null;
+    if (currentIndex === -1) return [];
     
-    // Return next higher plan (if it exists)
-    return currentIndex < sortedPlans.length - 1 ? sortedPlans[currentIndex + 1] : null;
+    // Return all plans higher than current
+    return sortedPlans.slice(currentIndex + 1);
+  };
+
+  // Get next higher plan for upgrade (step-by-step upgrade)
+  const getNextHigherPlan = () => {
+    const higherPlans = getAllHigherPlans();
+    return higherPlans.length > 0 ? higherPlans[0] : null;
   };
 
   // Get next lower plan for downgrade (step-by-step downgrade)
@@ -1481,15 +1488,77 @@ export default function Billing() {
             </>
           )}
 
-          {/* Upgrade View */}
-          {modifyDialogView === 'upgrade' && (
+          {/* Upgrade View - Select Plan */}
+          {modifyDialogView === 'upgrade' && (() => {
+            const higherPlans = getAllHigherPlans();
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    Select Upgrade Plan
+                  </DialogTitle>
+                  <DialogDescription>
+                    Choose which plan you'd like to upgrade to
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-3 py-4">
+                  {higherPlans.map((plan) => (
+                    <button
+                      key={plan.id}
+                      onClick={() => {
+                        setSelectedUpgradePlan(plan);
+                        setModifyDialogView('upgrade-timing');
+                      }}
+                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                      data-testid={`button-select-plan-${plan.name.toLowerCase()}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                          <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{plan.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatCurrency(
+                              subscription?.billingCycle === 'yearly' 
+                                ? plan.annualPrice || plan.price 
+                                : plan.price,
+                              plan.currency
+                            )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setModifyDialogView('main')}
+                    data-testid="button-upgrade-back"
+                  >
+                    Back
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+
+          {/* Upgrade View - Select Timing */}
+          {modifyDialogView === 'upgrade-timing' && selectedUpgradePlan && (
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                     <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
-                  Upgrade to {nextHigherPlan?.name}
+                  Upgrade to {selectedUpgradePlan.name}
                 </DialogTitle>
                 <DialogDescription>
                   Choose when you'd like your upgrade to take effect
@@ -1500,9 +1569,9 @@ export default function Billing() {
                 {/* Immediate Upgrade Option */}
                 <button
                   onClick={() => {
-                    if (nextHigherPlan && subscription && subscription.billingCycle) {
+                    if (subscription && subscription.billingCycle) {
                       changePlanMutation.mutate({
-                        planId: nextHigherPlan.id,
+                        planId: selectedUpgradePlan.id,
                         billingPeriod: subscription.billingCycle,
                         immediate: true
                       });
@@ -1536,9 +1605,9 @@ export default function Billing() {
                 {/* Scheduled Upgrade Option */}
                 <button
                   onClick={() => {
-                    if (nextHigherPlan && subscription && subscription.billingCycle) {
+                    if (subscription && subscription.billingCycle) {
                       changePlanMutation.mutate({
-                        planId: nextHigherPlan.id,
+                        planId: selectedUpgradePlan.id,
                         billingPeriod: subscription.billingCycle,
                         immediate: false
                       });
@@ -1565,8 +1634,8 @@ export default function Billing() {
               <DialogFooter>
                 <Button 
                   variant="outline" 
-                  onClick={() => setModifyDialogView('main')}
-                  data-testid="button-upgrade-back"
+                  onClick={() => setModifyDialogView('upgrade')}
+                  data-testid="button-upgrade-timing-back"
                 >
                   Back
                 </Button>
@@ -2502,15 +2571,77 @@ export default function Billing() {
             </>
           )}
 
-          {/* Upgrade View */}
-          {modifyDialogView === 'upgrade' && (
+          {/* Upgrade View - Select Plan */}
+          {modifyDialogView === 'upgrade' && (() => {
+            const higherPlans = getAllHigherPlans();
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    Select Upgrade Plan
+                  </DialogTitle>
+                  <DialogDescription>
+                    Choose which plan you'd like to upgrade to
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-3 py-4">
+                  {higherPlans.map((plan) => (
+                    <button
+                      key={plan.id}
+                      onClick={() => {
+                        setSelectedUpgradePlan(plan);
+                        setModifyDialogView('upgrade-timing');
+                      }}
+                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                      data-testid={`button-select-plan-${plan.name.toLowerCase()}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                          <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{plan.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatCurrency(
+                              subscription?.billingCycle === 'yearly' 
+                                ? plan.annualPrice || plan.price 
+                                : plan.price,
+                              plan.currency
+                            )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setModifyDialogView('main')}
+                    data-testid="button-upgrade-back"
+                  >
+                    Back
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+
+          {/* Upgrade View - Select Timing */}
+          {modifyDialogView === 'upgrade-timing' && selectedUpgradePlan && (
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                     <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
-                  Upgrade to {nextHigherPlan?.name}
+                  Upgrade to {selectedUpgradePlan.name}
                 </DialogTitle>
                 <DialogDescription>
                   Choose when you'd like your upgrade to take effect
@@ -2521,9 +2652,9 @@ export default function Billing() {
                 {/* Immediate Upgrade Option */}
                 <button
                   onClick={() => {
-                    if (nextHigherPlan && subscription && subscription.billingCycle) {
+                    if (subscription && subscription.billingCycle) {
                       changePlanMutation.mutate({
-                        planId: nextHigherPlan.id,
+                        planId: selectedUpgradePlan.id,
                         billingPeriod: subscription.billingCycle,
                         immediate: true
                       });
@@ -2557,9 +2688,9 @@ export default function Billing() {
                 {/* Scheduled Upgrade Option */}
                 <button
                   onClick={() => {
-                    if (nextHigherPlan && subscription && subscription.billingCycle) {
+                    if (subscription && subscription.billingCycle) {
                       changePlanMutation.mutate({
-                        planId: nextHigherPlan.id,
+                        planId: selectedUpgradePlan.id,
                         billingPeriod: subscription.billingCycle,
                         immediate: false
                       });
@@ -2586,8 +2717,8 @@ export default function Billing() {
               <DialogFooter>
                 <Button 
                   variant="outline" 
-                  onClick={() => setModifyDialogView('main')}
-                  data-testid="button-upgrade-back"
+                  onClick={() => setModifyDialogView('upgrade')}
+                  data-testid="button-upgrade-timing-back"
                 >
                   Back
                 </Button>
