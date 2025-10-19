@@ -1805,39 +1805,74 @@ export default function Billing() {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="py-4">
-                <RadioGroup value={cancelReason} onValueChange={setCancelReason}>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="missing_features" id="missing_features" />
-                    <Label htmlFor="missing_features" className="cursor-pointer flex-1">
-                      Missing features I need
-                    </Label>
+              <div className="space-y-4 py-4">
+                {/* Critical Warning about Account Deactivation */}
+                <div className="p-4 rounded-lg border-2 border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20">
+                  <div className="flex gap-3">
+                    <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-red-900 dark:text-red-100 mb-2 text-base">
+                        Important: Account Access Will End
+                      </p>
+                      <div className="space-y-2 text-sm text-red-800 dark:text-red-200">
+                        <p>
+                          After your subscription ends on{' '}
+                          <span className="font-bold">
+                            {subscription?.currentPeriodEnd ? formatDate(new Date(subscription.currentPeriodEnd)) : 'your end date'}
+                          </span>, the following will happen automatically:
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li><strong>Your account will be deactivated</strong></li>
+                          <li><strong>All users in your company will lose access</strong></li>
+                          <li><strong>You will not be able to log in</strong></li>
+                          <li><strong>All features and functions will be disabled</strong></li>
+                        </ul>
+                        <p className="font-semibold mt-3">
+                          You can continue using all features until {subscription?.currentPeriodEnd ? formatDate(new Date(subscription.currentPeriodEnd)) : 'your end date'}.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="too_expensive" id="too_expensive" />
-                    <Label htmlFor="too_expensive" className="cursor-pointer flex-1">
-                      Too expensive
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="switching_service" id="switching_service" />
-                    <Label htmlFor="switching_service" className="cursor-pointer flex-1">
-                      Switching to another service
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="not_using" id="not_using" />
-                    <Label htmlFor="not_using" className="cursor-pointer flex-1">
-                      Not using it enough
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="other" id="other" />
-                    <Label htmlFor="other" className="cursor-pointer flex-1">
-                      Other
-                    </Label>
-                  </div>
-                </RadioGroup>
+                </div>
+
+                {/* Cancellation Reason */}
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">
+                    Why are you cancelling? <span className="text-destructive">*</span>
+                  </Label>
+                  <RadioGroup value={cancelReason} onValueChange={setCancelReason}>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="missing_features" id="missing_features" />
+                      <Label htmlFor="missing_features" className="cursor-pointer flex-1">
+                        Missing features I need
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="too_expensive" id="too_expensive" />
+                      <Label htmlFor="too_expensive" className="cursor-pointer flex-1">
+                        Too expensive
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="switching_service" id="switching_service" />
+                      <Label htmlFor="switching_service" className="cursor-pointer flex-1">
+                        Switching to another service
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="not_using" id="not_using" />
+                      <Label htmlFor="not_using" className="cursor-pointer flex-1">
+                        Not using it enough
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="other" id="other" />
+                      <Label htmlFor="other" className="cursor-pointer flex-1">
+                        Other
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
               </div>
 
               <DialogFooter>
@@ -1853,10 +1888,11 @@ export default function Billing() {
                     cancelSubscriptionMutation.mutate();
                     setShowModifyDialog(false);
                   }}
+                  disabled={!cancelReason}
                   className="bg-red-600 hover:bg-red-700"
                   data-testid="button-confirm-cancel"
                 >
-                  Next
+                  I Understand, Cancel Subscription
                 </Button>
               </DialogFooter>
             </>
@@ -2888,39 +2924,74 @@ export default function Billing() {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="py-4">
-                <RadioGroup value={cancelReason} onValueChange={setCancelReason}>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="missing_features" id="missing_features" />
-                    <Label htmlFor="missing_features" className="cursor-pointer flex-1">
-                      Missing features I need
-                    </Label>
+              <div className="space-y-4 py-4">
+                {/* Critical Warning about Account Deactivation */}
+                <div className="p-4 rounded-lg border-2 border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20">
+                  <div className="flex gap-3">
+                    <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-red-900 dark:text-red-100 mb-2 text-base">
+                        Important: Account Access Will End
+                      </p>
+                      <div className="space-y-2 text-sm text-red-800 dark:text-red-200">
+                        <p>
+                          After your subscription ends on{' '}
+                          <span className="font-bold">
+                            {subscription?.currentPeriodEnd ? formatDate(new Date(subscription.currentPeriodEnd)) : 'your end date'}
+                          </span>, the following will happen automatically:
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li><strong>Your account will be deactivated</strong></li>
+                          <li><strong>All users in your company will lose access</strong></li>
+                          <li><strong>You will not be able to log in</strong></li>
+                          <li><strong>All features and functions will be disabled</strong></li>
+                        </ul>
+                        <p className="font-semibold mt-3">
+                          You can continue using all features until {subscription?.currentPeriodEnd ? formatDate(new Date(subscription.currentPeriodEnd)) : 'your end date'}.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="too_expensive" id="too_expensive" />
-                    <Label htmlFor="too_expensive" className="cursor-pointer flex-1">
-                      Too expensive
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="switching_service" id="switching_service" />
-                    <Label htmlFor="switching_service" className="cursor-pointer flex-1">
-                      Switching to another service
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="not_using" id="not_using" />
-                    <Label htmlFor="not_using" className="cursor-pointer flex-1">
-                      Not using it enough
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
-                    <RadioGroupItem value="other" id="other" />
-                    <Label htmlFor="other" className="cursor-pointer flex-1">
-                      Other
-                    </Label>
-                  </div>
-                </RadioGroup>
+                </div>
+
+                {/* Cancellation Reason */}
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">
+                    Why are you cancelling? <span className="text-destructive">*</span>
+                  </Label>
+                  <RadioGroup value={cancelReason} onValueChange={setCancelReason}>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="missing_features" id="missing_features" />
+                      <Label htmlFor="missing_features" className="cursor-pointer flex-1">
+                        Missing features I need
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="too_expensive" id="too_expensive" />
+                      <Label htmlFor="too_expensive" className="cursor-pointer flex-1">
+                        Too expensive
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="switching_service" id="switching_service" />
+                      <Label htmlFor="switching_service" className="cursor-pointer flex-1">
+                        Switching to another service
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="not_using" id="not_using" />
+                      <Label htmlFor="not_using" className="cursor-pointer flex-1">
+                        Not using it enough
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                      <RadioGroupItem value="other" id="other" />
+                      <Label htmlFor="other" className="cursor-pointer flex-1">
+                        Other
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
               </div>
 
               <DialogFooter>
@@ -2936,10 +3007,11 @@ export default function Billing() {
                     cancelSubscriptionMutation.mutate();
                     setShowModifyDialog(false);
                   }}
+                  disabled={!cancelReason}
                   className="bg-red-600 hover:bg-red-700"
                   data-testid="button-confirm-cancel"
                 >
-                  Next
+                  I Understand, Cancel Subscription
                 </Button>
               </DialogFooter>
             </>

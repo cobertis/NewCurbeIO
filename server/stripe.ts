@@ -780,10 +780,13 @@ export async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subsc
 export async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription) {
   const subscription = await storage.getSubscriptionByStripeId(stripeSubscription.id);
   if (!subscription) {
-    console.error("Subscription not found:", stripeSubscription.id);
+    console.error("[WEBHOOK] Subscription not found:", stripeSubscription.id);
     return;
   }
 
+  console.log('[WEBHOOK] Processing subscription deletion for company:', subscription.companyId);
+
+  // Update subscription status to cancelled
   const updateData: any = {
     status: "cancelled",
     cancelledAt: new Date(),
@@ -791,9 +794,40 @@ export async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subsc
 
   await storage.updateSubscription(subscription.id, updateData);
   
+  // CRITICAL: Deactivate company and all its users when subscription ends
+  console.log('[WEBHOOK] Deactivating company:', subscription.companyId);
+  
+  try {
+    // 1. Deactivate the company
+    const company = await storage.getCompany(subscription.companyId);
+    if (company) {
+      await storage.updateCompany(subscription.companyId, {
+        isActive: false
+      });
+      console.log('[WEBHOOK] Company deactivated successfully:', subscription.companyId);
+    }
+    
+    // 2. Deactivate all users in the company
+    const users = await storage.getUsersByCompany(subscription.companyId);
+    console.log('[WEBHOOK] Found', users.length, 'users to deactivate');
+    
+    for (const user of users) {
+      await storage.updateUser(user.id, {
+        status: 'deactivated'
+      });
+    }
+    console.log('[WEBHOOK] All users deactivated for company:', subscription.companyId);
+    
+  } catch (error) {
+    console.error('[WEBHOOK] Error deactivating company/users:', error);
+    throw error;
+  }
+  
   // Broadcast subscription update to all connected clients
   const { broadcastSubscriptionUpdate } = await import('./websocket');
   broadcastSubscriptionUpdate(subscription.companyId);
+  
+  console.log('[WEBHOOK] Subscription deletion processed successfully. Company and all users are now deactivated.');
 }
 
 function mapStripeSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): string {
