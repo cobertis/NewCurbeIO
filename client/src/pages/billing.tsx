@@ -1714,18 +1714,6 @@ export default function Billing() {
                   </p>
                 </div>
               )}
-
-              {/* Manage Payment Methods Dialog Button */}
-              {paymentMethods && paymentMethods.length > 0 && (
-                <Button 
-                  variant="outline"
-                  onClick={() => setShowManageCards(true)}
-                  className="w-full"
-                  data-testid="button-manage-payment-methods"
-                >
-                  Manage Payment Methods
-                </Button>
-              )}
             </CardContent>
             </Card>
 
