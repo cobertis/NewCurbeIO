@@ -564,7 +564,7 @@ export default function Billing() {
     return currentIndex < sortedPlans.length - 1 ? sortedPlans[currentIndex + 1] : null;
   };
 
-  // Get next lower plan for downgrade (step-by-step downgrade, but not the lowest)
+  // Get next lower plan for downgrade (step-by-step downgrade)
   const getNextLowerPlan = () => {
     if (!subscription || !plans.length) return null;
     
@@ -577,14 +577,12 @@ export default function Billing() {
     const currentIndex = sortedPlans.findIndex(p => p.id === subscription.planId);
     if (currentIndex === -1) return null;
     
-    // Return next lower plan if:
-    // 1. Current plan is not already the lowest (index > 0)
-    // 2. Next lower plan is not the absolute lowest (index - 1 > 0)
-    if (currentIndex > 1) {
+    // Return next lower plan if current plan is not already the lowest
+    if (currentIndex > 0) {
       return sortedPlans[currentIndex - 1];
     }
     
-    return null; // Cannot downgrade if at lowest or second-lowest plan
+    return null; // Cannot downgrade if already at lowest plan
   };
 
   const nextHigherPlan = getNextHigherPlan();
@@ -1030,73 +1028,6 @@ export default function Billing() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Payments Tab */}
-        <TabsContent value="payments" className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Billing Period Toggle */}
-            <div className="flex items-center justify-center gap-4 p-3 rounded-lg bg-muted/50">
-              <span className={billingPeriod === 'monthly' ? 'font-bold' : 'text-muted-foreground'}>
-                Monthly
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
-              >
-                {billingPeriod === 'yearly' ? 'Switch to Monthly' : 'Switch to Yearly (Save 20%)'}
-              </Button>
-              <span className={billingPeriod === 'yearly' ? 'font-bold' : 'text-muted-foreground'}>
-                Yearly
-              </span>
-            </div>
-
-            {/* Plans List */}
-            <RadioGroup value={selectedPlan} onValueChange={setSelectedPlan}>
-              {plans.filter(p => p.isActive).map((plan) => (
-                <div key={plan.id} className="relative">
-                  <RadioGroupItem
-                    value={plan.id}
-                    id={plan.id}
-                    className="peer sr-only"
-                  />
-                  <Label
-                    htmlFor={plan.id}
-                    className="flex items-center justify-between rounded-lg border-2 border-muted bg-card p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                  >
-                    <div className="space-y-1">
-                      <p className="font-semibold">{plan.name}</p>
-                      <p className="text-sm text-muted-foreground">{plan.description}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold">
-                        {formatCurrency(
-                          billingPeriod === 'yearly' ? (plan.annualPrice || plan.price) : plan.price,
-                          plan.currency
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        per {billingPeriod === 'yearly' ? 'year' : 'month'}
-                      </p>
-                    </div>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowChangePlan(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => changePlanMutation.mutate({ planId: selectedPlan, billingPeriod })}
-              disabled={!selectedPlan || changePlanMutation.isPending}
-            >
-              {changePlanMutation.isPending ? "Changing..." : "Change Plan"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Add Payment Method Dialog */}
       <Dialog open={showAddCard} onOpenChange={(open) => {
