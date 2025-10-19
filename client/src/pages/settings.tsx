@@ -398,37 +398,31 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* Name and Role */}
-                  <div className="flex-1 min-w-0 space-y-3">
-                    <div>
-                      <h2 className="text-xl font-semibold">
-                        {user?.firstName} {user?.lastName}
-                      </h2>
-                      <Badge variant="secondary" className="mt-2">
-                        {getRoleDisplay()}
-                      </Badge>
-                    </div>
+                  {/* Name, Email, Phone, and Role */}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl font-semibold mb-2">
+                      {user?.firstName} {user?.lastName}
+                    </h2>
 
-                    {/* Email and Phone - Vertical Stack */}
-                    <div className="space-y-2 pt-2">
+                    {/* Email and Phone - Compact */}
+                    <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <AtSign className="h-3.5 w-3.5 text-muted-foreground" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-muted-foreground">Email</p>
-                          <p className="text-sm font-medium truncate">{user?.email}</p>
-                        </div>
+                        <AtSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <p className="text-sm truncate">{user?.email}</p>
                       </div>
 
                       {user?.phone && (
                         <div className="flex items-center gap-2">
-                          <PhoneIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-muted-foreground">Phone</p>
-                            <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
-                          </div>
+                          <PhoneIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <p className="text-sm">{formatPhoneDisplay(user.phone)}</p>
                         </div>
                       )}
                     </div>
+
+                    {/* Role Badge */}
+                    <Badge variant="secondary" className="mt-3">
+                      {getRoleDisplay()}
+                    </Badge>
                   </div>
                 </div>
 
