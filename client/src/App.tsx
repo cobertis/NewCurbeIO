@@ -579,7 +579,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Button 
                 className="flex-1 h-11 gap-2"
                 onClick={() => {
-                  // View all functionality - could navigate to a full notifications page
+                  setLocation("/settings/notifications");
+                  setNotificationsOpen(false);
                 }}
                 data-testid="button-view-all"
               >
