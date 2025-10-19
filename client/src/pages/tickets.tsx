@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import {
   Card,
   CardContent,
@@ -83,6 +84,7 @@ interface FinancialSupportTicket {
 
 export default function TicketsPage() {
   const { toast } = useToast();
+  const [location] = useLocation();
   const [selectedTicket, setSelectedTicket] = useState<FinancialSupportTicket | null>(null);
   const [showTicketDialog, setShowTicketDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -95,6 +97,27 @@ export default function TicketsPage() {
   });
 
   const tickets = ticketsData?.tickets || [];
+
+  // Open ticket from URL parameter
+  useEffect(() => {
+    if (tickets.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const ticketId = params.get('ticketId');
+      
+      if (ticketId) {
+        const ticket = tickets.find(t => t.id === ticketId);
+        if (ticket) {
+          setSelectedTicket(ticket);
+          setTicketStatus(ticket.status);
+          setAdminResponse(ticket.adminResponse || "");
+          setShowTicketDialog(true);
+          
+          // Clean up URL
+          window.history.replaceState({}, '', '/tickets');
+        }
+      }
+    }
+  }, [tickets]);
 
   // Filter tickets by status
   const filteredTickets = filterStatus === "all" 

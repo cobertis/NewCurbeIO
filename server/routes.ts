@@ -4462,7 +4462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'financial_support_request',
           title: 'New Financial Support Request',
           message: `${user.firstName} ${user.lastName} from ${company.name} has requested financial support.`,
-          link: `/admin/companies/${companyId}`,
+          link: `/tickets?ticketId=${ticket.id}`,
           isRead: false,
         });
       }
