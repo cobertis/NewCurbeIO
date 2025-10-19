@@ -1898,7 +1898,8 @@ export default function Billing() {
 
         {/* Payments Tab */}
         <TabsContent value="payments" className="space-y-6">
-          <Card>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
             <CardHeader>
               <CardTitle>Payment Methods</CardTitle>
               <CardDescription>Manage your payment methods and billing information</CardDescription>
@@ -1980,10 +1981,10 @@ export default function Billing() {
                 </Button>
               )}
             </CardContent>
-          </Card>
+            </Card>
 
-          {/* Billing Information */}
-          <Card>
+            {/* Billing Information */}
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
@@ -2087,7 +2088,8 @@ export default function Billing() {
                 </div>
               </form>
             </CardContent>
-          </Card>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
