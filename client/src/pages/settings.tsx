@@ -1444,7 +1444,11 @@ export default function Settings() {
                                     key={category}
                                     value={category}
                                     onSelect={(currentValue) => {
-                                      const newValue = currentValue === selectedCategory ? "" : currentValue;
+                                      // Find the original category value (CommandItem lowercases it)
+                                      const originalCategory = categories.find(
+                                        cat => cat.toLowerCase() === currentValue.toLowerCase()
+                                      ) || "";
+                                      const newValue = originalCategory === selectedCategory ? "" : originalCategory;
                                       setSelectedCategory(newValue);
                                       setSelectedNiche("");
                                       if (businessCategoryRef.current) {
@@ -1503,7 +1507,11 @@ export default function Settings() {
                                       key={niche.value}
                                       value={niche.value}
                                       onSelect={(currentValue) => {
-                                        const newValue = currentValue === selectedNiche ? "" : currentValue;
+                                        // Find the original niche value (CommandItem lowercases it)
+                                        const originalNiche = niches.find(
+                                          n => n.value.toLowerCase() === currentValue.toLowerCase()
+                                        );
+                                        const newValue = originalNiche && originalNiche.value === selectedNiche ? "" : (originalNiche?.value || "");
                                         setSelectedNiche(newValue);
                                         if (businessNicheRef.current) {
                                           businessNicheRef.current.value = newValue;
