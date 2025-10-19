@@ -3217,23 +3217,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
 
-        // Only send trial notification if this is a NEW trial (not a plan change during existing trial)
-        // Check if previous subscription was NOT in trialing status
-        const isNewTrial = subscriptionData.status === 'trialing' 
-          && subscriptionData.trialEnd 
-          && existingSubscription.status !== 'trialing';
-        
-        if (isNewTrial) {
-          try {
-            await notificationService.notifyTrialStarted(
-              companyId, 
-              plan.name, 
-              subscriptionData.trialEnd
-            );
-          } catch (notifError) {
-            console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
-          }
-        }
+        // NEVER send trial notification when updating an existing subscription
+        // Trial notification is ONLY sent once when subscription is created for the first time
+        // NOT when changing plans, NOT when updating, ONLY on initial creation
 
         res.json({ subscription: updatedSubscription });
       } else {
