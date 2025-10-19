@@ -216,9 +216,7 @@ export default function Billing() {
   const [pendingSkipTrial, setPendingSkipTrial] = useState(false);
   const [showModifyDialog, setShowModifyDialog] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
-  const [showIneligibleDialog, setShowIneligibleDialog] = useState(false);
-  const [showDowngradeDialog, setShowDowngradeDialog] = useState(false);
-  const [showFinancialSupportDialog, setShowFinancialSupportDialog] = useState(false);
+  const [modifyDialogView, setModifyDialogView] = useState<'main' | 'financial-ineligible' | 'financial-support' | 'downgrade' | 'cancel'>('main');
   const [downgradeReason, setDowngradeReason] = useState("");
   const [downgradeConfirm1, setDowngradeConfirm1] = useState(false);
   const [downgradeConfirm2, setDowngradeConfirm2] = useState(false);
@@ -505,7 +503,7 @@ export default function Billing() {
         title: "Solicitud Enviada",
         description: data.message,
       });
-      setShowFinancialSupportDialog(false);
+      setShowModifyDialog(false); // Close the main dialog
       setFinancialSituation("");
       setProposedSolution("");
     },
@@ -1578,141 +1576,522 @@ export default function Billing() {
       <Dialog open={showModifyDialog} onOpenChange={(open) => {
         setShowModifyDialog(open);
         if (!open) {
-          setShowMoreOptions(false); // Reset when dialog closes
+          // Reset all states when dialog closes
+          setShowMoreOptions(false);
+          setModifyDialogView('main');
+          setFinancialSituation("");
+          setProposedSolution("");
+          setDowngradeReason("");
+          setDowngradeConfirm1(false);
+          setDowngradeConfirm2(false);
+          setCancelReason("missing_features");
         }
       }}>
         <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <CreditCard className="h-5 w-5 text-primary" />
-              </div>
-              Modify subscription for {company?.name || 'Curbe.io'}
-            </DialogTitle>
-            <DialogDescription>
-              Hold up! Did you know about the options below?
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-3 py-4">
-            {/* Upgrade Plan Option */}
-            <div className="flex items-center justify-between p-4 rounded-lg border bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                  <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="font-semibold">Upgrade your current plan</p>
-                  <p className="text-sm text-muted-foreground">
-                    {subscription && formatCurrency(
-                      subscription.billingCycle === 'yearly' 
-                        ? subscription.plan.annualPrice || subscription.plan.price 
-                        : subscription.plan.price,
-                      subscription.plan.currency
-                    )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
-                  </p>
-                </div>
-              </div>
-              <Button 
-                onClick={() => {
-                  setShowModifyDialog(false);
-                  setLocation('/select-plan');
-                }}
-                data-testid="button-upgrade-plan"
-              >
-                Upgrade
-              </Button>
-            </div>
-
-            {/* Financial Support Option */}
-            <button
-              onClick={() => {
-                setShowModifyDialog(false);
-                // Check if user already has an active discount
-                if (activeDiscount) {
-                  setShowIneligibleDialog(true);
-                } else {
-                  setShowFinancialSupportDialog(true);
-                }
-              }}
-              className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
-              data-testid="button-financial-support"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-muted">
-                  <DollarSign className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-semibold">Request Financial Support</p>
-                  <p className="text-sm text-muted-foreground">
-                    I need financial support due to unforeseen circumstances
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </button>
-
-            {/* Additional Options (shown when expanded) */}
-            {showMoreOptions && (
-              <>
-                {/* Downgrade Plan Option */}
-                <button
-                  onClick={() => {
-                    setShowModifyDialog(false);
-                    setShowDowngradeDialog(true);
-                  }}
-                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
-                  data-testid="button-downgrade-plan"
-                >
+          {/* Main View - Options List */}
+          {modifyDialogView === 'main' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                  </div>
+                  Modify subscription for {company?.name || 'Curbe.io'}
+                </DialogTitle>
+                <DialogDescription>
+                  Hold up! Did you know about the options below?
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-3 py-4">
+                {/* Upgrade Plan Option */}
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                      <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
+                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold">Downgrade Plan</p>
+                      <p className="font-semibold">Upgrade your current plan</p>
                       <p className="text-sm text-muted-foreground">
-                        I wish to downgrade my subscription to a lower plan
+                        {subscription && formatCurrency(
+                          subscription.billingCycle === 'yearly' 
+                            ? subscription.plan.annualPrice || subscription.plan.price 
+                            : subscription.plan.price,
+                          subscription.plan.currency
+                        )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setShowModifyDialog(false);
+                      setLocation('/select-plan');
+                    }}
+                    data-testid="button-upgrade-plan"
+                  >
+                    Upgrade
+                  </Button>
+                </div>
+
+                {/* Financial Support Option */}
+                <button
+                  onClick={() => {
+                    // Check if user already has an active discount
+                    if (activeDiscount) {
+                      setModifyDialogView('financial-ineligible');
+                    } else {
+                      setModifyDialogView('financial-support');
+                    }
+                  }}
+                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-financial-support"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <DollarSign className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Request Financial Support</p>
+                      <p className="text-sm text-muted-foreground">
+                        I need financial support due to unforeseen circumstances
                       </p>
                     </div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </button>
 
-                {/* Cancel Plan Option */}
+                {/* Additional Options (shown when expanded) */}
+                {showMoreOptions && (
+                  <>
+                    {/* Downgrade Plan Option */}
+                    <button
+                      onClick={() => setModifyDialogView('downgrade')}
+                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                      data-testid="button-downgrade-plan"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                          <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">Downgrade Plan</p>
+                          <p className="text-sm text-muted-foreground">
+                            I wish to downgrade my subscription to a lower plan
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </button>
+
+                    {/* Cancel Plan Option */}
+                    <button
+                      onClick={() => setModifyDialogView('cancel')}
+                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                      data-testid="button-cancel-plan"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                          <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">Cancel Plan</p>
+                          <p className="text-sm text-muted-foreground">
+                            I still want to cancel my subscription
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </button>
+                  </>
+                )}
+
+                {/* Show More / Collapse Button */}
                 <button
-                  onClick={() => {
-                    setShowModifyDialog(false);
-                    setShowCancelDialog(true);
-                  }}
-                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
-                  data-testid="button-cancel-plan"
+                  onClick={() => setShowMoreOptions(!showMoreOptions)}
+                  className="w-full flex items-center justify-center gap-2 p-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-toggle-more"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                      <X className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    </div>
+                  <span>{showMoreOptions ? 'Collapse' : 'Show more'}</span>
+                  <ChevronRight className={`h-4 w-4 transition-transform ${showMoreOptions ? '-rotate-90' : 'rotate-90'}`} />
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Financial Ineligible View */}
+          {modifyDialogView === 'financial-ineligible' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                    <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  You are ineligible for Financial Assistance at this point.
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="py-4">
+                <div className="p-4 rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
+                  <div className="flex gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold">Cancel Plan</p>
-                      <p className="text-sm text-muted-foreground">
-                        I still want to cancel my subscription
+                      <p className="font-semibold text-orange-900 dark:text-orange-100 mb-1">Reason:</p>
+                      <p className="text-sm text-orange-800 dark:text-orange-200">
+                        Currently, you are not eligible for financial assistance support because you already have a discount applied to the upcoming invoice
                       </p>
                     </div>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </button>
-              </>
-            )}
+                </div>
+              </div>
 
-            {/* Show More / Collapse Button */}
-            <button
-              onClick={() => setShowMoreOptions(!showMoreOptions)}
-              className="w-full flex items-center justify-center gap-2 p-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              data-testid="button-toggle-more"
-            >
-              <span>{showMoreOptions ? 'Collapse' : 'Show more'}</span>
-              <ChevronRight className={`h-4 w-4 transition-transform ${showMoreOptions ? '-rotate-90' : 'rotate-90'}`} />
-            </button>
-          </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setModifyDialogView('main')}
+                  data-testid="button-ineligible-back"
+                >
+                  Back
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {/* Financial Support Request View */}
+          {modifyDialogView === 'financial-support' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                    <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  Solicitud de Soporte Financiero
+                </DialogTitle>
+                <DialogDescription>
+                  Estamos aquí para ayudarle. Su éxito es nuestro compromiso. Comparta su situación y nuestro equipo la revisará en 48 horas.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                {/* Info Message */}
+                <div className="p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+                  <div className="flex gap-3">
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Compromiso de Respuesta</p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        Una vez enviada su solicitud, nuestro equipo la revisará y le responderá dentro de 48 horas. 
+                        Queremos entender su situación y encontrar la mejor solución juntos.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Situation Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="situation" className="text-base font-semibold">
+                    ¿Cuál es su situación actual?
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Explique brevemente las circunstancias que están afectando su capacidad de pago.
+                  </p>
+                  <Textarea
+                    id="situation"
+                    value={financialSituation}
+                    onChange={(e) => setFinancialSituation(e.target.value)}
+                    placeholder="Ej: Estamos experimentando una disminución temporal en ventas debido a..."
+                    className="min-h-[120px] resize-none"
+                    data-testid="input-situation"
+                  />
+                </div>
+
+                {/* Proposed Solution Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="proposed-solution" className="text-base font-semibold">
+                    ¿Qué solución propone?
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    ¿Cómo podríamos trabajar juntos para resolver esta situación?
+                  </p>
+                  <Textarea
+                    id="proposed-solution"
+                    value={proposedSolution}
+                    onChange={(e) => setProposedSolution(e.target.value)}
+                    placeholder="Ej: Necesitaría un descuento temporal del 30% por los próximos 3 meses mientras..."
+                    className="min-h-[120px] resize-none"
+                    data-testid="input-proposed-solution"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setModifyDialogView('main')}
+                  data-testid="button-support-cancel"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!financialSituation.trim() || !proposedSolution.trim()) {
+                      toast({
+                        title: "Campos Requeridos",
+                        description: "Por favor complete ambos campos antes de enviar",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    financialSupportMutation.mutate({
+                      situation: financialSituation,
+                      proposedSolution: proposedSolution,
+                    });
+                  }}
+                  disabled={financialSupportMutation.isPending}
+                  data-testid="button-support-submit"
+                >
+                  {financialSupportMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {/* Downgrade View */}
+          {modifyDialogView === 'downgrade' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                    <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
+                  </div>
+                  Downgrade your plan
+                </DialogTitle>
+                <DialogDescription>
+                  If you wish to move to a lower plan, you can downgrade your subscription to{' '}
+                  {subscription && plans.length > 0 && (
+                    <>
+                      {formatCurrency(
+                        plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
+                        subscription.plan.currency
+                      )} / month
+                    </>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                {/* Registration Links */}
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-center mb-3">
+                    To use your HighLevel subscription to the fullest please join here
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href="https://example.com/register"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
+                      data-testid="link-daily-group"
+                    >
+                      <div className="p-1.5 rounded bg-muted">
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">Daily Group Calls</p>
+                      </div>
+                    </a>
+                    <a
+                      href="https://example.com/register"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
+                      data-testid="link-full-community"
+                    >
+                      <div className="p-1.5 rounded bg-muted">
+                        <ExternalLink className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">Full Community</p>
+                      </div>
+                    </a>
+                  </div>
+                </div>
+
+                {/* Reason Textarea */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Tell us why you want to downgrade? <span className="text-destructive">*</span>
+                  </label>
+                  <Textarea
+                    placeholder="Please tell us why would you like to downgrade your subscription? This will help us in making our platform better in future."
+                    value={downgradeReason}
+                    onChange={(e) => setDowngradeReason(e.target.value)}
+                    className="min-h-[100px] resize-none"
+                    data-testid="textarea-downgrade-reason"
+                  />
+                </div>
+
+                {/* Confirmation Checkboxes */}
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="confirm1"
+                      checked={downgradeConfirm1}
+                      onCheckedChange={(checked) => setDowngradeConfirm1(checked as boolean)}
+                      data-testid="checkbox-confirm-1"
+                    />
+                    <label
+                      htmlFor="confirm1"
+                      className="text-sm leading-tight cursor-pointer"
+                    >
+                      I understand that I can't use SaaS Mode on the{' '}
+                      {subscription && plans.length > 0 && (
+                        <>
+                          {formatCurrency(
+                            plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
+                            subscription.plan.currency
+                          )} / month plan
+                        </>
+                      )}
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="confirm2"
+                      checked={downgradeConfirm2}
+                      onCheckedChange={(checked) => setDowngradeConfirm2(checked as boolean)}
+                      data-testid="checkbox-confirm-2"
+                    />
+                    <label
+                      htmlFor="confirm2"
+                      className="text-sm leading-tight cursor-pointer"
+                    >
+                      I confirm that I have turned off SaaS Mode on all sub-accounts and have discussed this with all my SaaS clients
+                    </label>
+                  </div>
+                </div>
+
+                {/* Discount Warning */}
+                {activeDiscount && (
+                  <div className="p-4 rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
+                    <div className="flex gap-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+                          Your discount coupon will be removed.
+                        </p>
+                        <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
+                          A {activeDiscount.percentOff}% off for {activeDiscount.durationInMonths || 3} months coupon is applied to your subscription, which will be lost if you proceed to downgrade.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setModifyDialogView('main')}
+                  data-testid="button-downgrade-back"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={() => {
+                    toast({
+                      title: "Downgrade Request",
+                      description: "Your downgrade request has been submitted.",
+                    });
+                    setShowModifyDialog(false);
+                  }}
+                  disabled={!downgradeReason || !downgradeConfirm1 || !downgradeConfirm2}
+                  data-testid="button-confirm-downgrade"
+                >
+                  Downgrade to{' '}
+                  {subscription && plans.length > 0 && (
+                    <>
+                      {formatCurrency(
+                        plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
+                        subscription.plan.currency
+                      )} / month
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {/* Cancel View */}
+          {modifyDialogView === 'cancel' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                    <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  </div>
+                  Are you sure you want to cancel?
+                </DialogTitle>
+                <DialogDescription>
+                  We're sorry to see you go. Please let us know why you're cancelling.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="py-4">
+                <RadioGroup value={cancelReason} onValueChange={setCancelReason}>
+                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                    <RadioGroupItem value="missing_features" id="missing_features" />
+                    <Label htmlFor="missing_features" className="cursor-pointer flex-1">
+                      Missing features I need
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                    <RadioGroupItem value="too_expensive" id="too_expensive" />
+                    <Label htmlFor="too_expensive" className="cursor-pointer flex-1">
+                      Too expensive
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                    <RadioGroupItem value="switching_service" id="switching_service" />
+                    <Label htmlFor="switching_service" className="cursor-pointer flex-1">
+                      Switching to another service
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                    <RadioGroupItem value="not_using" id="not_using" />
+                    <Label htmlFor="not_using" className="cursor-pointer flex-1">
+                      Not using it enough
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 rounded-lg hover-elevate">
+                    <RadioGroupItem value="other" id="other" />
+                    <Label htmlFor="other" className="cursor-pointer flex-1">
+                      Other
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setModifyDialogView('main')}
+                  data-testid="button-cancel-back"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={() => {
+                    cancelSubscriptionMutation.mutate();
+                    setShowModifyDialog(false);
+                  }}
+                  className="bg-red-600 hover:bg-red-700"
+                  data-testid="button-confirm-cancel"
+                >
+                  Next
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
