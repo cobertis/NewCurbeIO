@@ -648,16 +648,16 @@ export default function Billing() {
       <Tabs defaultValue="subscriptions" className="space-y-6">
         <TabsList>
           <TabsTrigger value="subscriptions" data-testid="tab-subscriptions">Subscriptions</TabsTrigger>
+          <TabsTrigger value="payments" data-testid="tab-payments">Billing Info</TabsTrigger>
           <TabsTrigger value="transactions" data-testid="tab-transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
         </TabsList>
 
         {/* Subscriptions Tab */}
         <TabsContent value="subscriptions" className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Subscription Details - 2 columns */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Subscription Details */}
             {isLoadingSubscription ? (
-              <Card className="lg:col-span-2">
+              <Card>
             <CardContent className="space-y-6 pt-6">
               {/* Plan Details Skeleton */}
               <div className="flex items-start justify-between p-4 rounded-lg bg-muted/50">
@@ -691,7 +691,7 @@ export default function Billing() {
             </CardContent>
               </Card>
             ) : subscription ? (
-              <Card className="lg:col-span-2">
+              <Card>
             <CardContent className="space-y-4 pt-6">
               {/* Header with Plan Name and Price */}
               <div className="flex items-start justify-between">
@@ -809,7 +809,6 @@ export default function Billing() {
             </CardContent>
               </Card>
             ) : null}
-          </div>
 
           {/* Billing History */}
           <Card>
@@ -952,6 +951,7 @@ export default function Billing() {
           </Tabs>
         </CardContent>
           </Card>
+          </div>
 
           {/* Change Plan Dialog */}
           <Dialog open={showChangePlan} onOpenChange={setShowChangePlan}>

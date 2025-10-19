@@ -4488,6 +4488,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's own financial support tickets
+  app.get("/api/my-support-tickets", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    try {
+      const tickets = await storage.getFinancialSupportTicketsByUser(currentUser.id);
+      res.json({ tickets });
+    } catch (error) {
+      console.error('[TICKETS] Error fetching user tickets:', error);
+      res.status(500).json({ message: "Error fetching your support tickets" });
+    }
+  });
+
   // Get all financial support tickets (superadmin only)
   app.get("/api/tickets", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -4566,12 +4579,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If we have a response, notify the user who created the ticket
       if (adminResponse && fullTicket) {
         const { notificationService } = await import("./notification-service");
+        
+        // Truncate response if too long for notification
+        const maxLength = 200;
+        const truncatedResponse = adminResponse.length > maxLength 
+          ? adminResponse.substring(0, maxLength) + '...' 
+          : adminResponse;
+        
         await storage.createNotification({
           userId: fullTicket.userId,
           type: 'financial_support_response',
           title: 'Response to Your Financial Support Request',
-          message: 'Your financial support request has received a response from our team.',
-          link: '/billing',
+          message: `Our team has responded: "${truncatedResponse}"`,
+          link: '/my-support-tickets',
           isRead: false,
         });
 
