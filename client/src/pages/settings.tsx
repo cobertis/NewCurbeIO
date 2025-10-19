@@ -11,12 +11,316 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
+import { cn } from "@/lib/utils";
+
+// Business categories
+const categories = [
+  "Arts & Recreation",
+  "Automotive",
+  "Beauty & Fashion",
+  "Business Coaching and Consulting",
+  "Creative",
+  "Financial",
+  "Government & Public Services",
+  "Health & Wellness",
+  "Home Services",
+  "Legal & Insurance",
+  "Marketing Agency",
+  "Medical",
+  "Real Estate",
+  "Restaurant and Bar",
+  "Retail & Manufacturing",
+  "Travel & Hospitality",
+  "Other",
+];
+
+// Business niches
+const niches = [
+  // Arts & Recreation
+  { value: "Sports Training", label: "Sports Training", category: "Arts & Recreation" },
+  { value: "Golf Course", label: "Golf Course", category: "Arts & Recreation" },
+  { value: "Bowling Alley", label: "Bowling Alley", category: "Arts & Recreation" },
+  { value: "Skating Rink", label: "Skating Rink", category: "Arts & Recreation" },
+  { value: "Climbing Gym", label: "Climbing Gym", category: "Arts & Recreation" },
+  { value: "Trampoline Park", label: "Trampoline Park", category: "Arts & Recreation" },
+  { value: "Escape Room", label: "Escape Room", category: "Arts & Recreation" },
+  { value: "Arcade", label: "Arcade", category: "Arts & Recreation" },
+  { value: "Paintball", label: "Paintball", category: "Arts & Recreation" },
+  { value: "Laser Tag", label: "Laser Tag", category: "Arts & Recreation" },
+  { value: "Music Education", label: "Music Education", category: "Arts & Recreation" },
+  { value: "Art Education", label: "Art Education", category: "Arts & Recreation" },
+  { value: "Dance Studio", label: "Dance Studio", category: "Arts & Recreation" },
+  { value: "Martial Arts", label: "Martial Arts", category: "Arts & Recreation" },
+  { value: "Fine Arts", label: "Fine Arts", category: "Arts & Recreation" },
+  { value: "Pottery & Ceramics", label: "Pottery & Ceramics", category: "Arts & Recreation" },
+  { value: "Woodworking", label: "Woodworking", category: "Arts & Recreation" },
+  { value: "Metalworking", label: "Metalworking", category: "Arts & Recreation" },
+  
+  // Automotive
+  { value: "Auto Repair", label: "Auto Repair", category: "Automotive" },
+  { value: "Auto Body Shop", label: "Auto Body Shop", category: "Automotive" },
+  { value: "Auto Detailing", label: "Auto Detailing", category: "Automotive" },
+  { value: "Car Dealership", label: "Car Dealership", category: "Automotive" },
+  { value: "Car Rental", label: "Car Rental", category: "Automotive" },
+  { value: "Tire Shop", label: "Tire Shop", category: "Automotive" },
+  { value: "Oil Change", label: "Oil Change", category: "Automotive" },
+  { value: "Car Wash", label: "Car Wash", category: "Automotive" },
+  { value: "Towing Services", label: "Towing Services", category: "Automotive" },
+  { value: "Auto Parts Sales", label: "Auto Parts Sales", category: "Automotive" },
+  { value: "Automotive Parts Manufacturing", label: "Automotive Parts Manufacturing", category: "Automotive" },
+  
+  // Beauty & Fashion
+  { value: "Hair Salon", label: "Hair Salon", category: "Beauty & Fashion" },
+  { value: "Barbershop", label: "Barbershop", category: "Beauty & Fashion" },
+  { value: "Nail Salon", label: "Nail Salon", category: "Beauty & Fashion" },
+  { value: "Spa Services", label: "Spa Services", category: "Beauty & Fashion" },
+  { value: "Massage Therapy", label: "Massage Therapy", category: "Beauty & Fashion" },
+  { value: "Skincare Services", label: "Skincare Services", category: "Beauty & Fashion" },
+  { value: "Makeup Artist", label: "Makeup Artist", category: "Beauty & Fashion" },
+  { value: "Cosmetics Retail", label: "Cosmetics Retail", category: "Beauty & Fashion" },
+  { value: "Tattoo & Piercing", label: "Tattoo & Piercing", category: "Beauty & Fashion" },
+  { value: "Tanning Salon", label: "Tanning Salon", category: "Beauty & Fashion" },
+  { value: "Fashion & Apparel", label: "Fashion & Apparel", category: "Beauty & Fashion" },
+  { value: "Jewelry & Accessories", label: "Jewelry & Accessories", category: "Beauty & Fashion" },
+  
+  // Business Coaching and Consulting
+  { value: "Business Coaching", label: "Business Coaching", category: "Business Coaching and Consulting" },
+  { value: "Life Coaching", label: "Life Coaching", category: "Business Coaching and Consulting" },
+  { value: "Career Counseling", label: "Career Counseling", category: "Business Coaching and Consulting" },
+  { value: "Consulting", label: "Consulting", category: "Business Coaching and Consulting" },
+  { value: "IT Consulting", label: "IT Consulting", category: "Business Coaching and Consulting" },
+  { value: "HR Consulting", label: "HR Consulting", category: "Business Coaching and Consulting" },
+  { value: "Compliance Consulting", label: "Compliance Consulting", category: "Business Coaching and Consulting" },
+  { value: "Energy Consulting", label: "Energy Consulting", category: "Business Coaching and Consulting" },
+  { value: "Environmental Consulting", label: "Environmental Consulting", category: "Business Coaching and Consulting" },
+  { value: "Farm Consulting", label: "Farm Consulting", category: "Business Coaching and Consulting" },
+  
+  // Creative
+  { value: "Graphic Design", label: "Graphic Design", category: "Creative" },
+  { value: "UI/UX Design", label: "UI/UX Design", category: "Creative" },
+  { value: "Photography", label: "Photography", category: "Creative" },
+  { value: "Video Production", label: "Video Production", category: "Creative" },
+  { value: "Music Production", label: "Music Production", category: "Creative" },
+  { value: "Film Production", label: "Film Production", category: "Creative" },
+  { value: "Animation Studio", label: "Animation Studio", category: "Creative" },
+  { value: "Publishing", label: "Publishing", category: "Creative" },
+  { value: "Copywriting", label: "Copywriting", category: "Creative" },
+  { value: "Content Marketing", label: "Content Marketing", category: "Creative" },
+  { value: "Podcasting", label: "Podcasting", category: "Creative" },
+  { value: "Web Development", label: "Web Development", category: "Creative" },
+  { value: "Mobile App Development", label: "Mobile App Development", category: "Creative" },
+  { value: "Game Development", label: "Game Development", category: "Creative" },
+  
+  // Financial
+  { value: "Investment Banking", label: "Investment Banking", category: "Financial" },
+  { value: "Wealth Management", label: "Wealth Management", category: "Financial" },
+  { value: "Financial Planning", label: "Financial Planning", category: "Financial" },
+  { value: "Accounting Services", label: "Accounting Services", category: "Financial" },
+  { value: "Tax Preparation", label: "Tax Preparation", category: "Financial" },
+  { value: "Bookkeeping", label: "Bookkeeping", category: "Financial" },
+  { value: "Payroll Services", label: "Payroll Services", category: "Financial" },
+  { value: "Mortgage Lending", label: "Mortgage Lending", category: "Financial" },
+  { value: "Credit Unions", label: "Credit Unions", category: "Financial" },
+  { value: "Payment Processing", label: "Payment Processing", category: "Financial" },
+  { value: "Cryptocurrency Exchange", label: "Cryptocurrency Exchange", category: "Financial" },
+  
+  // Government & Public Services
+  { value: "Municipal Services", label: "Municipal Services", category: "Government & Public Services" },
+  { value: "Public Safety", label: "Public Safety", category: "Government & Public Services" },
+  { value: "Education Administration", label: "Education Administration", category: "Government & Public Services" },
+  { value: "Public Health", label: "Public Health", category: "Government & Public Services" },
+  { value: "Social Services", label: "Social Services", category: "Government & Public Services" },
+  { value: "Community Development", label: "Community Development", category: "Government & Public Services" },
+  
+  // Health & Wellness
+  { value: "Gym & Fitness Center", label: "Gym & Fitness Center", category: "Health & Wellness" },
+  { value: "Yoga Studio", label: "Yoga Studio", category: "Health & Wellness" },
+  { value: "Pilates Studio", label: "Pilates Studio", category: "Health & Wellness" },
+  { value: "Personal Training", label: "Personal Training", category: "Health & Wellness" },
+  { value: "CrossFit", label: "CrossFit", category: "Health & Wellness" },
+  { value: "Nutrition Coaching", label: "Nutrition Coaching", category: "Health & Wellness" },
+  { value: "Wellness Coaching", label: "Wellness Coaching", category: "Health & Wellness" },
+  { value: "Meditation Center", label: "Meditation Center", category: "Health & Wellness" },
+  { value: "Alternative Medicine", label: "Alternative Medicine", category: "Health & Wellness" },
+  { value: "Mental Health Counseling", label: "Mental Health Counseling", category: "Health & Wellness" },
+  
+  // Home Services
+  { value: "General Contracting", label: "General Contracting", category: "Home Services" },
+  { value: "Electrical", label: "Electrical", category: "Home Services" },
+  { value: "Plumbing", label: "Plumbing", category: "Home Services" },
+  { value: "HVAC", label: "HVAC", category: "Home Services" },
+  { value: "Roofing", label: "Roofing", category: "Home Services" },
+  { value: "Carpentry", label: "Carpentry", category: "Home Services" },
+  { value: "Painting", label: "Painting", category: "Home Services" },
+  { value: "Flooring", label: "Flooring", category: "Home Services" },
+  { value: "Landscaping", label: "Landscaping", category: "Home Services" },
+  { value: "Lawn Care", label: "Lawn Care", category: "Home Services" },
+  { value: "Tree Services", label: "Tree Services", category: "Home Services" },
+  { value: "Pest Control", label: "Pest Control", category: "Home Services" },
+  { value: "Cleaning Services", label: "Cleaning Services", category: "Home Services" },
+  { value: "Window Cleaning", label: "Window Cleaning", category: "Home Services" },
+  { value: "Pool Installation", label: "Pool Installation", category: "Home Services" },
+  { value: "Interior Design", label: "Interior Design", category: "Home Services" },
+  { value: "Home Staging", label: "Home Staging", category: "Home Services" },
+  
+  // Legal & Insurance
+  { value: "Law Firm", label: "Law Firm", category: "Legal & Insurance" },
+  { value: "Corporate Law", label: "Corporate Law", category: "Legal & Insurance" },
+  { value: "Family Law", label: "Family Law", category: "Legal & Insurance" },
+  { value: "Criminal Defense", label: "Criminal Defense", category: "Legal & Insurance" },
+  { value: "Immigration Law", label: "Immigration Law", category: "Legal & Insurance" },
+  { value: "Intellectual Property", label: "Intellectual Property", category: "Legal & Insurance" },
+  { value: "Real Estate Law", label: "Real Estate Law", category: "Legal & Insurance" },
+  { value: "Tax Law", label: "Tax Law", category: "Legal & Insurance" },
+  { value: "Employment Law", label: "Employment Law", category: "Legal & Insurance" },
+  { value: "Notary Services", label: "Notary Services", category: "Legal & Insurance" },
+  { value: "Mediation Services", label: "Mediation Services", category: "Legal & Insurance" },
+  { value: "Life Insurance", label: "Life Insurance", category: "Legal & Insurance" },
+  { value: "Health Insurance", label: "Health Insurance", category: "Legal & Insurance" },
+  { value: "Auto Insurance", label: "Auto Insurance", category: "Legal & Insurance" },
+  { value: "Home Insurance", label: "Home Insurance", category: "Legal & Insurance" },
+  { value: "Business Insurance", label: "Business Insurance", category: "Legal & Insurance" },
+  { value: "Disability Insurance", label: "Disability Insurance", category: "Legal & Insurance" },
+  { value: "Long-term Care Insurance", label: "Long-term Care Insurance", category: "Legal & Insurance" },
+  { value: "Medicare/Medicaid", label: "Medicare/Medicaid", category: "Legal & Insurance" },
+  { value: "ACA Marketplace Plans", label: "ACA Marketplace Plans", category: "Legal & Insurance" },
+  
+  // Marketing Agency
+  { value: "Digital Marketing", label: "Digital Marketing", category: "Marketing Agency" },
+  { value: "SEO Services", label: "SEO Services", category: "Marketing Agency" },
+  { value: "Social Media Marketing", label: "Social Media Marketing", category: "Marketing Agency" },
+  { value: "Email Marketing", label: "Email Marketing", category: "Marketing Agency" },
+  { value: "PPC Advertising", label: "PPC Advertising", category: "Marketing Agency" },
+  { value: "Brand Strategy", label: "Brand Strategy", category: "Marketing Agency" },
+  { value: "Video Marketing", label: "Video Marketing", category: "Marketing Agency" },
+  { value: "Influencer Marketing", label: "Influencer Marketing", category: "Marketing Agency" },
+  { value: "Market Research", label: "Market Research", category: "Marketing Agency" },
+  { value: "Public Relations", label: "Public Relations", category: "Marketing Agency" },
+  
+  // Medical
+  { value: "General Practice", label: "General Practice", category: "Medical" },
+  { value: "Dentistry", label: "Dentistry", category: "Medical" },
+  { value: "Cardiology", label: "Cardiology", category: "Medical" },
+  { value: "Dermatology", label: "Dermatology", category: "Medical" },
+  { value: "Pediatrics", label: "Pediatrics", category: "Medical" },
+  { value: "Orthopedics", label: "Orthopedics", category: "Medical" },
+  { value: "Physical Therapy", label: "Physical Therapy", category: "Medical" },
+  { value: "Chiropractic Care", label: "Chiropractic Care", category: "Medical" },
+  { value: "Nursing Services", label: "Nursing Services", category: "Medical" },
+  { value: "Home Healthcare", label: "Home Healthcare", category: "Medical" },
+  { value: "Medical Imaging", label: "Medical Imaging", category: "Medical" },
+  { value: "Laboratory Services", label: "Laboratory Services", category: "Medical" },
+  { value: "Pharmacy", label: "Pharmacy", category: "Medical" },
+  { value: "Optometry", label: "Optometry", category: "Medical" },
+  { value: "Audiology", label: "Audiology", category: "Medical" },
+  { value: "Urgent Care", label: "Urgent Care", category: "Medical" },
+  { value: "Hospice Care", label: "Hospice Care", category: "Medical" },
+  { value: "Veterinary Clinic", label: "Veterinary Clinic", category: "Medical" },
+  { value: "Pet Grooming", label: "Pet Grooming", category: "Medical" },
+  
+  // Real Estate
+  { value: "Residential Real Estate", label: "Residential Real Estate", category: "Real Estate" },
+  { value: "Commercial Real Estate", label: "Commercial Real Estate", category: "Real Estate" },
+  { value: "Property Management", label: "Property Management", category: "Real Estate" },
+  { value: "Real Estate Investment", label: "Real Estate Investment", category: "Real Estate" },
+  { value: "Real Estate Development", label: "Real Estate Development", category: "Real Estate" },
+  { value: "Vacation Rentals", label: "Vacation Rentals", category: "Real Estate" },
+  { value: "Property Appraisal", label: "Property Appraisal", category: "Real Estate" },
+  { value: "Title Services", label: "Title Services", category: "Real Estate" },
+  { value: "Home Inspection", label: "Home Inspection", category: "Real Estate" },
+  { value: "Real Estate Photography", label: "Real Estate Photography", category: "Real Estate" },
+  { value: "REITs", label: "REITs", category: "Real Estate" },
+  
+  // Restaurant and Bar
+  { value: "Restaurant", label: "Restaurant", category: "Restaurant and Bar" },
+  { value: "Fast Food", label: "Fast Food", category: "Restaurant and Bar" },
+  { value: "Cafe & Coffee Shop", label: "Cafe & Coffee Shop", category: "Restaurant and Bar" },
+  { value: "Bakery", label: "Bakery", category: "Restaurant and Bar" },
+  { value: "Catering", label: "Catering", category: "Restaurant and Bar" },
+  { value: "Food Truck", label: "Food Truck", category: "Restaurant and Bar" },
+  { value: "Bar & Nightclub", label: "Bar & Nightclub", category: "Restaurant and Bar" },
+  { value: "Brewery & Distillery", label: "Brewery & Distillery", category: "Restaurant and Bar" },
+  { value: "Wine Production", label: "Wine Production", category: "Restaurant and Bar" },
+  { value: "Meal Prep Services", label: "Meal Prep Services", category: "Restaurant and Bar" },
+  { value: "Ghost Kitchen", label: "Ghost Kitchen", category: "Restaurant and Bar" },
+  { value: "Ice Cream Shop", label: "Ice Cream Shop", category: "Restaurant and Bar" },
+  { value: "Juice Bar", label: "Juice Bar", category: "Restaurant and Bar" },
+  
+  // Retail & Manufacturing
+  { value: "Online Marketplace", label: "Online Marketplace", category: "Retail & Manufacturing" },
+  { value: "Electronics Retail", label: "Electronics Retail", category: "Retail & Manufacturing" },
+  { value: "Furniture & Home Decor", label: "Furniture & Home Decor", category: "Retail & Manufacturing" },
+  { value: "Sporting Goods", label: "Sporting Goods", category: "Retail & Manufacturing" },
+  { value: "Books & Media", label: "Books & Media", category: "Retail & Manufacturing" },
+  { value: "Toys & Games", label: "Toys & Games", category: "Retail & Manufacturing" },
+  { value: "Health & Beauty Products", label: "Health & Beauty Products", category: "Retail & Manufacturing" },
+  { value: "Grocery & Food Delivery", label: "Grocery & Food Delivery", category: "Retail & Manufacturing" },
+  { value: "Subscription Boxes", label: "Subscription Boxes", category: "Retail & Manufacturing" },
+  { value: "Dropshipping", label: "Dropshipping", category: "Retail & Manufacturing" },
+  { value: "Print on Demand", label: "Print on Demand", category: "Retail & Manufacturing" },
+  { value: "Handmade & Crafts", label: "Handmade & Crafts", category: "Retail & Manufacturing" },
+  { value: "Electronics Manufacturing", label: "Electronics Manufacturing", category: "Retail & Manufacturing" },
+  { value: "Textile Manufacturing", label: "Textile Manufacturing", category: "Retail & Manufacturing" },
+  { value: "Pharmaceutical Manufacturing", label: "Pharmaceutical Manufacturing", category: "Retail & Manufacturing" },
+  { value: "Chemical Manufacturing", label: "Chemical Manufacturing", category: "Retail & Manufacturing" },
+  { value: "Plastics Manufacturing", label: "Plastics Manufacturing", category: "Retail & Manufacturing" },
+  { value: "Metal Fabrication", label: "Metal Fabrication", category: "Retail & Manufacturing" },
+  { value: "3D Printing", label: "3D Printing", category: "Retail & Manufacturing" },
+  { value: "Packaging Production", label: "Packaging Production", category: "Retail & Manufacturing" },
+  { value: "Custom Manufacturing", label: "Custom Manufacturing", category: "Retail & Manufacturing" },
+  
+  // Travel & Hospitality
+  { value: "Hotel", label: "Hotel", category: "Travel & Hospitality" },
+  { value: "Motel", label: "Motel", category: "Travel & Hospitality" },
+  { value: "Bed & Breakfast", label: "Bed & Breakfast", category: "Travel & Hospitality" },
+  { value: "Resort", label: "Resort", category: "Travel & Hospitality" },
+  { value: "Travel Agency", label: "Travel Agency", category: "Travel & Hospitality" },
+  { value: "Tour Operator", label: "Tour Operator", category: "Travel & Hospitality" },
+  { value: "Cruise Line", label: "Cruise Line", category: "Travel & Hospitality" },
+  { value: "Event Venue", label: "Event Venue", category: "Travel & Hospitality" },
+  { value: "Wedding Venue", label: "Wedding Venue", category: "Travel & Hospitality" },
+  { value: "Conference Center", label: "Conference Center", category: "Travel & Hospitality" },
+  
+  // Other
+  { value: "Virtual Assistant", label: "Virtual Assistant", category: "Other" },
+  { value: "Transcription Services", label: "Transcription Services", category: "Other" },
+  { value: "Translation Services", label: "Translation Services", category: "Other" },
+  { value: "Grant Writing", label: "Grant Writing", category: "Other" },
+  { value: "Resume Writing", label: "Resume Writing", category: "Other" },
+  { value: "Business Plan Writing", label: "Business Plan Writing", category: "Other" },
+  { value: "Recruitment Agency", label: "Recruitment Agency", category: "Other" },
+  { value: "Staffing Services", label: "Staffing Services", category: "Other" },
+  { value: "Payroll Management", label: "Payroll Management", category: "Other" },
+  { value: "Employee Training", label: "Employee Training", category: "Other" },
+  { value: "SaaS Development", label: "SaaS Development", category: "Other" },
+  { value: "Cloud Computing", label: "Cloud Computing", category: "Other" },
+  { value: "Data Analytics", label: "Data Analytics", category: "Other" },
+  { value: "Cybersecurity", label: "Cybersecurity", category: "Other" },
+  { value: "Blockchain Development", label: "Blockchain Development", category: "Other" },
+  { value: "Online Learning Platforms", label: "Online Learning Platforms", category: "Other" },
+  { value: "Corporate Training", label: "Corporate Training", category: "Other" },
+  { value: "Tutoring Services", label: "Tutoring Services", category: "Other" },
+  { value: "Freight Shipping", label: "Freight Shipping", category: "Other" },
+  { value: "Warehousing", label: "Warehousing", category: "Other" },
+  { value: "Moving Services", label: "Moving Services", category: "Other" },
+  { value: "Courier Services", label: "Courier Services", category: "Other" },
+  { value: "Charity Organization", label: "Charity Organization", category: "Other" },
+  { value: "Religious Organization", label: "Religious Organization", category: "Other" },
+  { value: "Homeless Services", label: "Homeless Services", category: "Other" },
+  { value: "Youth Programs", label: "Youth Programs", category: "Other" },
+  { value: "Telecommunications", label: "Telecommunications", category: "Other" },
+  { value: "Security Services", label: "Security Services", category: "Other" },
+  { value: "Event Planning", label: "Event Planning", category: "Other" },
+  { value: "Other Service", label: "Other Service", category: "Other" },
+];
 
 export default function Settings() {
   const { toast } = useToast();
@@ -49,8 +353,8 @@ export default function Settings() {
   // Company Information refs
   const companyNameRef = useRef<HTMLInputElement>(null);
   const slugRef = useRef<HTMLInputElement>(null);
-  const businessCategoryRef = useRef<HTMLSelectElement>(null);
-  const businessNicheRef = useRef<HTMLSelectElement>(null);
+  const businessCategoryRef = useRef<HTMLInputElement>(null);
+  const businessNicheRef = useRef<HTMLInputElement>(null);
   const companyEmailRef = useRef<HTMLInputElement>(null);
   const companyPhoneRef = useRef<HTMLInputElement>(null);
   const websiteRef = useRef<HTMLInputElement>(null);
@@ -66,6 +370,11 @@ export default function Settings() {
   const postalCodeRef = useRef<HTMLInputElement>(null);
   const countryRef = useRef<HTMLInputElement>(null);
   
+  // Combobox state
+  const [openCategory, setOpenCategory] = useState(false);
+  const [openNiche, setOpenNiche] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedNiche, setSelectedNiche] = useState("");
   
   const user = userData?.user;
 
@@ -150,6 +459,14 @@ export default function Settings() {
       });
     }
   }, [user]);
+
+  // Initialize combobox values from company data
+  useEffect(() => {
+    if (companyData?.company) {
+      setSelectedCategory((companyData.company as any).businessCategory || "");
+      setSelectedNiche((companyData.company as any).businessNiche || "");
+    }
+  }, [companyData]);
 
   // Update profile info mutation (personal information)
   const updateProfileInfoMutation = useMutation({
@@ -1103,353 +1420,115 @@ export default function Settings() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="businessCategory">Business Category</Label>
-                        <select
-                          id="businessCategory"
+                        <Popover open={openCategory} onOpenChange={setOpenCategory}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="businessCategory"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openCategory}
+                              className="w-full justify-between"
+                              data-testid="select-business-category"
+                            >
+                              {selectedCategory || "Select a category"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Search category..." />
+                              <CommandEmpty>No category found.</CommandEmpty>
+                              <CommandGroup className="max-h-64 overflow-auto">
+                                {categories.map((category) => (
+                                  <CommandItem
+                                    key={category}
+                                    value={category}
+                                    onSelect={(currentValue) => {
+                                      const newValue = currentValue === selectedCategory ? "" : currentValue;
+                                      setSelectedCategory(newValue);
+                                      setSelectedNiche("");
+                                      if (businessCategoryRef.current) {
+                                        businessCategoryRef.current.value = newValue;
+                                      }
+                                      if (businessNicheRef.current) {
+                                        businessNicheRef.current.value = "";
+                                      }
+                                      setOpenCategory(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedCategory === category ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {category}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <input
                           ref={businessCategoryRef}
-                          defaultValue={(companyData?.company as any)?.businessCategory || ""}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          data-testid="select-business-category"
-                          onChange={(e) => {
-                            const category = e.target.value;
-                            const nicheSelect = businessNicheRef.current;
-                            if (nicheSelect) {
-                              const optgroups = nicheSelect.querySelectorAll('optgroup');
-                              optgroups.forEach((optgroup) => {
-                                if (!category || optgroup.label === category) {
-                                  optgroup.style.display = '';
-                                } else {
-                                  optgroup.style.display = 'none';
-                                }
-                              });
-                              nicheSelect.value = '';
-                            }
-                          }}
-                        >
-                          <option value="">Select a category</option>
-                          <option value="Arts & Recreation">Arts & Recreation</option>
-                          <option value="Automotive">Automotive</option>
-                          <option value="Beauty & Fashion">Beauty & Fashion</option>
-                          <option value="Business Coaching and Consulting">Business Coaching and Consulting</option>
-                          <option value="Creative">Creative</option>
-                          <option value="Financial">Financial</option>
-                          <option value="Government & Public Services">Government & Public Services</option>
-                          <option value="Health & Wellness">Health & Wellness</option>
-                          <option value="Home Services">Home Services</option>
-                          <option value="Legal & Insurance">Legal & Insurance</option>
-                          <option value="Marketing Agency">Marketing Agency</option>
-                          <option value="Medical">Medical</option>
-                          <option value="Real Estate">Real Estate</option>
-                          <option value="Restaurant and Bar">Restaurant and Bar</option>
-                          <option value="Retail & Manufacturing">Retail & Manufacturing</option>
-                          <option value="Travel & Hospitality">Travel & Hospitality</option>
-                          <option value="Other">Other</option>
-                        </select>
+                          type="hidden"
+                          value={selectedCategory}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="businessNiche">Business Niche</Label>
-                        <select
-                          id="businessNiche"
+                        <Popover open={openNiche} onOpenChange={setOpenNiche}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="businessNiche"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openNiche}
+                              className="w-full justify-between"
+                              data-testid="select-business-niche"
+                            >
+                              {selectedNiche || "Select a niche"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Search niche..." />
+                              <CommandEmpty>No niche found.</CommandEmpty>
+                              <CommandGroup className="max-h-64 overflow-auto">
+                                {niches
+                                  .filter((niche) => !selectedCategory || niche.category === selectedCategory)
+                                  .map((niche) => (
+                                    <CommandItem
+                                      key={niche.value}
+                                      value={niche.value}
+                                      onSelect={(currentValue) => {
+                                        const newValue = currentValue === selectedNiche ? "" : currentValue;
+                                        setSelectedNiche(newValue);
+                                        if (businessNicheRef.current) {
+                                          businessNicheRef.current.value = newValue;
+                                        }
+                                        setOpenNiche(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          selectedNiche === niche.value ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {niche.label}
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <input
                           ref={businessNicheRef}
-                          defaultValue={(companyData?.company as any)?.businessNiche || ""}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          data-testid="select-business-niche"
-                        >
-                        <option value="">Select a niche</option>
-                        
-                        <optgroup label="Arts & Recreation">
-                          <option value="Sports Training">Sports Training</option>
-                          <option value="Golf Course">Golf Course</option>
-                          <option value="Bowling Alley">Bowling Alley</option>
-                          <option value="Skating Rink">Skating Rink</option>
-                          <option value="Climbing Gym">Climbing Gym</option>
-                          <option value="Trampoline Park">Trampoline Park</option>
-                          <option value="Escape Room">Escape Room</option>
-                          <option value="Arcade">Arcade</option>
-                          <option value="Paintball">Paintball</option>
-                          <option value="Laser Tag">Laser Tag</option>
-                          <option value="Music Education">Music Education</option>
-                          <option value="Art Education">Art Education</option>
-                          <option value="Dance Studio">Dance Studio</option>
-                          <option value="Martial Arts">Martial Arts</option>
-                          <option value="Fine Arts">Fine Arts</option>
-                          <option value="Pottery & Ceramics">Pottery & Ceramics</option>
-                          <option value="Woodworking">Woodworking</option>
-                          <option value="Metalworking">Metalworking</option>
-                        </optgroup>
-
-                        <optgroup label="Automotive">
-                          <option value="Auto Repair">Auto Repair</option>
-                          <option value="Auto Body Shop">Auto Body Shop</option>
-                          <option value="Auto Detailing">Auto Detailing</option>
-                          <option value="Car Dealership">Car Dealership</option>
-                          <option value="Car Rental">Car Rental</option>
-                          <option value="Tire Shop">Tire Shop</option>
-                          <option value="Oil Change">Oil Change</option>
-                          <option value="Car Wash">Car Wash</option>
-                          <option value="Towing Services">Towing Services</option>
-                          <option value="Auto Parts Sales">Auto Parts Sales</option>
-                          <option value="Automotive Parts Manufacturing">Automotive Parts Manufacturing</option>
-                        </optgroup>
-
-                        <optgroup label="Beauty & Fashion">
-                          <option value="Hair Salon">Hair Salon</option>
-                          <option value="Barbershop">Barbershop</option>
-                          <option value="Nail Salon">Nail Salon</option>
-                          <option value="Spa Services">Spa Services</option>
-                          <option value="Massage Therapy">Massage Therapy</option>
-                          <option value="Skincare Services">Skincare Services</option>
-                          <option value="Makeup Artist">Makeup Artist</option>
-                          <option value="Cosmetics Retail">Cosmetics Retail</option>
-                          <option value="Tattoo & Piercing">Tattoo & Piercing</option>
-                          <option value="Tanning Salon">Tanning Salon</option>
-                          <option value="Fashion & Apparel">Fashion & Apparel</option>
-                          <option value="Jewelry & Accessories">Jewelry & Accessories</option>
-                        </optgroup>
-
-                        <optgroup label="Business Coaching and Consulting">
-                          <option value="Business Coaching">Business Coaching</option>
-                          <option value="Life Coaching">Life Coaching</option>
-                          <option value="Career Counseling">Career Counseling</option>
-                          <option value="Consulting">Consulting</option>
-                          <option value="IT Consulting">IT Consulting</option>
-                          <option value="HR Consulting">HR Consulting</option>
-                          <option value="Compliance Consulting">Compliance Consulting</option>
-                          <option value="Energy Consulting">Energy Consulting</option>
-                          <option value="Environmental Consulting">Environmental Consulting</option>
-                          <option value="Farm Consulting">Farm Consulting</option>
-                        </optgroup>
-
-                        <optgroup label="Creative">
-                          <option value="Graphic Design">Graphic Design</option>
-                          <option value="UI/UX Design">UI/UX Design</option>
-                          <option value="Photography">Photography</option>
-                          <option value="Video Production">Video Production</option>
-                          <option value="Music Production">Music Production</option>
-                          <option value="Film Production">Film Production</option>
-                          <option value="Animation Studio">Animation Studio</option>
-                          <option value="Publishing">Publishing</option>
-                          <option value="Copywriting">Copywriting</option>
-                          <option value="Content Marketing">Content Marketing</option>
-                          <option value="Podcasting">Podcasting</option>
-                          <option value="Web Development">Web Development</option>
-                          <option value="Mobile App Development">Mobile App Development</option>
-                          <option value="Game Development">Game Development</option>
-                        </optgroup>
-
-                        <optgroup label="Financial">
-                          <option value="Investment Banking">Investment Banking</option>
-                          <option value="Wealth Management">Wealth Management</option>
-                          <option value="Financial Planning">Financial Planning</option>
-                          <option value="Accounting Services">Accounting Services</option>
-                          <option value="Tax Preparation">Tax Preparation</option>
-                          <option value="Bookkeeping">Bookkeeping</option>
-                          <option value="Payroll Services">Payroll Services</option>
-                          <option value="Mortgage Lending">Mortgage Lending</option>
-                          <option value="Credit Unions">Credit Unions</option>
-                          <option value="Payment Processing">Payment Processing</option>
-                          <option value="Cryptocurrency Exchange">Cryptocurrency Exchange</option>
-                        </optgroup>
-
-                        <optgroup label="Government & Public Services">
-                          <option value="Municipal Services">Municipal Services</option>
-                          <option value="Public Safety">Public Safety</option>
-                          <option value="Education Administration">Education Administration</option>
-                          <option value="Public Health">Public Health</option>
-                          <option value="Social Services">Social Services</option>
-                          <option value="Community Development">Community Development</option>
-                        </optgroup>
-
-                        <optgroup label="Health & Wellness">
-                          <option value="Gym & Fitness Center">Gym & Fitness Center</option>
-                          <option value="Yoga Studio">Yoga Studio</option>
-                          <option value="Pilates Studio">Pilates Studio</option>
-                          <option value="Personal Training">Personal Training</option>
-                          <option value="CrossFit">CrossFit</option>
-                          <option value="Nutrition Coaching">Nutrition Coaching</option>
-                          <option value="Wellness Coaching">Wellness Coaching</option>
-                          <option value="Meditation Center">Meditation Center</option>
-                          <option value="Alternative Medicine">Alternative Medicine</option>
-                          <option value="Mental Health Counseling">Mental Health Counseling</option>
-                        </optgroup>
-
-                        <optgroup label="Home Services">
-                          <option value="General Contracting">General Contracting</option>
-                          <option value="Electrical">Electrical</option>
-                          <option value="Plumbing">Plumbing</option>
-                          <option value="HVAC">HVAC</option>
-                          <option value="Roofing">Roofing</option>
-                          <option value="Carpentry">Carpentry</option>
-                          <option value="Painting">Painting</option>
-                          <option value="Flooring">Flooring</option>
-                          <option value="Landscaping">Landscaping</option>
-                          <option value="Lawn Care">Lawn Care</option>
-                          <option value="Tree Services">Tree Services</option>
-                          <option value="Pest Control">Pest Control</option>
-                          <option value="Cleaning Services">Cleaning Services</option>
-                          <option value="Window Cleaning">Window Cleaning</option>
-                          <option value="Pool Installation">Pool Installation</option>
-                          <option value="Interior Design">Interior Design</option>
-                          <option value="Home Staging">Home Staging</option>
-                        </optgroup>
-
-                        <optgroup label="Legal & Insurance">
-                          <option value="Law Firm">Law Firm</option>
-                          <option value="Corporate Law">Corporate Law</option>
-                          <option value="Family Law">Family Law</option>
-                          <option value="Criminal Defense">Criminal Defense</option>
-                          <option value="Immigration Law">Immigration Law</option>
-                          <option value="Intellectual Property">Intellectual Property</option>
-                          <option value="Real Estate Law">Real Estate Law</option>
-                          <option value="Tax Law">Tax Law</option>
-                          <option value="Employment Law">Employment Law</option>
-                          <option value="Notary Services">Notary Services</option>
-                          <option value="Mediation Services">Mediation Services</option>
-                          <option value="Life Insurance">Life Insurance</option>
-                          <option value="Health Insurance">Health Insurance</option>
-                          <option value="Auto Insurance">Auto Insurance</option>
-                          <option value="Home Insurance">Home Insurance</option>
-                          <option value="Business Insurance">Business Insurance</option>
-                          <option value="Disability Insurance">Disability Insurance</option>
-                          <option value="Long-term Care Insurance">Long-term Care Insurance</option>
-                          <option value="Medicare/Medicaid">Medicare/Medicaid</option>
-                          <option value="ACA Marketplace Plans">ACA Marketplace Plans</option>
-                        </optgroup>
-
-                        <optgroup label="Marketing Agency">
-                          <option value="Digital Marketing">Digital Marketing</option>
-                          <option value="SEO Services">SEO Services</option>
-                          <option value="Social Media Marketing">Social Media Marketing</option>
-                          <option value="Email Marketing">Email Marketing</option>
-                          <option value="PPC Advertising">PPC Advertising</option>
-                          <option value="Brand Strategy">Brand Strategy</option>
-                          <option value="Video Marketing">Video Marketing</option>
-                          <option value="Influencer Marketing">Influencer Marketing</option>
-                          <option value="Market Research">Market Research</option>
-                          <option value="Public Relations">Public Relations</option>
-                        </optgroup>
-
-                        <optgroup label="Medical">
-                          <option value="General Practice">General Practice</option>
-                          <option value="Dentistry">Dentistry</option>
-                          <option value="Cardiology">Cardiology</option>
-                          <option value="Dermatology">Dermatology</option>
-                          <option value="Pediatrics">Pediatrics</option>
-                          <option value="Orthopedics">Orthopedics</option>
-                          <option value="Physical Therapy">Physical Therapy</option>
-                          <option value="Chiropractic Care">Chiropractic Care</option>
-                          <option value="Nursing Services">Nursing Services</option>
-                          <option value="Home Healthcare">Home Healthcare</option>
-                          <option value="Medical Imaging">Medical Imaging</option>
-                          <option value="Laboratory Services">Laboratory Services</option>
-                          <option value="Pharmacy">Pharmacy</option>
-                          <option value="Optometry">Optometry</option>
-                          <option value="Audiology">Audiology</option>
-                          <option value="Urgent Care">Urgent Care</option>
-                          <option value="Hospice Care">Hospice Care</option>
-                          <option value="Veterinary Clinic">Veterinary Clinic</option>
-                          <option value="Pet Grooming">Pet Grooming</option>
-                        </optgroup>
-
-                        <optgroup label="Real Estate">
-                          <option value="Residential Real Estate">Residential Real Estate</option>
-                          <option value="Commercial Real Estate">Commercial Real Estate</option>
-                          <option value="Property Management">Property Management</option>
-                          <option value="Real Estate Investment">Real Estate Investment</option>
-                          <option value="Real Estate Development">Real Estate Development</option>
-                          <option value="Vacation Rentals">Vacation Rentals</option>
-                          <option value="Property Appraisal">Property Appraisal</option>
-                          <option value="Title Services">Title Services</option>
-                          <option value="Home Inspection">Home Inspection</option>
-                          <option value="Real Estate Photography">Real Estate Photography</option>
-                          <option value="REITs">REITs</option>
-                        </optgroup>
-
-                        <optgroup label="Restaurant and Bar">
-                          <option value="Restaurant">Restaurant</option>
-                          <option value="Fast Food">Fast Food</option>
-                          <option value="Cafe & Coffee Shop">Cafe & Coffee Shop</option>
-                          <option value="Bakery">Bakery</option>
-                          <option value="Catering">Catering</option>
-                          <option value="Food Truck">Food Truck</option>
-                          <option value="Bar & Nightclub">Bar & Nightclub</option>
-                          <option value="Brewery & Distillery">Brewery & Distillery</option>
-                          <option value="Wine Production">Wine Production</option>
-                          <option value="Meal Prep Services">Meal Prep Services</option>
-                          <option value="Ghost Kitchen">Ghost Kitchen</option>
-                          <option value="Ice Cream Shop">Ice Cream Shop</option>
-                          <option value="Juice Bar">Juice Bar</option>
-                        </optgroup>
-
-                        <optgroup label="Retail & Manufacturing">
-                          <option value="Online Marketplace">Online Marketplace</option>
-                          <option value="Electronics Retail">Electronics Retail</option>
-                          <option value="Furniture & Home Decor">Furniture & Home Decor</option>
-                          <option value="Sporting Goods">Sporting Goods</option>
-                          <option value="Books & Media">Books & Media</option>
-                          <option value="Toys & Games">Toys & Games</option>
-                          <option value="Health & Beauty Products">Health & Beauty Products</option>
-                          <option value="Grocery & Food Delivery">Grocery & Food Delivery</option>
-                          <option value="Subscription Boxes">Subscription Boxes</option>
-                          <option value="Dropshipping">Dropshipping</option>
-                          <option value="Print on Demand">Print on Demand</option>
-                          <option value="Handmade & Crafts">Handmade & Crafts</option>
-                          <option value="Electronics Manufacturing">Electronics Manufacturing</option>
-                          <option value="Textile Manufacturing">Textile Manufacturing</option>
-                          <option value="Pharmaceutical Manufacturing">Pharmaceutical Manufacturing</option>
-                          <option value="Chemical Manufacturing">Chemical Manufacturing</option>
-                          <option value="Plastics Manufacturing">Plastics Manufacturing</option>
-                          <option value="Metal Fabrication">Metal Fabrication</option>
-                          <option value="3D Printing">3D Printing</option>
-                          <option value="Packaging Production">Packaging Production</option>
-                          <option value="Custom Manufacturing">Custom Manufacturing</option>
-                        </optgroup>
-
-                        <optgroup label="Travel & Hospitality">
-                          <option value="Hotel">Hotel</option>
-                          <option value="Motel">Motel</option>
-                          <option value="Bed & Breakfast">Bed & Breakfast</option>
-                          <option value="Resort">Resort</option>
-                          <option value="Travel Agency">Travel Agency</option>
-                          <option value="Tour Operator">Tour Operator</option>
-                          <option value="Cruise Line">Cruise Line</option>
-                          <option value="Event Venue">Event Venue</option>
-                          <option value="Wedding Venue">Wedding Venue</option>
-                          <option value="Conference Center">Conference Center</option>
-                        </optgroup>
-
-                        <optgroup label="Other">
-                          <option value="Virtual Assistant">Virtual Assistant</option>
-                          <option value="Transcription Services">Transcription Services</option>
-                          <option value="Translation Services">Translation Services</option>
-                          <option value="Grant Writing">Grant Writing</option>
-                          <option value="Resume Writing">Resume Writing</option>
-                          <option value="Business Plan Writing">Business Plan Writing</option>
-                          <option value="Recruitment Agency">Recruitment Agency</option>
-                          <option value="Staffing Services">Staffing Services</option>
-                          <option value="Payroll Management">Payroll Management</option>
-                          <option value="Employee Training">Employee Training</option>
-                          <option value="SaaS Development">SaaS Development</option>
-                          <option value="Cloud Computing">Cloud Computing</option>
-                          <option value="Data Analytics">Data Analytics</option>
-                          <option value="Cybersecurity">Cybersecurity</option>
-                          <option value="Blockchain Development">Blockchain Development</option>
-                          <option value="Online Learning Platforms">Online Learning Platforms</option>
-                          <option value="Corporate Training">Corporate Training</option>
-                          <option value="Tutoring Services">Tutoring Services</option>
-                          <option value="Freight Shipping">Freight Shipping</option>
-                          <option value="Warehousing">Warehousing</option>
-                          <option value="Moving Services">Moving Services</option>
-                          <option value="Courier Services">Courier Services</option>
-                          <option value="Charity Organization">Charity Organization</option>
-                          <option value="Religious Organization">Religious Organization</option>
-                          <option value="Homeless Services">Homeless Services</option>
-                          <option value="Youth Programs">Youth Programs</option>
-                          <option value="Telecommunications">Telecommunications</option>
-                          <option value="Security Services">Security Services</option>
-                          <option value="Event Planning">Event Planning</option>
-                          <option value="Other Service">Other Service</option>
-                        </optgroup>
-                      </select>
+                          type="hidden"
+                          value={selectedNiche}
+                        />
                       </div>
                     </div>
 
