@@ -47,6 +47,8 @@ export default function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Company Information refs
+  const companyNameRef = useRef<HTMLInputElement>(null);
+  const slugRef = useRef<HTMLInputElement>(null);
   const legalNameRef = useRef<HTMLInputElement>(null);
   const businessCategoryRef = useRef<HTMLSelectElement>(null);
   const businessNicheRef = useRef<HTMLSelectElement>(null);
@@ -379,6 +381,8 @@ export default function Settings() {
   const handleSaveCompanyInformation = () => {
     const data: any = {};
     
+    if (companyNameRef.current?.value) data.name = companyNameRef.current.value;
+    if (slugRef.current?.value) data.slug = slugRef.current.value;
     if (legalNameRef.current?.value) data.legalName = legalNameRef.current.value;
     if (businessCategoryRef.current?.value) data.businessCategory = businessCategoryRef.current.value;
     if (businessNicheRef.current?.value) data.businessNiche = businessNicheRef.current.value;
@@ -1123,9 +1127,8 @@ export default function Settings() {
                         <Label htmlFor="companyName">Company Name</Label>
                         <Input
                           id="companyName"
-                          value={companyData?.company?.name || ""}
-                          disabled
-                          className="bg-muted"
+                          ref={companyNameRef}
+                          defaultValue={companyData?.company?.name || ""}
                           data-testid="input-company-name"
                         />
                       </div>
@@ -1133,9 +1136,8 @@ export default function Settings() {
                         <Label htmlFor="slug">Company Slug</Label>
                         <Input
                           id="slug"
-                          value={companyData?.company?.slug || ""}
-                          disabled
-                          className="bg-muted"
+                          ref={slugRef}
+                          defaultValue={companyData?.company?.slug || ""}
                           data-testid="input-slug"
                         />
                       </div>

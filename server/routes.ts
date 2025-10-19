@@ -2256,12 +2256,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
 
-    if (currentUser.role !== "superadmin") {
+    // Admins can only update their own company, superadmins can update any company
+    if (currentUser.role === "admin") {
+      if (currentUser.companyId !== req.params.id) {
+        return res.status(403).json({ message: "Forbidden - Admins can only update their own company" });
+      }
+    } else if (currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
     try {
       const validatedData = updateCompanySchema.parse(req.body);
+      
+      // Admins cannot change isActive status
+      if (currentUser.role === "admin" && 'isActive' in validatedData) {
+        delete validatedData.isActive;
+      }
+      
       const updatedCompany = await storage.updateCompany(req.params.id, validatedData);
       if (!updatedCompany) {
         return res.status(404).json({ message: "Company not found" });
