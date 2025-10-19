@@ -1092,13 +1092,10 @@ export async function changePlan(
         id: currentItem.id,
         price: newStripePriceId,
       }],
-      // Proration behavior: Stripe will automatically:
-      // 1. Calculate credit for unused time on old plan
-      // 2. Charge for new plan (prorated for remaining period)
-      // 3. Store excess credit in customer balance
-      // 4. Apply credit to future invoices automatically
-      proration_behavior: 'create_prorations',
-      // Bill immediately for the change
+      // No proration - change takes effect at end of current billing period
+      // Customer keeps current plan until period ends, then new plan starts
+      proration_behavior: 'none',
+      // Keep the same billing cycle anchor
       billing_cycle_anchor: 'unchanged',
     };
     
@@ -1119,36 +1116,14 @@ export async function changePlan(
       }
     }
     
-    console.log('[STRIPE] Updating subscription with proration...');
+    console.log('[STRIPE] Scheduling plan change for end of billing period...');
     const updatedSubscription = await stripe.subscriptions.update(
       stripeSubscriptionId,
       updateData
     );
     
-    console.log('[STRIPE] Plan changed successfully with proration');
+    console.log('[STRIPE] Plan change scheduled successfully (will take effect at end of billing period)');
     console.log('[STRIPE] New subscription status:', updatedSubscription.status);
-    
-    // Log proration details if available
-    if (updatedSubscription.latest_invoice) {
-      const invoiceId = typeof updatedSubscription.latest_invoice === 'string'
-        ? updatedSubscription.latest_invoice
-        : updatedSubscription.latest_invoice.id;
-      
-      const invoice = await stripe.invoices.retrieve(invoiceId, {
-        expand: ['lines.data'],
-      });
-      
-      console.log('[STRIPE] Proration invoice created:', invoice.id);
-      console.log('[STRIPE] Invoice total:', invoice.total / 100, invoice.currency.toUpperCase());
-      console.log('[STRIPE] Customer balance after proration:', invoice.ending_balance / 100);
-      
-      // Log line items to see proration details
-      if (invoice.lines && invoice.lines.data) {
-        invoice.lines.data.forEach((line: any) => {
-          console.log(`[STRIPE] Line: ${line.description} - ${line.amount / 100} ${invoice.currency.toUpperCase()}`);
-        });
-      }
-    }
     
     return updatedSubscription;
   } catch (error) {
