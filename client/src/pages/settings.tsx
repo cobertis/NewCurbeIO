@@ -14,6 +14,7 @@ import { User as UserIcon, Building2, Bell, Shield, Mail, Camera, Phone as Phone
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
+import { UploadAvatarDialog } from "@/components/upload-avatar-dialog";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
 
 export default function Settings() {
@@ -42,6 +43,7 @@ export default function Settings() {
   });
 
   const [emailTestAddress, setEmailTestAddress] = useState("");
+  const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
   
   const user = userData?.user;
   const isSuperAdmin = user?.role === "superadmin";
@@ -211,6 +213,7 @@ export default function Settings() {
                     size="icon"
                     variant="secondary"
                     className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                    onClick={() => setUploadAvatarOpen(true)}
                     data-testid="button-change-avatar"
                   >
                     <Camera className="h-4 w-4" />
@@ -744,6 +747,14 @@ export default function Settings() {
           </Tabs>
         </div>
       </div>
+
+      {/* Upload Avatar Dialog */}
+      <UploadAvatarDialog
+        open={uploadAvatarOpen}
+        onOpenChange={setUploadAvatarOpen}
+        currentAvatar={user?.avatar || ""}
+        userInitial={getUserInitials()}
+      />
     </div>
   );
 }
