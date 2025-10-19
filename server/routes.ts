@@ -4460,8 +4460,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createNotification({
           userId: admin.id,
           type: 'financial_support_request',
-          title: 'Nueva Solicitud de Soporte Financiero',
-          message: `${user.firstName} ${user.lastName} de ${company.name} ha solicitado soporte financiero.`,
+          title: 'New Financial Support Request',
+          message: `${user.firstName} ${user.lastName} from ${company.name} has requested financial support.`,
           link: `/admin/companies/${companyId}`,
           isRead: false,
         });
@@ -4475,16 +4475,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         ticket,
-        message: "Su solicitud ha sido enviada. Nuestro equipo la revisará y le responderá en 48 horas." 
+        message: "Your request has been submitted. Our team will review it and respond to you within 48 hours." 
       });
     } catch (error: any) {
       console.error('[FINANCIAL SUPPORT] Error creating ticket:', error);
       
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Datos de solicitud inválidos", errors: error.errors });
+        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
       }
       
-      res.status(500).json({ message: "Error al crear la solicitud de soporte" });
+      res.status(500).json({ message: "Error creating support request" });
     }
   });
 
