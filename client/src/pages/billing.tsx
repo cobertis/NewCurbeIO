@@ -143,12 +143,10 @@ interface Payment {
 
 interface PaymentMethod {
   id: string;
-  card: {
-    brand: string;
-    last4: string;
-    exp_month: number;
-    exp_year: number;
-  };
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
   isDefault: boolean;
 }
 
@@ -1781,7 +1779,7 @@ export default function Billing() {
               {paymentMethods && paymentMethods.length > 0 ? (
                 <div className="space-y-4">
                   {paymentMethods.map((method) => {
-                    if (!method.card) return null;
+                    if (!method.brand) return null;
                     return (
                       <div 
                         key={method.id} 
@@ -1789,13 +1787,13 @@ export default function Billing() {
                         data-testid={`payment-method-${method.id}`}
                       >
                         <div className="flex items-center gap-4">
-                          <CardBrandLogo brand={method.card.brand} />
+                          <CardBrandLogo brand={method.brand} />
                           <div>
                             <p className="font-medium">
-                              {method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1)} •••• {method.card.last4}
+                              {method.brand.charAt(0).toUpperCase() + method.brand.slice(1)} •••• {method.last4}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              Expires {method.card.exp_month.toString().padStart(2, '0')}/{method.card.exp_year}
+                              Expires {method.expMonth.toString().padStart(2, '0')}/{method.expYear}
                             </p>
                           </div>
                         </div>
