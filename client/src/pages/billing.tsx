@@ -934,15 +934,17 @@ export default function Billing() {
                 </div>
               </div>
 
-              {/* Next Invoice */}
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground">
-                  Your next invoice is scheduled on{' '}
-                  <span className="font-medium text-foreground">
-                    {formatDate(new Date(subscription.currentPeriodEnd))}
-                  </span>
-                </p>
-              </div>
+              {/* Next Invoice - Only show when NOT active (active status already shows this in banner) */}
+              {subscription.status !== 'active' && (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground">
+                    Your next invoice is scheduled on{' '}
+                    <span className="font-medium text-foreground">
+                      {formatDate(new Date(subscription.currentPeriodEnd))}
+                    </span>
+                  </p>
+                </div>
+              )}
             </CardContent>
               </Card>
             ) : null}
