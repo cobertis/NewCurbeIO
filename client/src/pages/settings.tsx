@@ -1166,94 +1166,100 @@ export default function Settings() {
 
             {/* Security Tab */}
             <TabsContent value="security" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Change Password</CardTitle>
-                  <CardDescription>
-                    Update your password to keep your account secure.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="current-password">Current Password</Label>
-                      <Input
-                        id="current-password"
-                        type="password"
-                        data-testid="input-current-password"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-password">New Password</Label>
-                      <Input
-                        id="new-password"
-                        type="password"
-                        data-testid="input-new-password"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm New Password</Label>
-                      <Input
-                        id="confirm-password"
-                        type="password"
-                        data-testid="input-confirm-password"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      variant="destructive"
-                      data-testid="button-change-password"
-                    >
-                      Change Password
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Two-Factor Authentication</CardTitle>
-                  <CardDescription>
-                    Add an additional layer of security to your account.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-base">SMS Two-Factor</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive verification codes via SMS.
-                      </p>
-                    </div>
-                    <Switch data-testid="switch-2fa" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Requires a valid phone number in your profile.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Sessions</CardTitle>
-                  <CardDescription>
-                    Manage your active sessions and connected devices.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-md">
-                      <div>
-                        <p className="font-medium">Current Session</p>
-                        <p className="text-sm text-muted-foreground">This device</p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Left Column - Change Password */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Change Password</CardTitle>
+                    <CardDescription>
+                      Update your password to keep your account secure.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="current-password">Current Password</Label>
+                        <Input
+                          id="current-password"
+                          type="password"
+                          data-testid="input-current-password"
+                        />
                       </div>
-                      <Button variant="outline" size="sm" data-testid="button-logout-current">
-                        Log Out
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password">New Password</Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          data-testid="input-new-password"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password">Confirm New Password</Label>
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          data-testid="input-confirm-password"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        variant="destructive"
+                        data-testid="button-change-password"
+                      >
+                        Change Password
                       </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Right Column - 2FA and Active Sessions */}
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Two-Factor Authentication</CardTitle>
+                      <CardDescription>
+                        Add an additional layer of security to your account.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-base">SMS Two-Factor</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receive verification codes via SMS.
+                          </p>
+                        </div>
+                        <Switch data-testid="switch-2fa" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Requires a valid phone number in your profile.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Active Sessions</CardTitle>
+                      <CardDescription>
+                        Manage your active sessions and connected devices.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 border rounded-md">
+                          <div>
+                            <p className="font-medium">Current Session</p>
+                            <p className="text-sm text-muted-foreground">This device</p>
+                          </div>
+                          <Button variant="outline" size="sm" data-testid="button-logout-current">
+                            Log Out
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
