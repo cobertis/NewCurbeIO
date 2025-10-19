@@ -1535,43 +1535,6 @@ export default function Billing() {
               </DialogHeader>
               
               <div className="space-y-4 py-4">
-                {/* Registration Links */}
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <p className="text-sm text-center mb-3">
-                    To use your HighLevel subscription to the fullest please join here
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <a
-                      href="https://example.com/register"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
-                      data-testid="link-daily-group"
-                    >
-                      <div className="p-1.5 rounded bg-muted">
-                        <Calendar className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold truncate">Daily Group Calls</p>
-                      </div>
-                    </a>
-                    <a
-                      href="https://example.com/register"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
-                      data-testid="link-full-community"
-                    >
-                      <div className="p-1.5 rounded bg-muted">
-                        <ExternalLink className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold truncate">Full Community</p>
-                      </div>
-                    </a>
-                  </div>
-                </div>
-
                 {/* Reason Textarea */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
@@ -2500,43 +2463,6 @@ export default function Billing() {
               </DialogHeader>
               
               <div className="space-y-4 py-4">
-                {/* Registration Links */}
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <p className="text-sm text-center mb-3">
-                    To use your HighLevel subscription to the fullest please join here
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <a
-                      href="https://example.com/register"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
-                      data-testid="link-daily-group"
-                    >
-                      <div className="p-1.5 rounded bg-muted">
-                        <Calendar className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold truncate">Daily Group Calls</p>
-                      </div>
-                    </a>
-                    <a
-                      href="https://example.com/register"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
-                      data-testid="link-full-community"
-                    >
-                      <div className="p-1.5 rounded bg-muted">
-                        <ExternalLink className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold truncate">Full Community</p>
-                      </div>
-                    </a>
-                  </div>
-                </div>
-
                 {/* Reason Textarea */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
