@@ -763,11 +763,31 @@ export default function Billing() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{Math.round(trialProgress)}% Complete</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{Math.round(trialProgress)}% Complete</p>
+                      </div>
+                      <Progress value={trialProgress} className="h-2 w-32" />
                     </div>
-                    <Progress value={trialProgress} className="h-2 w-32" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Check if user has payment method
+                        if (!paymentMethods || paymentMethods.length === 0) {
+                          setPendingSkipTrial(true);
+                          setShowAddCard(true);
+                        } else {
+                          setShowSkipTrialDialog(true);
+                        }
+                      }}
+                      data-testid="button-skip-trial"
+                      className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-blue-950"
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      Skip Trial
+                    </Button>
                   </div>
                 </div>
               )}
