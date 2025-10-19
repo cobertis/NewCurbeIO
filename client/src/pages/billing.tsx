@@ -468,7 +468,7 @@ export default function Billing() {
   // Cancel subscription mutation
   const cancelSubscriptionMutation = useMutation({
     mutationFn: async () => {
-      const result = await apiRequest("POST", "/api/billing/cancel-subscription", {});
+      const result = await apiRequest("POST", "/api/billing/cancel", {});
       return result.json();
     },
     onSuccess: () => {
