@@ -358,7 +358,6 @@ export default function Settings() {
   const companyEmailRef = useRef<HTMLInputElement>(null);
   const companyPhoneRef = useRef<HTMLInputElement>(null);
   const websiteRef = useRef<HTMLInputElement>(null);
-  const companySizeRef = useRef<HTMLSelectElement>(null);
   const timezoneRef = useRef<HTMLInputElement>(null);
   const platformLanguageRef = useRef<HTMLInputElement>(null);
   
@@ -690,7 +689,6 @@ export default function Settings() {
     if (companyEmailRef.current?.value) data.email = companyEmailRef.current.value;
     if (companyPhoneRef.current?.value) data.phone = companyPhoneRef.current.value;
     if (websiteRef.current?.value) data.website = websiteRef.current.value;
-    if (companySizeRef.current?.value) data.companySize = companySizeRef.current.value;
     if (timezoneRef.current?.value) data.timezone = timezoneRef.current.value;
     if (platformLanguageRef.current?.value) data.platformLanguage = platformLanguageRef.current.value;
     
@@ -1575,33 +1573,14 @@ export default function Settings() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="companySize">Company Size</Label>
-                        <select
-                          id="companySize"
-                          ref={companySizeRef}
-                          defaultValue={companyData?.company?.companySize || ""}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          data-testid="select-company-size"
-                        >
-                          <option value="">Select company size</option>
-                          <option value="1-10">1-10 employees</option>
-                          <option value="11-50">11-50 employees</option>
-                          <option value="51-200">51-200 employees</option>
-                          <option value="201-500">201-500 employees</option>
-                          <option value="501+">501+ employees</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="timezone">Timezone</Label>
-                        <Input
-                          id="timezone"
-                          ref={timezoneRef}
-                          defaultValue={companyData?.company?.timezone || "UTC"}
-                          data-testid="input-timezone"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="timezone">Timezone</Label>
+                      <Input
+                        id="timezone"
+                        ref={timezoneRef}
+                        defaultValue={companyData?.company?.timezone || "UTC"}
+                        data-testid="input-timezone"
+                      />
                     </div>
 
                     <div className="space-y-2">
