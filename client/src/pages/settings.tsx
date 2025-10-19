@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
@@ -20,24 +21,24 @@ export default function Settings() {
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
-  const { data: userData } = useQuery<{ user: User }>({
+  const { data: userData, isLoading: isLoadingUser } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
   });
 
-  const { data: preferencesData } = useQuery<{ preferences: any }>({
+  const { data: preferencesData, isLoading: isLoadingPreferences } = useQuery<{ preferences: any }>({
     queryKey: ["/api/settings/preferences"],
   });
 
-  const { data: companySettingsData } = useQuery<{ settings: CompanySettings }>({
+  const { data: companySettingsData, isLoading: isLoadingCompanySettings } = useQuery<{ settings: CompanySettings }>({
     queryKey: ["/api/settings/company"],
     enabled: userData?.user?.role === "admin" || userData?.user?.role === "superadmin",
   });
 
-  const { data: subscriptionData } = useQuery<{ subscription: any }>({
+  const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery<{ subscription: any }>({
     queryKey: ["/api/billing/subscription"],
   });
 
-  const { data: plansData } = useQuery<{ plans: any[] }>({
+  const { data: plansData, isLoading: isLoadingPlans } = useQuery<{ plans: any[] }>({
     queryKey: ["/api/plans"],
   });
 
@@ -47,12 +48,15 @@ export default function Settings() {
   const user = userData?.user;
 
   // Fetch company data if user has a companyId
-  const { data: companyData } = useQuery<{ company: any }>({
+  const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: any }>({
     queryKey: ["/api/companies", user?.companyId],
     enabled: !!user?.companyId,
   });
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+  // Check if critical data is still loading
+  const isLoadingCriticalData = isLoadingUser || isLoadingPreferences || isLoadingSubscription || isLoadingPlans || (user?.companyId && isLoadingCompany);
 
   // Get current plan name
   const getCurrentPlanName = () => {
@@ -289,6 +293,69 @@ export default function Settings() {
     };
     return colorMap[user.status] || "text-gray-600 dark:text-gray-400";
   };
+
+  // Show skeleton loader while critical data is loading
+  if (isLoadingCriticalData) {
+    return (
+      <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column - Profile Card Skeleton */}
+          <div className="lg:col-span-4 xl:col-span-3">
+            <Card className="sticky top-6">
+              <CardHeader className="text-center pb-4">
+                <div className="flex flex-col items-center gap-4">
+                  <Skeleton className="h-24 w-24 rounded-full" />
+                  <div className="text-center w-full space-y-2">
+                    <Skeleton className="h-6 w-32 mx-auto" />
+                    <Skeleton className="h-5 w-24 mx-auto" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4 border-t">
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <Skeleton className="h-4 w-4 mt-1" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Skeleton className="h-16 rounded-md" />
+                    <Skeleton className="h-16 rounded-md" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Settings Tabs Skeleton */}
+          <div className="lg:col-span-8 xl:col-span-9">
+            <div className="space-y-6">
+              <Skeleton className="h-10 w-full" />
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-full mt-2" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
