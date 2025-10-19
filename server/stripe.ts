@@ -1199,9 +1199,6 @@ export async function changePlan(
         // 2. Charge for new plan (prorated)
         // 3. Customer pays the difference
         proration_behavior: 'create_prorations',
-        // CRITICAL: Reset billing cycle to NOW to force immediate invoice creation
-        // Without this, prorated items are added to the NEXT regular invoice
-        billing_cycle_anchor: 'now',
       };
       
       // Preserve active discount if it exists
