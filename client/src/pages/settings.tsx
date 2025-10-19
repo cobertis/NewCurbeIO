@@ -585,33 +585,36 @@ export default function Settings() {
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={profileForm.email}
-                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                        data-testid="input-email-settings"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        placeholder="+1 (415) 555-2671"
-                        value={profileForm.phone || ""}
-                        onChange={(e) => {
-                          const formatted = formatPhoneInput(e.target.value);
-                          setProfileForm({ ...profileForm, phone: formatted });
-                        }}
-                        data-testid="input-phone-settings"
-                      />
-                      <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671. Required for SMS two-factor authentication</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={profileForm.email}
+                          onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                          data-testid="input-email-settings"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          type="tel"
+                          placeholder="+1 (415) 555-2671"
+                          value={profileForm.phone || ""}
+                          onChange={(e) => {
+                            const formatted = formatPhoneInput(e.target.value);
+                            setProfileForm({ ...profileForm, phone: formatted });
+                          }}
+                          data-testid="input-phone-settings"
+                        />
+                        <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671. Required for SMS two-factor authentication</p>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
