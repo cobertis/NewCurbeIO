@@ -1071,6 +1071,11 @@ export async function changePlan(
     
     console.log('[STRIPE] Current subscription status:', currentSubscription.status);
     console.log('[STRIPE] Current items:', currentSubscription.items.data.length);
+    console.log('[STRIPE] Subscription object keys:', Object.keys(currentSubscription));
+    console.log('[STRIPE] Has current_period_end?', 'current_period_end' in currentSubscription);
+    if ((currentSubscription as any).current_period_end) {
+      console.log('[STRIPE] current_period_end value:', (currentSubscription as any).current_period_end);
+    }
     
     // Get the current subscription item (should be only one)
     const currentItem = currentSubscription.items.data[0];
@@ -1134,6 +1139,9 @@ export async function changePlan(
     
     // Get current period end timestamp
     const periodEndTimestamp = (currentSubscription as any).current_period_end;
+    if (!periodEndTimestamp || typeof periodEndTimestamp !== 'number') {
+      throw new Error('Unable to get current period end from subscription');
+    }
     console.log('[STRIPE] Current period ends at:', new Date(periodEndTimestamp * 1000).toISOString());
     
     // Prepare the new phase with discount if exists
