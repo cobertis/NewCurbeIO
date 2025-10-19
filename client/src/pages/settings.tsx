@@ -121,14 +121,14 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "Perfil actualizado",
-        description: "Tu perfil ha sido actualizado exitosamente.",
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo actualizar el perfil.",
+        description: "Failed to update profile.",
         variant: "destructive",
       });
     },
@@ -143,8 +143,8 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["/api/settings/preferences"] });
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       toast({
-        title: "Preferencias actualizadas",
-        description: "Tus preferencias han sido guardadas.",
+        title: "Preferences Updated",
+        description: "Your preferences have been saved.",
       });
     },
   });
@@ -156,15 +156,15 @@ export default function Settings() {
     },
     onSuccess: () => {
       toast({
-        title: "Email de prueba enviado",
-        description: "Revisa tu bandeja de entrada.",
+        title: "Test Email Sent",
+        description: "Check your inbox.",
       });
       setEmailTestAddress("");
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo enviar el email de prueba. Verifica la configuración SMTP.",
+        description: "Failed to send test email. Check SMTP configuration.",
         variant: "destructive",
       });
     },
@@ -191,15 +191,15 @@ export default function Settings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       toast({
-        title: "Éxito",
-        description: "Foto de perfil actualizada exitosamente",
+        title: "Success",
+        description: "Profile picture updated successfully",
       });
     },
     onError: () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo actualizar la foto de perfil",
+        description: "Failed to update profile picture",
       });
     },
   });
@@ -212,28 +212,28 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo de archivo
+    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
         variant: "destructive",
-        title: "Archivo inválido",
-        description: "Por favor selecciona un archivo de imagen (JPG, PNG, GIF, etc.)",
+        title: "Invalid File",
+        description: "Please select an image file (JPG, PNG, GIF, etc.)",
       });
       return;
     }
 
-    // Validar tamaño (máx 5MB)
+    // Validate size (max 5MB)
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       toast({
         variant: "destructive",
-        title: "Archivo muy grande",
-        description: "Por favor selecciona una imagen menor a 5MB",
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB",
       });
       return;
     }
 
-    // Leer archivo y convertir a data URL
+    // Read file and convert to data URL
     const reader = new FileReader();
     reader.onloadend = () => {
       const result = reader.result as string;
@@ -243,7 +243,7 @@ export default function Settings() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo leer el archivo de imagen",
+        description: "Failed to read image file",
       });
     };
     reader.readAsDataURL(file);
@@ -259,22 +259,22 @@ export default function Settings() {
 
   // Get role display text
   const getRoleDisplay = () => {
-    if (!user?.role) return "Usuario";
+    if (!user?.role) return "User";
     const roleMap: { [key: string]: string } = {
-      superadmin: "Super Administrador",
-      admin: "Administrador",
-      user: "Usuario",
+      superadmin: "Super Administrator",
+      admin: "Administrator",
+      user: "User",
     };
     return roleMap[user.role] || user.role;
   };
 
   // Get status display text
   const getStatusDisplay = () => {
-    if (!user?.status) return "Desconocido";
+    if (!user?.status) return "Unknown";
     const statusMap: { [key: string]: string } = {
-      active: "Activo",
-      pending_activation: "Pendiente de Activación",
-      deactivated: "Desactivado",
+      active: "Active",
+      pending_activation: "Pending Activation",
+      deactivated: "Deactivated",
     };
     return statusMap[user.status] || user.status;
   };
@@ -307,11 +307,11 @@ export default function Settings() {
                     <AvatarImage src={user?.avatar || ""} alt={user?.firstName || ""} />
                     <AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback>
                   </Avatar>
-                  {/* Overlay con lápiz que aparece en hover */}
+                  {/* Overlay with pencil icon that appears on hover */}
                   <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Pencil className="h-6 w-6 text-white" />
                   </div>
-                  {/* Input de archivo oculto */}
+                  {/* Hidden file input */}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -346,7 +346,7 @@ export default function Settings() {
                   <div className="flex items-start gap-3">
                     <Globe className="h-4 w-4 text-muted-foreground mt-1" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Sitio Web</p>
+                      <p className="text-xs text-muted-foreground">Website</p>
                       <a 
                         href={companyData.company.website.startsWith('http') ? companyData.company.website : `https://${companyData.company.website}`}
                         target="_blank"
@@ -360,34 +360,34 @@ export default function Settings() {
                   </div>
                 )}
 
-                {/* 3. Teléfono */}
+                {/* 3. Phone */}
                 {user?.phone && (
                   <div className="flex items-start gap-3">
                     <PhoneIcon className="h-4 w-4 text-muted-foreground mt-1" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Teléfono</p>
+                      <p className="text-xs text-muted-foreground">Phone</p>
                       <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
                     </div>
                   </div>
                 )}
 
-                {/* 4. Empresa */}
+                {/* 4. Company */}
                 {user?.companyId && (
                   <div className="flex items-start gap-3">
                     <Building2 className="h-4 w-4 text-muted-foreground mt-1" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Empresa</p>
+                      <p className="text-xs text-muted-foreground">Company</p>
                       <p className="text-sm font-medium">{companyData?.company?.name || user.companyId}</p>
                     </div>
                   </div>
                 )}
 
-                {/* 5. Dirección */}
+                {/* 5. Address */}
                 {companyData?.company?.address && (
                   <div className="flex items-start gap-3">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Dirección</p>
+                      <p className="text-xs text-muted-foreground">Address</p>
                       <div className="text-sm font-medium space-y-0.5">
                         <p>{companyData.company.address}</p>
                         {companyData.company.addressLine2 && (
@@ -410,7 +410,7 @@ export default function Settings() {
               <div className="pt-4 border-t">
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="p-3 rounded-md bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Estado</p>
+                    <p className="text-xs text-muted-foreground">Status</p>
                     <p className={`text-sm font-semibold ${getStatusColor()}`}>{getStatusDisplay()}</p>
                   </div>
                   <div className="p-3 rounded-md bg-muted/50">
@@ -429,16 +429,16 @@ export default function Settings() {
             <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">
               <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
                 <UserIcon className="h-4 w-4" />
-                Perfil
+                Profile
               </TabsTrigger>
               <TabsTrigger value="preferences" className="gap-2" data-testid="tab-preferences">
                 <Bell className="h-4 w-4" />
-                Preferencias
+                Preferences
               </TabsTrigger>
               {isAdmin && (
                 <TabsTrigger value="company" className="gap-2" data-testid="tab-company">
                   <Building2 className="h-4 w-4" />
-                  Empresa
+                  Company
                 </TabsTrigger>
               )}
               {isSuperAdmin && (
@@ -449,7 +449,7 @@ export default function Settings() {
               )}
               <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
                 <Shield className="h-4 w-4" />
-                Seguridad
+                Security
               </TabsTrigger>
             </TabsList>
 
@@ -457,16 +457,16 @@ export default function Settings() {
             <TabsContent value="profile" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Información del Perfil</CardTitle>
+                  <CardTitle>Profile Information</CardTitle>
                   <CardDescription>
-                    Actualiza tu información personal y detalles de contacto.
+                    Update your personal information and contact details.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleProfileSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName">Nombre</Label>
+                        <Label htmlFor="firstName">First Name</Label>
                         <Input
                           id="firstName"
                           name="firstName"
@@ -477,7 +477,7 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName">Apellido</Label>
+                        <Label htmlFor="lastName">Last Name</Label>
                         <Input
                           id="lastName"
                           name="lastName"
@@ -501,7 +501,7 @@ export default function Settings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Número de Teléfono</Label>
+                      <Label htmlFor="phone">Phone Number</Label>
                       <Input
                         id="phone"
                         name="phone"
@@ -514,14 +514,14 @@ export default function Settings() {
                         }}
                         data-testid="input-phone-settings"
                       />
-                      <p className="text-xs text-muted-foreground">Formato: +1 (415) 555-2671. Requerido para autenticación SMS de dos factores</p>
+                      <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671. Required for SMS two-factor authentication</p>
                     </div>
                     <Button
                       type="submit"
                       disabled={updateProfileMutation.isPending}
                       data-testid="button-save-profile"
                     >
-                      {updateProfileMutation.isPending ? "Guardando..." : "Guardar Cambios"}
+                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
                     </Button>
                   </form>
                 </CardContent>
@@ -532,19 +532,19 @@ export default function Settings() {
             <TabsContent value="preferences" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Preferencias de Notificaciones</CardTitle>
+                  <CardTitle>Notification Preferences</CardTitle>
                   <CardDescription>
-                    Elige qué notificaciones deseas recibir.
+                    Choose which notifications you want to receive.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label htmlFor="emailNotifications" className="text-base">
-                        Notificaciones por Email
+                        Email Notifications
                       </Label>
                       <p className="text-sm text-muted-foreground">
-                        Recibe actualizaciones por email sobre la actividad de tu cuenta.
+                        Receive email updates about your account activity.
                       </p>
                     </div>
                     <Switch
@@ -563,10 +563,10 @@ export default function Settings() {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label htmlFor="marketingEmails" className="text-base">
-                        Emails de Marketing
+                        Marketing Emails
                       </Label>
                       <p className="text-sm text-muted-foreground">
-                        Recibe emails sobre nuevas funcionalidades y actualizaciones.
+                        Receive emails about new features and updates.
                       </p>
                     </div>
                     <Switch
@@ -585,10 +585,10 @@ export default function Settings() {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label htmlFor="invoiceAlerts" className="text-base">
-                        Alertas de Facturas
+                        Invoice Alerts
                       </Label>
                       <p className="text-sm text-muted-foreground">
-                        Recibe notificaciones cuando se generen nuevas facturas.
+                        Receive notifications when new invoices are generated.
                       </p>
                     </div>
                     <Switch
@@ -613,14 +613,14 @@ export default function Settings() {
               <TabsContent value="company" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Configuración de Empresa</CardTitle>
+                    <CardTitle>Company Settings</CardTitle>
                     <CardDescription>
-                      Gestiona la configuración y preferencias de tu empresa.
+                      Manage your company settings and preferences.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-2">
-                      <Label>Nombre de la Empresa</Label>
+                      <Label>Company Name</Label>
                       <Input
                         value={companySettingsData?.settings?.companyId || ""}
                         disabled
@@ -630,7 +630,7 @@ export default function Settings() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="primaryColor">Color Primario</Label>
+                        <Label htmlFor="primaryColor">Primary Color</Label>
                         <div className="flex gap-2">
                           <Input
                             id="primaryColor"
@@ -647,7 +647,7 @@ export default function Settings() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="secondaryColor">Color Secundario</Label>
+                        <Label htmlFor="secondaryColor">Secondary Color</Label>
                         <div className="flex gap-2">
                           <Input
                             id="secondaryColor"
@@ -664,7 +664,7 @@ export default function Settings() {
                         </div>
                       </div>
                     </div>
-                    <Button data-testid="button-save-company">Guardar Configuración</Button>
+                    <Button data-testid="button-save-company">Save Settings</Button>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -676,38 +676,38 @@ export default function Settings() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Configuración de Email y SMTP</CardTitle>
+                      <CardTitle>Email and SMTP Configuration</CardTitle>
                       <CardDescription>
-                        Configura los ajustes de notificaciones por email del sistema.
+                        Configure system email notification settings.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="space-y-4">
                         <div className="p-4 border border-border rounded-md bg-muted/50">
-                          <h4 className="text-sm font-medium mb-2">Estado SMTP</h4>
+                          <h4 className="text-sm font-medium mb-2">SMTP Status</h4>
                           <p className="text-sm text-muted-foreground mb-4">
-                            Las credenciales SMTP están configuradas mediante variables de entorno.
+                            SMTP credentials are configured via environment variables.
                           </p>
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">SMTP Host:</span>
-                              <span className="font-mono">Configurado</span>
+                              <span className="font-mono">Configured</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">SMTP Port:</span>
-                              <span className="font-mono">Configurado</span>
+                              <span className="font-mono">Configured</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Email Remitente:</span>
-                              <span className="font-mono">Configurado</span>
+                              <span className="text-muted-foreground">Sender Email:</span>
+                              <span className="font-mono">Configured</span>
                             </div>
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="testEmail">Probar Configuración de Email</Label>
+                          <Label htmlFor="testEmail">Test Email Configuration</Label>
                           <p className="text-sm text-muted-foreground mb-2">
-                            Envía un email de prueba para verificar que tu configuración SMTP funciona.
+                            Send a test email to verify your SMTP configuration works.
                           </p>
                           <form onSubmit={handleSendTestEmail} className="flex gap-2">
                             <Input
@@ -724,7 +724,7 @@ export default function Settings() {
                               disabled={sendTestEmailMutation.isPending}
                               data-testid="button-send-test-email"
                             >
-                              {sendTestEmailMutation.isPending ? "Enviando..." : "Enviar Prueba"}
+                              {sendTestEmailMutation.isPending ? "Sending..." : "Send Test"}
                             </Button>
                           </form>
                         </div>
@@ -734,19 +734,19 @@ export default function Settings() {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle>Notificaciones del Sistema</CardTitle>
+                      <CardTitle>System Notifications</CardTitle>
                       <CardDescription>
-                        Configura el comportamiento de las notificaciones del sistema.
+                        Configure system notification behavior.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label htmlFor="systemNotifications" className="text-base">
-                            Activar Notificaciones del Sistema
+                            Enable System Notifications
                           </Label>
                           <p className="text-sm text-muted-foreground">
-                            Enviar notificaciones automáticas para eventos del sistema.
+                            Send automatic notifications for system events.
                           </p>
                         </div>
                         <Switch
@@ -765,10 +765,10 @@ export default function Settings() {
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label htmlFor="batchNotifications" className="text-base">
-                            Notificaciones en Lote
+                            Batch Notifications
                           </Label>
                           <p className="text-sm text-muted-foreground">
-                            Agrupar múltiples notificaciones en emails resumen.
+                            Group multiple notifications into summary emails.
                           </p>
                         </div>
                         <Switch
@@ -796,15 +796,15 @@ export default function Settings() {
             <TabsContent value="security" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Cambiar Contraseña</CardTitle>
+                  <CardTitle>Change Password</CardTitle>
                   <CardDescription>
-                    Actualiza tu contraseña para mantener tu cuenta segura.
+                    Update your password to keep your account secure.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="current-password">Contraseña Actual</Label>
+                      <Label htmlFor="current-password">Current Password</Label>
                       <Input
                         id="current-password"
                         type="password"
@@ -812,7 +812,7 @@ export default function Settings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="new-password">Nueva Contraseña</Label>
+                      <Label htmlFor="new-password">New Password</Label>
                       <Input
                         id="new-password"
                         type="password"
@@ -820,7 +820,7 @@ export default function Settings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
+                      <Label htmlFor="confirm-password">Confirm New Password</Label>
                       <Input
                         id="confirm-password"
                         type="password"
@@ -832,7 +832,7 @@ export default function Settings() {
                       variant="destructive"
                       data-testid="button-change-password"
                     >
-                      Cambiar Contraseña
+                      Change Password
                     </Button>
                   </form>
                 </CardContent>
@@ -840,43 +840,43 @@ export default function Settings() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Autenticación de Dos Factores</CardTitle>
+                  <CardTitle>Two-Factor Authentication</CardTitle>
                   <CardDescription>
-                    Añade una capa adicional de seguridad a tu cuenta.
+                    Add an additional layer of security to your account.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label className="text-base">SMS de Dos Factores</Label>
+                      <Label className="text-base">SMS Two-Factor</Label>
                       <p className="text-sm text-muted-foreground">
-                        Recibe códigos de verificación por SMS.
+                        Receive verification codes via SMS.
                       </p>
                     </div>
                     <Switch data-testid="switch-2fa" />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Requiere un número de teléfono válido en tu perfil.
+                    Requires a valid phone number in your profile.
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Sesiones Activas</CardTitle>
+                  <CardTitle>Active Sessions</CardTitle>
                   <CardDescription>
-                    Gestiona tus sesiones activas y dispositivos conectados.
+                    Manage your active sessions and connected devices.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 border rounded-md">
                       <div>
-                        <p className="font-medium">Sesión Actual</p>
-                        <p className="text-sm text-muted-foreground">Este dispositivo</p>
+                        <p className="font-medium">Current Session</p>
+                        <p className="text-sm text-muted-foreground">This device</p>
                       </div>
                       <Button variant="outline" size="sm" data-testid="button-logout-current">
-                        Cerrar Sesión
+                        Log Out
                       </Button>
                     </div>
                   </div>
