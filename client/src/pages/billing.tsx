@@ -593,11 +593,27 @@ export default function Billing() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      {/* Two Column Layout */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Subscription Details - 2 columns */}
-        {isLoadingSubscription ? (
-          <Card className="lg:col-span-2">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
+          <p className="text-muted-foreground">Manage your subscription and payment methods</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="subscriptions" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="subscriptions" data-testid="tab-subscriptions">Subscriptions</TabsTrigger>
+          <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
+        </TabsList>
+
+        {/* Subscriptions Tab */}
+        <TabsContent value="subscriptions" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Subscription Details - 2 columns */}
+            {isLoadingSubscription ? (
+              <Card className="lg:col-span-2">
             <CardContent className="space-y-6 pt-6">
               {/* Plan Details Skeleton */}
               <div className="flex items-start justify-between p-4 rounded-lg bg-muted/50">
@@ -629,9 +645,9 @@ export default function Billing() {
                 <Skeleton className="h-10 w-full" />
               </div>
             </CardContent>
-          </Card>
-        ) : subscription ? (
-          <Card className="lg:col-span-2">
+              </Card>
+            ) : subscription ? (
+              <Card className="lg:col-span-2">
             <CardContent className="space-y-4 pt-6">
               {/* Header with Plan Name and Price */}
               <div className="flex items-start justify-between">
@@ -747,119 +763,12 @@ export default function Billing() {
                 </p>
               </div>
             </CardContent>
-          </Card>
-        ) : null}
+              </Card>
+            ) : null}
+          </div>
 
-        {/* Billing Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Billing Information
-            </CardTitle>
-            <CardDescription>Update your billing information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleBillingFormSubmit} className="space-y-4">
-              {/* Full Name */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Full Name on Card</label>
-                <Input
-                  placeholder="John Doe"
-                  value={billingForm.fullName}
-                  onChange={(e) => handleBillingFormChange('fullName', e.target.value)}
-                  data-testid="input-billing-name"
-                />
-              </div>
-
-              {/* Address Line 1 with Google Places Autocomplete */}
-              <GooglePlacesAddressAutocomplete
-                value={billingForm.addressLine1}
-                onChange={(value) => handleBillingFormChange('addressLine1', value)}
-                onAddressSelect={(address) => {
-                  // Auto-populate city, state, and postal code when address is selected
-                  setBillingForm(prev => ({
-                    ...prev,
-                    addressLine1: address.street,
-                    city: address.city,
-                    state: address.state,
-                    postalCode: address.postalCode,
-                  }));
-                }}
-                label="Address Line 1"
-                placeholder="Start typing your address..."
-                testId="input-billing-address1"
-              />
-
-              {/* Address Line 2 */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Address Line 2</label>
-                <Input
-                  placeholder="Apt., suite, unit number, etc. (optional)"
-                  value={billingForm.addressLine2}
-                  onChange={(e) => handleBillingFormChange('addressLine2', e.target.value)}
-                  data-testid="input-billing-address2"
-                />
-              </div>
-
-              {/* City, State and ZIP Code */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">City</label>
-                  <Input
-                    placeholder="New York"
-                    value={billingForm.city}
-                    onChange={(e) => handleBillingFormChange('city', e.target.value)}
-                    data-testid="input-billing-city"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">State</label>
-                  <Input
-                    placeholder="NY"
-                    value={billingForm.state}
-                    onChange={(e) => handleBillingFormChange('state', e.target.value)}
-                    data-testid="input-billing-state"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">ZIP Code</label>
-                  <Input
-                    placeholder="10001"
-                    value={billingForm.postalCode}
-                    onChange={(e) => handleBillingFormChange('postalCode', e.target.value)}
-                    data-testid="input-billing-zip"
-                  />
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleBillingFormCancel}
-                  data-testid="button-billing-cancel"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={saveBillingAddressMutation.isPending}
-                  data-testid="button-billing-save"
-                >
-                  {saveBillingAddressMutation.isPending ? "Saving..." : "Save"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Billing History */}
-      <Card>
+          {/* Billing History */}
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
@@ -998,10 +907,10 @@ export default function Billing() {
             </TabsContent>
           </Tabs>
         </CardContent>
-      </Card>
+          </Card>
 
-      {/* Change Plan Dialog */}
-      <Dialog open={showChangePlan} onOpenChange={setShowChangePlan}>
+          {/* Change Plan Dialog */}
+          <Dialog open={showChangePlan} onOpenChange={setShowChangePlan}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Change Your Plan</DialogTitle>
@@ -1247,326 +1156,6 @@ export default function Billing() {
               data-testid="button-confirm-cancel"
             >
               Next
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Ineligible for Financial Support Dialog */}
-      <Dialog open={showIneligibleDialog} onOpenChange={setShowIneligibleDialog}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              You are ineligible for Financial Assistance at this point.
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <div className="p-4 rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
-              <div className="flex gap-3">
-                <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-orange-900 dark:text-orange-100 mb-1">Reason:</p>
-                  <p className="text-sm text-orange-800 dark:text-orange-200">
-                    Currently, you are not eligible for financial assistance support because you already have a discount applied to the upcoming invoice
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowIneligibleDialog(false)}
-              data-testid="button-ineligible-back"
-            >
-              Back
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Financial Support Request Dialog */}
-      <Dialog open={showFinancialSupportDialog} onOpenChange={(open) => {
-        setShowFinancialSupportDialog(open);
-        if (!open) {
-          setFinancialSituation("");
-          setProposedSolution("");
-        }
-      }}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              Solicitud de Soporte Financiero
-            </DialogTitle>
-            <DialogDescription>
-              Estamos aquí para ayudarle. Su éxito es nuestro compromiso. Comparta su situación y nuestro equipo la revisará en 48 horas.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {/* Info Message */}
-            <div className="p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
-              <div className="flex gap-3">
-                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Compromiso de Respuesta</p>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Una vez enviada su solicitud, nuestro equipo la revisará y le responderá dentro de 48 horas. 
-                    Queremos entender su situación y encontrar la mejor solución juntos.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Situation Field */}
-            <div className="space-y-2">
-              <Label htmlFor="situation" className="text-base font-semibold">
-                ¿Cuál es su situación actual?
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Explique brevemente las circunstancias que están afectando su capacidad de pago.
-              </p>
-              <Textarea
-                id="situation"
-                value={financialSituation}
-                onChange={(e) => setFinancialSituation(e.target.value)}
-                placeholder="Ej: Estamos experimentando una disminución temporal en ventas debido a..."
-                className="min-h-[120px] resize-none"
-                data-testid="input-situation"
-              />
-            </div>
-
-            {/* Proposed Solution Field */}
-            <div className="space-y-2">
-              <Label htmlFor="proposed-solution" className="text-base font-semibold">
-                ¿Qué solución propone?
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                ¿Cómo podríamos trabajar juntos para resolver esta situación?
-              </p>
-              <Textarea
-                id="proposed-solution"
-                value={proposedSolution}
-                onChange={(e) => setProposedSolution(e.target.value)}
-                placeholder="Ej: Necesitaría un descuento temporal del 30% por los próximos 3 meses mientras..."
-                className="min-h-[120px] resize-none"
-                data-testid="input-proposed-solution"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowFinancialSupportDialog(false)}
-              data-testid="button-support-cancel"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => {
-                if (!financialSituation.trim() || !proposedSolution.trim()) {
-                  toast({
-                    title: "Campos Requeridos",
-                    description: "Por favor complete ambos campos antes de enviar",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                financialSupportMutation.mutate({
-                  situation: financialSituation,
-                  proposedSolution: proposedSolution,
-                });
-              }}
-              disabled={financialSupportMutation.isPending}
-              data-testid="button-support-submit"
-            >
-              {financialSupportMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Downgrade Plan Dialog */}
-      <Dialog open={showDowngradeDialog} onOpenChange={(open) => {
-        setShowDowngradeDialog(open);
-        if (!open) {
-          // Reset form when dialog closes
-          setDowngradeReason("");
-          setDowngradeConfirm1(false);
-          setDowngradeConfirm2(false);
-        }
-      }}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
-              </div>
-              Downgrade your plan
-            </DialogTitle>
-            <DialogDescription>
-              If you wish to move to a lower plan, you can downgrade your subscription to{' '}
-              {subscription && plans.length > 0 && (
-                <>
-                  {formatCurrency(
-                    plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
-                    subscription.plan.currency
-                  )} / month
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {/* Registration Links */}
-            <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-sm text-center mb-3">
-                To use your HighLevel subscription to the fullest please join here
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <a
-                  href="https://example.com/register"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
-                  data-testid="link-daily-group"
-                >
-                  <div className="p-1.5 rounded bg-muted">
-                    <Calendar className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">HL Daily Group demo</p>
-                    <p className="text-xs text-primary truncate">Register here</p>
-                  </div>
-                </a>
-                <a
-                  href="https://example.com/qa"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-3 rounded-lg border hover-elevate active-elevate-2 text-left"
-                  data-testid="link-daily-qa"
-                >
-                  <div className="p-1.5 rounded bg-muted">
-                    <Info className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">Daily Live Q&A</p>
-                    <p className="text-xs text-primary truncate">Register here</p>
-                  </div>
-                </a>
-              </div>
-            </div>
-
-            {/* Reason Textarea */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Tell us why you want to downgrade? <span className="text-destructive">*</span>
-              </label>
-              <Textarea
-                placeholder="Please tell us why would you like to downgrade your subscription? This will help us in making our platform better in future."
-                value={downgradeReason}
-                onChange={(e) => setDowngradeReason(e.target.value)}
-                className="min-h-[100px] resize-none"
-                data-testid="textarea-downgrade-reason"
-              />
-            </div>
-
-            {/* Confirmation Checkboxes */}
-            <div className="space-y-3">
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="confirm1"
-                  checked={downgradeConfirm1}
-                  onCheckedChange={(checked) => setDowngradeConfirm1(checked as boolean)}
-                  data-testid="checkbox-confirm-1"
-                />
-                <label
-                  htmlFor="confirm1"
-                  className="text-sm leading-tight cursor-pointer"
-                >
-                  I understand that I can't use SaaS Mode on the{' '}
-                  {subscription && plans.length > 0 && (
-                    <>
-                      {formatCurrency(
-                        plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
-                        subscription.plan.currency
-                      )} / month plan
-                    </>
-                  )}
-                </label>
-              </div>
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="confirm2"
-                  checked={downgradeConfirm2}
-                  onCheckedChange={(checked) => setDowngradeConfirm2(checked as boolean)}
-                  data-testid="checkbox-confirm-2"
-                />
-                <label
-                  htmlFor="confirm2"
-                  className="text-sm leading-tight cursor-pointer"
-                >
-                  I confirm that I have turned off SaaS Mode on all sub-accounts and have discussed this with all my SaaS clients
-                </label>
-              </div>
-            </div>
-
-            {/* Discount Warning */}
-            {activeDiscount && (
-              <div className="p-4 rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
-                <div className="flex gap-2">
-                  <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-orange-900 dark:text-orange-100">
-                      Your discount coupon will be removed.
-                    </p>
-                    <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
-                      A {activeDiscount.percentOff}% off for {activeDiscount.durationInMonths || 3} months coupon is applied to your subscription, which will be lost if you proceed to downgrade.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowDowngradeDialog(false)}
-              data-testid="button-downgrade-back"
-            >
-              Back
-            </Button>
-            <Button
-              onClick={() => {
-                // Handle downgrade logic here
-                toast({
-                  title: "Downgrade Request",
-                  description: "Your downgrade request has been submitted.",
-                });
-                setShowDowngradeDialog(false);
-              }}
-              disabled={!downgradeReason || !downgradeConfirm1 || !downgradeConfirm2}
-              data-testid="button-confirm-downgrade"
-            >
-              Downgrade to{' '}
-              {subscription && plans.length > 0 && (
-                <>
-                  {formatCurrency(
-                    plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
-                    subscription.plan.currency
-                  )} / month
-                </>
-              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2094,6 +1683,202 @@ export default function Billing() {
           )}
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        {/* Payments Tab */}
+        <TabsContent value="payments" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Methods</CardTitle>
+              <CardDescription>Manage your payment methods and billing information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Payment Methods List */}
+              {paymentMethods && paymentMethods.length > 0 ? (
+                <div className="space-y-4">
+                  {paymentMethods.map((method) => (
+                    <div 
+                      key={method.id} 
+                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
+                      data-testid={`payment-method-${method.id}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <CardBrandLogo brand={method.card.brand} />
+                        <div>
+                          <p className="font-medium">
+                            {method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1)} •••• {method.card.last4}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Expires {method.card.exp_month.toString().padStart(2, '0')}/{method.card.exp_year}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {method.isDefault && (
+                          <Badge variant="secondary" data-testid="badge-default">
+                            Default
+                          </Badge>
+                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            // Handle remove payment method
+                            toast({
+                              title: "Remove Payment Method",
+                              description: "This feature will be implemented soon",
+                            });
+                          }}
+                          data-testid={`button-remove-${method.id}`}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Payment Methods</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Add a payment method to manage your subscription
+                  </p>
+                </div>
+              )}
+
+              {/* Add Payment Method Button */}
+              <Button 
+                onClick={() => setShowAddCard(true)}
+                className="w-full"
+                data-testid="button-add-payment-method"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Add Payment Method
+              </Button>
+
+              {/* Manage Payment Methods Dialog Button */}
+              {paymentMethods && paymentMethods.length > 0 && (
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowManageCards(true)}
+                  className="w-full"
+                  data-testid="button-manage-payment-methods"
+                >
+                  Manage Payment Methods
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Billing Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Billing Information
+              </CardTitle>
+              <CardDescription>Update your billing information</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleBillingFormSubmit} className="space-y-4">
+                {/* Full Name */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Full Name on Card</label>
+                  <Input
+                    placeholder="John Doe"
+                    value={billingForm.fullName}
+                    onChange={(e) => handleBillingFormChange('fullName', e.target.value)}
+                    data-testid="input-billing-name"
+                  />
+                </div>
+
+                {/* Address Line 1 with Google Places Autocomplete */}
+                <GooglePlacesAddressAutocomplete
+                  value={billingForm.addressLine1}
+                  onChange={(value) => handleBillingFormChange('addressLine1', value)}
+                  onAddressSelect={(address) => {
+                    // Auto-populate city, state, and postal code when address is selected
+                    setBillingForm(prev => ({
+                      ...prev,
+                      addressLine1: address.street,
+                      city: address.city,
+                      state: address.state,
+                      postalCode: address.postalCode,
+                    }));
+                  }}
+                  label="Address Line 1"
+                  placeholder="Start typing your address..."
+                  testId="input-billing-address1"
+                />
+
+                {/* Address Line 2 */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Address Line 2</label>
+                  <Input
+                    placeholder="Apt., suite, unit number, etc. (optional)"
+                    value={billingForm.addressLine2}
+                    onChange={(e) => handleBillingFormChange('addressLine2', e.target.value)}
+                    data-testid="input-billing-address2"
+                  />
+                </div>
+
+                {/* City, State and ZIP Code */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">City</label>
+                    <Input
+                      placeholder="New York"
+                      value={billingForm.city}
+                      onChange={(e) => handleBillingFormChange('city', e.target.value)}
+                      data-testid="input-billing-city"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">State</label>
+                    <Input
+                      placeholder="NY"
+                      value={billingForm.state}
+                      onChange={(e) => handleBillingFormChange('state', e.target.value)}
+                      data-testid="input-billing-state"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">ZIP Code</label>
+                    <Input
+                      placeholder="10001"
+                      value={billingForm.postalCode}
+                      onChange={(e) => handleBillingFormChange('postalCode', e.target.value)}
+                      data-testid="input-billing-zip"
+                    />
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleBillingFormCancel}
+                    data-testid="button-billing-cancel"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={saveBillingAddressMutation.isPending}
+                    data-testid="button-billing-save"
+                  >
+                    {saveBillingAddressMutation.isPending ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
