@@ -218,10 +218,13 @@ export default function Billing() {
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showIneligibleDialog, setShowIneligibleDialog] = useState(false);
   const [showDowngradeDialog, setShowDowngradeDialog] = useState(false);
+  const [showFinancialSupportDialog, setShowFinancialSupportDialog] = useState(false);
   const [downgradeReason, setDowngradeReason] = useState("");
   const [downgradeConfirm1, setDowngradeConfirm1] = useState(false);
   const [downgradeConfirm2, setDowngradeConfirm2] = useState(false);
   const [cancelReason, setCancelReason] = useState("missing_features");
+  const [financialSituation, setFinancialSituation] = useState("");
+  const [proposedSolution, setProposedSolution] = useState("");
 
   // Fetch session data to get user info
   const { data: sessionData } = useQuery({
@@ -486,6 +489,30 @@ export default function Billing() {
       toast({
         title: "Error",
         description: error.message || "Invalid coupon code",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Financial support ticket mutation
+  const financialSupportMutation = useMutation({
+    mutationFn: async (data: { situation: string; proposedSolution: string }) => {
+      const result = await apiRequest("POST", "/api/billing/financial-support", data);
+      return result.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Solicitud Enviada",
+        description: data.message,
+      });
+      setShowFinancialSupportDialog(false);
+      setFinancialSituation("");
+      setProposedSolution("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo enviar la solicitud",
         variant: "destructive",
       });
     },
@@ -1265,6 +1292,111 @@ export default function Billing() {
         </DialogContent>
       </Dialog>
 
+      {/* Financial Support Request Dialog */}
+      <Dialog open={showFinancialSupportDialog} onOpenChange={(open) => {
+        setShowFinancialSupportDialog(open);
+        if (!open) {
+          setFinancialSituation("");
+          setProposedSolution("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              Solicitud de Soporte Financiero
+            </DialogTitle>
+            <DialogDescription>
+              Estamos aquí para ayudarle. Su éxito es nuestro compromiso. Comparta su situación y nuestro equipo la revisará en 48 horas.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Info Message */}
+            <div className="p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+              <div className="flex gap-3">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Compromiso de Respuesta</p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Una vez enviada su solicitud, nuestro equipo la revisará y le responderá dentro de 48 horas. 
+                    Queremos entender su situación y encontrar la mejor solución juntos.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Situation Field */}
+            <div className="space-y-2">
+              <Label htmlFor="situation" className="text-base font-semibold">
+                ¿Cuál es su situación actual?
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Explique brevemente las circunstancias que están afectando su capacidad de pago.
+              </p>
+              <Textarea
+                id="situation"
+                value={financialSituation}
+                onChange={(e) => setFinancialSituation(e.target.value)}
+                placeholder="Ej: Estamos experimentando una disminución temporal en ventas debido a..."
+                className="min-h-[120px] resize-none"
+                data-testid="input-situation"
+              />
+            </div>
+
+            {/* Proposed Solution Field */}
+            <div className="space-y-2">
+              <Label htmlFor="proposed-solution" className="text-base font-semibold">
+                ¿Qué solución propone?
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                ¿Cómo podríamos trabajar juntos para resolver esta situación?
+              </p>
+              <Textarea
+                id="proposed-solution"
+                value={proposedSolution}
+                onChange={(e) => setProposedSolution(e.target.value)}
+                placeholder="Ej: Necesitaría un descuento temporal del 30% por los próximos 3 meses mientras..."
+                className="min-h-[120px] resize-none"
+                data-testid="input-proposed-solution"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowFinancialSupportDialog(false)}
+              data-testid="button-support-cancel"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!financialSituation.trim() || !proposedSolution.trim()) {
+                  toast({
+                    title: "Campos Requeridos",
+                    description: "Por favor complete ambos campos antes de enviar",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                financialSupportMutation.mutate({
+                  situation: financialSituation,
+                  proposedSolution: proposedSolution,
+                });
+              }}
+              disabled={financialSupportMutation.isPending}
+              data-testid="button-support-submit"
+            >
+              {financialSupportMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Downgrade Plan Dialog */}
       <Dialog open={showDowngradeDialog} onOpenChange={(open) => {
         setShowDowngradeDialog(open);
@@ -1500,7 +1632,7 @@ export default function Billing() {
                 if (activeDiscount) {
                   setShowIneligibleDialog(true);
                 } else {
-                  window.location.href = 'mailto:hello@curbe.io?subject=Request for Financial Support';
+                  setShowFinancialSupportDialog(true);
                 }
               }}
               className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"

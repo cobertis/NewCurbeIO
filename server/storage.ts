@@ -64,7 +64,9 @@ import {
   type SmsChatNote,
   type InsertSmsChatNote,
   type SubscriptionDiscount,
-  type InsertSubscriptionDiscount
+  type InsertSubscriptionDiscount,
+  type FinancialSupportTicket,
+  type InsertFinancialSupportTicket
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -100,7 +102,8 @@ import {
   incomingSmsMessages,
   outgoingSmsMessages,
   smsChatNotes,
-  subscriptionDiscounts
+  subscriptionDiscounts,
+  financialSupportTickets
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -359,6 +362,9 @@ export interface IStorage {
   getDiscountHistoryForCompany(companyId: string): Promise<SubscriptionDiscount[]>;
   updateDiscountStatus(id: string, status: string): Promise<void>;
   expireOldDiscounts(): Promise<void>;
+  
+  // Financial Support Tickets
+  createFinancialSupportTicket(ticket: InsertFinancialSupportTicket): Promise<FinancialSupportTicket>;
 }
 
 export class DbStorage implements IStorage {
@@ -2071,6 +2077,13 @@ export class DbStorage implements IStorage {
           sql`${subscriptionDiscounts.discountEndDate} < ${now}`
         )
       );
+  }
+
+  // ==================== FINANCIAL SUPPORT TICKETS ====================
+  
+  async createFinancialSupportTicket(ticket: InsertFinancialSupportTicket): Promise<FinancialSupportTicket> {
+    const [created] = await db.insert(financialSupportTickets).values(ticket).returning();
+    return created;
   }
 }
 

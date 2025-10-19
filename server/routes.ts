@@ -23,7 +23,8 @@ import {
   updateCompanySettingsSchema,
   insertEmailTemplateSchema,
   insertFeatureSchema,
-  updateFeatureSchema
+  updateFeatureSchema,
+  insertFinancialSupportTicketSchema
 } from "@shared/schema";
 import "./types";
 
@@ -4419,6 +4420,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[BILLING] Error saving billing address:', error);
       res.status(500).json({ message: "Failed to save billing address" });
+    }
+  });
+
+  // Create financial support ticket
+  app.post("/api/billing/financial-support", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      // Validate request body
+      const validatedData = insertFinancialSupportTicketSchema.parse({
+        companyId,
+        userId: currentUser.id,
+        situation: req.body.situation,
+        proposedSolution: req.body.proposedSolution,
+      });
+
+      // Create the ticket
+      const ticket = await storage.createFinancialSupportTicket(validatedData);
+
+      // Get company and user details for notification
+      const company = await storage.getCompany(companyId);
+      const user = await storage.getUser(currentUser.id);
+
+      if (!company || !user) {
+        return res.status(404).json({ message: "Company or user not found" });
+      }
+
+      // Send notification to all superadmins
+      const allUsers = await storage.getAllUsers();
+      const superadmins = allUsers.filter(u => u.role === 'superadmin');
+
+      for (const admin of superadmins) {
+        await storage.createNotification({
+          userId: admin.id,
+          type: 'financial_support_request',
+          title: 'Nueva Solicitud de Soporte Financiero',
+          message: `${user.firstName} ${user.lastName} de ${company.name} ha solicitado soporte financiero.`,
+          link: `/admin/companies/${companyId}`,
+          isRead: false,
+        });
+      }
+
+      // Broadcast notification update
+      const { broadcastNotificationUpdate } = await import("./websocket");
+      broadcastNotificationUpdate();
+
+      console.log('[FINANCIAL SUPPORT] Ticket created and superadmins notified:', ticket.id);
+
+      res.json({ 
+        ticket,
+        message: "Su solicitud ha sido enviada. Nuestro equipo la revisará y le responderá en 48 horas." 
+      });
+    } catch (error: any) {
+      console.error('[FINANCIAL SUPPORT] Error creating ticket:', error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Datos de solicitud inválidos", errors: error.errors });
+      }
+      
+      res.status(500).json({ message: "Error al crear la solicitud de soporte" });
     }
   });
 

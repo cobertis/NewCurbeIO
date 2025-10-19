@@ -1165,3 +1165,39 @@ export const insertSmsChatNoteSchema = createInsertSchema(smsChatNotes).omit({
 
 export type SmsChatNote = typeof smsChatNotes.$inferSelect;
 export type InsertSmsChatNote = z.infer<typeof insertSmsChatNoteSchema>;
+
+// =====================================================
+// FINANCIAL SUPPORT TICKETS
+// =====================================================
+
+export const financialSupportTickets = pgTable("financial_support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Ticket information
+  situation: text("situation").notNull(), // User's financial situation explanation
+  proposedSolution: text("proposed_solution").notNull(), // User's proposed solution
+  status: text("status").notNull().default("pending"), // pending, under_review, approved, rejected, closed
+  
+  // Response from support team
+  adminResponse: text("admin_response"), // Response from admin
+  respondedBy: varchar("responded_by").references(() => users.id, { onDelete: "set null" }), // Admin who responded
+  respondedAt: timestamp("responded_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertFinancialSupportTicketSchema = createInsertSchema(financialSupportTickets).omit({
+  id: true,
+  status: true,
+  adminResponse: true,
+  respondedBy: true,
+  respondedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type FinancialSupportTicket = typeof financialSupportTickets.$inferSelect;
+export type InsertFinancialSupportTicket = z.infer<typeof insertFinancialSupportTicketSchema>;
