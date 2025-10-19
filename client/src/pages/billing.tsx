@@ -987,41 +987,68 @@ export default function Billing() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5" />
-                Payment History
+                <FileText className="h-5 w-5" />
+                Invoice History
               </CardTitle>
-              <CardDescription>Complete history of all your payments</CardDescription>
+              <CardDescription>Complete history of all your invoices</CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoadingPayments ? (
+              {isLoadingInvoices ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
                 </div>
-              ) : payments.length > 0 ? (
+              ) : invoices.length > 0 ? (
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Invoice</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Method</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {payments.map((payment) => (
-                        <TableRow key={payment.id} data-testid={`payment-row-${payment.id}`}>
-                          <TableCell>{formatDate(new Date(payment.createdAt))}</TableCell>
-                          <TableCell>{payment.paymentMethod || 'Card'}</TableCell>
+                      {invoices.map((invoice) => (
+                        <TableRow key={invoice.id} data-testid={`invoice-row-${invoice.id}`}>
+                          <TableCell className="font-medium">
+                            {invoice.invoiceNumber}
+                          </TableCell>
+                          <TableCell>{formatDate(new Date(invoice.invoiceDate))}</TableCell>
                           <TableCell>
                             <Badge 
-                              variant={payment.status === 'succeeded' ? 'default' : payment.status === 'pending' ? 'secondary' : 'destructive'}
+                              variant={invoice.status === 'paid' ? 'default' : invoice.status === 'open' ? 'secondary' : 'outline'}
                             >
-                              {payment.status}
+                              {invoice.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(payment.amount, payment.currency)}
+                            {formatCurrency(invoice.total, invoice.currency)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {invoice.stripeHostedInvoiceUrl && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(invoice.stripeHostedInvoiceUrl, '_blank')}
+                                  data-testid={`button-view-invoice-${invoice.id}`}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {invoice.stripeInvoicePdf && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(invoice.stripeInvoicePdf, '_blank')}
+                                  data-testid={`button-download-invoice-${invoice.id}`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1030,10 +1057,10 @@ export default function Billing() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Payments Yet</h3>
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Invoices Yet</h3>
                   <p className="text-sm text-muted-foreground">
-                    Your payment history will appear here.
+                    Invoices will appear here once you start your subscription.
                   </p>
                 </div>
               )}
@@ -1754,41 +1781,68 @@ export default function Billing() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5" />
-                Payment History
+                <FileText className="h-5 w-5" />
+                Invoice History
               </CardTitle>
-              <CardDescription>Complete history of all your payments</CardDescription>
+              <CardDescription>Complete history of all your invoices</CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoadingPayments ? (
+              {isLoadingInvoices ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
                 </div>
-              ) : payments.length > 0 ? (
+              ) : invoices.length > 0 ? (
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Invoice</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Method</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {payments.map((payment) => (
-                        <TableRow key={payment.id} data-testid={`payment-row-${payment.id}`}>
-                          <TableCell>{formatDate(new Date(payment.createdAt))}</TableCell>
-                          <TableCell>{payment.paymentMethod || 'Card'}</TableCell>
+                      {invoices.map((invoice) => (
+                        <TableRow key={invoice.id} data-testid={`invoice-row-${invoice.id}`}>
+                          <TableCell className="font-medium">
+                            {invoice.invoiceNumber}
+                          </TableCell>
+                          <TableCell>{formatDate(new Date(invoice.invoiceDate))}</TableCell>
                           <TableCell>
                             <Badge 
-                              variant={payment.status === 'succeeded' ? 'default' : payment.status === 'pending' ? 'secondary' : 'destructive'}
+                              variant={invoice.status === 'paid' ? 'default' : invoice.status === 'open' ? 'secondary' : 'outline'}
                             >
-                              {payment.status}
+                              {invoice.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(payment.amount, payment.currency)}
+                            {formatCurrency(invoice.total, invoice.currency)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {invoice.stripeHostedInvoiceUrl && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(invoice.stripeHostedInvoiceUrl, '_blank')}
+                                  data-testid={`button-view-invoice-${invoice.id}`}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {invoice.stripeInvoicePdf && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(invoice.stripeInvoicePdf, '_blank')}
+                                  data-testid={`button-download-invoice-${invoice.id}`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1797,10 +1851,10 @@ export default function Billing() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Payments Yet</h3>
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Invoices Yet</h3>
                   <p className="text-sm text-muted-foreground">
-                    Your payment history will appear here.
+                    Invoices will appear here once you start your subscription.
                   </p>
                 </div>
               )}
