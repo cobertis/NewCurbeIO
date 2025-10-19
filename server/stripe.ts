@@ -1065,7 +1065,7 @@ export async function changePlan(
     
     // Retrieve current subscription with all items
     const currentSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
-      expand: ['items.data', 'discounts'],
+      expand: ['items.data', 'discounts', 'schedule'],
     });
     
     console.log('[STRIPE] Current subscription status:', currentSubscription.status);
@@ -1086,17 +1086,17 @@ export async function changePlan(
       return currentSubscription;
     }
     
-    // Prepare update data
-    const updateData: any = {
+    // Get current period end timestamp
+    const periodEndTimestamp = (currentSubscription as any).current_period_end;
+    console.log('[STRIPE] Current period ends at:', new Date(periodEndTimestamp * 1000).toISOString());
+    
+    // Prepare the new phase with discount if exists
+    const newPhase: any = {
       items: [{
-        id: currentItem.id,
         price: newStripePriceId,
+        quantity: 1,
       }],
-      // No proration - change takes effect at end of current billing period
-      // Customer keeps current plan until period ends, then new plan starts
-      proration_behavior: 'none',
-      // Keep the same billing cycle anchor
-      billing_cycle_anchor: 'unchanged',
+      start_date: periodEndTimestamp,
     };
     
     // Preserve active discount if it exists
@@ -1109,21 +1109,52 @@ export async function changePlan(
           ? discountCoupon 
           : discountCoupon.id;
         
-        updateData.discounts = [{
+        newPhase.discounts = [{
           coupon: couponId
         }];
         console.log('[STRIPE] Preserving discount with coupon:', couponId);
       }
     }
     
-    console.log('[STRIPE] Scheduling plan change for end of billing period...');
-    const updatedSubscription = await stripe.subscriptions.update(
-      stripeSubscriptionId,
-      updateData
-    );
+    // Check if there's an existing schedule
+    if (currentSubscription.schedule) {
+      console.log('[STRIPE] Canceling existing schedule');
+      const scheduleId = typeof currentSubscription.schedule === 'string'
+        ? currentSubscription.schedule
+        : currentSubscription.schedule.id;
+      await stripe.subscriptionSchedules.release(scheduleId);
+    }
     
-    console.log('[STRIPE] Plan change scheduled successfully (will take effect at end of billing period)');
-    console.log('[STRIPE] New subscription status:', updatedSubscription.status);
+    // Create a subscription schedule that will change the plan at period end
+    console.log('[STRIPE] Creating subscription schedule for plan change...');
+    const schedule = await stripe.subscriptionSchedules.create({
+      from_subscription: stripeSubscriptionId,
+      end_behavior: 'release',
+      phases: [
+        {
+          items: [{
+            price: currentItem.price.id,
+            quantity: 1,
+          }],
+          start_date: Math.floor(Date.now() / 1000),
+          end_date: periodEndTimestamp,
+          // Preserve discount in current phase if exists
+          ...(currentSubscription.discounts && currentSubscription.discounts.length > 0 && {
+            discounts: currentSubscription.discounts.map((d: any) => {
+              const coupon = d.coupon;
+              return { coupon: typeof coupon === 'string' ? coupon : coupon.id };
+            })
+          }),
+        },
+        newPhase,
+      ],
+    });
+    
+    console.log('[STRIPE] Subscription schedule created:', schedule.id);
+    console.log('[STRIPE] Plan will change on:', new Date(periodEndTimestamp * 1000).toISOString());
+    
+    // Retrieve the updated subscription
+    const updatedSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
     
     return updatedSubscription;
   } catch (error) {
