@@ -704,7 +704,7 @@ export const updateUserSchema = z.object({
   isActive: z.boolean().optional(),
   agentInternalCode: z.string().optional(),
   instructionLevel: z.string().optional(),
-  nationalProducerNumber: z.string().optional(),
+  nationalProducerNumber: z.string().regex(/^\d{6,10}$/, "NPN must be 6-10 digits").optional().or(z.literal("")),
   federallyFacilitatedMarketplace: z.string().optional(),
   referredBy: z.string().optional(),
 }).refine(data => Object.values(data).some(v => v !== undefined), {

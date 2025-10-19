@@ -762,11 +762,19 @@ export default function Settings() {
                       <Input
                         id="nationalProducerNumber"
                         name="nationalProducerNumber"
+                        type="text"
                         placeholder="17925766"
                         value={profileForm.nationalProducerNumber || ""}
-                        onChange={(e) => setProfileForm({ ...profileForm, nationalProducerNumber: e.target.value })}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          if (value.length <= 10) {
+                            setProfileForm({ ...profileForm, nationalProducerNumber: value });
+                          }
+                        }}
+                        maxLength={10}
                         data-testid="input-national-producer-number"
                       />
+                      <p className="text-xs text-muted-foreground">6-10 digits only</p>
                     </div>
 
                     <div className="space-y-2">

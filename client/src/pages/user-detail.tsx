@@ -959,12 +959,21 @@ export default function UserDetail() {
                       <FormLabel>National Producer Number (NPN)</FormLabel>
                       <FormControl>
                         <Input
+                          type="text"
                           placeholder="17925766"
                           {...field}
                           value={field.value || ""}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '');
+                            if (value.length <= 10) {
+                              field.onChange(value);
+                            }
+                          }}
+                          maxLength={10}
                           data-testid="input-nationalProducerNumber"
                         />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">6-10 digits only</p>
                       <FormMessage />
                     </FormItem>
                   )}
