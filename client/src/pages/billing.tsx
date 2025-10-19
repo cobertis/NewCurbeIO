@@ -217,7 +217,6 @@ export default function Billing() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [pendingSkipTrial, setPendingSkipTrial] = useState(false);
   const [showModifyDialog, setShowModifyDialog] = useState(false);
-  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [modifyDialogView, setModifyDialogView] = useState<'main' | 'financial-ineligible' | 'financial-support' | 'downgrade' | 'cancel'>('main');
   const [downgradeReason, setDowngradeReason] = useState("");
   const [downgradeConfirm1, setDowngradeConfirm1] = useState(false);
@@ -1214,7 +1213,6 @@ export default function Billing() {
         setShowModifyDialog(open);
         if (!open) {
           // Reset all states when dialog closes
-          setShowMoreOptions(false);
           setModifyDialogView('main');
           setFinancialSituation("");
           setProposedSolution("");
@@ -1299,66 +1297,51 @@ export default function Billing() {
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </button>
 
-                {/* Additional Options (shown when expanded) */}
-                {showMoreOptions && (
-                  <>
-                    {/* Downgrade Plan Option - Only show if there's a lower plan available (not the lowest) */}
-                    {nextLowerPlan && (
-                      <button
-                        onClick={() => setModifyDialogView('downgrade')}
-                        className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
-                        data-testid="button-downgrade-plan"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                            <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
-                          </div>
-                          <div>
-                            <p className="font-semibold">Downgrade to {nextLowerPlan.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatCurrency(
-                                subscription?.billingCycle === 'yearly' 
-                                  ? nextLowerPlan.annualPrice || nextLowerPlan.price 
-                                  : nextLowerPlan.price,
-                                nextLowerPlan.currency
-                              )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                      </button>
-                    )}
-
-                    {/* Cancel Plan Option */}
-                    <button
-                      onClick={() => setModifyDialogView('cancel')}
-                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
-                      data-testid="button-cancel-plan"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                          <X className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        </div>
-                        <div>
-                          <p className="font-semibold">Cancel Plan</p>
-                          <p className="text-sm text-muted-foreground">
-                            I still want to cancel my subscription
-                          </p>
-                        </div>
+                {/* Downgrade Plan Option - Only show if there's a lower plan available (not the lowest) */}
+                {nextLowerPlan && (
+                  <button
+                    onClick={() => setModifyDialogView('downgrade')}
+                    className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                    data-testid="button-downgrade-plan"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                        <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                  </>
+                      <div>
+                        <p className="font-semibold">Downgrade to {nextLowerPlan.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(
+                            subscription?.billingCycle === 'yearly' 
+                              ? nextLowerPlan.annualPrice || nextLowerPlan.price 
+                              : nextLowerPlan.price,
+                            nextLowerPlan.currency
+                          )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </button>
                 )}
 
-                {/* Show More / Collapse Button */}
+                {/* Cancel Plan Option */}
                 <button
-                  onClick={() => setShowMoreOptions(!showMoreOptions)}
-                  className="w-full flex items-center justify-center gap-2 p-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-toggle-more"
+                  onClick={() => setModifyDialogView('cancel')}
+                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-cancel-plan"
                 >
-                  <span>{showMoreOptions ? 'Collapse' : 'Show more'}</span>
-                  <ChevronRight className={`h-4 w-4 transition-transform ${showMoreOptions ? '-rotate-90' : 'rotate-90'}`} />
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                      <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Cancel Plan</p>
+                      <p className="text-sm text-muted-foreground">
+                        I still want to cancel my subscription
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </button>
               </div>
             </>
@@ -2143,7 +2126,6 @@ export default function Billing() {
         setShowModifyDialog(open);
         if (!open) {
           // Reset all states when dialog closes
-          setShowMoreOptions(false);
           setModifyDialogView('main');
           setFinancialSituation("");
           setProposedSolution("");
@@ -2228,66 +2210,51 @@ export default function Billing() {
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </button>
 
-                {/* Additional Options (shown when expanded) */}
-                {showMoreOptions && (
-                  <>
-                    {/* Downgrade Plan Option - Only show if there's a lower plan available (not the lowest) */}
-                    {nextLowerPlan && (
-                      <button
-                        onClick={() => setModifyDialogView('downgrade')}
-                        className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
-                        data-testid="button-downgrade-plan"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                            <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
-                          </div>
-                          <div>
-                            <p className="font-semibold">Downgrade to {nextLowerPlan.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatCurrency(
-                                subscription?.billingCycle === 'yearly' 
-                                  ? nextLowerPlan.annualPrice || nextLowerPlan.price 
-                                  : nextLowerPlan.price,
-                                nextLowerPlan.currency
-                              )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                      </button>
-                    )}
-
-                    {/* Cancel Plan Option */}
-                    <button
-                      onClick={() => setModifyDialogView('cancel')}
-                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
-                      data-testid="button-cancel-plan"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                          <X className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        </div>
-                        <div>
-                          <p className="font-semibold">Cancel Plan</p>
-                          <p className="text-sm text-muted-foreground">
-                            I still want to cancel my subscription
-                          </p>
-                        </div>
+                {/* Downgrade Plan Option - Only show if there's a lower plan available (not the lowest) */}
+                {nextLowerPlan && (
+                  <button
+                    onClick={() => setModifyDialogView('downgrade')}
+                    className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                    data-testid="button-downgrade-plan"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                        <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                  </>
+                      <div>
+                        <p className="font-semibold">Downgrade to {nextLowerPlan.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(
+                            subscription?.billingCycle === 'yearly' 
+                              ? nextLowerPlan.annualPrice || nextLowerPlan.price 
+                              : nextLowerPlan.price,
+                            nextLowerPlan.currency
+                          )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </button>
                 )}
 
-                {/* Show More / Collapse Button */}
+                {/* Cancel Plan Option */}
                 <button
-                  onClick={() => setShowMoreOptions(!showMoreOptions)}
-                  className="w-full flex items-center justify-center gap-2 p-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-toggle-more"
+                  onClick={() => setModifyDialogView('cancel')}
+                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                  data-testid="button-cancel-plan"
                 >
-                  <span>{showMoreOptions ? 'Collapse' : 'Show more'}</span>
-                  <ChevronRight className={`h-4 w-4 transition-transform ${showMoreOptions ? '-rotate-90' : 'rotate-90'}`} />
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                      <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Cancel Plan</p>
+                      <p className="text-sm text-muted-foreground">
+                        I still want to cancel my subscription
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </button>
               </div>
             </>
