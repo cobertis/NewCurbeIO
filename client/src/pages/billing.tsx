@@ -143,10 +143,12 @@ interface Payment {
 
 interface PaymentMethod {
   id: string;
-  brand: string;
-  last4: string;
-  expMonth: number;
-  expYear: number;
+  card: {
+    brand: string;
+    last4: string;
+    exp_month: number;
+    exp_year: number;
+  };
   isDefault: boolean;
 }
 
@@ -1778,27 +1780,29 @@ export default function Billing() {
               {/* Payment Methods List */}
               {paymentMethods && paymentMethods.length > 0 ? (
                 <div className="space-y-4">
-                  {paymentMethods.map((method) => (
-                    <div 
-                      key={method.id} 
-                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
-                      data-testid={`payment-method-${method.id}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <CardBrandLogo brand={method.card.brand} />
-                        <div>
-                          <p className="font-medium">
-                            {method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1)} •••• {method.card.last4}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Expires {method.card.exp_month.toString().padStart(2, '0')}/{method.card.exp_year}
-                          </p>
+                  {paymentMethods.map((method) => {
+                    if (!method.card) return null;
+                    return (
+                      <div 
+                        key={method.id} 
+                        className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
+                        data-testid={`payment-method-${method.id}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <CardBrandLogo brand={method.card.brand} />
+                          <div>
+                            <p className="font-medium">
+                              {method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1)} •••• {method.card.last4}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Expires {method.card.exp_month.toString().padStart(2, '0')}/{method.card.exp_year}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {method.isDefault && (
-                          <Badge variant="secondary" data-testid="badge-default">
-                            Default
+                        <div className="flex items-center gap-2">
+                          {method.isDefault && (
+                            <Badge variant="secondary" data-testid="badge-default">
+                              Default
                           </Badge>
                         )}
                         <Button 
@@ -1817,7 +1821,8 @@ export default function Billing() {
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12">
