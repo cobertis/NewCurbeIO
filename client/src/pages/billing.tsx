@@ -763,9 +763,9 @@ export default function Billing() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-end gap-1">
-                      <div className="text-right">
+                  <div className="flex items-center gap-6">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="text-center">
                         <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{Math.round(trialProgress)}% Complete</p>
                       </div>
                       <Progress value={trialProgress} className="h-2 w-32" />
