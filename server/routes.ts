@@ -4488,6 +4488,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all financial support tickets (superadmin only)
+  app.get("/api/tickets", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmins can view all tickets
+    if (currentUser.role !== 'superadmin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const tickets = await storage.getAllFinancialSupportTickets();
+      res.json({ tickets });
+    } catch (error) {
+      console.error('[TICKETS] Error fetching tickets:', error);
+      res.status(500).json({ message: "Error fetching tickets" });
+    }
+  });
+
+  // Get specific financial support ticket (superadmin only)
+  app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmins can view tickets
+    if (currentUser.role !== 'superadmin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const ticket = await storage.getFinancialSupportTicket(req.params.id);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      res.json({ ticket });
+    } catch (error) {
+      console.error('[TICKETS] Error fetching ticket:', error);
+      res.status(500).json({ message: "Error fetching ticket" });
+    }
+  });
+
+  // Update financial support ticket (superadmin only)
+  app.patch("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmins can update tickets
+    if (currentUser.role !== 'superadmin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const { status, adminResponse } = req.body;
+
+      // Build update data
+      const updateData: any = {};
+      
+      if (status) {
+        updateData.status = status;
+      }
+      
+      if (adminResponse !== undefined) {
+        updateData.adminResponse = adminResponse;
+        updateData.respondedBy = currentUser.id;
+        updateData.respondedAt = new Date();
+      }
+
+      const ticket = await storage.updateFinancialSupportTicket(req.params.id, updateData);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Get full ticket details with relations
+      const fullTicket = await storage.getFinancialSupportTicket(ticket.id);
+
+      // If we have a response, notify the user who created the ticket
+      if (adminResponse && fullTicket) {
+        const { notificationService } = await import("./notification-service");
+        await storage.createNotification({
+          userId: fullTicket.userId,
+          type: 'financial_support_response',
+          title: 'Response to Your Financial Support Request',
+          message: 'Your financial support request has received a response from our team.',
+          link: '/billing',
+          isRead: false,
+        });
+
+        // Broadcast notification update
+        const { broadcastNotificationUpdate } = await import("./websocket");
+        broadcastNotificationUpdate();
+      }
+
+      res.json({ ticket: fullTicket });
+    } catch (error) {
+      console.error('[TICKETS] Error updating ticket:', error);
+      res.status(500).json({ message: "Error updating ticket" });
+    }
+  });
+
   // ===================================================================
   // STRIPE WEBHOOKS
   // ===================================================================
