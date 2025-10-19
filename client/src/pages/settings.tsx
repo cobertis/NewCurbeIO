@@ -310,6 +310,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4 pt-4 border-t">
               <div className="space-y-3">
+                {/* 1. Email */}
                 <div className="flex items-start gap-3">
                   <AtSign className="h-4 w-4 text-muted-foreground mt-1" />
                   <div className="flex-1 min-w-0">
@@ -318,34 +319,7 @@ export default function Settings() {
                   </div>
                 </div>
                 
-                {user?.phone && (
-                  <div className="flex items-start gap-3">
-                    <PhoneIcon className="h-4 w-4 text-muted-foreground mt-1" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Teléfono</p>
-                      <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-start gap-3">
-                  <Briefcase className="h-4 w-4 text-muted-foreground mt-1" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">Rol</p>
-                    <p className="text-sm font-medium">{getRoleDisplay()}</p>
-                  </div>
-                </div>
-
-                {user?.companyId && (
-                  <div className="flex items-start gap-3">
-                    <Building2 className="h-4 w-4 text-muted-foreground mt-1" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Empresa</p>
-                      <p className="text-sm font-medium">{companyData?.company?.name || user.companyId}</p>
-                    </div>
-                  </div>
-                )}
-
+                {/* 2. Website */}
                 {companyData?.company?.website && (
                   <div className="flex items-start gap-3">
                     <Globe className="h-4 w-4 text-muted-foreground mt-1" />
@@ -364,6 +338,29 @@ export default function Settings() {
                   </div>
                 )}
 
+                {/* 3. Teléfono */}
+                {user?.phone && (
+                  <div className="flex items-start gap-3">
+                    <PhoneIcon className="h-4 w-4 text-muted-foreground mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground">Teléfono</p>
+                      <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Empresa */}
+                {user?.companyId && (
+                  <div className="flex items-start gap-3">
+                    <Building2 className="h-4 w-4 text-muted-foreground mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground">Empresa</p>
+                      <p className="text-sm font-medium">{companyData?.company?.name || user.companyId}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Dirección */}
                 {companyData?.company?.address && (
                   <div className="flex items-start gap-3">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
