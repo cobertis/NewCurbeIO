@@ -276,7 +276,30 @@ export default function UserDetail() {
   // Update Insurance Profile Mutation
   const updateInsuranceProfileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insuranceProfileSchema>) => {
-      return apiRequest("PATCH", `/api/users/${userId}`, data);
+      // Only send fields that have actual values (not empty strings)
+      const dataToSend: any = {};
+      if (data.agentInternalCode !== undefined && data.agentInternalCode !== "") {
+        dataToSend.agentInternalCode = data.agentInternalCode;
+      }
+      if (data.instructionLevel !== undefined && data.instructionLevel !== "") {
+        dataToSend.instructionLevel = data.instructionLevel;
+      }
+      if (data.nationalProducerNumber !== undefined && data.nationalProducerNumber !== "") {
+        dataToSend.nationalProducerNumber = data.nationalProducerNumber;
+      }
+      if (data.federallyFacilitatedMarketplace !== undefined && data.federallyFacilitatedMarketplace !== "") {
+        dataToSend.federallyFacilitatedMarketplace = data.federallyFacilitatedMarketplace;
+      }
+      if (data.referredBy !== undefined && data.referredBy !== "") {
+        dataToSend.referredBy = data.referredBy;
+      }
+      
+      // Ensure at least one field has a value
+      if (Object.keys(dataToSend).length === 0) {
+        throw new Error("Please fill in at least one field before saving");
+      }
+      
+      return apiRequest("PATCH", `/api/users/${userId}`, dataToSend);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
@@ -895,18 +918,35 @@ export default function UserDetail() {
 
         {/* Insurance Profile Information */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              Insurance Profile Information
-            </CardTitle>
-            <CardDescription>
-              Manage insurance industry specific information
-            </CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+            <div className="space-y-1.5">
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                Insurance Profile Information
+              </CardTitle>
+              <CardDescription>
+                Manage insurance industry specific information
+              </CardDescription>
+            </div>
+            <Button
+              type="submit"
+              form="insurance-profile-form"
+              disabled={isAnyMutationPending}
+              data-testid="button-save-insurance"
+            >
+              {updateInsuranceProfileMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
           </CardHeader>
           <CardContent>
             <Form {...insuranceProfileForm}>
-              <form onSubmit={insuranceProfileForm.handleSubmit((data) => updateInsuranceProfileMutation.mutate(data))} className="space-y-4">
+              <form id="insurance-profile-form" onSubmit={insuranceProfileForm.handleSubmit((data) => updateInsuranceProfileMutation.mutate(data))} className="space-y-4">
                 <FormField
                   control={insuranceProfileForm.control}
                   name="agentInternalCode"
@@ -1014,20 +1054,6 @@ export default function UserDetail() {
                     </FormItem>
                   )}
                 />
-                <Button
-                  type="submit"
-                  disabled={isAnyMutationPending}
-                  data-testid="button-save-insurance"
-                >
-                  {updateInsuranceProfileMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </Button>
               </form>
             </Form>
           </CardContent>
