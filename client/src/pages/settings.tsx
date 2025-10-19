@@ -578,14 +578,24 @@ export default function Settings() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Profile Information Card */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Profile Information</CardTitle>
-                    <CardDescription>
-                      Update your personal information and contact details.
-                    </CardDescription>
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                    <div className="space-y-1.5">
+                      <CardTitle>Profile Information</CardTitle>
+                      <CardDescription>
+                        Update your personal information and contact details.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      type="submit"
+                      form="profile-info-form"
+                      disabled={updateProfileMutation.isPending}
+                      data-testid="button-save-profile"
+                    >
+                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handleProfileSubmit} className="space-y-4">
+                    <form id="profile-info-form" onSubmit={handleProfileSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
@@ -696,28 +706,30 @@ export default function Settings() {
                         />
                       </div>
                     </div>
-
-                    <Button
-                      type="submit"
-                      disabled={updateProfileMutation.isPending}
-                      data-testid="button-save-profile"
-                    >
-                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
-                    </Button>
                   </form>
                 </CardContent>
               </Card>
 
               {/* Insurance Profile Information Card */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Insurance Profile Information</CardTitle>
-                  <CardDescription>
-                    This is a code assigned by your agency
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                  <div className="space-y-1.5">
+                    <CardTitle>Insurance Profile Information</CardTitle>
+                    <CardDescription>
+                      This is a code assigned by your agency
+                    </CardDescription>
+                  </div>
+                  <Button
+                    type="submit"
+                    form="insurance-profile-form"
+                    disabled={updateProfileMutation.isPending}
+                    data-testid="button-save-insurance"
+                  >
+                    {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleProfileSubmit} className="space-y-4">
+                  <form id="insurance-profile-form" onSubmit={handleProfileSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="agentInternalCode">
                         Agent internal code
