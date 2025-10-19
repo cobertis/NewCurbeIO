@@ -34,7 +34,6 @@ const personalInfoSchema = z.object({
 
 const contactInfoSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
-  address: z.string().optional(),
   timezone: z.string().optional(),
   preferredLanguage: z.string().optional(),
   dateOfBirth: z.string().optional().or(z.literal("")),
@@ -100,7 +99,6 @@ export default function UserDetail() {
     resolver: zodResolver(contactInfoSchema),
     defaultValues: {
       phone: "",
-      address: "",
       timezone: "",
       preferredLanguage: "",
       dateOfBirth: "",
@@ -136,7 +134,6 @@ export default function UserDetail() {
 
       contactForm.reset({
         phone: user.phone ? formatPhoneDisplay(user.phone) : "",
-        address: user.address || "",
         timezone: user.timezone || "",
         preferredLanguage: user.preferredLanguage || "",
         dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
@@ -502,23 +499,6 @@ export default function UserDetail() {
                             field.onChange(formatted);
                           }}
                           data-testid="input-phone"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={contactForm.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          data-testid="input-address"
                         />
                       </FormControl>
                       <FormMessage />

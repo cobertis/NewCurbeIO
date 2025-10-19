@@ -26,7 +26,6 @@ const userFormSchema = insertUserSchema.omit({ password: true }).extend({
   phone: z.string().optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   preferredLanguage: z.string().optional(),
-  address: z.string().optional(),
   companyId: z.string().optional(),
 });
 
@@ -44,7 +43,6 @@ const editUserFormSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   preferredLanguage: z.string().optional(),
-  address: z.string().optional(),
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
   isActive: z.boolean().optional(),
@@ -223,7 +221,6 @@ export default function Users() {
       phone: "",
       dateOfBirth: "",
       preferredLanguage: "en",
-      address: "",
       role: "member",
       companyId: "",
     },
@@ -238,7 +235,6 @@ export default function Users() {
       phone: "",
       dateOfBirth: "",
       preferredLanguage: "en",
-      address: "",
       role: "member",
       companyId: "",
     },
@@ -271,7 +267,6 @@ export default function Users() {
       phone: user.phone ? formatPhoneDisplay(user.phone) : "",
       dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
       preferredLanguage: user.preferredLanguage || "en",
-      address: user.address || "",
       role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
       companyId: user.companyId || "__none__",
     });
@@ -459,30 +454,6 @@ export default function Users() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Office Address Card */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle className="text-base font-semibold">Office Address</CardTitle>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => handleEdit(profileUser)}
-                    data-testid="button-edit-address"
-                  >
-                    <Edit className="h-3 w-3 mr-2" />
-                    Edit
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Address:</p>
-                    <p className="font-medium">
-                      {profileUser.address || "No address provided"}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
 
@@ -667,19 +638,6 @@ export default function Users() {
                     )}
                   />
                 </div>
-                <FormField
-                  control={editForm.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Office Address (Optional)</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} placeholder="123 Main St, City, State, ZIP" data-testid="input-edit-address" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 {isSuperAdmin && (
                   <FormField
                     control={editForm.control}
@@ -936,19 +894,6 @@ export default function Users() {
                     )}
                   />
                 </div>
-                <FormField
-                  control={createForm.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Office Address (Optional)</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} placeholder="123 Main St, City, State, ZIP" data-testid="input-create-address" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 {isSuperAdmin && (
                   <FormField
                     control={createForm.control}
@@ -1128,19 +1073,6 @@ export default function Users() {
                   )}
                 />
               </div>
-              <FormField
-                control={editForm.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Office Address (Optional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="123 Main St, City, State, ZIP" data-testid="input-edit-address" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               {isSuperAdmin && (
                 <FormField
                   control={editForm.control}

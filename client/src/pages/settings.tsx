@@ -97,7 +97,6 @@ export default function Settings() {
     phone: "",
     dateOfBirth: "",
     preferredLanguage: "",
-    address: "",
   });
 
   // Update form when user data changes
@@ -110,14 +109,13 @@ export default function Settings() {
         phone: user.phone ? formatPhoneDisplay(user.phone) : "",
         dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
         preferredLanguage: user.preferredLanguage || "en",
-        address: user.address || "",
       });
     }
   }, [user]);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone?: string; dateOfBirth?: string; preferredLanguage?: string; address?: string }) => {
+    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone?: string; dateOfBirth?: string; preferredLanguage?: string }) => {
       // Convert phone to E.164 format before sending
       const dataToSend = {
         ...data,
@@ -619,18 +617,6 @@ export default function Settings() {
                           <option value="de">German</option>
                         </select>
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="address">Office Address (Optional)</Label>
-                      <Input
-                        id="address"
-                        name="address"
-                        placeholder="123 Main St, City, State, ZIP"
-                        value={profileForm.address}
-                        onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                        data-testid="input-address"
-                      />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
