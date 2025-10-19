@@ -627,6 +627,12 @@ export default function Settings() {
         <div className="lg:col-span-8 xl:col-span-9">
           <Tabs value={activeTab} onValueChange={(value) => setLocation(`/settings/${value}`)} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">
+              {isAdmin && (
+                <TabsTrigger value="company" className="gap-2" data-testid="tab-company">
+                  <Building2 className="h-4 w-4" />
+                  Company
+                </TabsTrigger>
+              )}
               <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
                 <UserIcon className="h-4 w-4" />
                 Profile
@@ -635,12 +641,6 @@ export default function Settings() {
                 <Bell className="h-4 w-4" />
                 Preferences
               </TabsTrigger>
-              {isAdmin && (
-                <TabsTrigger value="company" className="gap-2" data-testid="tab-company">
-                  <Building2 className="h-4 w-4" />
-                  Company
-                </TabsTrigger>
-              )}
               {isSuperAdmin && (
                 <TabsTrigger value="system" className="gap-2" data-testid="tab-system">
                   <Mail className="h-4 w-4" />
