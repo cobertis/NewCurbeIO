@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -363,7 +364,6 @@ export default function Settings() {
   const companyEmailRef = useRef<HTMLInputElement>(null);
   const companyPhoneRef = useRef<HTMLInputElement>(null);
   const websiteRef = useRef<HTMLInputElement>(null);
-  const timezoneRef = useRef<HTMLInputElement>(null);
   const platformLanguageRef = useRef<HTMLInputElement>(null);
   
   // Physical Address refs
@@ -383,6 +383,9 @@ export default function Settings() {
   const [openNiche, setOpenNiche] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedNiche, setSelectedNiche] = useState("");
+  
+  // Timezone state
+  const [selectedTimezone, setSelectedTimezone] = useState("");
   
   // Notifications state
   const [notificationSearch, setNotificationSearch] = useState("");
@@ -490,6 +493,7 @@ export default function Settings() {
     if (companyData?.company) {
       setSelectedCategory((companyData.company as any).businessCategory || "");
       setSelectedNiche((companyData.company as any).businessNiche || "");
+      setSelectedTimezone(companyData.company.timezone || "UTC");
     }
   }, [companyData]);
 
@@ -783,7 +787,7 @@ export default function Settings() {
     if (companyEmailRef.current?.value) data.email = companyEmailRef.current.value;
     if (companyPhoneRef.current?.value) data.phone = companyPhoneRef.current.value;
     if (websiteRef.current?.value) data.website = websiteRef.current.value;
-    if (timezoneRef.current?.value) data.timezone = timezoneRef.current.value;
+    if (selectedTimezone) data.timezone = selectedTimezone;
     if (platformLanguageRef.current?.value) data.platformLanguage = platformLanguageRef.current.value;
     
     updateCompanyMutation.mutate(data);
@@ -1814,12 +1818,67 @@ export default function Settings() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="timezone">Timezone</Label>
-                        <Input
-                          id="timezone"
-                          ref={timezoneRef}
-                          defaultValue={companyData?.company?.timezone || "UTC"}
-                          data-testid="input-timezone"
-                        />
+                        <Select
+                          value={selectedTimezone}
+                          onValueChange={setSelectedTimezone}
+                        >
+                          <SelectTrigger id="timezone" data-testid="select-timezone">
+                            <SelectValue placeholder="Select timezone" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">North America</div>
+                            <SelectItem value="America/New_York">(UTC-05:00) EST, New York, Toronto</SelectItem>
+                            <SelectItem value="America/Chicago">(UTC-06:00) CST, Chicago, Mexico City</SelectItem>
+                            <SelectItem value="America/Denver">(UTC-07:00) MST, Denver, Phoenix</SelectItem>
+                            <SelectItem value="America/Los_Angeles">(UTC-08:00) PST, Los Angeles, Vancouver</SelectItem>
+                            <SelectItem value="America/Anchorage">(UTC-09:00) AKST, Anchorage</SelectItem>
+                            <SelectItem value="Pacific/Honolulu">(UTC-10:00) HST, Honolulu</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Central and South America</div>
+                            <SelectItem value="America/Argentina/Buenos_Aires">(UTC-03:00) ART, Buenos Aires</SelectItem>
+                            <SelectItem value="America/Sao_Paulo">(UTC-03:00) BRT, São Paulo, Rio de Janeiro</SelectItem>
+                            <SelectItem value="America/Santiago">(UTC-03:00) CLT, Santiago</SelectItem>
+                            <SelectItem value="America/Bogota">(UTC-05:00) COT, Bogotá</SelectItem>
+                            <SelectItem value="America/Lima">(UTC-05:00) PET, Lima</SelectItem>
+                            <SelectItem value="America/Caracas">(UTC-04:00) AST, Caracas</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Europe</div>
+                            <SelectItem value="Europe/London">(UTC+00:00) GMT, London, Dublin</SelectItem>
+                            <SelectItem value="Europe/Paris">(UTC+01:00) CET, Paris, Madrid, Berlin</SelectItem>
+                            <SelectItem value="Europe/Istanbul">(UTC+02:00) EET, Istanbul, Athens, Cairo</SelectItem>
+                            <SelectItem value="Europe/Moscow">(UTC+03:00) MSK, Moscow, Saint Petersburg</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Africa</div>
+                            <SelectItem value="Africa/Lagos">(UTC+01:00) WAT, Lagos, Kinshasa</SelectItem>
+                            <SelectItem value="Africa/Johannesburg">(UTC+02:00) SAST, Johannesburg, Cape Town</SelectItem>
+                            <SelectItem value="Africa/Nairobi">(UTC+03:00) EAT, Nairobi, Addis Ababa</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Asia</div>
+                            <SelectItem value="Asia/Kolkata">(UTC+05:30) IST, Kolkata, New Delhi, Mumbai</SelectItem>
+                            <SelectItem value="Asia/Jakarta">(UTC+07:00) WIB, Jakarta, Bangkok</SelectItem>
+                            <SelectItem value="Asia/Shanghai">(UTC+08:00) CST, Shanghai, Beijing, Hong Kong</SelectItem>
+                            <SelectItem value="Asia/Hong_Kong">(UTC+08:00) HKT, Hong Kong</SelectItem>
+                            <SelectItem value="Asia/Singapore">(UTC+08:00) SGT, Singapore</SelectItem>
+                            <SelectItem value="Asia/Tokyo">(UTC+09:00) JST, Tokyo, Osaka</SelectItem>
+                            <SelectItem value="Asia/Seoul">(UTC+09:00) KST, Seoul</SelectItem>
+                            <SelectItem value="Asia/Manila">(UTC+08:00) PHT, Manila</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Australia and Pacific</div>
+                            <SelectItem value="Australia/Adelaide">(UTC+09:30) ACST, Adelaide, Darwin</SelectItem>
+                            <SelectItem value="Australia/Sydney">(UTC+10:00) AEST, Sydney, Melbourne</SelectItem>
+                            <SelectItem value="Pacific/Auckland">(UTC+12:00) NZST, Auckland, Wellington</SelectItem>
+                            <SelectItem value="Pacific/Chatham">(UTC+12:45) Chatham Islands</SelectItem>
+                            <SelectItem value="Pacific/Apia">(UTC+13:00) Samoa, Apia</SelectItem>
+                            <SelectItem value="Pacific/Kiritimati">(UTC+14:00) Line Islands, Kiritimati</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Middle East</div>
+                            <SelectItem value="Asia/Riyadh">(UTC+03:00) AST, Riyadh, Kuwait, Baghdad</SelectItem>
+                            <SelectItem value="Asia/Dubai">(UTC+04:00) GST, Dubai, Abu Dhabi</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">UTC (Coordinated Universal Time)</div>
+                            <SelectItem value="UTC">(UTC+00:00) UTC, Greenwich</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="platformLanguage">Platform Language</Label>
