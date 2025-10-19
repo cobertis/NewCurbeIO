@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Camera, Phone as PhoneIcon, AtSign, Briefcase } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -210,20 +210,19 @@ export default function Settings() {
           <Card className="sticky top-6">
             <CardHeader className="text-center pb-4">
               <div className="flex flex-col items-center gap-4">
-                <div className="relative">
+                <div 
+                  className="relative group cursor-pointer"
+                  onClick={() => setUploadAvatarOpen(true)}
+                  data-testid="button-change-avatar"
+                >
                   <Avatar className="h-24 w-24">
                     <AvatarImage src={user?.avatar || ""} alt={user?.firstName || ""} />
                     <AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback>
                   </Avatar>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
-                    onClick={() => setUploadAvatarOpen(true)}
-                    data-testid="button-change-avatar"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
+                  {/* Overlay con lápiz que aparece en hover */}
+                  <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Pencil className="h-6 w-6 text-white" />
+                  </div>
                 </div>
                 <div className="text-center w-full">
                   <h2 className="text-xl font-semibold">
