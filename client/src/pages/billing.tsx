@@ -500,7 +500,7 @@ export default function Billing() {
     },
     onSuccess: (data) => {
       toast({
-        title: "Solicitud Enviada",
+        title: "Request Submitted",
         description: data.message,
       });
       setShowModifyDialog(false); // Close the main dialog
@@ -510,7 +510,7 @@ export default function Billing() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "No se pudo enviar la solicitud",
+        description: error.message || "Could not submit request",
         variant: "destructive",
       });
     },
@@ -1353,10 +1353,10 @@ export default function Billing() {
                   <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                     <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
-                  Solicitud de Soporte Financiero
+                  Financial Support Request
                 </DialogTitle>
                 <DialogDescription>
-                  Estamos aquí para ayudarle. Su éxito es nuestro compromiso. Comparta su situación y nuestro equipo la revisará en 48 horas.
+                  We're here to help. Your success is our commitment. Share your situation and our team will review it within 48 hours.
                 </DialogDescription>
               </DialogHeader>
               
@@ -1366,10 +1366,10 @@ export default function Billing() {
                   <div className="flex gap-3">
                     <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Compromiso de Respuesta</p>
+                      <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Response Commitment</p>
                       <p className="text-sm text-blue-800 dark:text-blue-200">
-                        Una vez enviada su solicitud, nuestro equipo la revisará y le responderá dentro de 48 horas. 
-                        Queremos entender su situación y encontrar la mejor solución juntos.
+                        Once your request is submitted, our team will review it and respond to you within 48 hours. 
+                        We want to understand your situation and find the best solution together.
                       </p>
                     </div>
                   </div>
@@ -1378,16 +1378,16 @@ export default function Billing() {
                 {/* Situation Field */}
                 <div className="space-y-2">
                   <Label htmlFor="situation" className="text-base font-semibold">
-                    ¿Cuál es su situación actual?
+                    What is your current situation?
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Explique brevemente las circunstancias que están afectando su capacidad de pago.
+                    Briefly explain the circumstances affecting your payment ability.
                   </p>
                   <Textarea
                     id="situation"
                     value={financialSituation}
                     onChange={(e) => setFinancialSituation(e.target.value)}
-                    placeholder="Ej: Estamos experimentando una disminución temporal en ventas debido a..."
+                    placeholder="e.g., We are experiencing a temporary decline in sales due to..."
                     className="min-h-[120px] resize-none"
                     data-testid="input-situation"
                   />
@@ -1396,16 +1396,16 @@ export default function Billing() {
                 {/* Proposed Solution Field */}
                 <div className="space-y-2">
                   <Label htmlFor="proposed-solution" className="text-base font-semibold">
-                    ¿Qué solución propone?
+                    What solution do you propose?
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    ¿Cómo podríamos trabajar juntos para resolver esta situación?
+                    How could we work together to resolve this situation?
                   </p>
                   <Textarea
                     id="proposed-solution"
                     value={proposedSolution}
                     onChange={(e) => setProposedSolution(e.target.value)}
-                    placeholder="Ej: Necesitaría un descuento temporal del 30% por los próximos 3 meses mientras..."
+                    placeholder="e.g., I would need a temporary 30% discount for the next 3 months while..."
                     className="min-h-[120px] resize-none"
                     data-testid="input-proposed-solution"
                   />
@@ -1418,14 +1418,14 @@ export default function Billing() {
                   onClick={() => setModifyDialogView('main')}
                   data-testid="button-support-cancel"
                 >
-                  Cancelar
+                  Cancel
                 </Button>
                 <Button
                   onClick={() => {
                     if (!financialSituation.trim() || !proposedSolution.trim()) {
                       toast({
-                        title: "Campos Requeridos",
-                        description: "Por favor complete ambos campos antes de enviar",
+                        title: "Required Fields",
+                        description: "Please complete both fields before submitting",
                         variant: "destructive",
                       });
                       return;
@@ -1438,7 +1438,7 @@ export default function Billing() {
                   disabled={financialSupportMutation.isPending}
                   data-testid="button-support-submit"
                 >
-                  {financialSupportMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
+                  {financialSupportMutation.isPending ? "Submitting..." : "Submit Request"}
                 </Button>
               </DialogFooter>
             </>
