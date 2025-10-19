@@ -1103,6 +1103,36 @@ export default function Settings() {
                             </div>
                           </div>
                         )}
+
+                        {/* Logo URL */}
+                        {companyData?.company?.logo && (
+                          <div className="flex items-start gap-3">
+                            <Globe className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground">Logo</p>
+                              <a 
+                                href={companyData.company.logo}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-medium text-primary hover:underline truncate block"
+                                data-testid="link-company-logo"
+                              >
+                                {companyData.company.logo}
+                              </a>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Custom Domain */}
+                        {companyData?.company?.domain && (
+                          <div className="flex items-start gap-3">
+                            <Globe className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground">Custom Domain</p>
+                              <p className="text-sm font-medium">{companyData.company.domain}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1968,50 +1998,6 @@ export default function Settings() {
                       type="hidden"
                       defaultValue={companyData?.company?.country || "United States"}
                     />
-                  </CardContent>
-                </Card>
-
-                {/* Branding */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Branding</CardTitle>
-                      <CardDescription>
-                        Company logo and visual identity
-                      </CardDescription>
-                    </div>
-                    <Button 
-                      onClick={handleSaveBranding}
-                      disabled={updateCompanyMutation.isPending && savingSection === "branding"}
-                      data-testid="button-save-branding"
-                    >
-                      {updateCompanyMutation.isPending && savingSection === "branding" ? "Saving..." : "Save"}
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="logo">Logo URL</Label>
-                        <Input
-                          id="logo"
-                          ref={logoRef}
-                          type="url"
-                          placeholder="https://example.com/logo.png"
-                          defaultValue={companyData?.company?.logo || ""}
-                          data-testid="input-logo"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="domain">Custom Domain</Label>
-                        <Input
-                          id="domain"
-                          ref={domainRef}
-                          placeholder="app.example.com"
-                          defaultValue={companyData?.company?.domain || ""}
-                          data-testid="input-domain"
-                        />
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
