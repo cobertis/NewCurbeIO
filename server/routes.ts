@@ -715,6 +715,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timezone: user.timezone,
         dateOfBirth: user.dateOfBirth,
         preferredLanguage: user.preferredLanguage,
+        // Insurance Profile Information
+        agentInternalCode: user.agentInternalCode,
+        instructionLevel: user.instructionLevel,
+        nationalProducerNumber: user.nationalProducerNumber,
+        federallyFacilitatedMarketplace: user.federallyFacilitatedMarketplace,
+        referredBy: user.referredBy,
       },
     });
   });
