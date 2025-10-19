@@ -4958,6 +4958,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           break;
+        case 'invoice.voided':
+          {
+            const stripeInvoice = event.data.object as any;
+            console.log('[WEBHOOK] Invoice voided:', stripeInvoice.id);
+            
+            // Sync the voided invoice to update its status in our database
+            const invoice = await syncInvoiceFromStripe(stripeInvoice.id);
+            
+            if (invoice) {
+              console.log('[WEBHOOK] Voided invoice synced successfully:', invoice.invoiceNumber);
+            }
+          }
+          break;
         default:
           console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
       }

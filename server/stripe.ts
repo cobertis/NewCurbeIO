@@ -1018,6 +1018,26 @@ export async function skipTrial(stripeSubscriptionId: string) {
   try {
     console.log('[STRIPE] Skipping trial for subscription:', stripeSubscriptionId);
     
+    // CRITICAL: Get current subscription to find the trial invoice
+    const currentSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    
+    // If there's a latest invoice from the trial, void it before ending trial
+    if (currentSubscription.latest_invoice) {
+      const invoiceId = typeof currentSubscription.latest_invoice === 'string' 
+        ? currentSubscription.latest_invoice 
+        : currentSubscription.latest_invoice.id;
+      
+      const invoice = await stripe.invoices.retrieve(invoiceId);
+      
+      // Only void if it's the $0.00 trial invoice that's still open/draft
+      if (invoice.total === 0 && (invoice.status === 'open' || invoice.status === 'draft')) {
+        console.log('[STRIPE] Voiding trial invoice:', invoice.id);
+        await stripe.invoices.voidInvoice(invoice.id);
+        console.log('[STRIPE] Trial invoice voided successfully');
+      }
+    }
+    
+    // Now end the trial - this will create a new invoice for the actual charge
     const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
       trial_end: 'now',
     });

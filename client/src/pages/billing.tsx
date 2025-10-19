@@ -962,7 +962,7 @@ export default function Billing() {
                 <div className="flex items-center justify-center py-12">
                   <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
                 </div>
-              ) : invoices.length > 0 ? (
+              ) : invoices.filter(inv => inv.status !== 'void' && inv.total !== 0).length > 0 ? (
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
@@ -975,7 +975,9 @@ export default function Billing() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {invoices.map((invoice) => (
+                      {invoices
+                        .filter(inv => inv.status !== 'void' && inv.total !== 0)
+                        .map((invoice) => (
                         <TableRow key={invoice.id} data-testid={`invoice-row-${invoice.id}`}>
                           <TableCell className="font-medium">
                             {invoice.invoiceNumber}
