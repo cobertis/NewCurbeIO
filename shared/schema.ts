@@ -38,6 +38,8 @@ export const companies = pgTable("companies", {
   
   // Business Profile - Business Information
   businessType: text("business_type"), // e.g., "Limited Liability Company Or Sole-Proprietorship"
+  businessCategory: text("business_category"), // Main business category (e.g., "Healthcare", "Technology")
+  businessNiche: text("business_niche"), // Specific business niche within category
   registrationIdType: text("registration_id_type"), // e.g., "USA: Employer Identification Number (EIN)"
   registrationNumber: text("registration_number"), // Business registration number
   isNotRegistered: boolean("is_not_registered").default(false), // Checkbox for not registered
@@ -580,6 +582,7 @@ export const updateCompanySchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().min(1).optional(),
   address: z.string().min(1).optional(),
+  addressLine2: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   postalCode: z.string().optional(),
@@ -591,6 +594,22 @@ export const updateCompanySchema = z.object({
   companySize: z.string().optional(),
   timezone: z.string().optional(),
   isActive: z.boolean().optional(),
+  legalName: z.string().optional(),
+  currency: z.string().optional(),
+  platformLanguage: z.string().optional(),
+  outboundLanguage: z.string().optional(),
+  businessType: z.string().optional(),
+  businessCategory: z.string().optional(),
+  businessNiche: z.string().optional(),
+  registrationIdType: z.string().optional(),
+  registrationNumber: z.string().optional(),
+  isNotRegistered: z.boolean().optional(),
+  regionsOfOperation: z.array(z.string()).optional(),
+  representativeFirstName: z.string().optional(),
+  representativeLastName: z.string().optional(),
+  representativeEmail: z.string().email().optional().or(z.literal("")),
+  representativePosition: z.string().optional(),
+  representativePhone: z.string().optional(),
 }).refine(data => Object.values(data).some(v => v !== undefined), {
   message: "At least one field must be provided",
 });
