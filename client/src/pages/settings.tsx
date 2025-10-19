@@ -90,7 +90,7 @@ export default function Settings() {
 
   const activeTab = getCurrentTab();
 
-  // Profile form state
+  // Profile form state (personal information only)
   const [profileForm, setProfileForm] = useState({
     firstName: "",
     lastName: "",
@@ -98,6 +98,10 @@ export default function Settings() {
     phone: "",
     dateOfBirth: "",
     preferredLanguage: "",
+  });
+
+  // Insurance profile form state (separate from personal info)
+  const [insuranceForm, setInsuranceForm] = useState({
     agentInternalCode: "",
     instructionLevel: "",
     nationalProducerNumber: "",
@@ -105,7 +109,7 @@ export default function Settings() {
     referredBy: "",
   });
 
-  // Update form when user data changes
+  // Update forms when user data changes
   useEffect(() => {
     if (user) {
       setProfileForm({
@@ -115,6 +119,8 @@ export default function Settings() {
         phone: user.phone ? formatPhoneDisplay(user.phone) : "",
         dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
         preferredLanguage: user.preferredLanguage || "en",
+      });
+      setInsuranceForm({
         agentInternalCode: (user as any).agentInternalCode || "",
         instructionLevel: (user as any).instructionLevel || "",
         nationalProducerNumber: (user as any).nationalProducerNumber || "",
@@ -127,9 +133,9 @@ export default function Settings() {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { 
-      firstName: string; 
-      lastName: string; 
-      email: string; 
+      firstName?: string; 
+      lastName?: string; 
+      email?: string; 
       phone?: string; 
       dateOfBirth?: string; 
       preferredLanguage?: string;
@@ -202,9 +208,16 @@ export default function Settings() {
     },
   });
 
-  const handleProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // Handler for Profile Information form
+  const handleProfileInfoSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     updateProfileMutation.mutate(profileForm);
+  };
+
+  // Handler for Insurance Profile Information form
+  const handleInsuranceProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    updateProfileMutation.mutate(insuranceForm);
   };
 
   const handleSendTestEmail = (e: React.FormEvent) => {
@@ -595,7 +608,7 @@ export default function Settings() {
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <form id="profile-info-form" onSubmit={handleProfileSubmit} className="space-y-4">
+                    <form id="profile-info-form" onSubmit={handleProfileInfoSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
@@ -729,7 +742,7 @@ export default function Settings() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <form id="insurance-profile-form" onSubmit={handleProfileSubmit} className="space-y-4">
+                  <form id="insurance-profile-form" onSubmit={handleInsuranceProfileSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="agentInternalCode">
                         Agent internal code
@@ -746,8 +759,8 @@ export default function Settings() {
                         id="agentInternalCode"
                         name="agentInternalCode"
                         placeholder="Enter an internal code"
-                        value={profileForm.agentInternalCode || ""}
-                        onChange={(e) => setProfileForm({ ...profileForm, agentInternalCode: e.target.value })}
+                        value={insuranceForm.agentInternalCode || ""}
+                        onChange={(e) => setInsuranceForm({ ...insuranceForm, agentInternalCode: e.target.value })}
                         data-testid="input-agent-internal-code"
                       />
                     </div>
@@ -757,8 +770,8 @@ export default function Settings() {
                       <select
                         id="instructionLevel"
                         name="instructionLevel"
-                        value={profileForm.instructionLevel || ""}
-                        onChange={(e) => setProfileForm({ ...profileForm, instructionLevel: e.target.value })}
+                        value={insuranceForm.instructionLevel || ""}
+                        onChange={(e) => setInsuranceForm({ ...insuranceForm, instructionLevel: e.target.value })}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         data-testid="select-instruction-level"
                       >
@@ -776,11 +789,11 @@ export default function Settings() {
                         name="nationalProducerNumber"
                         type="text"
                         placeholder="17925766"
-                        value={profileForm.nationalProducerNumber || ""}
+                        value={insuranceForm.nationalProducerNumber || ""}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, '');
                           if (value.length <= 10) {
-                            setProfileForm({ ...profileForm, nationalProducerNumber: value });
+                            setInsuranceForm({ ...insuranceForm, nationalProducerNumber: value });
                           }
                         }}
                         maxLength={10}
@@ -795,8 +808,8 @@ export default function Settings() {
                         id="federallyFacilitatedMarketplace"
                         name="federallyFacilitatedMarketplace"
                         placeholder="Enter an FFM"
-                        value={profileForm.federallyFacilitatedMarketplace || ""}
-                        onChange={(e) => setProfileForm({ ...profileForm, federallyFacilitatedMarketplace: e.target.value })}
+                        value={insuranceForm.federallyFacilitatedMarketplace || ""}
+                        onChange={(e) => setInsuranceForm({ ...insuranceForm, federallyFacilitatedMarketplace: e.target.value })}
                         data-testid="input-ffm"
                       />
                     </div>
@@ -807,8 +820,8 @@ export default function Settings() {
                         id="referredBy"
                         name="referredBy"
                         placeholder="Enter a referred"
-                        value={profileForm.referredBy || ""}
-                        onChange={(e) => setProfileForm({ ...profileForm, referredBy: e.target.value })}
+                        value={insuranceForm.referredBy || ""}
+                        onChange={(e) => setInsuranceForm({ ...insuranceForm, referredBy: e.target.value })}
                         data-testid="input-referred-by"
                       />
                     </div>
