@@ -4580,17 +4580,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (adminResponse && fullTicket) {
         const { notificationService } = await import("./notification-service");
         
-        // Truncate response if too long for notification
-        const maxLength = 200;
-        const truncatedResponse = adminResponse.length > maxLength 
-          ? adminResponse.substring(0, maxLength) + '...' 
-          : adminResponse;
-        
         await storage.createNotification({
           userId: fullTicket.userId,
           type: 'financial_support_response',
           title: 'Response to Your Financial Support Request',
-          message: `Our team has responded: "${truncatedResponse}"`,
+          message: adminResponse,
           link: '/my-support-tickets',
           isRead: false,
         });
@@ -4604,6 +4598,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('[TICKETS] Error updating ticket:', error);
       res.status(500).json({ message: "Error updating ticket" });
+    }
+  });
+
+  // Delete financial support ticket (superadmin only)
+  app.delete("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmins can delete tickets
+    if (currentUser.role !== 'superadmin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const deleted = await storage.deleteFinancialSupportTicket(req.params.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[TICKETS] Error deleting ticket:', error);
+      res.status(500).json({ message: "Error deleting ticket" });
     }
   });
 

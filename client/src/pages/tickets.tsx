@@ -148,6 +148,28 @@ export default function TicketsPage() {
     },
   });
 
+  // Delete ticket mutation
+  const deleteTicketMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/tickets/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tickets'] });
+      toast({
+        title: "Success",
+        description: "Ticket deleted successfully",
+      });
+      setShowTicketDialog(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete ticket",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleViewTicket = (ticket: FinancialSupportTicket) => {
     setSelectedTicket(ticket);
     setTicketStatus(ticket.status);
@@ -502,21 +524,35 @@ export default function TicketsPage() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex justify-between items-center">
             <Button 
-              variant="outline" 
-              onClick={() => setShowTicketDialog(false)}
-              data-testid="button-cancel-ticket"
+              variant="destructive" 
+              onClick={() => {
+                if (selectedTicket && confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
+                  deleteTicketMutation.mutate(selectedTicket.id);
+                }
+              }}
+              disabled={deleteTicketMutation.isPending}
+              data-testid="button-delete-ticket"
             >
-              Cancel
+              {deleteTicketMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
-            <Button
-              onClick={handleUpdateTicket}
-              disabled={updateTicketMutation.isPending}
-              data-testid="button-update-ticket"
-            >
-              {updateTicketMutation.isPending ? "Updating..." : "Update Ticket"}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowTicketDialog(false)}
+                data-testid="button-cancel-ticket"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateTicket}
+                disabled={updateTicketMutation.isPending}
+                data-testid="button-update-ticket"
+              >
+                {updateTicketMutation.isPending ? "Updating..." : "Update Ticket"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

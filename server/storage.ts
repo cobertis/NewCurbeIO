@@ -386,6 +386,7 @@ export interface IStorage {
     respondedBy?: string;
     respondedAt?: Date;
   }): Promise<FinancialSupportTicket | undefined>;
+  deleteFinancialSupportTicket(id: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -2275,6 +2276,14 @@ export class DbStorage implements IStorage {
       .where(eq(financialSupportTickets.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteFinancialSupportTicket(id: string): Promise<boolean> {
+    const result = await db
+      .delete(financialSupportTickets)
+      .where(eq(financialSupportTickets.id, id))
+      .returning();
+    return result.length > 0;
   }
 }
 
