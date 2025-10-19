@@ -368,42 +368,48 @@ export default function Settings() {
         {/* Left Column - Profile Card */}
         <div className="lg:col-span-4 xl:col-span-3">
           <Card className="sticky top-6">
-            <CardHeader className="text-center pb-4">
-              <div className="flex flex-col items-center gap-4">
-                <div 
-                  className="relative group cursor-pointer"
-                  onClick={handleAvatarClick}
-                  data-testid="button-change-avatar"
-                >
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={user?.avatar || ""} alt={user?.firstName || ""} />
-                    <AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback>
-                  </Avatar>
-                  {/* Overlay with pencil icon that appears on hover */}
-                  <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Pencil className="h-6 w-6 text-white" />
+            <CardContent className="p-6">
+              <div className="flex gap-4">
+                {/* Left - Avatar */}
+                <div className="flex-shrink-0">
+                  <div 
+                    className="relative group cursor-pointer"
+                    onClick={handleAvatarClick}
+                    data-testid="button-change-avatar"
+                  >
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={user?.avatar || ""} alt={user?.firstName || ""} />
+                      <AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback>
+                    </Avatar>
+                    {/* Overlay with pencil icon that appears on hover */}
+                    <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Pencil className="h-6 w-6 text-white" />
+                    </div>
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
                   </div>
-                  {/* Hidden file input */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
                 </div>
-                <div className="text-center w-full">
-                  <h2 className="text-xl font-semibold">
-                    {user?.firstName} {user?.lastName}
-                  </h2>
-                  <Badge variant="secondary" className="mt-2">
-                    {getRoleDisplay()}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4 border-t">
-              <div className="space-y-3">
+
+                {/* Right - All Info */}
+                <div className="flex-1 min-w-0 space-y-4">
+                  {/* Name and Badge */}
+                  <div>
+                    <h2 className="text-xl font-semibold">
+                      {user?.firstName} {user?.lastName}
+                    </h2>
+                    <Badge variant="secondary" className="mt-2">
+                      {getRoleDisplay()}
+                    </Badge>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="space-y-3 pt-2">
                 {/* 1. Email */}
                 <div className="flex items-start gap-3">
                   <AtSign className="h-4 w-4 text-muted-foreground mt-1" />
@@ -477,17 +483,20 @@ export default function Settings() {
                     </div>
                   </div>
                 )}
-              </div>
-
-              <div className="pt-4 border-t">
-                <div className="grid grid-cols-2 gap-2 text-center">
-                  <div className="p-3 rounded-md bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <p className={`text-sm font-semibold ${getStatusColor()}`}>{getStatusDisplay()}</p>
                   </div>
-                  <div className="p-3 rounded-md bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Plan</p>
-                    <p className="text-sm font-semibold">{getCurrentPlanName()}</p>
+
+                  {/* Status and Plan */}
+                  <div className="pt-4 border-t">
+                    <div className="grid grid-cols-2 gap-2 text-center">
+                      <div className="p-3 rounded-md bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Status</p>
+                        <p className={`text-sm font-semibold ${getStatusColor()}`}>{getStatusDisplay()}</p>
+                      </div>
+                      <div className="p-3 rounded-md bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Plan</p>
+                        <p className="text-sm font-semibold">{getCurrentPlanName()}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
