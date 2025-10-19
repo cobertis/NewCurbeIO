@@ -1657,16 +1657,18 @@ export default function Billing() {
                 </Button>
                 <Button
                   onClick={() => {
-                    toast({
-                      title: "Downgrade Request",
-                      description: "Your downgrade request has been submitted.",
-                    });
-                    setShowModifyDialog(false);
+                    if (nextLowerPlan && subscription) {
+                      changePlanMutation.mutate({
+                        planId: nextLowerPlan.id,
+                        billingPeriod: subscription.billingCycle
+                      });
+                      setShowModifyDialog(false);
+                    }
                   }}
-                  disabled={!downgradeReason || !downgradeConfirm1 || !downgradeConfirm2}
+                  disabled={!downgradeReason || !downgradeConfirm1 || !downgradeConfirm2 || !nextLowerPlan || changePlanMutation.isPending}
                   data-testid="button-confirm-downgrade"
                 >
-                  Downgrade to {nextLowerPlan?.name || 'Lower Plan'}
+                  {changePlanMutation.isPending ? 'Changing...' : `Downgrade to ${nextLowerPlan?.name || 'Lower Plan'}`}
                 </Button>
               </DialogFooter>
             </>
@@ -2686,16 +2688,18 @@ export default function Billing() {
                 </Button>
                 <Button
                   onClick={() => {
-                    toast({
-                      title: "Downgrade Request",
-                      description: "Your downgrade request has been submitted.",
-                    });
-                    setShowModifyDialog(false);
+                    if (nextLowerPlan && subscription) {
+                      changePlanMutation.mutate({
+                        planId: nextLowerPlan.id,
+                        billingPeriod: subscription.billingCycle
+                      });
+                      setShowModifyDialog(false);
+                    }
                   }}
-                  disabled={!downgradeReason || !downgradeConfirm1 || !downgradeConfirm2}
+                  disabled={!downgradeReason || !downgradeConfirm1 || !downgradeConfirm2 || !nextLowerPlan || changePlanMutation.isPending}
                   data-testid="button-confirm-downgrade"
                 >
-                  Downgrade to {nextLowerPlan?.name || 'Lower Plan'}
+                  {changePlanMutation.isPending ? 'Changing...' : `Downgrade to ${nextLowerPlan?.name || 'Lower Plan'}`}
                 </Button>
               </DialogFooter>
             </>
