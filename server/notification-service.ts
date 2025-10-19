@@ -352,11 +352,13 @@ class NotificationService {
     // Get ALL superadmin users in the system (not just company superadmins)
     const allSuperadmins = await this.getSuperadminUserIds();
     
-    // Format amount
+    // Format amount (amount is in cents from Stripe)
     const formattedAmount = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency.toUpperCase(),
-    }).format(amount / 100); // Stripe amounts are in cents
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount / 100);
     
     const notifications: any[] = [];
     
@@ -419,11 +421,13 @@ class NotificationService {
     // Get ALL superadmin users in the system (not just company superadmins)
     const allSuperadmins = await this.getSuperadminUserIds();
     
-    // Format amount
+    // Format amount (amount is in cents from Stripe)
     const formattedAmount = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency.toUpperCase(),
-    }).format(amount / 100); // Stripe amounts are in cents
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount / 100);
     
     const notifications: any[] = [];
     

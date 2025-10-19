@@ -75,11 +75,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return false;
       }
 
-      // Format amount
+      // Format amount (amount is already in dollars, NOT cents)
       const formattedAmount = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency.toUpperCase(),
-      }).format(amount / 100);
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
 
       // Format payment date
       const paymentDate = new Date().toLocaleDateString('en-US', {
@@ -178,6 +180,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const formattedAmount = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency.toUpperCase(),
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
       }).format(amount);
 
       // Format payment date

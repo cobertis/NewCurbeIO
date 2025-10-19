@@ -656,11 +656,13 @@ export default function Billing() {
     .filter(p => p.status === 'succeeded')
     .reduce((sum, p) => sum + p.amount, 0);
 
-  // Format currency
+  // Format currency (amount is in cents from Stripe)
   const formatCurrency = (amount: number, currency: string = 'usd') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency.toUpperCase(),
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount / 100);
   };
 
