@@ -709,6 +709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: user.phone,
         avatar: user.avatar,
         role: user.role,
+        status: user.status,
         companyId: user.companyId,
         companyName: companyName,
         timezone: user.timezone,
