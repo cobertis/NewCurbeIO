@@ -369,37 +369,37 @@ export default function Settings() {
         <div className="lg:col-span-4 xl:col-span-3">
           <Card className="sticky top-6">
             <CardContent className="p-6">
-              <div className="flex gap-4">
-                {/* Left - Avatar */}
-                <div className="flex-shrink-0">
-                  <div 
-                    className="relative group cursor-pointer"
-                    onClick={handleAvatarClick}
-                    data-testid="button-change-avatar"
-                  >
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={user?.avatar || ""} alt={user?.firstName || ""} />
-                      <AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback>
-                    </Avatar>
-                    {/* Overlay with pencil icon that appears on hover */}
-                    <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Pencil className="h-6 w-6 text-white" />
+              <div className="space-y-6">
+                {/* Top Section - Avatar and Name */}
+                <div className="flex gap-4 items-start">
+                  {/* Avatar */}
+                  <div className="flex-shrink-0">
+                    <div 
+                      className="relative group cursor-pointer"
+                      onClick={handleAvatarClick}
+                      data-testid="button-change-avatar"
+                    >
+                      <Avatar className="h-24 w-24">
+                        <AvatarImage src={user?.avatar || ""} alt={user?.firstName || ""} />
+                        <AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback>
+                      </Avatar>
+                      {/* Overlay with pencil icon that appears on hover */}
+                      <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Pencil className="h-6 w-6 text-white" />
+                      </div>
+                      {/* Hidden file input */}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
                     </div>
-                    {/* Hidden file input */}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
                   </div>
-                </div>
 
-                {/* Right - All Info */}
-                <div className="flex-1 min-w-0 space-y-4">
-                  {/* Name and Badge */}
-                  <div>
+                  {/* Name and Role */}
+                  <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-semibold">
                       {user?.firstName} {user?.lastName}
                     </h2>
@@ -407,83 +407,103 @@ export default function Settings() {
                       {getRoleDisplay()}
                     </Badge>
                   </div>
-
-                  {/* Contact Info */}
-                  <div className="space-y-3 pt-2">
-                {/* 1. Email */}
-                <div className="flex items-start gap-3">
-                  <AtSign className="h-4 w-4 text-muted-foreground mt-1" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">Email</p>
-                    <p className="text-sm font-medium truncate">{user?.email}</p>
-                  </div>
                 </div>
-                
-                {/* 2. Website */}
-                {companyData?.company?.website && (
-                  <div className="flex items-start gap-3">
-                    <Globe className="h-4 w-4 text-muted-foreground mt-1" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Website</p>
-                      <a 
-                        href={companyData.company.website.startsWith('http') ? companyData.company.website : `https://${companyData.company.website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-primary hover:underline truncate block"
-                        data-testid="link-company-website"
-                      >
-                        {companyData.company.website}
-                      </a>
-                    </div>
-                  </div>
-                )}
 
-                {/* 3. Phone */}
-                {user?.phone && (
-                  <div className="flex items-start gap-3">
-                    <PhoneIcon className="h-4 w-4 text-muted-foreground mt-1" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Phone</p>
-                      <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
+                {/* Bottom Section - Contact Info */}
+                <div className="pt-6 border-t space-y-4">
+                  {/* User Email and Phone */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <AtSign className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <p className="text-sm font-medium truncate">{user?.email}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
 
-                {/* 4. Company */}
-                {user?.companyId && (
-                  <div className="flex items-start gap-3">
-                    <Building2 className="h-4 w-4 text-muted-foreground mt-1" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Company</p>
-                      <p className="text-sm font-medium">{companyData?.company?.name || user.companyId}</p>
-                    </div>
+                    {user?.phone && (
+                      <div className="flex items-center gap-3">
+                        <PhoneIcon className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-muted-foreground">Phone</p>
+                          <p className="text-sm font-medium">{formatPhoneDisplay(user.phone)}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* 5. Address */}
-                {companyData?.company?.address && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Address</p>
-                      <div className="text-sm font-medium space-y-0.5">
-                        <p>{companyData.company.address}</p>
-                        {companyData.company.addressLine2 && (
-                          <p>{companyData.company.addressLine2}</p>
+                  {/* Business Profile Section */}
+                  {(user?.companyId || companyData?.company?.phone || companyData?.company?.website || companyData?.company?.address) && (
+                    <div className="pt-4 border-t">
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Business Profile</h3>
+                      <div className="space-y-3">
+                        {/* Company */}
+                        {user?.companyId && (
+                          <div className="flex items-start gap-3">
+                            <Building2 className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground">Company</p>
+                              <p className="text-sm font-medium">{companyData?.company?.name || user.companyId}</p>
+                            </div>
+                          </div>
                         )}
-                        <p>
-                          {companyData.company.city}
-                          {companyData.company.state && `, ${companyData.company.state}`}
-                          {companyData.company.postalCode && ` ${companyData.company.postalCode}`}
-                        </p>
-                        {companyData.company.country && (
-                          <p>{companyData.company.country}</p>
+
+                        {/* Company Phone */}
+                        {companyData?.company?.phone && (
+                          <div className="flex items-start gap-3">
+                            <PhoneIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground">Phone</p>
+                              <p className="text-sm font-medium">{formatPhoneDisplay(companyData.company.phone)}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Website */}
+                        {companyData?.company?.website && (
+                          <div className="flex items-start gap-3">
+                            <Globe className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground">Website</p>
+                              <a 
+                                href={companyData.company.website.startsWith('http') ? companyData.company.website : `https://${companyData.company.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-medium text-primary hover:underline truncate block"
+                                data-testid="link-company-website"
+                              >
+                                {companyData.company.website}
+                              </a>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Address */}
+                        {companyData?.company?.address && (
+                          <div className="flex items-start gap-3">
+                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground">Address</p>
+                              <div className="text-sm font-medium space-y-0.5">
+                                <p>{companyData.company.address}</p>
+                                {companyData.company.addressLine2 && (
+                                  <p>{companyData.company.addressLine2}</p>
+                                )}
+                                <p>
+                                  {companyData.company.city}
+                                  {companyData.company.state && `, ${companyData.company.state}`}
+                                  {companyData.company.postalCode && ` ${companyData.company.postalCode}`}
+                                </p>
+                                {companyData.company.country && (
+                                  <p>{companyData.company.country}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                )}
-                  </div>
+                  )}
 
                   {/* Status and Plan */}
                   <div className="pt-4 border-t">
