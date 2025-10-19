@@ -771,8 +771,6 @@ export default function Billing() {
                       <Progress value={trialProgress} className="h-2 w-32" />
                     </div>
                     <Button
-                      variant="outline"
-                      size="sm"
                       onClick={() => {
                         // Check if user has payment method
                         if (!paymentMethods || paymentMethods.length === 0) {
@@ -783,7 +781,7 @@ export default function Billing() {
                         }
                       }}
                       data-testid="button-skip-trial"
-                      className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-blue-950"
+                      className="bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-semibold shadow-sm"
                     >
                       <Zap className="h-4 w-4 mr-2" />
                       Skip Trial
