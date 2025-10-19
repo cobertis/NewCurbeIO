@@ -4900,6 +4900,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Payment is already recorded via invoice.paid event
           }
           break;
+        case 'payment_intent.payment_failed':
+          {
+            const paymentIntent = event.data.object as any;
+            console.log('[WEBHOOK] Payment intent failed:', paymentIntent.id);
+            
+            // Get the customer ID from the payment intent
+            const customerId = paymentIntent.customer;
+            if (!customerId) {
+              console.log('[WEBHOOK] No customer ID in payment intent, skipping');
+              break;
+            }
+            
+            // Find the company by Stripe customer ID
+            const subscription = await storage.getSubscriptionByStripeCustomerId(customerId);
+            if (!subscription) {
+              console.log('[WEBHOOK] No subscription found for customer:', customerId);
+              break;
+            }
+            
+            // Get amount in cents
+            const amountInCents = paymentIntent.amount || 0;
+            const amountInDollars = amountInCents / 100;
+            const currency = paymentIntent.currency || 'usd';
+            
+            // CRITICAL: Skip notifications and emails for $0.00 payments
+            if (amountInCents === 0) {
+              console.log('[WEBHOOK] Skipping notifications and emails for $0.00 payment intent:', paymentIntent.id);
+            } else {
+              // Use deduplication to prevent duplicate notifications if webhook retries
+              const notificationKey = `payment_intent_failed_${paymentIntent.id}`;
+              const now = Date.now();
+              const lastSent = (global as any)[notificationKey] || 0;
+              
+              // Only send if we haven't sent in the last 60 seconds
+              if (now - lastSent > 60000) {
+                console.log('[WEBHOOK] Sending payment failed email for payment intent to company:', subscription.companyId);
+                const emailSent = await sendPaymentFailedEmail(
+                  subscription.companyId,
+                  amountInDollars,
+                  currency,
+                  `Payment verification - ${paymentIntent.id.substring(0, 8)}`,
+                  req
+                );
+                
+                if (emailSent) {
+                  console.log('[EMAIL] Payment failed email sent successfully for payment intent');
+                } else {
+                  console.error('[EMAIL] Failed to send payment failed email for payment intent');
+                }
+                
+                // Mark as sent
+                (global as any)[notificationKey] = now;
+              } else {
+                console.log('[WEBHOOK] Skipping duplicate payment failed notification for payment intent:', paymentIntent.id);
+              }
+            }
+          }
+          break;
         default:
           console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
       }
