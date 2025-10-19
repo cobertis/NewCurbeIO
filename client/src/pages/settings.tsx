@@ -1130,6 +1130,21 @@ export default function Settings() {
                           defaultValue={(companyData?.company as any)?.businessCategory || ""}
                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           data-testid="select-business-category"
+                          onChange={(e) => {
+                            const category = e.target.value;
+                            const nicheSelect = businessNicheRef.current;
+                            if (nicheSelect) {
+                              const optgroups = nicheSelect.querySelectorAll('optgroup');
+                              optgroups.forEach((optgroup) => {
+                                if (!category || optgroup.label === category) {
+                                  optgroup.style.display = '';
+                                } else {
+                                  optgroup.style.display = 'none';
+                                }
+                              });
+                              nicheSelect.value = '';
+                            }
+                          }}
                         >
                           <option value="">Select a category</option>
                           <option value="Healthcare & Medical">Healthcare & Medical</option>
@@ -1164,17 +1179,15 @@ export default function Settings() {
                           <option value="Events & Event Planning">Events & Event Planning</option>
                         </select>
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="businessNiche">Business Niche</Label>
-                      <select
-                        id="businessNiche"
-                        ref={businessNicheRef}
-                        defaultValue={(companyData?.company as any)?.businessNiche || ""}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        data-testid="select-business-niche"
-                      >
+                      <div className="space-y-2">
+                        <Label htmlFor="businessNiche">Business Niche</Label>
+                        <select
+                          id="businessNiche"
+                          ref={businessNicheRef}
+                          defaultValue={(companyData?.company as any)?.businessNiche || ""}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          data-testid="select-business-niche"
+                        >
                         <option value="">Select a niche</option>
                         
                         <optgroup label="Healthcare & Medical">
@@ -1605,6 +1618,7 @@ export default function Settings() {
                           <option value="Audio/Visual Rental">Audio/Visual Rental</option>
                         </optgroup>
                       </select>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
