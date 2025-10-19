@@ -67,12 +67,6 @@ export default function Settings() {
   const postalCodeRef = useRef<HTMLInputElement>(null);
   const countryRef = useRef<HTMLInputElement>(null);
   
-  // Business Profile refs
-  const businessTypeRef = useRef<HTMLInputElement>(null);
-  const registrationIdTypeRef = useRef<HTMLInputElement>(null);
-  const registrationNumberRef = useRef<HTMLInputElement>(null);
-  const outboundLanguageRef = useRef<HTMLInputElement>(null);
-  
   // Authorized Representative refs
   const representativeFirstNameRef = useRef<HTMLInputElement>(null);
   const representativeLastNameRef = useRef<HTMLInputElement>(null);
@@ -404,18 +398,6 @@ export default function Settings() {
     if (stateRef.current?.value) data.state = stateRef.current.value;
     if (postalCodeRef.current?.value) data.postalCode = postalCodeRef.current.value;
     if (countryRef.current?.value) data.country = countryRef.current.value;
-    
-    updateCompanyMutation.mutate(data);
-  };
-
-  // Handler for Business Profile Save
-  const handleSaveBusinessProfile = () => {
-    const data: any = {};
-    
-    if (businessTypeRef.current?.value) data.businessType = businessTypeRef.current.value;
-    if (registrationIdTypeRef.current?.value) data.registrationIdType = registrationIdTypeRef.current.value;
-    if (registrationNumberRef.current?.value) data.registrationNumber = registrationNumberRef.current.value;
-    if (outboundLanguageRef.current?.value) data.outboundLanguage = outboundLanguageRef.current.value;
     
     updateCompanyMutation.mutate(data);
   };
@@ -1791,69 +1773,6 @@ export default function Settings() {
                           data-testid="input-country"
                         />
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Business Profile */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Business Profile</CardTitle>
-                      <CardDescription>
-                        Legal business information and registration details
-                      </CardDescription>
-                    </div>
-                    <Button 
-                      onClick={handleSaveBusinessProfile}
-                      disabled={updateCompanyMutation.isPending}
-                      data-testid="button-save-business-profile"
-                    >
-                      {updateCompanyMutation.isPending ? "Saving..." : "Save"}
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="businessType">Business Type</Label>
-                        <Input
-                          id="businessType"
-                          ref={businessTypeRef}
-                          placeholder="e.g., LLC, Corporation"
-                          defaultValue={companyData?.company?.businessType || ""}
-                          data-testid="input-business-type"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="registrationIdType">Registration ID Type</Label>
-                        <Input
-                          id="registrationIdType"
-                          ref={registrationIdTypeRef}
-                          placeholder="e.g., EIN, VAT"
-                          defaultValue={companyData?.company?.registrationIdType || ""}
-                          data-testid="input-registration-id-type"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="registrationNumber">Registration Number</Label>
-                      <Input
-                        id="registrationNumber"
-                        ref={registrationNumberRef}
-                        defaultValue={companyData?.company?.registrationNumber || ""}
-                        data-testid="input-registration-number"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="outboundLanguage">Outbound Communication Language</Label>
-                      <Input
-                        id="outboundLanguage"
-                        ref={outboundLanguageRef}
-                        defaultValue={companyData?.company?.outboundLanguage || "Spanish (United States)"}
-                        data-testid="input-outbound-language"
-                      />
                     </div>
                   </CardContent>
                 </Card>
