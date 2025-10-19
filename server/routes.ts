@@ -2449,6 +2449,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = req.user!; // User is guaranteed by middleware
 
     try {
+      console.log("[ROUTE DEBUG] req.body:", req.body);
+      
       // Only allow updating own profile fields (not role, companyId, password, etc.)
       const allowedFields = {
         firstName: req.body.firstName,
@@ -2465,8 +2467,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referredBy: req.body.referredBy,
       };
 
+      console.log("[ROUTE DEBUG] allowedFields:", allowedFields);
+      
       // Validate using updateUserSchema (validates phone E.164 format, email, etc.)
       const validatedData = updateUserSchema.parse(allowedFields);
+      
+      console.log("[ROUTE DEBUG] validatedData:", validatedData);
 
       // Validate email is not already taken by another user
       if (validatedData.email && validatedData.email !== user.email) {
