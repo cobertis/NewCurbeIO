@@ -1873,7 +1873,7 @@ export default function Settings() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="city">City</Label>
                         <Input
@@ -1892,9 +1892,6 @@ export default function Settings() {
                           data-testid="input-state"
                         />
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="postalCode">Postal Code</Label>
                         <Input
@@ -1904,16 +1901,14 @@ export default function Settings() {
                           data-testid="input-postal-code"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="country">Country</Label>
-                        <Input
-                          id="country"
-                          ref={countryRef}
-                          defaultValue={companyData?.company?.country || "United States"}
-                          data-testid="input-country"
-                        />
-                      </div>
                     </div>
+
+                    {/* Hidden country field - keeps the ref but field is not visible */}
+                    <input
+                      ref={countryRef}
+                      type="hidden"
+                      defaultValue={companyData?.company?.country || "United States"}
+                    />
                   </CardContent>
                 </Card>
 
