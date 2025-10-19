@@ -140,14 +140,15 @@ export default function Settings() {
       dateOfBirth?: string; 
       preferredLanguage?: string;
     }) => {
-      // Filter out empty values and convert phone to E.164 format
-      const dataToSend: any = {};
-      if (data.firstName) dataToSend.firstName = data.firstName;
-      if (data.lastName) dataToSend.lastName = data.lastName;
-      if (data.email) dataToSend.email = data.email;
-      if (data.phone) dataToSend.phone = formatPhoneE164(data.phone);
-      if (data.dateOfBirth) dataToSend.dateOfBirth = new Date(data.dateOfBirth).toISOString();
-      if (data.preferredLanguage) dataToSend.preferredLanguage = data.preferredLanguage;
+      // Convert phone to E.164 format and dateOfBirth to ISO string
+      const dataToSend: any = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone ? formatPhoneE164(data.phone) : data.phone,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : data.dateOfBirth,
+        preferredLanguage: data.preferredLanguage,
+      };
       
       return apiRequest("PATCH", "/api/settings/profile", dataToSend);
     },
@@ -178,15 +179,8 @@ export default function Settings() {
       federallyFacilitatedMarketplace?: string;
       referredBy?: string;
     }) => {
-      // Filter out empty values
-      const dataToSend: any = {};
-      if (data.agentInternalCode) dataToSend.agentInternalCode = data.agentInternalCode;
-      if (data.instructionLevel) dataToSend.instructionLevel = data.instructionLevel;
-      if (data.nationalProducerNumber) dataToSend.nationalProducerNumber = data.nationalProducerNumber;
-      if (data.federallyFacilitatedMarketplace) dataToSend.federallyFacilitatedMarketplace = data.federallyFacilitatedMarketplace;
-      if (data.referredBy) dataToSend.referredBy = data.referredBy;
-      
-      return apiRequest("PATCH", "/api/settings/profile", dataToSend);
+      // Send all insurance profile fields (including empty strings)
+      return apiRequest("PATCH", "/api/settings/profile", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
