@@ -1165,21 +1165,35 @@ export async function changePlan(
       await stripe.subscriptionSchedules.release(scheduleId);
     }
     
-    // Prepare phases for the subscription schedule
+    // Step 1: Create subscription schedule FROM the existing subscription
+    // Note: When using from_subscription, Stripe creates the first phase automatically
+    console.log('[STRIPE] Step 1: Creating subscription schedule from existing subscription...');
+    const schedule = await stripe.subscriptionSchedules.create({
+      from_subscription: stripeSubscriptionId,
+      end_behavior: 'release',
+    });
+    
+    console.log('[STRIPE] Schedule created:', schedule.id);
+    console.log('[STRIPE] Initial phases:', schedule.phases.length);
+    
+    // Step 2: Update the schedule to add the new phase
+    // We must include the current phase + the new phase
+    console.log('[STRIPE] Step 2: Updating schedule to add new plan phase...');
+    
+    // Prepare phases for update
     const phases: any[] = [
-      // Phase 1: Current plan until period end
+      // Phase 1: Current plan until period end (from existing schedule)
       {
-        items: [{
-          price: currentItem.price.id,
-          quantity: 1,
-        }],
+        items: schedule.phases[0].items.map((item: any) => ({
+          price: item.price,
+          quantity: item.quantity || 1,
+        })),
         end_date: periodEndTimestamp,
-        // Preserve discount in current phase if exists
-        ...(currentSubscription.discounts && currentSubscription.discounts.length > 0 && {
-          discounts: currentSubscription.discounts.map((d: any) => {
-            const coupon = d.coupon;
-            return { coupon: typeof coupon === 'string' ? coupon : coupon.id };
-          })
+        // Preserve discount from current phase if exists
+        ...(schedule.phases[0].discounts && schedule.phases[0].discounts.length > 0 && {
+          discounts: schedule.phases[0].discounts.map((d: any) => ({
+            coupon: typeof d.coupon === 'string' ? d.coupon : d.coupon.id
+          }))
         }),
       },
       // Phase 2: New plan starting at period end
@@ -1200,15 +1214,13 @@ export async function changePlan(
       },
     ];
     
-    // Create a subscription schedule that will change the plan at period end
-    console.log('[STRIPE] Creating subscription schedule for plan change...');
-    const schedule = await stripe.subscriptionSchedules.create({
-      from_subscription: stripeSubscriptionId,
-      end_behavior: 'release',
-      phases: phases,
-    });
+    // Update the schedule with both phases
+    const updatedSchedule = await stripe.subscriptionSchedules.update(
+      schedule.id,
+      { phases: phases }
+    );
     
-    console.log('[STRIPE] Subscription schedule created:', schedule.id);
+    console.log('[STRIPE] Subscription schedule updated successfully');
     console.log('[STRIPE] Plan will change on:', new Date(periodEndTimestamp * 1000).toISOString());
     
     // Retrieve the updated subscription
