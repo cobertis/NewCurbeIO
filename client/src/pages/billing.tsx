@@ -441,10 +441,11 @@ export default function Billing() {
 
   // Change plan mutation
   const changePlanMutation = useMutation({
-    mutationFn: async ({ planId, billingPeriod }: { planId: string; billingPeriod: string }) => {
+    mutationFn: async ({ planId, billingPeriod, immediate }: { planId: string; billingPeriod: string; immediate?: boolean }) => {
       const result = await apiRequest("POST", "/api/billing/change-plan", {
         planId,
-        billingPeriod
+        billingPeriod,
+        immediate: immediate ?? false // Default to false if not provided
       });
       return result.json();
     },
