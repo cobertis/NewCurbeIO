@@ -1540,9 +1540,9 @@ export default function Billing() {
                 <Button 
                   variant="outline" 
                   onClick={() => setModifyDialogView('main')}
-                  data-testid="button-support-cancel"
+                  data-testid="button-support-back"
                 >
-                  Cancel
+                  Back
                 </Button>
                 <Button
                   onClick={() => {
@@ -2575,9 +2575,9 @@ export default function Billing() {
                 <Button 
                   variant="outline" 
                   onClick={() => setModifyDialogView('main')}
-                  data-testid="button-support-cancel"
+                  data-testid="button-support-back"
                 >
-                  Cancel
+                  Back
                 </Button>
                 <Button
                   onClick={() => {
