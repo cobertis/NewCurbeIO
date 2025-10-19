@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
@@ -720,7 +721,14 @@ export default function Settings() {
                     <div className="space-y-2">
                       <Label htmlFor="agentInternalCode">
                         Agent internal code
-                        <span className="ml-2 text-muted-foreground">ⓘ</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="ml-2 text-muted-foreground cursor-help">ⓘ</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>This is a code assigned by your agency</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </Label>
                       <Input
                         id="agentInternalCode"
