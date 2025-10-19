@@ -31,6 +31,7 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
     -   **Webhook Processing:** Handles Stripe events (subscriptions, invoices, payments) for synchronization.
     -   **Professional Billing Dashboard:** Comprehensive `/billing` page with tabbed interface separating subscription management from payment/billing information:
         -   **Subscriptions Tab:** Subscription details (plan name, price, status, trial info), quick actions (Change Plan, Skip Trial, Cancel), and billing history with nested tabs for Invoices and Payments tables.
+        -   **Transactions Tab:** Complete transaction history displaying all invoices and payments in a clean, organized format with nested tabs for easy navigation between invoice and payment data.
         -   **Payments Tab:** Payment methods management (add, view, remove cards with CardBrandLogo component) and billing address form with Google Places autocomplete.
     -   **Trial Expiration Management:** Automatic account deactivation and redirection to `/select-plan` upon trial expiration.
     -   **Payment Method Management:** Add, view, set default, and delete multiple payment methods via Stripe Elements.
