@@ -776,7 +776,7 @@ export default function Settings() {
   });
 
   // Handler for Company Information Save
-  const handleSaveCompanyInformation = () => {
+  const handleSaveCompanyInformation = async () => {
     setSavingSection("companyInfo");
     const data: any = {};
     
@@ -789,6 +789,21 @@ export default function Settings() {
     if (websiteRef.current?.value) data.website = websiteRef.current.value;
     if (selectedTimezone) data.timezone = selectedTimezone;
     if (platformLanguageRef.current?.value) data.platformLanguage = platformLanguageRef.current.value;
+    
+    // If timezone is being updated, also update the current user's timezone
+    if (selectedTimezone) {
+      try {
+        await fetch("/api/users/timezone", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ timezone: selectedTimezone }),
+        });
+        // Invalidate session to refresh user data with new timezone
+        await queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      } catch (error) {
+        console.error("Failed to update user timezone:", error);
+      }
+    }
     
     updateCompanyMutation.mutate(data);
   };
