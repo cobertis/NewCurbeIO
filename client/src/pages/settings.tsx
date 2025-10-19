@@ -46,6 +46,12 @@ export default function Settings() {
   const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
   
   const user = userData?.user;
+
+  // Fetch company data if user has a companyId
+  const { data: companyData } = useQuery<{ company: any }>({
+    queryKey: ["/api/companies", user?.companyId],
+    enabled: !!user?.companyId,
+  });
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
@@ -262,7 +268,7 @@ export default function Settings() {
                     <Building2 className="h-4 w-4 text-muted-foreground mt-1" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Empresa</p>
-                      <p className="text-sm font-medium">{user.companyId}</p>
+                      <p className="text-sm font-medium">{companyData?.company?.name || user.companyId}</p>
                     </div>
                   </div>
                 )}
