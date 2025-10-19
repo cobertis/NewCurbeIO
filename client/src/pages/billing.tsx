@@ -427,10 +427,15 @@ export default function Billing() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: "Payment Failed",
         description: error.message || "Failed to skip trial",
         variant: "destructive",
       });
+      
+      // Close skip trial dialog and open add card dialog
+      setShowSkipTrialDialog(false);
+      setShowAddCard(true);
+      setPendingSkipTrial(true);
     },
   });
 
