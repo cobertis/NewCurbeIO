@@ -3774,7 +3774,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingPeriod as 'monthly' | 'yearly',
         subscription.trialStart,
         subscription.trialEnd,
-        immediate
+        immediate,
+        subscription.currentPeriodEnd // Pass database value as fallback
       );
 
       // Update local subscription with new plan and dates

@@ -1057,7 +1057,8 @@ export async function changePlan(
   billingPeriod: 'monthly' | 'yearly',
   currentTrialStart: Date | null,
   currentTrialEnd: Date | null,
-  immediate: boolean = false
+  immediate: boolean = false,
+  fallbackCurrentPeriodEnd?: Date | null
 ) {
   try {
     console.log('[STRIPE] Changing plan for subscription:', stripeSubscriptionId);
@@ -1137,11 +1138,22 @@ export async function changePlan(
     // Otherwise, schedule the change for end of period
     console.log('[STRIPE] Scheduling plan change for end of billing period...');
     
-    // Get current period end timestamp
-    const periodEndTimestamp = (currentSubscription as any).current_period_end;
+    // Get current period end timestamp - try from Stripe first, then use fallback from database
+    let periodEndTimestamp = (currentSubscription as any).current_period_end;
+    
     if (!periodEndTimestamp || typeof periodEndTimestamp !== 'number') {
-      throw new Error('Unable to get current period end from subscription');
+      // Stripe doesn't have current_period_end (can happen with cancelled subscriptions)
+      // Use fallback from database
+      if (fallbackCurrentPeriodEnd) {
+        periodEndTimestamp = Math.floor(fallbackCurrentPeriodEnd.getTime() / 1000);
+        console.log('[STRIPE] Using fallback current_period_end from database:', fallbackCurrentPeriodEnd.toISOString());
+      } else {
+        throw new Error('Unable to get current period end from subscription or database');
+      }
+    } else {
+      console.log('[STRIPE] Using current_period_end from Stripe');
     }
+    
     console.log('[STRIPE] Current period ends at:', new Date(periodEndTimestamp * 1000).toISOString());
     
     // Prepare the new phase with discount if exists
