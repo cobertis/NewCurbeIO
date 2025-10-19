@@ -5168,6 +5168,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete notification (with ownership verification)
+  app.delete("/api/notifications/:id", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user!;
+
+    try {
+      // First verify that the notification belongs to the current user
+      const notifications = await storage.getNotificationsByUser(user.id, 100);
+      const notification = notifications.find(n => n.id === req.params.id);
+      
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      const success = await storage.deleteNotification(req.params.id);
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(500).json({ message: "Failed to delete notification" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
   // Create notification (with optional email)
   app.post("/api/notifications", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware

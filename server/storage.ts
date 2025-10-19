@@ -197,6 +197,7 @@ export interface IStorage {
   markNotificationAsRead(id: string): Promise<boolean>;
   markAllNotificationsAsRead(userId: string): Promise<boolean>;
   markNotificationEmailSent(id: string): Promise<boolean>;
+  deleteNotification(id: string): Promise<boolean>;
   
   // Broadcast Notifications History
   getBroadcastHistory(limit?: number): Promise<BroadcastNotification[]>;
@@ -838,6 +839,13 @@ export class DbStorage implements IStorage {
   async markNotificationEmailSent(id: string): Promise<boolean> {
     const result = await db.update(notifications)
       .set({ emailSent: true, emailSentAt: new Date() })
+      .where(eq(notifications.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    const result = await db.delete(notifications)
       .where(eq(notifications.id, id))
       .returning();
     return result.length > 0;

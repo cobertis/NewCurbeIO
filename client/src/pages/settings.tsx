@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, CreditCard } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, CreditCard, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -347,6 +347,11 @@ export default function Settings() {
     queryKey: ["/api/plans"],
   });
 
+  // Fetch notifications for the current user
+  const { data: notificationsData, isLoading: isLoadingNotifications } = useQuery<{ notifications: any[] }>({
+    queryKey: ["/api/notifications"],
+  });
+
   const [emailTestAddress, setEmailTestAddress] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -378,6 +383,11 @@ export default function Settings() {
   const [openNiche, setOpenNiche] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedNiche, setSelectedNiche] = useState("");
+  
+  // Notifications state
+  const [notificationSearch, setNotificationSearch] = useState("");
+  const [notificationTypeFilter, setNotificationTypeFilter] = useState<string>("all");
+  const [notificationStatusFilter, setNotificationStatusFilter] = useState<string>("all");
   
   const user = userData?.user;
 
@@ -419,6 +429,7 @@ export default function Settings() {
     if (location === "/settings/system") return "system";
     if (location === "/settings/security") return "security";
     if (location === "/settings/billing") return "billing";
+    if (location === "/settings/notifications") return "notifications";
     return "profile"; // default
   };
 
@@ -686,6 +697,69 @@ export default function Settings() {
         title: "Error",
         description: "Failed to update company information.",
         variant: "destructive",
+      });
+    },
+  });
+
+  // Mark notification as read mutation
+  const markNotificationAsReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      return apiRequest("PATCH", `/api/notifications/${notificationId}/read`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      toast({
+        title: "Success",
+        description: "Notification marked as read",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to mark notification as read",
+      });
+    },
+  });
+
+  // Delete notification mutation
+  const deleteNotificationMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      return apiRequest("DELETE", `/api/notifications/${notificationId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      toast({
+        title: "Success",
+        description: "Notification deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete notification",
+      });
+    },
+  });
+
+  // Mark all notifications as read mutation
+  const markAllNotificationsAsReadMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", "/api/notifications/read-all", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      toast({
+        title: "Success",
+        description: "All notifications marked as read",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to mark all notifications as read",
       });
     },
   });
@@ -1041,7 +1115,7 @@ export default function Settings() {
         {/* Right Column - Settings Tabs */}
         <div className="lg:col-span-8 xl:col-span-9">
           <Tabs value={activeTab} onValueChange={(value) => setLocation(`/settings/${value}`)} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 lg:w-auto">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 lg:w-auto">
               <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
                 <UserIcon className="h-4 w-4" />
                 Profile
@@ -1059,6 +1133,10 @@ export default function Settings() {
               <TabsTrigger value="preferences" className="gap-2" data-testid="tab-preferences">
                 <Bell className="h-4 w-4" />
                 Preferences
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="gap-2" data-testid="tab-notifications">
+                <Bell className="h-4 w-4" />
+                Notifications
               </TabsTrigger>
               {isAdmin && (
                 <TabsTrigger value="billing" className="gap-2" data-testid="tab-billing">
@@ -1874,6 +1952,302 @@ export default function Settings() {
                 </Card>
               </TabsContent>
             )}
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Notification Center</CardTitle>
+                        <CardDescription>
+                          View and manage all your notifications
+                        </CardDescription>
+                      </div>
+                      {notificationsData && notificationsData.notifications.filter((n: any) => !n.isRead).length > 0 && (
+                        <Button
+                          onClick={() => markAllNotificationsAsReadMutation.mutate()}
+                          disabled={markAllNotificationsAsReadMutation.isPending}
+                          data-testid="button-mark-all-read"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Mark All as Read
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Stats */}
+                    {notificationsData && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="p-3 rounded-md bg-muted/50">
+                          <p className="text-xs text-muted-foreground">Total</p>
+                          <p className="text-2xl font-semibold">{notificationsData.notifications.length}</p>
+                        </div>
+                        <div className="p-3 rounded-md bg-muted/50">
+                          <p className="text-xs text-muted-foreground">Unread</p>
+                          <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
+                            {notificationsData.notifications.filter((n: any) => !n.isRead).length}
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-md bg-muted/50">
+                          <p className="text-xs text-muted-foreground">Read</p>
+                          <p className="text-2xl font-semibold text-green-600 dark:text-green-400">
+                            {notificationsData.notifications.filter((n: any) => n.isRead).length}
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-md bg-muted/50">
+                          <p className="text-xs text-muted-foreground">This Week</p>
+                          <p className="text-2xl font-semibold">
+                            {notificationsData.notifications.filter((n: any) => {
+                              const date = new Date(n.createdAt);
+                              const weekAgo = new Date();
+                              weekAgo.setDate(weekAgo.getDate() - 7);
+                              return date >= weekAgo;
+                            }).length}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Filters and Search */}
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search notifications..."
+                          value={notificationSearch}
+                          onChange={(e) => setNotificationSearch(e.target.value)}
+                          className="pl-10"
+                          data-testid="input-search-notifications"
+                        />
+                      </div>
+                      <select
+                        value={notificationTypeFilter}
+                        onChange={(e) => setNotificationTypeFilter(e.target.value)}
+                        className="flex h-10 w-full md:w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        data-testid="select-notification-type"
+                      >
+                        <option value="all">All Types</option>
+                        <option value="sms_received">SMS</option>
+                        <option value="user_login">Login</option>
+                        <option value="success">Success</option>
+                        <option value="warning">Warning</option>
+                        <option value="error">Error</option>
+                        <option value="info">Info</option>
+                      </select>
+                      <select
+                        value={notificationStatusFilter}
+                        onChange={(e) => setNotificationStatusFilter(e.target.value)}
+                        className="flex h-10 w-full md:w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        data-testid="select-notification-status"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="unread">Unread</option>
+                        <option value="read">Read</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingNotifications ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent mb-3"></div>
+                        <p className="text-sm text-muted-foreground">Loading notifications...</p>
+                      </div>
+                    </div>
+                  ) : !notificationsData || notificationsData.notifications.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <Bell className="h-12 w-12 text-muted-foreground/50 mb-3 mx-auto" />
+                        <p className="text-sm font-medium">No notifications yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">You'll see notifications here when they arrive</p>
+                      </div>
+                    </div>
+                  ) : (() => {
+                    // Filter notifications
+                    const filtered = notificationsData.notifications.filter((notification: any) => {
+                      // Search filter
+                      const searchLower = notificationSearch.toLowerCase();
+                      const matchesSearch = !notificationSearch || 
+                        notification.title.toLowerCase().includes(searchLower) ||
+                        notification.message.toLowerCase().includes(searchLower);
+                      
+                      // Type filter
+                      const matchesType = notificationTypeFilter === "all" || 
+                        notification.type === notificationTypeFilter ||
+                        (notificationTypeFilter === "sms_received" && notification.title.toLowerCase().includes('sms'));
+                      
+                      // Status filter
+                      const matchesStatus = notificationStatusFilter === "all" ||
+                        (notificationStatusFilter === "read" && notification.isRead) ||
+                        (notificationStatusFilter === "unread" && !notification.isRead);
+                      
+                      return matchesSearch && matchesType && matchesStatus;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="flex items-center justify-center py-12">
+                          <div className="text-center">
+                            <Filter className="h-12 w-12 text-muted-foreground/50 mb-3 mx-auto" />
+                            <p className="text-sm font-medium">No notifications match your filters</p>
+                            <p className="text-xs text-muted-foreground mt-1">Try adjusting your search or filters</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Helper function to get notification icon
+                    const getNotificationIcon = (notification: any) => {
+                      if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
+                      if (notification.title.toLowerCase().includes('login')) return LogIn;
+                      if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return Mail;
+                      
+                      if (notification.type) {
+                        switch (notification.type) {
+                          case 'sms_received': return MessageSquare;
+                          case 'user_login': return LogIn;
+                          case 'success': return CheckCircle;
+                          case 'warning': return AlertTriangle;
+                          case 'error': return AlertCircle;
+                          case 'info': return Info;
+                        }
+                      }
+                      return Bell;
+                    };
+
+                    // Helper function to get icon color
+                    const getIconColor = (notification: any) => {
+                      if (notification.title.toLowerCase().includes('sms')) return 'text-blue-600 dark:text-blue-400';
+                      if (notification.title.toLowerCase().includes('login')) return 'text-purple-600 dark:text-purple-400';
+                      if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return 'text-green-600 dark:text-green-400';
+                      
+                      if (notification.type) {
+                        switch (notification.type) {
+                          case 'sms_received': return 'text-blue-600 dark:text-blue-400';
+                          case 'user_login': return 'text-purple-600 dark:text-purple-400';
+                          case 'success': return 'text-green-600 dark:text-green-400';
+                          case 'warning': return 'text-orange-600 dark:text-orange-400';
+                          case 'error': return 'text-red-600 dark:text-red-400';
+                          case 'info': return 'text-blue-600 dark:text-blue-400';
+                        }
+                      }
+                      return 'text-muted-foreground';
+                    };
+
+                    // Helper function to format time ago
+                    const getTimeAgo = (date: Date) => {
+                      const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+                      const minutes = Math.floor(seconds / 60);
+                      const hours = Math.floor(minutes / 60);
+                      const days = Math.floor(hours / 24);
+                      
+                      if (days > 0) return `${days}d ago`;
+                      if (hours > 0) return `${hours}h ago`;
+                      if (minutes > 0) return `${minutes}min ago`;
+                      return 'just now';
+                    };
+
+                    return (
+                      <div className="space-y-2">
+                        {filtered.map((notification: any) => {
+                          const Icon = getNotificationIcon(notification);
+                          const iconColor = getIconColor(notification);
+                          const timeAgo = getTimeAgo(new Date(notification.createdAt));
+
+                          return (
+                            <div
+                              key={notification.id}
+                              className={cn(
+                                "p-4 rounded-md border transition-colors",
+                                !notification.isRead && "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+                              )}
+                              data-testid={`notification-${notification.id}`}
+                            >
+                              <div className="flex gap-3">
+                                <div className="shrink-0 h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                                  <Icon className={`h-5 w-5 ${iconColor}`} />
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-semibold">{notification.title}</p>
+                                      {!notification.isRead && (
+                                        <div className="h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400" />
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-muted-foreground shrink-0">{timeAgo}</span>
+                                  </div>
+                                  
+                                  <p className="text-sm text-muted-foreground mb-2 whitespace-pre-wrap">
+                                    {notification.message}
+                                  </p>
+
+                                  {/* Additional details if data exists */}
+                                  {notification.data && Object.keys(notification.data).length > 0 && (
+                                    <div className="mt-2 p-2 rounded bg-muted/50 text-xs space-y-1">
+                                      {Object.entries(notification.data).map(([key, value]) => (
+                                        <div key={key} className="flex gap-2">
+                                          <span className="font-medium">{key}:</span>
+                                          <span className="text-muted-foreground">{String(value)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Actions */}
+                                  <div className="flex items-center gap-2 mt-3">
+                                    {!notification.isRead ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => markNotificationAsReadMutation.mutate(notification.id)}
+                                        disabled={markNotificationAsReadMutation.isPending}
+                                        data-testid={`button-mark-read-${notification.id}`}
+                                      >
+                                        <Eye className="h-3 w-3 mr-1" />
+                                        Mark as Read
+                                      </Button>
+                                    ) : (
+                                      <Badge variant="secondary" className="text-xs">
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Read
+                                      </Badge>
+                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        if (confirm('Are you sure you want to delete this notification?')) {
+                                          deleteNotificationMutation.mutate(notification.id);
+                                        }
+                                      }}
+                                      disabled={deleteNotificationMutation.isPending}
+                                      data-testid={`button-delete-${notification.id}`}
+                                    >
+                                      <Trash2 className="h-3 w-3 mr-1" />
+                                      Delete
+                                    </Button>
+                                    {notification.readAt && (
+                                      <span className="text-xs text-muted-foreground ml-auto">
+                                        Read on {new Date(notification.readAt).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             {/* System Settings Tab (Superadmin only) */}
             {isSuperAdmin && (
