@@ -1174,6 +1174,8 @@ export async function changePlan(
       throw new Error('No subscription items found');
     }
     
+    console.log('[STRIPE] Current item object:', JSON.stringify(currentItem, null, 2));
+    console.log('[STRIPE] Current item ID:', currentItem.id);
     console.log('[STRIPE] Current price ID:', currentItem.price.id);
     console.log('[STRIPE] New price ID:', newStripePriceId);
     
@@ -1202,7 +1204,7 @@ export async function changePlan(
       // Preserve active discount if it exists
       if (currentSubscription.discounts && currentSubscription.discounts.length > 0) {
         const discount = currentSubscription.discounts[0];
-        if (typeof discount !== 'string') {
+        if (typeof discount !== 'string' && discount) {
           const activeDiscount = discount as any;
           
           // Get coupon ID - Stripe structure can vary:
@@ -1210,23 +1212,32 @@ export async function changePlan(
           // Old: discount.coupon (string or object)
           let couponId: string | undefined;
           
-          if (activeDiscount.source?.coupon) {
-            // New structure: discount.source.coupon
-            couponId = typeof activeDiscount.source.coupon === 'string'
-              ? activeDiscount.source.coupon
-              : activeDiscount.source.coupon?.id;
-          } else if (activeDiscount.coupon) {
-            // Old structure: discount.coupon
-            couponId = typeof activeDiscount.coupon === 'string'
-              ? activeDiscount.coupon
-              : activeDiscount.coupon?.id;
-          }
-          
-          if (couponId) {
-            updateData.discounts = [{
-              coupon: couponId
-            }];
-            console.log('[STRIPE] Preserving discount with coupon:', couponId);
+          try {
+            if (activeDiscount.source?.coupon) {
+              // New structure: discount.source.coupon
+              if (typeof activeDiscount.source.coupon === 'string') {
+                couponId = activeDiscount.source.coupon;
+              } else if (activeDiscount.source.coupon && typeof activeDiscount.source.coupon === 'object') {
+                couponId = activeDiscount.source.coupon.id;
+              }
+            } else if (activeDiscount.coupon) {
+              // Old structure: discount.coupon
+              if (typeof activeDiscount.coupon === 'string') {
+                couponId = activeDiscount.coupon;
+              } else if (activeDiscount.coupon && typeof activeDiscount.coupon === 'object') {
+                couponId = activeDiscount.coupon.id;
+              }
+            }
+            
+            if (couponId) {
+              updateData.discounts = [{
+                coupon: couponId
+              }];
+              console.log('[STRIPE] Preserving discount with coupon:', couponId);
+            }
+          } catch (discountError) {
+            console.warn('[STRIPE] Error preserving discount, continuing without it:', discountError);
+            // Continue without discount if there's an error
           }
         }
       }
