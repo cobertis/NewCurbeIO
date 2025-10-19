@@ -1250,7 +1250,31 @@ export async function changePlan(
         updateData
       );
       
-      console.log('[STRIPE] Immediate upgrade completed with proration');
+      console.log('[STRIPE] Subscription updated with proration');
+      
+      // CRITICAL: Create and pay invoice immediately for immediate upgrades
+      // Without this, prorated items are added to the next regular invoice
+      console.log('[STRIPE] Creating immediate invoice for upgrade...');
+      const invoice = await stripe.invoices.create({
+        customer: stripeCustomerId,
+        subscription: stripeSubscriptionId,
+        auto_advance: true, // Automatically finalize and attempt payment
+      });
+      
+      console.log('[STRIPE] Invoice created:', invoice.id);
+      
+      // Finalize and pay the invoice immediately
+      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+      console.log('[STRIPE] Invoice finalized:', finalizedInvoice.id);
+      
+      // Pay the invoice if it's not already paid
+      if (finalizedInvoice.status === 'open') {
+        console.log('[STRIPE] Paying invoice immediately...');
+        const paidInvoice = await stripe.invoices.pay(invoice.id);
+        console.log('[STRIPE] Invoice paid successfully:', paidInvoice.id);
+      }
+      
+      console.log('[STRIPE] Immediate upgrade completed with immediate payment');
       return updatedSubscription;
     }
     
