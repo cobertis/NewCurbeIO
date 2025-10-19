@@ -1293,6 +1293,129 @@ export default function Settings() {
             </div>
           </TabsContent>
 
+            {/* Security Tab */}
+            <TabsContent value="security" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Change Password</CardTitle>
+                  <CardDescription>
+                    Update your password to keep your account secure.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input
+                      id="currentPassword"
+                      name="currentPassword"
+                      type="password"
+                      placeholder="Enter your current password"
+                      data-testid="input-current-password"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input
+                      id="newPassword"
+                      name="newPassword"
+                      type="password"
+                      placeholder="Enter your new password"
+                      data-testid="input-new-password"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Password must be at least 8 characters long
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="Confirm your new password"
+                      data-testid="input-confirm-password"
+                    />
+                  </div>
+                  <Button data-testid="button-change-password">
+                    Update Password
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Two-Factor Authentication (2FA)</CardTitle>
+                  <CardDescription>
+                    Add an extra layer of security to your account with SMS verification.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="twoFactorEnabled" className="text-base">
+                        Enable 2FA
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {user?.twoFactorEnabled 
+                          ? "Two-factor authentication is currently enabled on your account"
+                          : "Secure your account with SMS-based two-factor authentication"}
+                      </p>
+                    </div>
+                    <Switch
+                      id="twoFactorEnabled"
+                      checked={user?.twoFactorEnabled || false}
+                      disabled={!user?.phone}
+                      data-testid="switch-two-factor"
+                    />
+                  </div>
+                  {!user?.phone && (
+                    <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-4 border border-yellow-200 dark:border-yellow-800">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <Shield className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                            Phone number required
+                          </h3>
+                          <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                            <p>
+                              Add a phone number to your profile to enable two-factor authentication via SMS.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Active Sessions</CardTitle>
+                  <CardDescription>
+                    Manage your active sessions and devices.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4 p-4 rounded-lg border">
+                      <div className="flex-1">
+                        <p className="font-medium">Current Session</p>
+                        <p className="text-sm text-muted-foreground">
+                          This device • Active now
+                        </p>
+                      </div>
+                      <Badge variant="secondary">Active</Badge>
+                    </div>
+                    <Button variant="outline" className="w-full" data-testid="button-sign-out-all">
+                      Sign Out of All Other Sessions
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             {/* Preferences Tab */}
             <TabsContent value="preferences" className="space-y-4">
               <Card>
