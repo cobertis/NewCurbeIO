@@ -547,6 +547,49 @@ export default function Billing() {
     return yearlyPrice - discountedYearlyPrice;
   };
 
+  // Get next higher plan for upgrade (step-by-step upgrade)
+  const getNextHigherPlan = () => {
+    if (!subscription || !plans.length) return null;
+    
+    // Sort plans by monthly price (ascending)
+    const sortedPlans = [...plans]
+      .filter(p => p.isActive)
+      .sort((a, b) => a.price - b.price);
+    
+    // Find current plan index
+    const currentIndex = sortedPlans.findIndex(p => p.id === subscription.planId);
+    if (currentIndex === -1) return null;
+    
+    // Return next higher plan (if it exists)
+    return currentIndex < sortedPlans.length - 1 ? sortedPlans[currentIndex + 1] : null;
+  };
+
+  // Get next lower plan for downgrade (step-by-step downgrade, but not the lowest)
+  const getNextLowerPlan = () => {
+    if (!subscription || !plans.length) return null;
+    
+    // Sort plans by monthly price (ascending)
+    const sortedPlans = [...plans]
+      .filter(p => p.isActive)
+      .sort((a, b) => a.price - b.price);
+    
+    // Find current plan index
+    const currentIndex = sortedPlans.findIndex(p => p.id === subscription.planId);
+    if (currentIndex === -1) return null;
+    
+    // Return next lower plan if:
+    // 1. Current plan is not already the lowest (index > 0)
+    // 2. Next lower plan is not the absolute lowest (index - 1 > 0)
+    if (currentIndex > 1) {
+      return sortedPlans[currentIndex - 1];
+    }
+    
+    return null; // Cannot downgrade if at lowest or second-lowest plan
+  };
+
+  const nextHigherPlan = getNextHigherPlan();
+  const nextLowerPlan = getNextLowerPlan();
+
   // Calculate total spending
   const totalSpending = payments
     .filter(p => p.status === 'succeeded')
@@ -1193,34 +1236,36 @@ export default function Billing() {
               </DialogHeader>
               
               <div className="space-y-3 py-4">
-                {/* Upgrade Plan Option */}
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                      <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                {/* Upgrade Plan Option - Only show if there's a higher plan available */}
+                {nextHigherPlan && (
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                        <Rocket className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">Upgrade to {nextHigherPlan.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(
+                            subscription?.billingCycle === 'yearly' 
+                              ? nextHigherPlan.annualPrice || nextHigherPlan.price 
+                              : nextHigherPlan.price,
+                            nextHigherPlan.currency
+                          )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold">Upgrade your current plan</p>
-                      <p className="text-sm text-muted-foreground">
-                        {subscription && formatCurrency(
-                          subscription.billingCycle === 'yearly' 
-                            ? subscription.plan.annualPrice || subscription.plan.price 
-                            : subscription.plan.price,
-                          subscription.plan.currency
-                        )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
-                      </p>
-                    </div>
+                    <Button 
+                      onClick={() => {
+                        setShowModifyDialog(false);
+                        setLocation('/select-plan');
+                      }}
+                      data-testid="button-upgrade-plan"
+                    >
+                      Upgrade
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={() => {
-                      setShowModifyDialog(false);
-                      setLocation('/select-plan');
-                    }}
-                    data-testid="button-upgrade-plan"
-                  >
-                    Upgrade
-                  </Button>
-                </div>
+                )}
 
                 {/* Financial Support Option */}
                 <button
@@ -1252,25 +1297,32 @@ export default function Billing() {
                 {/* Additional Options (shown when expanded) */}
                 {showMoreOptions && (
                   <>
-                    {/* Downgrade Plan Option */}
-                    <button
-                      onClick={() => setModifyDialogView('downgrade')}
-                      className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
-                      data-testid="button-downgrade-plan"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                          <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
+                    {/* Downgrade Plan Option - Only show if there's a lower plan available (not the lowest) */}
+                    {nextLowerPlan && (
+                      <button
+                        onClick={() => setModifyDialogView('downgrade')}
+                        className="flex items-center justify-between p-4 rounded-lg border hover-elevate active-elevate-2 w-full text-left"
+                        data-testid="button-downgrade-plan"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                            <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 rotate-180" />
+                          </div>
+                          <div>
+                            <p className="font-semibold">Downgrade to {nextLowerPlan.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatCurrency(
+                                subscription?.billingCycle === 'yearly' 
+                                  ? nextLowerPlan.annualPrice || nextLowerPlan.price 
+                                  : nextLowerPlan.price,
+                                nextLowerPlan.currency
+                              )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold">Downgrade Plan</p>
-                          <p className="text-sm text-muted-foreground">
-                            I wish to downgrade my subscription to a lower plan
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </button>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </button>
+                    )}
 
                     {/* Cancel Plan Option */}
                     <button
@@ -1456,12 +1508,14 @@ export default function Billing() {
                 </DialogTitle>
                 <DialogDescription>
                   If you wish to move to a lower plan, you can downgrade your subscription to{' '}
-                  {subscription && plans.length > 0 && (
+                  {nextLowerPlan && (
                     <>
-                      {formatCurrency(
-                        plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
-                        subscription.plan.currency
-                      )} / month
+                      {nextLowerPlan.name} - {formatCurrency(
+                        subscription?.billingCycle === 'yearly' 
+                          ? nextLowerPlan.annualPrice || nextLowerPlan.price 
+                          : nextLowerPlan.price,
+                        nextLowerPlan.currency
+                      )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'}
                     </>
                   )}
                 </DialogDescription>
@@ -1533,12 +1587,14 @@ export default function Billing() {
                       className="text-sm leading-tight cursor-pointer"
                     >
                       I understand that I can't use SaaS Mode on the{' '}
-                      {subscription && plans.length > 0 && (
+                      {nextLowerPlan && (
                         <>
-                          {formatCurrency(
-                            plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
-                            subscription.plan.currency
-                          )} / month plan
+                          {nextLowerPlan.name} plan ({formatCurrency(
+                            subscription?.billingCycle === 'yearly' 
+                              ? nextLowerPlan.annualPrice || nextLowerPlan.price 
+                              : nextLowerPlan.price,
+                            nextLowerPlan.currency
+                          )} / {subscription?.billingCycle === 'yearly' ? 'year' : 'month'})
                         </>
                       )}
                     </label>
@@ -1596,15 +1652,7 @@ export default function Billing() {
                   disabled={!downgradeReason || !downgradeConfirm1 || !downgradeConfirm2}
                   data-testid="button-confirm-downgrade"
                 >
-                  Downgrade to{' '}
-                  {subscription && plans.length > 0 && (
-                    <>
-                      {formatCurrency(
-                        plans.filter(p => p.isActive && p.id !== subscription.planId)[0]?.price || 297,
-                        subscription.plan.currency
-                      )} / month
-                    </>
-                  )}
+                  Downgrade to {nextLowerPlan?.name || 'Lower Plan'}
                 </Button>
               </DialogFooter>
             </>
