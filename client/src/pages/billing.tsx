@@ -533,6 +533,52 @@ export default function Billing() {
     },
   });
 
+  // Set default payment method mutation
+  const setDefaultPaymentMutation = useMutation({
+    mutationFn: async (paymentMethodId: string) => {
+      const result = await apiRequest("POST", "/api/billing/set-default-payment-method", {
+        paymentMethodId,
+      });
+      return result.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Default payment method updated",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set default payment method",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Remove payment method mutation
+  const removePaymentMutation = useMutation({
+    mutationFn: async (paymentMethodId: string) => {
+      const result = await apiRequest("DELETE", `/api/billing/payment-method/${paymentMethodId}`, {});
+      return result.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Payment method removed",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove payment method",
+        variant: "destructive",
+      });
+    },
+  });
+
   const subscription: Subscription | null = (subscriptionData as any)?.subscription || null;
   const plans: Plan[] = (plansData as any)?.plans || [];
   const invoices: Invoice[] = (invoicesData as any)?.invoices || [];
@@ -1681,26 +1727,31 @@ export default function Billing() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {method.isDefault && (
+                          {method.isDefault ? (
                             <Badge variant="secondary" data-testid="badge-default">
                               Default
-                          </Badge>
-                        )}
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            // Handle remove payment method
-                            toast({
-                              title: "Remove Payment Method",
-                              description: "This feature will be implemented soon",
-                            });
-                          }}
-                          data-testid={`button-remove-${method.id}`}
-                        >
-                          Remove
-                        </Button>
-                      </div>
+                            </Badge>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setDefaultPaymentMutation.mutate(method.id)}
+                              disabled={setDefaultPaymentMutation.isPending}
+                              data-testid={`button-set-default-${method.id}`}
+                            >
+                              {setDefaultPaymentMutation.isPending ? "Setting..." : "Set Default"}
+                            </Button>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => removePaymentMutation.mutate(method.id)}
+                            disabled={removePaymentMutation.isPending || method.isDefault}
+                            data-testid={`button-remove-${method.id}`}
+                          >
+                            {removePaymentMutation.isPending ? "Removing..." : "Remove"}
+                          </Button>
+                        </div>
                     </div>
                     );
                   })}
