@@ -29,16 +29,19 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 -   **Billing & Stripe Integration:**
     -   **Automated Customer & Subscription Creation:** Stripe customers created upon company creation, and actual Stripe subscriptions upon plan selection.
     -   **Webhook Processing:** Handles Stripe events (subscriptions, invoices, payments) for synchronization.
-    -   **Professional Billing Dashboard:** Comprehensive `/billing` page with plan details, billing history, invoice downloads, and subscription management (changing/cancelling plans, applying coupons).
+    -   **Professional Billing Dashboard:** Comprehensive `/billing` page with tabbed interface separating subscription management from payment/billing information:
+        -   **Subscriptions Tab:** Subscription details (plan name, price, status, trial info), quick actions (Change Plan, Skip Trial, Cancel), and billing history with nested tabs for Invoices and Payments tables.
+        -   **Payments Tab:** Payment methods management (add, view, remove cards with CardBrandLogo component) and billing address form with Google Places autocomplete.
     -   **Trial Expiration Management:** Automatic account deactivation and redirection to `/select-plan` upon trial expiration.
     -   **Payment Method Management:** Add, view, set default, and delete multiple payment methods via Stripe Elements.
-    -   **Billing Address Management:** Separate billing address storage with automatic Stripe customer updates.
+    -   **Billing Address Management:** Separate billing address storage with automatic Stripe customer updates and Google Places autocomplete for easy data entry.
     -   **Payment & Trial Notifications:** Real-time notifications for payment success/failure and trial start, informing relevant admins.
     -   **Automated Payment Emails:** Automatic email confirmations for successful payments and payment failures, with professional templates and actionable next steps.
     -   **Customer Portal:** Self-service Stripe portal for payment method management and invoice access.
     -   **Superadmin Billing Dashboard:** Comprehensive billing tab in company details page for superadmin management of any company's billing.
     -   **Superadmin Invoice Management:** System-wide invoice viewing for superadmins, with filtering of $0.00 trial invoices from UI.
     -   **Automated Product/Price Synchronization:** `POST /api/plans/sync-from-stripe` (superadmin-only) to automatically import active Stripe products and prices, ensuring Stripe is the source of truth.
+    -   **Integrated Financial Support System:** Financial support request system fully integrated within Modify Subscription dialog, with view navigation between main options, financial ineligibility notice, support request form, and downgrade/cancel flows. All superadmins receive real-time WebSocket notifications for new financial support tickets.
 
 ### System Design Choices
 The system utilizes PostgreSQL with Drizzle ORM for data management and enforces strict multi-tenancy. Security is paramount, implemented through robust password management, account activation, and 2FA. The modular feature system ensures flexibility and extensibility.
