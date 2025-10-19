@@ -351,34 +351,6 @@ export default function Billing() {
     saveBillingAddressMutation.mutate(billingForm);
   };
 
-  const handleBillingFormCancel = () => {
-    // Reset form to original values
-    if (billingAddress) {
-      setBillingForm({
-        fullName: billingAddress.fullName || '',
-        addressLine1: billingAddress.addressLine1 || '',
-        addressLine2: billingAddress.addressLine2 || '',
-        city: billingAddress.city || '',
-        state: billingAddress.state || '',
-        postalCode: billingAddress.postalCode || '',
-      });
-    } else if (company) {
-      const fullName = company.representativeFirstName && company.representativeLastName
-        ? `${company.representativeFirstName} ${company.representativeLastName}`
-        : user?.firstName && user?.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : '';
-      
-      setBillingForm({
-        fullName,
-        addressLine1: company.address || '',
-        addressLine2: company.addressLine2 || '',
-        city: company.city || '',
-        state: company.state || '',
-        postalCode: company.postalCode || '',
-      });
-    }
-  };
 
   // Create customer portal session
   const portalMutation = useMutation({
@@ -1964,24 +1936,15 @@ export default function Billing() {
                   </div>
                 </div>
 
-                {/* Buttons */}
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={handleBillingFormCancel}
-                    data-testid="button-billing-cancel"
-                  >
-                    Cancel
-                  </Button>
+                {/* Save Button */}
+                <div className="pt-4">
                   <Button
                     type="submit"
-                    className="flex-1"
+                    className="w-full"
                     disabled={saveBillingAddressMutation.isPending}
                     data-testid="button-billing-save"
                   >
-                    {saveBillingAddressMutation.isPending ? "Saving..." : "Save"}
+                    {saveBillingAddressMutation.isPending ? "Saving..." : "Save Billing Information"}
                   </Button>
                 </div>
               </form>
