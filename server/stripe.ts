@@ -1180,6 +1180,10 @@ export async function changePlan(
     // We must include the current phase + the new phase
     console.log('[STRIPE] Step 2: Updating schedule to add new plan phase...');
     
+    // Get the start_date from the existing phase
+    const currentPhaseStartDate = schedule.phases[0].start_date;
+    console.log('[STRIPE] Current phase start date:', new Date(currentPhaseStartDate * 1000).toISOString());
+    
     // Prepare phases for update
     const phases: any[] = [
       // Phase 1: Current plan until period end (from existing schedule)
@@ -1188,6 +1192,7 @@ export async function changePlan(
           price: item.price,
           quantity: item.quantity || 1,
         })),
+        start_date: currentPhaseStartDate, // Required to anchor end dates
         end_date: periodEndTimestamp,
         // Preserve discount from current phase if exists
         ...(schedule.phases[0].discounts && schedule.phases[0].discounts.length > 0 && {
