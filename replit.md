@@ -23,7 +23,19 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         -   **Last Login Tracking:** Automatic `lastLoginAt` update on successful OTP verification (routes.ts), with full storage support for the field.
     -   **Last Login Implementation:** Field automatically updates at `/api/auth/verify-otp` endpoint after successful OTP verification. Storage method `updateUser` includes mapping for `lastLoginAt` field. Displayed in user details dialog as relative time (e.g., "2 hours ago") or "Never" for users who haven't logged in.
 -   **Timezone System:** User-selected timezones for date displays.
--   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session-based authentication, and account status management with clear login feedback.
+-   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session-based authentication, password reset, and account status management with clear login feedback.
+    -   **Password Reset System:** Secure password reset flow following activation pattern. Features include:
+        -   Email-based reset request from login page "Forgot password?" link
+        -   Secure token generation (32-byte random hex) with 1-hour expiration
+        -   Email template with reset link sent via SMTP (slug: password-reset)
+        -   Token validation before showing reset form
+        -   Password complexity validation matching activation requirements
+        -   Single-use tokens (marked as used after successful reset)
+        -   Audit logging for password reset requests and completions
+        -   Security best practice: Always returns success message to prevent email enumeration
+        -   Database table: password_reset_tokens (user_id, token, expires_at, used, used_at)
+        -   Routes: POST /api/auth/request-password-reset, GET /api/auth/validate-password-reset-token, POST /api/auth/reset-password
+        -   Pages: /forgot-password (request reset), /reset-password (enter new password with token)
     -   **Active Sessions Management:** Comprehensive session visibility in Settings page Security tab. Users can view all active sessions across devices with device information (user agent) and IP address. Features include:
         -   Auto-refreshing session list (every 30 seconds) with compact display
         -   Clear visual distinction between current session and other devices
