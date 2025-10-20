@@ -16,7 +16,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -1413,7 +1413,7 @@ export default function Settings() {
         {/* Right Column - Settings Tabs */}
         <div className="lg:col-span-8 xl:col-span-9">
           <Tabs value={activeTab} onValueChange={(value) => setLocation(`/settings/${value}`)} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 lg:flex lg:w-auto">
+            <TabsList className="inline-flex h-auto flex-wrap w-full lg:w-auto">
               <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
                 <UserIcon className="h-4 w-4" />
                 Profile
@@ -1424,21 +1424,23 @@ export default function Settings() {
                   Company
                 </TabsTrigger>
               )}
+              {isAdmin && (
+                <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
+                  <Users className="h-4 w-4" />
+                  Team
+                </TabsTrigger>
+              )}
               <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
                 <Shield className="h-4 w-4" />
                 Security
               </TabsTrigger>
               <TabsTrigger value="preferences" className="gap-2" data-testid="tab-preferences">
-                <Bell className="h-4 w-4" />
+                <SettingsIcon className="h-4 w-4" />
                 Preferences
               </TabsTrigger>
               <TabsTrigger value="notifications" className="gap-2" data-testid="tab-notifications">
                 <Bell className="h-4 w-4" />
                 Notifications
-              </TabsTrigger>
-              <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
-                <UserIcon className="h-4 w-4" />
-                Team
               </TabsTrigger>
             </TabsList>
 
