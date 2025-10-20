@@ -570,6 +570,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               phone: user.phone,
               role: user.role,
               companyId: user.companyId,
+              twoFactorEmailEnabled: user.twoFactorEmailEnabled,
+              twoFactorSmsEnabled: user.twoFactorSmsEnabled,
             },
           });
         });
@@ -649,6 +651,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 phone: user.phone,
                 role: user.role,
                 companyId: user.companyId,
+                twoFactorEmailEnabled: user.twoFactorEmailEnabled,
+                twoFactorSmsEnabled: user.twoFactorSmsEnabled,
               },
             });
           });
@@ -676,6 +680,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phone: user.phone,
           role: user.role,
           companyId: user.companyId,
+          twoFactorEmailEnabled: user.twoFactorEmailEnabled,
+          twoFactorSmsEnabled: user.twoFactorSmsEnabled,
         },
       });
     } catch (error) {

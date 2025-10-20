@@ -54,6 +54,15 @@ export default function VerifyOTP() {
   const maskedPhone = maskPhone(userPhone);
   const hasPhone = !!userPhone;
 
+  // If both 2FA methods are disabled, redirect to dashboard
+  // This is a defensive check in case user lands here without proper 2FA setup
+  useEffect(() => {
+    if (!email2FAEnabled && !sms2FAEnabled) {
+      console.warn('[VERIFY-OTP] No 2FA methods enabled, redirecting to dashboard');
+      setLocation("/dashboard");
+    }
+  }, [email2FAEnabled, sms2FAEnabled, setLocation]);
+
   // No longer auto-send on mount - user must click "Send Code" button
 
   // Countdown timer for code expiry
