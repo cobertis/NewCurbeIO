@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,8 +18,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -2721,9 +2725,70 @@ function TeamMembersTable() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const { data: sessionData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
 
   const { data: usersData, isLoading } = useQuery<{ users: User[] }>({
     queryKey: ["/api/users"],
+  });
+
+  const currentUser = sessionData?.user;
+  const currentUserCompanyId = currentUser?.companyId;
+
+  // User creation form schema
+  const userFormSchema = z.object({
+    email: z.string().email("Invalid email address"),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    phone: z.string().optional(),
+    dateOfBirth: z.string().optional(),
+    preferredLanguage: z.string().default("en"),
+    role: z.enum(["admin", "member", "viewer"]).default("member"),
+  });
+
+  type UserForm = z.infer<typeof userFormSchema>;
+
+  const createForm = useForm<UserForm>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      email: "",
+      firstName: "",
+      lastName: "",
+      phone: "",
+      dateOfBirth: "",
+      preferredLanguage: "en",
+      role: "member",
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: UserForm) => {
+      const dataToSend = {
+        ...data,
+        companyId: currentUserCompanyId, // Automatically set to current user's company
+        phone: data.phone ? formatPhoneE164(data.phone) : undefined,
+      };
+      return apiRequest("POST", "/api/users", dataToSend);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setCreateOpen(false);
+      createForm.reset();
+      toast({
+        title: "Team Member Added",
+        description: "The new team member has been added successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add team member.",
+        variant: "destructive",
+      });
+    },
   });
 
   const toggleStatusMutation = useMutation({
@@ -2745,6 +2810,10 @@ function TeamMembersTable() {
       });
     },
   });
+
+  const onCreateSubmit = (data: UserForm) => {
+    createMutation.mutate(data);
+  };
 
   if (isLoading) {
     return (
@@ -2817,6 +2886,19 @@ function TeamMembersTable() {
 
   return (
     <div className="space-y-4">
+      {/* Header with Add button */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Team Members</h3>
+        <Button 
+          onClick={() => setCreateOpen(true)} 
+          size="sm"
+          data-testid="button-add-team-member"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Team Member
+        </Button>
+      </div>
+
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -2835,9 +2917,7 @@ function TeamMembersTable() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="superadmin">Superadmin</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="user">User</SelectItem>
             <SelectItem value="member">Member</SelectItem>
             <SelectItem value="viewer">Viewer</SelectItem>
           </SelectContent>
@@ -2976,6 +3056,170 @@ function TeamMembersTable() {
         open={detailsDialogOpen}
         onOpenChange={setDetailsDialogOpen}
       />
+
+      {/* Create Team Member Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Team Member</DialogTitle>
+            <DialogDescription>
+              Create a new user account for your team. They will receive an email to set up their password.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...createForm}>
+            <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={createForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-create-first-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-create-last-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={createForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" {...field} data-testid="input-create-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone (optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={formatPhoneInput(field.value || "")}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="(555) 123-4567"
+                        data-testid="input-create-phone"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createForm.control}
+                name="dateOfBirth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date of Birth (optional)</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-create-dob" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={createForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-create-role">
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={createForm.control}
+                  name="preferredLanguage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Language</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-create-language">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="es">Spanish</SelectItem>
+                          <SelectItem value="fr">French</SelectItem>
+                          <SelectItem value="de">German</SelectItem>
+                          <SelectItem value="pt">Portuguese</SelectItem>
+                          <SelectItem value="zh">Chinese</SelectItem>
+                          <SelectItem value="ja">Japanese</SelectItem>
+                          <SelectItem value="ko">Korean</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setCreateOpen(false)}
+                  disabled={createMutation.isPending}
+                  data-testid="button-cancel-create"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={createMutation.isPending}
+                  data-testid="button-submit-create"
+                >
+                  {createMutation.isPending ? "Creating..." : "Add Team Member"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
