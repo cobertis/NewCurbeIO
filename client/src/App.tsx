@@ -407,9 +407,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               >
                 <Bell className="h-8 w-8 text-blue-500" />
                 {unreadCount > 0 && (
-                  <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center notification-badge">
-                    <span className="text-white text-xs font-semibold">!</span>
-                  </div>
+                  <div className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full notification-badge"></div>
                 )}
               </Button>
 
