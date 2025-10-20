@@ -622,7 +622,8 @@ export default function QuotesPage() {
                         <h3 className="text-base font-semibold">Personal Information</h3>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                      {/* Row 1: First Name, Middle Name, Last Name, Second Last Name */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-6">
                         <FormField
                           control={form.control}
                           name="clientFirstName"
@@ -678,6 +679,23 @@ export default function QuotesPage() {
                             </FormItem>
                           )}
                         />
+                      </div>
+
+                      {/* Row 2: DOB, SSN, Gender */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
+                        <FormField
+                          control={form.control}
+                          name="clientDateOfBirth"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date of Birth</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} data-testid="input-client-dob" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
                         <FormField
                           control={form.control}
@@ -693,20 +711,6 @@ export default function QuotesPage() {
                                   placeholder="XXX-XX-XXXX"
                                   maxLength={11}
                                 />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientDateOfBirth"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Date of Birth</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} data-testid="input-client-dob" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -735,7 +739,10 @@ export default function QuotesPage() {
                             </FormItem>
                           )}
                         />
+                      </div>
 
+                      {/* Row 3: Phone Number, Email Address */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                         <FormField
                           control={form.control}
                           name="clientPhone"
