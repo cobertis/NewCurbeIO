@@ -650,33 +650,52 @@ export default function QuotesPage() {
 
             {/* Client Information Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b pb-2">Client Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-                  <p className="text-base mt-1">
-                    {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                  </p>
+              <h3 className="text-lg font-semibold border-b pb-2">Client</h3>
+              
+              {/* Primary Info Card */}
+              <div className="bg-muted/30 p-4 rounded-lg border">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h4 className="text-xl font-semibold text-blue-600 dark:text-blue-400">
+                      {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {viewingQuote.clientIsApplicant ? 'Self' : 'Not Applicant'} - {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {viewingQuote.state} {viewingQuote.postalCode}
+                    </p>
+                  </div>
+                  {viewingQuote.clientTobaccoUser && (
+                    <Badge variant="outline">Tobacco User</Badge>
+                  )}
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p className="text-base mt-1">{viewingQuote.clientEmail}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Phone</label>
-                  <p className="text-base mt-1">{viewingQuote.clientPhone}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Date of Birth</label>
-                  <p className="text-base mt-1">{viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Gender</label>
-                  <p className="text-base mt-1">{viewingQuote.clientGender || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">SSN</label>
-                  <p className="text-base mt-1">{viewingQuote.clientSSN ? '***-**-' + viewingQuote.clientSSN.slice(-4) : 'N/A'}</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Email Address</label>
+                    <p className="text-sm mt-1">{viewingQuote.clientEmail}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
+                    <p className="text-sm mt-1">{viewingQuote.clientPhone}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Date of Birth</label>
+                    <p className="text-sm mt-1">{viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">SSN</label>
+                    <p className="text-sm mt-1">{viewingQuote.clientSsn ? '***-**-' + viewingQuote.clientSsn.slice(-4) : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Street Address</label>
+                    <p className="text-sm mt-1">{viewingQuote.street} {viewingQuote.addressLine2}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">City</label>
+                    <p className="text-sm mt-1">{viewingQuote.city}, {viewingQuote.state}</p>
+                  </div>
                 </div>
               </div>
             </div>
