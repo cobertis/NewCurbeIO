@@ -1286,6 +1286,10 @@ export default function Settings() {
                 <Bell className="h-4 w-4" />
                 Notifications
               </TabsTrigger>
+              <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
+                <UserIcon className="h-4 w-4" />
+                Team
+              </TabsTrigger>
             </TabsList>
 
             {/* Profile Tab */}
@@ -1701,9 +1705,9 @@ export default function Settings() {
                                   </Badge>
                                 )}
                               </div>
-                              {session.createdAt && (
+                              {session.lastActive && (
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                  Started on {format(new Date(session.createdAt), 'PPP p')}
+                                  Last active: {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
                                 </p>
                               )}
                               <p className="text-xs text-muted-foreground truncate" data-testid="text-device-info">
@@ -2566,9 +2570,152 @@ export default function Settings() {
                 </DialogContent>
               </Dialog>
             </TabsContent>
+
+            {/* Team Tab */}
+            <TabsContent value="team" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Team Members</CardTitle>
+                  <CardDescription>
+                    View and manage users in your company
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TeamMembersTable />
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TeamMembersTable() {
+  const { data: usersData, isLoading } = useQuery<{ users: User[] }>({
+    queryKey: ["/api/users"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent mb-3"></div>
+          <p className="text-sm text-muted-foreground">Loading team members...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!usersData || usersData.users.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <UserIcon className="h-12 w-12 text-muted-foreground/50 mb-3 mx-auto" />
+          <p className="text-sm font-medium">No team members found</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'superadmin':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+      case 'admin':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'user':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    }
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'pending_activation':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      case 'deactivated':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    }
+  };
+
+  return (
+    <div className="rounded-md border">
+      <table className="min-w-full divide-y divide-border">
+        <thead>
+          <tr className="bg-muted/50">
+            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              User
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Contact
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Role
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Status
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {usersData.users.map((user) => (
+            <tr key={user.id} className="hover-elevate" data-testid={`row-user-${user.id}`}>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs">
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium" data-testid={`text-username-${user.id}`}>
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                  </div>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2 text-xs">
+                    <AtSign className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">{user.email}</span>
+                  </div>
+                  {user.phone && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <PhoneIcon className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">{formatPhoneDisplay(user.phone)}</span>
+                    </div>
+                  )}
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <Badge 
+                  className={cn("text-xs", getRoleBadgeColor(user.role))}
+                  data-testid={`badge-role-${user.id}`}
+                >
+                  {user.role}
+                </Badge>
+              </td>
+              <td className="px-4 py-3">
+                <Badge 
+                  className={cn("text-xs", getStatusBadgeColor(user.status))}
+                  data-testid={`badge-status-${user.id}`}
+                >
+                  {user.status === 'pending_activation' ? 'Pending' : user.status}
+                </Badge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
