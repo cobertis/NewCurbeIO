@@ -940,6 +940,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nationalProducerNumber: user.nationalProducerNumber,
         federallyFacilitatedMarketplace: user.federallyFacilitatedMarketplace,
         referredBy: user.referredBy,
+        // Two-Factor Authentication
+        twoFactorEmailEnabled: user.twoFactorEmailEnabled,
+        twoFactorSmsEnabled: user.twoFactorSmsEnabled,
       },
     });
   });
