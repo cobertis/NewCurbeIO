@@ -2183,45 +2183,80 @@ export default function Settings() {
                     </Button>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Logo Section with Preview */}
-                    <div className="space-y-4">
+                    {/* Logo Section - Full Width */}
+                    <div className="space-y-3">
                       <Label htmlFor="logo" className="text-base font-semibold">Company Logo</Label>
                       
-                      {/* Logo Preview */}
-                      {companyData?.company?.logo && (
-                        <div className="flex items-center gap-4 p-4 rounded-md border bg-muted/30">
-                          <div className="flex-shrink-0">
-                            <img 
-                              src={companyData.company.logo} 
-                              alt="Company Logo" 
-                              className="h-20 w-20 object-contain rounded-md border bg-white"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
+                      {/* Logo Display Area - Full Width */}
+                      <div className="w-full">
+                        {companyData?.company?.logo ? (
+                          // Show logo with Replace/Delete buttons
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-center p-8 rounded-md border-2 border-dashed bg-muted/30">
+                              <img 
+                                src={companyData.company.logo} 
+                                alt="Company Logo" 
+                                className="max-h-32 max-w-full object-contain"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                                data-testid="img-company-logo"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const newUrl = prompt('Enter new logo URL:', companyData.company?.logo || '');
+                                  if (newUrl && logoRef.current) {
+                                    logoRef.current.value = newUrl;
+                                  }
+                                }}
+                                data-testid="button-replace-logo"
+                              >
+                                Replace
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (logoRef.current) {
+                                    logoRef.current.value = '';
+                                  }
+                                }}
+                                data-testid="button-delete-logo"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">Current Logo</p>
-                            <p className="text-xs text-muted-foreground truncate">{companyData.company.logo}</p>
+                        ) : (
+                          // Empty state with instructions
+                          <div className="flex flex-col items-center justify-center p-12 rounded-md border-2 border-dashed bg-muted/30 text-center">
+                            <p className="text-sm font-medium mb-1">Drag a file to this area to upload</p>
+                            <p className="text-xs text-muted-foreground">
+                              The proposed size is 350px * 180px. No bigger than 2.5 MB
+                            </p>
                           </div>
-                        </div>
-                      )}
-
-                      {/* Logo URL Input */}
-                      <div className="space-y-2">
-                        <Input
-                          id="logo"
-                          ref={logoRef}
-                          type="url"
-                          placeholder="https://example.com/logo.png"
-                          defaultValue={companyData?.company?.logo || ""}
-                          data-testid="input-logo"
-                          className="font-mono text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Enter the URL of your company logo. Recommended size: 200x200px or larger for best quality.
-                        </p>
+                        )}
                       </div>
+
+                      {/* Hidden URL Input - for backend */}
+                      <Input
+                        id="logo"
+                        ref={logoRef}
+                        type="url"
+                        placeholder="https://example.com/logo.png"
+                        defaultValue={companyData?.company?.logo || ""}
+                        data-testid="input-logo"
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enter the URL of your company logo. Recommended size: 350px × 180px or larger for best quality.
+                      </p>
                     </div>
 
                     {/* Custom Domain Section */}
