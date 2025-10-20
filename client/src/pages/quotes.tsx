@@ -72,84 +72,62 @@ const US_STATES = [
   { value: "WY", label: "Wyoming" },
 ];
 
-// Product types with descriptions and icons
+// Product types with descriptions
 const PRODUCT_TYPES = [
   {
     id: "medicare",
     name: "Medicare",
     description: "Government health insurance for individuals 65+ or with certain disabilities",
-    icon: "🏥",
-    color: "bg-blue-100 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700"
   },
   {
     id: "medicaid",
     name: "Medicaid",
     description: "State and federal program offering health coverage for low-income individuals and families",
-    icon: "🏛️",
-    color: "bg-purple-100 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700"
   },
   {
     id: "aca",
     name: "Health Insurance (ACA)",
     description: "Health insurance under the Affordable Care Act offering essential health benefits and subsidies",
-    icon: "💙",
-    color: "bg-blue-100 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700"
   },
   {
     id: "life",
     name: "Life Insurance",
     description: "Financial protection for your loved ones in the event of your passing",
-    icon: "💰",
-    color: "bg-green-100 dark:bg-green-900/20 border-green-300 dark:border-green-700"
   },
   {
     id: "private",
     name: "Private",
     description: "Health plans offered outside of government programs, with customizable coverage options",
-    icon: "🔒",
-    color: "bg-gray-100 dark:bg-gray-900/20 border-gray-300 dark:border-gray-700"
   },
   {
     id: "dental",
     name: "Dental",
     description: "Coverage for preventive, basic, and major dental care services",
-    icon: "🦷",
-    color: "bg-cyan-100 dark:bg-cyan-900/20 border-cyan-300 dark:border-cyan-700"
   },
   {
     id: "vision",
     name: "Vision",
     description: "Insurance for eye exams, glasses, contact lenses, and more",
-    icon: "👁️",
-    color: "bg-indigo-100 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700"
   },
   {
     id: "supplemental",
     name: "Supplemental",
     description: "Additional insurance that pays benefits for specific events like accidents, critical illness, or hospital stays",
-    icon: "➕",
-    color: "bg-amber-100 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
   },
   {
     id: "annuities",
     name: "Annuities",
     description: "Financial products that provide guaranteed income, typically for retirement",
-    icon: "📊",
-    color: "bg-emerald-100 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700"
   },
   {
     id: "final_expense",
     name: "Final Expense",
     description: "Affordable life insurance to cover funeral and end-of-life costs",
-    icon: "🕊️",
-    color: "bg-rose-100 dark:bg-rose-900/20 border-rose-300 dark:border-rose-700"
   },
   {
     id: "travel",
     name: "Travel",
     description: "Coverage for medical emergencies, trip cancellations, and travel-related issues",
-    icon: "✈️",
-    color: "bg-sky-100 dark:bg-sky-900/20 border-sky-300 dark:border-sky-700"
   },
 ];
 
@@ -595,25 +573,22 @@ export default function QuotesPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-destructive">Select a product to quote (required)</FormLabel>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
                             {PRODUCT_TYPES.map((product) => (
                               <button
                                 key={product.id}
                                 type="button"
                                 onClick={() => handleProductSelect(product.id)}
-                                className={`p-4 rounded-lg border-2 text-left transition-all hover-elevate ${
+                                className={`p-4 rounded-lg border text-left transition-all ${
                                   selectedProduct === product.id
-                                    ? "border-primary ring-2 ring-primary ring-offset-2"
-                                    : "border-border"
-                                } ${product.color}`}
+                                    ? "border-primary bg-primary/5 shadow-sm"
+                                    : "border-border bg-card hover:border-primary/50 hover:bg-accent/50"
+                                }`}
                                 data-testid={`card-product-${product.id}`}
                               >
-                                <div className="flex items-start space-x-3">
-                                  <span className="text-2xl">{product.icon}</span>
-                                  <div className="flex-1">
-                                    <h3 className="font-semibold text-sm mb-1">{product.name}</h3>
-                                    <p className="text-xs text-muted-foreground">{product.description}</p>
-                                  </div>
+                                <div className="space-y-2">
+                                  <h3 className="font-semibold text-sm">{product.name}</h3>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">{product.description}</p>
                                 </div>
                               </button>
                             ))}
@@ -643,8 +618,7 @@ export default function QuotesPage() {
                                 </FormControl>
                                 <Button 
                                   type="button" 
-                                  variant="default" 
-                                  className="bg-green-500 hover:bg-green-600"
+                                  variant="outline"
                                   data-testid="button-search-client"
                                 >
                                   <Search className="h-4 w-4 mr-2" />
@@ -867,11 +841,11 @@ export default function QuotesPage() {
                     />
 
                     {/* Add Spouse/Dependent Buttons */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <Button
                         type="button"
-                        variant="default"
-                        className="w-full bg-blue-500 hover:bg-blue-600"
+                        variant="outline"
+                        className="w-full"
                         onClick={handleAddSpouse}
                         data-testid="button-add-spouse"
                       >
@@ -881,8 +855,8 @@ export default function QuotesPage() {
 
                       <Button
                         type="button"
-                        variant="default"
-                        className="w-full bg-blue-500 hover:bg-blue-600"
+                        variant="outline"
+                        className="w-full"
                         onClick={handleAddDependent}
                         data-testid="button-add-dependent"
                       >
@@ -893,21 +867,18 @@ export default function QuotesPage() {
 
                     {/* Spouse Cards */}
                     {spouseFields.map((spouse, index) => (
-                      <Card key={spouse.id} className="border-green-500 border-2" data-testid={`card-spouse-${index}`}>
+                      <Card key={spouse.id} className="border-l-4 border-l-primary" data-testid={`card-spouse-${index}`}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                          <div className="flex items-center gap-2">
-                            <Check className="h-5 w-5 text-green-500" />
-                            <CardTitle className="text-base">{index + 1} Spouse</CardTitle>
-                          </div>
+                          <CardTitle className="text-base">Spouse {index + 1}</CardTitle>
                           <Button
                             type="button"
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             onClick={() => removeSpouse(index)}
                             data-testid={`button-delete-spouse-${index}`}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
+                            Remove
                           </Button>
                         </CardHeader>
                         <CardContent>
@@ -924,7 +895,7 @@ export default function QuotesPage() {
                                       <FormControl>
                                         <Input {...field} placeholder="First name" data-testid={`input-spouse-firstname-${index}`} />
                                       </FormControl>
-                                      <Button type="button" variant="default" className="bg-green-500 hover:bg-green-600">
+                                      <Button type="button" variant="outline">
                                         <Search className="h-4 w-4 mr-2" />
                                         Search
                                       </Button>
@@ -1100,21 +1071,18 @@ export default function QuotesPage() {
 
                     {/* Dependent Cards */}
                     {dependentFields.map((dependent, index) => (
-                      <Card key={dependent.id} className="border-green-500 border-2" data-testid={`card-dependent-${index}`}>
+                      <Card key={dependent.id} className="border-l-4 border-l-primary" data-testid={`card-dependent-${index}`}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                          <div className="flex items-center gap-2">
-                            <Check className="h-5 w-5 text-green-500" />
-                            <CardTitle className="text-base">{spouseFields.length + index + 1} Dependent</CardTitle>
-                          </div>
+                          <CardTitle className="text-base">Dependent {index + 1}</CardTitle>
                           <Button
                             type="button"
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             onClick={() => removeDependent(index)}
                             data-testid={`button-delete-dependent-${index}`}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
+                            Remove
                           </Button>
                         </CardHeader>
                         <CardContent>
@@ -1131,7 +1099,7 @@ export default function QuotesPage() {
                                       <FormControl>
                                         <Input {...field} placeholder="First name" data-testid={`input-dependent-firstname-${index}`} />
                                       </FormControl>
-                                      <Button type="button" variant="default" className="bg-green-500 hover:bg-green-600">
+                                      <Button type="button" variant="outline">
                                         <Search className="h-4 w-4 mr-2" />
                                         Search
                                       </Button>
