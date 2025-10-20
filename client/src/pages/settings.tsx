@@ -22,7 +22,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 
 // Business categories
 const categories = [
@@ -1675,9 +1675,11 @@ export default function Settings() {
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Last active {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
-                              </p>
+                              {session.createdAt && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Started on {format(new Date(session.createdAt), 'PPP p')}
+                                </p>
+                              )}
                               <p className="text-xs text-muted-foreground truncate" data-testid="text-device-info">
                                 {session.deviceInfo}
                               </p>

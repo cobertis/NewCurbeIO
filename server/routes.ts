@@ -519,6 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         req.session.deviceInfo = deviceInfo;
         req.session.ipAddress = ipAddress;
+        req.session.createdAt = new Date().toISOString();
         
         console.log(`[SESSION-DEBUG] Setting session data:`, {
           userId: user.id,
@@ -610,6 +611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           req.session.deviceInfo = deviceInfo;
           req.session.ipAddress = ipAddress;
+          req.session.createdAt = new Date().toISOString();
           
           // Set session duration (7 days)
           const sessionDuration = 7 * 24 * 60 * 60 * 1000;
@@ -739,6 +741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return {
           id: session.sid,
           isCurrent: isCurrentSession,
+          createdAt: sessionData.createdAt || null,
           lastActive: expiryDate.toISOString(),
           expiresAt: expiryDate.toISOString(),
           deviceInfo: sessionData.deviceInfo || 'Unknown Device',
@@ -1478,6 +1481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       req.session.deviceInfo = deviceInfo;
       req.session.ipAddress = ipAddress;
+      req.session.createdAt = new Date().toISOString();
 
       // Set session duration - always 7 days since we use trusted device tokens
       const sessionDuration = 7 * 24 * 60 * 60 * 1000; // 7 days
