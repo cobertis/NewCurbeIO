@@ -2790,6 +2790,7 @@ function TeamMembersTable() {
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.avatar || undefined} alt={`${user.firstName} ${user.lastName}`} />
                     <AvatarFallback className="text-xs">
                       {user.firstName?.[0]}{user.lastName?.[0]}
                     </AvatarFallback>
