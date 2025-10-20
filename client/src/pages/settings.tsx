@@ -3116,30 +3116,21 @@ function TeamMembersTable() {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone (optional)</FormLabel>
+                    <FormLabel>Phone Number</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        value={formatPhoneInput(field.value || "")}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        placeholder="(555) 123-4567"
+                        value={field.value || ""}
+                        type="tel"
+                        placeholder="+1 (415) 555-2671"
                         data-testid="input-create-phone"
+                        onChange={(e) => {
+                          const formatted = formatPhoneInput(e.target.value);
+                          field.onChange(formatted);
+                        }}
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={createForm.control}
-                name="dateOfBirth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date of Birth (optional)</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} data-testid="input-create-dob" />
-                    </FormControl>
+                    <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671</p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -3148,34 +3139,29 @@ function TeamMembersTable() {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={createForm.control}
-                  name="role"
+                  name="dateOfBirth"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-create-role">
-                            <SelectValue placeholder="Select a role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="member">Member</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          type="date"
+                          data-testid="input-create-dob"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={createForm.control}
                   name="preferredLanguage"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Language</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel>Preferred Language</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-create-language">
                             <SelectValue placeholder="Select language" />
@@ -3184,12 +3170,6 @@ function TeamMembersTable() {
                         <SelectContent>
                           <SelectItem value="en">English</SelectItem>
                           <SelectItem value="es">Spanish</SelectItem>
-                          <SelectItem value="fr">French</SelectItem>
-                          <SelectItem value="de">German</SelectItem>
-                          <SelectItem value="pt">Portuguese</SelectItem>
-                          <SelectItem value="zh">Chinese</SelectItem>
-                          <SelectItem value="ja">Japanese</SelectItem>
-                          <SelectItem value="ko">Korean</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -3197,6 +3177,29 @@ function TeamMembersTable() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={createForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-create-role">
+                          <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <DialogFooter>
                 <Button 
