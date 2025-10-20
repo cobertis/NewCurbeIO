@@ -1258,6 +1258,120 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Business Branding Card */}
+          {isAdmin && (
+            <Card className="mt-6">
+              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle>Business Branding</CardTitle>
+                  <CardDescription>
+                    Company logo and custom domain
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={handleSaveBranding}
+                  disabled={updateCompanyMutation.isPending && savingSection === "branding"}
+                  data-testid="button-save-branding"
+                >
+                  {updateCompanyMutation.isPending && savingSection === "branding" ? "Saving..." : "Save"}
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Logo Section - Full Width */}
+                <div className="space-y-3">
+                  <Label htmlFor="logo" className="text-base font-semibold">Company Logo</Label>
+                  
+                  {/* Logo Display Area - Full Width */}
+                  <div className="w-full">
+                    {companyData?.company?.logo ? (
+                      // Show logo with Replace/Delete buttons
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-center p-8 rounded-md border-2 border-dashed bg-muted/30">
+                          <img 
+                            src={companyData.company.logo} 
+                            alt="Company Logo" 
+                            className="max-h-32 max-w-full object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                            data-testid="img-company-logo"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const newUrl = prompt('Enter new logo URL:', companyData.company?.logo || '');
+                              if (newUrl && logoRef.current) {
+                                logoRef.current.value = newUrl;
+                              }
+                            }}
+                            data-testid="button-replace-logo"
+                          >
+                            Replace
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (logoRef.current) {
+                                logoRef.current.value = '';
+                              }
+                            }}
+                            data-testid="button-delete-logo"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Empty state with instructions
+                      <div className="flex flex-col items-center justify-center p-12 rounded-md border-2 border-dashed bg-muted/30 text-center">
+                        <p className="text-sm font-medium mb-1">Drag a file to this area to upload</p>
+                        <p className="text-xs text-muted-foreground">
+                          The proposed size is 350px * 180px. No bigger than 2.5 MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* URL Input */}
+                  <Input
+                    id="logo"
+                    ref={logoRef}
+                    type="url"
+                    placeholder="https://example.com/logo.png"
+                    defaultValue={companyData?.company?.logo || ""}
+                    data-testid="input-logo"
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the URL of your company logo. Recommended size: 350px × 180px or larger for best quality.
+                  </p>
+                </div>
+
+                {/* Custom Domain Section */}
+                <div className="space-y-2">
+                  <Label htmlFor="domain" className="text-base font-semibold">Custom Domain</Label>
+                  <Input
+                    id="domain"
+                    ref={domainRef}
+                    type="text"
+                    placeholder="app.yourcompany.com"
+                    defaultValue={companyData?.company?.domain || ""}
+                    data-testid="input-domain"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Custom domain for your company portal (optional)
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right Column - Settings Tabs */}
@@ -2162,118 +2276,6 @@ export default function Settings() {
                       type="hidden"
                       defaultValue={companyData?.company?.country || "United States"}
                     />
-                  </CardContent>
-                </Card>
-
-                {/* Business Branding */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Business Branding</CardTitle>
-                      <CardDescription>
-                        Company logo and custom domain settings
-                      </CardDescription>
-                    </div>
-                    <Button 
-                      onClick={handleSaveBranding}
-                      disabled={updateCompanyMutation.isPending && savingSection === "branding"}
-                      data-testid="button-save-branding"
-                    >
-                      {updateCompanyMutation.isPending && savingSection === "branding" ? "Saving..." : "Save"}
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Logo Section - Full Width */}
-                    <div className="space-y-3">
-                      <Label htmlFor="logo" className="text-base font-semibold">Company Logo</Label>
-                      
-                      {/* Logo Display Area - Full Width */}
-                      <div className="w-full">
-                        {companyData?.company?.logo ? (
-                          // Show logo with Replace/Delete buttons
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-center p-8 rounded-md border-2 border-dashed bg-muted/30">
-                              <img 
-                                src={companyData.company.logo} 
-                                alt="Company Logo" 
-                                className="max-h-32 max-w-full object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                                data-testid="img-company-logo"
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const newUrl = prompt('Enter new logo URL:', companyData.company?.logo || '');
-                                  if (newUrl && logoRef.current) {
-                                    logoRef.current.value = newUrl;
-                                  }
-                                }}
-                                data-testid="button-replace-logo"
-                              >
-                                Replace
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (logoRef.current) {
-                                    logoRef.current.value = '';
-                                  }
-                                }}
-                                data-testid="button-delete-logo"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          // Empty state with instructions
-                          <div className="flex flex-col items-center justify-center p-12 rounded-md border-2 border-dashed bg-muted/30 text-center">
-                            <p className="text-sm font-medium mb-1">Drag a file to this area to upload</p>
-                            <p className="text-xs text-muted-foreground">
-                              The proposed size is 350px * 180px. No bigger than 2.5 MB
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Hidden URL Input - for backend */}
-                      <Input
-                        id="logo"
-                        ref={logoRef}
-                        type="url"
-                        placeholder="https://example.com/logo.png"
-                        defaultValue={companyData?.company?.logo || ""}
-                        data-testid="input-logo"
-                        className="font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Enter the URL of your company logo. Recommended size: 350px × 180px or larger for best quality.
-                      </p>
-                    </div>
-
-                    {/* Custom Domain Section */}
-                    <div className="space-y-2">
-                      <Label htmlFor="domain" className="text-base font-semibold">Custom Domain</Label>
-                      <Input
-                        id="domain"
-                        ref={domainRef}
-                        type="text"
-                        placeholder="app.yourcompany.com"
-                        defaultValue={companyData?.company?.domain || ""}
-                        data-testid="input-domain"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Custom domain for your company portal (optional)
-                      </p>
-                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
