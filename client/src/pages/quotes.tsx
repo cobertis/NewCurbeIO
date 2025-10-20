@@ -558,11 +558,11 @@ export default function QuotesPage() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-auto">
+          <CardContent className="flex-1 min-h-0 flex flex-col p-6">
             <Form {...form}>
-              <form className="h-full flex flex-col">
+              <form className="flex-1 min-h-0 flex flex-col gap-4">
                 {/* Scrollable Form Content */}
-                <div className="flex-1 overflow-auto pr-2">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-2">
                   {/* Step 1: Policy Information */}
                   {currentStep === 1 && (
                     <div className="space-y-6">
@@ -1526,7 +1526,7 @@ export default function QuotesPage() {
                 </div>
 
                 {/* Navigation Buttons - Fixed at bottom */}
-                <div className="flex items-center justify-between pt-4 mt-4 border-t shrink-0">
+                <div className="flex items-center justify-between pt-4 border-t shrink-0">
                   <Button
                     type="button"
                     variant="outline"
