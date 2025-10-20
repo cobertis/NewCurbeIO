@@ -1970,12 +1970,33 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         passwordChangedAt: new Date(),
       });
 
+      // For security: After password change, clear ALL sessions and trusted devices
+      // This forces the user to login again with 2FA on all devices
+      const { neon } = await import("@neondatabase/serverless");
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // 1. Delete all sessions for this user
+      await sql`
+        DELETE FROM session 
+        WHERE sess->>'userId' = ${userId}
+      `;
+
+      // 2. Delete all trusted devices for this user
+      await sql`
+        DELETE FROM trusted_devices 
+        WHERE user_id = ${userId}
+      `;
+
       await logger.logAuth({
         req,
         action: "password_reset_completed",
         userId: user.id,
         email: user.email,
-        metadata: { method: "reset_token" },
+        metadata: { 
+          method: "reset_token",
+          sessionsCleared: true,
+          trustedDevicesCleared: true
+        },
       });
 
       res.json({ 

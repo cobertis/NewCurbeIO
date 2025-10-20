@@ -31,7 +31,8 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         -   Token validation before showing reset form
         -   Password complexity validation matching activation requirements
         -   Single-use tokens (marked as used after successful reset)
-        -   Audit logging for password reset requests and completions
+        -   Security enhancement: After password change, ALL active sessions and trusted devices are automatically cleared, forcing re-authentication with 2FA on all devices
+        -   Audit logging for password reset requests and completions, including session/device clearing
         -   Security best practice: Always returns success message to prevent email enumeration
         -   Database table: password_reset_tokens (user_id, token, expires_at, used, used_at)
         -   Routes: POST /api/auth/request-password-reset, GET /api/auth/validate-password-reset-token, POST /api/auth/reset-password
