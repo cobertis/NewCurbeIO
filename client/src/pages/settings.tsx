@@ -1494,54 +1494,54 @@ export default function Settings() {
 
             {/* Security Tab */}
             <TabsContent value="security" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Change Password</CardTitle>
-                  <CardDescription>
-                    Update your password to keep your account secure.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input
-                      id="currentPassword"
-                      name="currentPassword"
-                      type="password"
-                      placeholder="Enter your current password"
-                      data-testid="input-current-password"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input
-                      id="newPassword"
-                      name="newPassword"
-                      type="password"
-                      placeholder="Enter your new password"
-                      data-testid="input-new-password"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Password must be at least 8 characters long
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      placeholder="Confirm your new password"
-                      data-testid="input-confirm-password"
-                    />
-                  </div>
-                  <Button data-testid="button-change-password">
-                    Update Password
-                  </Button>
-                </CardContent>
-              </Card>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Change Password</CardTitle>
+                    <CardDescription>
+                      Update your password to keep your account secure.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Input
+                        id="currentPassword"
+                        name="currentPassword"
+                        type="password"
+                        placeholder="Enter your current password"
+                        data-testid="input-current-password"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type="password"
+                        placeholder="Enter your new password"
+                        data-testid="input-new-password"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Password must be at least 8 characters long
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        placeholder="Confirm your new password"
+                        data-testid="input-confirm-password"
+                      />
+                    </div>
+                    <Button data-testid="button-change-password">
+                      Update Password
+                    </Button>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle>Two-Factor Authentication (2FA)</CardTitle>
@@ -1589,74 +1589,74 @@ export default function Settings() {
                     )}
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Active Sessions</CardTitle>
-                      <CardDescription>
-                        Manage your active sessions and devices.
-                      </CardDescription>
-                    </div>
-                    {!isLoadingSessions && sessionsData?.sessions && sessionsData.sessions.length > 1 && (
-                      <Button 
-                        variant="destructive"
-                        onClick={() => logoutAllSessionsMutation.mutate()}
-                        disabled={logoutAllSessionsMutation.isPending}
-                        data-testid="button-sign-out-all"
-                      >
-                        {logoutAllSessionsMutation.isPending ? "Signing Out..." : "Sign Out All"}
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {isLoadingSessions ? (
-                        <div className="space-y-3">
-                          <Skeleton className="h-16 w-full" />
-                          <Skeleton className="h-16 w-full" />
-                        </div>
-                      ) : sessionsData?.sessions && sessionsData.sessions.length > 0 ? (
-                        <>
-                          {sessionsData.sessions.map((session) => (
-                            <div 
-                              key={session.id} 
-                              className="flex items-center gap-3 p-3 rounded-md border bg-card"
-                              data-testid={`session-${session.isCurrent ? 'current' : 'other'}`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-sm">
-                                    {session.isCurrent ? "Current Session" : "Other Device"}
-                                  </p>
-                                  {session.isCurrent && (
-                                    <Badge variant="default" className="text-xs px-1.5 py-0">
-                                      Active
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  Last active {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate" data-testid="text-device-info">
-                                  {session.deviceInfo}
-                                </p>
-                                <p className="text-xs text-muted-foreground" data-testid="text-ip-address">
-                                  IP: {session.ipAddress}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </>
-                      ) : (
-                        <div className="text-center py-4 text-sm text-muted-foreground">
-                          No active sessions found
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                  <div className="space-y-1">
+                    <CardTitle>Active Sessions</CardTitle>
+                    <CardDescription>
+                      Manage your active sessions and devices.
+                    </CardDescription>
+                  </div>
+                  {!isLoadingSessions && sessionsData?.sessions && sessionsData.sessions.length > 1 && (
+                    <Button 
+                      variant="destructive"
+                      onClick={() => logoutAllSessionsMutation.mutate()}
+                      disabled={logoutAllSessionsMutation.isPending}
+                      data-testid="button-sign-out-all"
+                    >
+                      {logoutAllSessionsMutation.isPending ? "Signing Out..." : "Sign Out All"}
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {isLoadingSessions ? (
+                      <div className="space-y-3">
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                      </div>
+                    ) : sessionsData?.sessions && sessionsData.sessions.length > 0 ? (
+                      <>
+                        {sessionsData.sessions.map((session) => (
+                          <div 
+                            key={session.id} 
+                            className="flex items-center gap-3 p-3 rounded-md border bg-card"
+                            data-testid={`session-${session.isCurrent ? 'current' : 'other'}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm">
+                                  {session.isCurrent ? "Current Session" : "Other Device"}
+                                </p>
+                                {session.isCurrent && (
+                                  <Badge variant="default" className="text-xs px-1.5 py-0">
+                                    Active
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Last active {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate" data-testid="text-device-info">
+                                {session.deviceInfo}
+                              </p>
+                              <p className="text-xs text-muted-foreground" data-testid="text-ip-address">
+                                IP: {session.ipAddress}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="text-center py-4 text-sm text-muted-foreground">
+                        No active sessions found
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* Preferences Tab */}
