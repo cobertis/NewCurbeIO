@@ -451,8 +451,8 @@ export default function QuotesPage() {
       ) : (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex-1 max-w-3xl">
+            <div className="flex items-center justify-between gap-6 mb-8">
+              <div className="flex-1 min-w-0">
                 <div className="relative">
                   {/* Progress Line */}
                   <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-800" style={{ zIndex: 0 }}>
@@ -501,6 +501,7 @@ export default function QuotesPage() {
                   setSelectedProduct("");
                 }}
                 data-testid="button-cancel-wizard"
+                className="shrink-0"
               >
                 Cancel
               </Button>
