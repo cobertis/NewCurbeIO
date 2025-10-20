@@ -537,7 +537,7 @@ export default function QuotesPage() {
                         name="effectiveDate"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-destructive">Effective date (required)</FormLabel>
+                            <FormLabel>Effective date <span className="text-destructive">(required)</span></FormLabel>
                             <FormControl>
                               <Input type="date" {...field} data-testid="input-effective-date" />
                             </FormControl>
@@ -551,7 +551,7 @@ export default function QuotesPage() {
                         name="agentId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-destructive">Who is the agent on record for this client? (required)</FormLabel>
+                            <FormLabel>Who is the agent on record for this client? <span className="text-destructive">(required)</span></FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger data-testid="select-agent">
@@ -577,7 +577,7 @@ export default function QuotesPage() {
                       name="productType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm text-muted-foreground">Select a product a quote <span className="text-destructive">(required)</span></FormLabel>
+                          <FormLabel>Select a product a quote <span className="text-destructive">(required)</span></FormLabel>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                             {PRODUCT_TYPES.map((product) => (
                               <button
