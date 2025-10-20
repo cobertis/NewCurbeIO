@@ -424,6 +424,7 @@ export default function Settings() {
     if (location === "/settings/company") return "company";
     if (location === "/settings/security") return "security";
     if (location === "/settings/notifications") return "notifications";
+    if (location === "/settings/team") return "team";
     return "profile"; // default
   };
 
