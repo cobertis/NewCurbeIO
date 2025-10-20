@@ -581,8 +581,8 @@ export default function QuotesPage() {
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-2">
                   {/* Step 1: Policy Information */}
                   {currentStep === 1 && (
-                    <div className="space-y-8 px-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6 px-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={form.control}
                         name="effectiveDate"
@@ -629,28 +629,28 @@ export default function QuotesPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-base">Select a product a quote <span className="text-destructive">(required)</span></FormLabel>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                             {PRODUCT_TYPES.map((product) => (
                               <button
                                 key={product.id}
                                 type="button"
                                 onClick={() => handleProductSelect(product.id)}
-                                className={`p-6 rounded-lg border text-left transition-all ${
+                                className={`p-4 rounded-lg border text-left transition-all ${
                                   selectedProduct === product.id
                                     ? "border-primary bg-primary/5 shadow-sm"
                                     : "border-border bg-card hover-elevate"
                                 }`}
                                 data-testid={`card-product-${product.id}`}
                               >
-                                <div className="flex items-start gap-4">
-                                  <div className={`flex-shrink-0 w-12 h-12 rounded-md flex items-center justify-center ${
+                                <div className="flex items-start gap-3">
+                                  <div className={`flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center ${
                                     selectedProduct === product.id ? "bg-primary" : "bg-primary/90"
                                   }`}>
-                                    <product.icon className="h-6 w-6 text-primary-foreground" />
+                                    <product.icon className="h-5 w-5 text-primary-foreground" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-base mb-1.5 text-foreground">{product.name}</h3>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
+                                    <h3 className="font-semibold text-sm mb-1 text-foreground">{product.name}</h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">{product.description}</p>
                                   </div>
                                 </div>
                               </button>
@@ -665,16 +665,16 @@ export default function QuotesPage() {
 
                 {/* Step 2: Personal Information & Address */}
                 {currentStep === 2 && (
-                  <div className="space-y-10 px-8">
+                  <div className="space-y-6 px-8">
                     {/* Personal Information Section */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3 pb-3 border-b">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b">
                         <User className="h-5 w-5 text-muted-foreground" />
                         <h3 className="text-lg font-semibold">Personal Information</h3>
                       </div>
                       
                       {/* Row 1: First Name, Middle Name, Last Name, Second Last Name */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-x-5 gap-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
                         <FormField
                           control={form.control}
                           name="clientFirstName"
@@ -733,7 +733,7 @@ export default function QuotesPage() {
                       </div>
 
                       {/* Row 2: DOB, SSN, Gender, Phone Number, Email Address */}
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-x-5 gap-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-4">
                         <FormField
                           control={form.control}
                           name="clientDateOfBirth"
@@ -836,14 +836,14 @@ export default function QuotesPage() {
                     </div>
 
                     {/* Address Section */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3 pb-3 border-t pt-8">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-t pt-4">
                         <MapPin className="h-5 w-5 text-muted-foreground" />
                         <h3 className="text-lg font-semibold">Address</h3>
                       </div>
 
                       {/* Street Address and Apartment in same row */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
                         <div className="md:col-span-2">
                           <GooglePlacesAddressAutocomplete
                             value={form.watch("street")}
@@ -881,7 +881,7 @@ export default function QuotesPage() {
                       </div>
 
                       {/* City, State, Postal Code, County */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-x-5 gap-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
                         <FormField
                           control={form.control}
                           name="city"
@@ -953,7 +953,7 @@ export default function QuotesPage() {
                     </div>
 
                     {/* Additional Options */}
-                    <div className="space-y-5 pt-8 border-t">
+                    <div className="space-y-3 pt-4 border-t">
                       <h3 className="text-base font-semibold">Additional Information</h3>
                       
                       <FormField
@@ -1022,7 +1022,7 @@ export default function QuotesPage() {
 
                 {/* Step 3: Family Group */}
                 {currentStep === 3 && (
-                  <div className="space-y-8 px-8">
+                  <div className="space-y-6 px-8">
                     {/* Income and Family Size */}
                     <FormField
                       control={form.control}
