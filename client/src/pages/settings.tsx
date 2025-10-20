@@ -413,6 +413,13 @@ export default function Settings() {
     queryKey: ["/api/companies", user?.companyId],
     enabled: !!user?.companyId,
   });
+
+  // Fetch subscription data to show plan information
+  const { data: subscriptionData } = useQuery<{ subscription: any }>({
+    queryKey: ['/api/billing/subscription'],
+    enabled: !!user?.companyId,
+  });
+  
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
@@ -1287,11 +1294,19 @@ export default function Settings() {
                     </div>
                   )}
 
-                  {/* Status */}
+                  {/* Status and Plan */}
                   <div className="pt-4 border-t">
-                    <div className="p-3 rounded-md bg-muted/50 text-center">
-                      <p className="text-xs text-muted-foreground">Status</p>
-                      <p className={`text-sm font-semibold ${getStatusColor()}`}>{getStatusDisplay()}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-3 rounded-md bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Status</p>
+                        <p className={`text-sm font-semibold ${getStatusColor()}`} data-testid="text-account-status">{getStatusDisplay()}</p>
+                      </div>
+                      <div className="p-3 rounded-md bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Plan</p>
+                        <p className="text-sm font-semibold" data-testid="text-subscription-plan">
+                          {subscriptionData?.subscription?.plan?.name || "No Plan"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
