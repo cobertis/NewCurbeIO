@@ -19,6 +19,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow, format, startOfMonth, addMonths } from "date-fns";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 
+// Format SSN with automatic dashes (XXX-XX-XXXX)
+const formatSSN = (value: string) => {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, '');
+  
+  // Apply formatting based on length
+  if (digits.length <= 3) {
+    return digits;
+  } else if (digits.length <= 5) {
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  } else {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5, 9)}`;
+  }
+};
+
 // US States for dropdown
 const US_STATES = [
   { value: "AL", label: "Alabama" },
@@ -705,11 +720,15 @@ export default function QuotesPage() {
                               <FormLabel>Social Security Number</FormLabel>
                               <FormControl>
                                 <Input 
-                                  {...field} 
+                                  {...field}
                                   type="text" 
                                   data-testid="input-client-ssn" 
                                   placeholder="XXX-XX-XXXX"
                                   maxLength={11}
+                                  onChange={(e) => {
+                                    const formatted = formatSSN(e.target.value);
+                                    field.onChange(formatted);
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
