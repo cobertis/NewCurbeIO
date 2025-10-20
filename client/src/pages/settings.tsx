@@ -785,29 +785,42 @@ export default function Settings() {
     mutationFn: async (enabled: boolean) => {
       return apiRequest("PATCH", "/api/settings/2fa/email", { enabled });
     },
-    onSuccess: async (data) => {
-      // Update the cache with the new user data from the response
+    onMutate: async (enabled: boolean) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: ["/api/session"] });
+      
+      // Snapshot previous value
+      const previousData = queryClient.getQueryData(["/api/session"]);
+      
+      // Optimistically update ONLY the email 2FA field
       queryClient.setQueryData(["/api/session"], (oldData: any) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
-          user: data.user
+          user: {
+            ...oldData.user,
+            twoFactorEmailEnabled: enabled
+          }
         };
       });
       
-      // Also invalidate to ensure fresh data
-      await queryClient.invalidateQueries({ queryKey: ["/api/session"] });
-      
-      toast({
-        title: "Success",
-        description: "Email 2FA settings updated successfully",
-      });
+      return { previousData };
     },
-    onError: () => {
+    onError: (err, newValue, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/session"], context.previousData);
+      }
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to update Email 2FA settings",
+      });
+    },
+    onSuccess: async (data) => {
+      toast({
+        title: "Success",
+        description: "Email 2FA settings updated successfully",
       });
     },
   });
@@ -817,29 +830,42 @@ export default function Settings() {
     mutationFn: async (enabled: boolean) => {
       return apiRequest("PATCH", "/api/settings/2fa/sms", { enabled });
     },
-    onSuccess: async (data) => {
-      // Update the cache with the new user data from the response
+    onMutate: async (enabled: boolean) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: ["/api/session"] });
+      
+      // Snapshot previous value
+      const previousData = queryClient.getQueryData(["/api/session"]);
+      
+      // Optimistically update ONLY the SMS 2FA field
       queryClient.setQueryData(["/api/session"], (oldData: any) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
-          user: data.user
+          user: {
+            ...oldData.user,
+            twoFactorSmsEnabled: enabled
+          }
         };
       });
       
-      // Also invalidate to ensure fresh data
-      await queryClient.invalidateQueries({ queryKey: ["/api/session"] });
-      
-      toast({
-        title: "Success",
-        description: "SMS 2FA settings updated successfully",
-      });
+      return { previousData };
     },
-    onError: (error: any) => {
+    onError: (error: any, newValue, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/session"], context.previousData);
+      }
       toast({
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to update SMS 2FA settings",
+      });
+    },
+    onSuccess: async (data) => {
+      toast({
+        title: "Success",
+        description: "SMS 2FA settings updated successfully",
       });
     },
   });
