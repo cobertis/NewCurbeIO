@@ -1070,8 +1070,19 @@ export default function QuotesPage() {
                               </Tooltip>
                             </TableCell>
                             <TableCell>
-                              <div className="font-medium text-sm">
-                                {quote.clientFirstName} {quote.clientLastName}
+                              <div>
+                                <div 
+                                  className="font-medium text-sm text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
+                                  onClick={() => setLocation(`/quotes/${quote.id}`)}
+                                >
+                                  {quote.clientFirstName} {quote.clientLastName}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {quote.clientIsApplicant ? 'Self' : 'Not Applicant'} - {quote.clientGender ? quote.clientGender.charAt(0).toUpperCase() + quote.clientGender.slice(1) : 'N/A'}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {quote.state} {quote.postalCode}
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell>
