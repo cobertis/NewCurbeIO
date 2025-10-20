@@ -232,11 +232,13 @@ const step3Schema = z.object({
 const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
 
 export default function QuotesPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
-  const [showWizard, setShowWizard] = useState(false);
+  
+  // Determine if we're in the wizard view based on URL
+  const showWizard = location === "/quotes/new";
 
   // Fetch current user
   const { data: userData } = useQuery<{ user: UserType }>({
@@ -315,7 +317,7 @@ export default function QuotesPage() {
         title: "Quote created",
         description: "Your quote has been created successfully.",
       });
-      setShowWizard(false);
+      setLocation("/quotes");
       form.reset({
         effectiveDate: format(getFirstDayOfNextMonth(), "yyyy-MM-dd"),
         agentId: userData?.user?.id || "",
@@ -445,8 +447,16 @@ export default function QuotesPage() {
       {!showWizard ? (
         <Card className="overflow-auto">
           <CardHeader>
-            <CardTitle>All Quotes</CardTitle>
-            <CardDescription>View and manage your insurance quotes</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>All Quotes</CardTitle>
+                <CardDescription>View and manage your insurance quotes</CardDescription>
+              </div>
+              <Button onClick={() => setLocation("/quotes/new")} data-testid="button-create-quote">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Quote
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -456,7 +466,7 @@ export default function QuotesPage() {
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No quotes yet</h3>
                 <p className="text-muted-foreground mb-4">Create your first quote to get started</p>
-                <Button onClick={() => setShowWizard(true)} data-testid="button-create-first-quote">
+                <Button onClick={() => setLocation("/quotes/new")} data-testid="button-create-first-quote">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Quote
                 </Button>
@@ -546,7 +556,7 @@ export default function QuotesPage() {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setShowWizard(false);
+                  setLocation("/quotes");
                   setCurrentStep(1);
                   form.reset();
                   setSelectedProduct("");
