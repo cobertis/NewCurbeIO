@@ -1464,6 +1464,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       delete req.session.pendingUserId;
       req.session.userId = user.id;
 
+      // Update last login time
+      await storage.updateUser(user.id, { lastLoginAt: new Date() });
+
       // Capture IP address
       const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
       
