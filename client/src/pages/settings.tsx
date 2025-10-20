@@ -1267,25 +1267,6 @@ export default function Settings() {
                           </div>
                         )}
 
-                        {/* Logo URL */}
-                        {companyData?.company?.logo && (
-                          <div className="flex items-start gap-3">
-                            <Globe className="h-4 w-4 text-muted-foreground mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-muted-foreground">Logo</p>
-                              <a 
-                                href={companyData.company.logo}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm font-medium text-primary hover:underline truncate block"
-                                data-testid="link-company-logo"
-                              >
-                                {companyData.company.logo}
-                              </a>
-                            </div>
-                          </div>
-                        )}
-
                         {/* Custom Domain */}
                         {companyData?.company?.domain && (
                           <div className="flex items-start gap-3">
