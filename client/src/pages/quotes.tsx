@@ -6,7 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -761,52 +763,105 @@ export default function QuotesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Client Name</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Effective Date</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead className="w-12">
+                          <Checkbox data-testid="checkbox-select-all" />
+                        </TableHead>
+                        <TableHead>Agent</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Policy</TableHead>
                         <TableHead>Created</TableHead>
+                        <TableHead>Tags</TableHead>
+                        <TableHead>Assigned to</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredQuotes.map((quote) => {
                         const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
+                        const agent = agents.find(a => a.id === quote.agentId);
+                        const assignedAgent = agents.find(a => a.id === quote.agentId);
+                        
                         return (
                           <TableRow key={quote.id} data-testid={`row-quote-${quote.id}`}>
                             <TableCell>
-                              <div className="font-medium">
+                              <Checkbox data-testid={`checkbox-quote-${quote.id}`} />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={agent?.avatar || undefined} />
+                                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                    {agent?.firstName?.[0] || 'E'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium text-sm">
+                                    {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Self - {quote.clientGender || 'Unknown'}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {quote.state} {quote.postalCode}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-sm">
                                 {quote.clientFirstName} {quote.clientLastName}
                               </div>
-                              <div className="text-sm text-muted-foreground">
-                                {quote.clientEmail}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
+                                  {product?.name || quote.productType}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Effective {format(new Date(quote.effectiveDate), "MMM dd, yyyy")}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  ID: {quote.id.slice(0, 8)}...
+                                </div>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">
-                                {product?.name || quote.productType}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{format(new Date(quote.effectiveDate), "MMM d, yyyy")}</TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={
-                                  quote.status === "draft" ? "secondary" : 
-                                  quote.status === "approved" ? "default" : 
-                                  quote.status === "rejected" ? "destructive" : 
-                                  "outline"
-                                }
-                              >
-                                {quote.status}
-                              </Badge>
+                            <TableCell className="text-sm">
+                              {format(new Date(quote.createdAt), "MMM dd, yyyy h:mm a")}
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
-                              {formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true })}
+                              -
+                            </TableCell>
+                            <TableCell>
+                              {assignedAgent ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">{assignedAgent.firstName} {assignedAgent.lastName}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0"
+                                    data-testid={`button-remove-assigned-${quote.id}`}
+                                  >
+                                    ×
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">-</span>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" data-testid={`button-view-quote-${quote.id}`}>
-                                View
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline" size="sm" data-testid={`button-preview-${quote.id}`}>
+                                    Preview
+                                    <ChevronDown className="h-4 w-4 ml-1" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem>View Details</DropdownMenuItem>
+                                  <DropdownMenuItem>Edit Quote</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableCell>
                           </TableRow>
                         );
