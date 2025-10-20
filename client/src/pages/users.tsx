@@ -94,6 +94,7 @@ export default function Users() {
         ...data,
         phone: data.phone ? formatPhoneE164(data.phone) : undefined,
       };
+      console.log("Creating user with data:", dataToSend);
       return apiRequest("POST", "/api/users", dataToSend);
     },
     onSuccess: () => {
@@ -106,10 +107,28 @@ export default function Users() {
         description: "The user has been created successfully.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("User creation error:", error);
+      // The error message is in error.message format: "401: {"message":"Not authenticated"}"
+      let errorMessage = "Failed to create user.";
+      try {
+        if (error?.message) {
+          // Try to extract the JSON part from the error message
+          const colonIndex = error.message.indexOf(': ');
+          if (colonIndex !== -1) {
+            const jsonPart = error.message.substring(colonIndex + 2);
+            const errorData = JSON.parse(jsonPart);
+            errorMessage = errorData.message || error.message;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+      } catch (e) {
+        errorMessage = error?.message || "Failed to create user.";
+      }
       toast({
-        title: "Error",
-        description: "Failed to create user.",
+        title: "Error", 
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -245,6 +264,8 @@ export default function Users() {
       ...data,
       companyId: data.companyId && data.companyId !== "__none__" ? data.companyId : undefined,
     };
+    console.log("Submitting user creation with normalized data:", normalizedData);
+    console.log("Current user session:", sessionData?.user);
     createMutation.mutate(normalizedData);
   };
 
