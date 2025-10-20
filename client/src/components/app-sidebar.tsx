@@ -109,6 +109,12 @@ export function AppSidebar() {
     queryKey: ["/api/session"],
   });
 
+  // Get company data to access the logo
+  const { data: companyData } = useQuery<{ company: { logo?: string } }>({
+    queryKey: ["/api/companies", userData?.user?.companyId],
+    enabled: !!userData?.user?.companyId,
+  });
+
   // Get unread SMS count for badge
   const { data: unreadData } = useQuery<{ unreadCount: number }>({
     queryKey: ["/api/chat/unread-count"],
@@ -132,6 +138,9 @@ export function AppSidebar() {
   const user = userData?.user;
   const isSuperAdmin = user?.role === "superadmin";
   const unreadCount = unreadData?.unreadCount || 0;
+  
+  // Use company logo if available, otherwise use default logo
+  const displayLogo = companyData?.company?.logo || logo;
 
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.superAdminOnly) {
@@ -145,8 +154,8 @@ export function AppSidebar() {
       <SidebarHeader className="px-6 py-3 pb-2">
         <Link href="/" className="flex items-center justify-center">
           <img 
-            src={logo} 
-            alt="Curbe.io" 
+            src={displayLogo} 
+            alt={companyData?.company?.logo ? "Company Logo" : "Curbe.io"} 
             className="h-10 w-auto object-contain"
           />
         </Link>
