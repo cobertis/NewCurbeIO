@@ -964,7 +964,7 @@ export default function QuotesPage() {
                                 <Avatar className="h-8 w-8">
                                   <AvatarImage src={agent?.avatar || undefined} />
                                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                                    {agent?.firstName?.[0] || 'E'}
+                                    {agent?.firstName?.[0] || 'A'}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
@@ -972,10 +972,7 @@ export default function QuotesPage() {
                                     {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    Self - {quote.clientGender || 'Unknown'}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {quote.state} {quote.postalCode}
+                                    {agent?.email || 'No email'}
                                   </div>
                                 </div>
                               </div>
