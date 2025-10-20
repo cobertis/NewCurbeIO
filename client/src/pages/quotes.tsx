@@ -15,7 +15,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User as UserType, type Quote } from "@shared/schema";
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -236,6 +236,7 @@ const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
 
 export default function QuotesPage() {
   const [location, setLocation] = useLocation();
+  const [, params] = useRoute("/quotes/:id");
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
@@ -457,6 +458,11 @@ export default function QuotesPage() {
   const agents = agentsData?.users || [];
   const allQuotes = quotesData?.quotes || [];
   
+  // Detect if we're viewing a specific quote
+  const quoteId = params?.id;
+  const isViewingQuote = !!quoteId && quoteId !== "new";
+  const viewingQuote = isViewingQuote ? allQuotes.find(q => q.id === quoteId) : null;
+  
   // Filter quotes based on search and filters
   const filteredQuotes = allQuotes.filter((quote) => {
     // Search filter
@@ -525,6 +531,173 @@ export default function QuotesPage() {
     { number: 2, title: "Personal Information & Address", icon: User },
     { number: 3, title: "Family Group", icon: Users },
   ];
+
+  // If viewing a specific quote, show details view
+  if (isViewingQuote) {
+    if (!viewingQuote) {
+      return (
+        <div className="h-full p-6 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-2">Quote not found</h2>
+            <p className="text-muted-foreground mb-4">The quote you're looking for doesn't exist or has been deleted.</p>
+            <Button onClick={() => setLocation("/quotes")}>
+              Back to Quotes
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    const product = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType);
+    const agent = agents.find(a => a.id === viewingQuote.agentId);
+
+    return (
+      <div className="h-full p-6 flex flex-col overflow-hidden">
+        <Card className="flex-1 overflow-auto">
+          <CardHeader>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setLocation("/quotes")}
+                  data-testid="button-back-to-quotes"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back to Quotes
+                </Button>
+                <div>
+                  <CardTitle className="text-2xl">Quote Details</CardTitle>
+                  <CardDescription className="text-sm">ID: {viewingQuote.id}</CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" data-testid="button-edit-quote">
+                  Edit Quote
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>Duplicate</DropdownMenuItem>
+                    <DropdownMenuItem>Download PDF</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-8">
+            {/* Policy Information Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Policy Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Product Type</label>
+                  <p className="text-base mt-1 font-medium">{product?.name || viewingQuote.productType}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Effective Date</label>
+                  <p className="text-base mt-1">{format(new Date(viewingQuote.effectiveDate), "MMMM dd, yyyy")}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <div className="mt-1">
+                    <Badge 
+                      variant={
+                        viewingQuote.status === "draft" ? "secondary" : 
+                        viewingQuote.status === "approved" ? "default" : 
+                        viewingQuote.status === "rejected" ? "destructive" : 
+                        "outline"
+                      }
+                    >
+                      {viewingQuote.status}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Agent on Record</label>
+                  <p className="text-base mt-1">{agent?.firstName} {agent?.lastName}</p>
+                  <p className="text-sm text-muted-foreground">{agent?.email}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Created</label>
+                  <p className="text-base mt-1">{format(new Date(viewingQuote.createdAt), "MMM dd, yyyy h:mm a")}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Family Group Size</label>
+                  <p className="text-base mt-1">{viewingQuote.familyGroupSize || 1} {viewingQuote.familyGroupSize === 1 ? 'person' : 'people'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Client Information Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Client Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+                  <p className="text-base mt-1">
+                    {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Email</label>
+                  <p className="text-base mt-1">{viewingQuote.clientEmail}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                  <p className="text-base mt-1">{viewingQuote.clientPhone}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Date of Birth</label>
+                  <p className="text-base mt-1">{viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Gender</label>
+                  <p className="text-base mt-1">{viewingQuote.clientGender || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">SSN</label>
+                  <p className="text-base mt-1">{viewingQuote.clientSSN ? '***-**-' + viewingQuote.clientSSN.slice(-4) : 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Address Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium text-muted-foreground">Street Address</label>
+                  <p className="text-base mt-1">{viewingQuote.street}</p>
+                  {viewingQuote.addressLine2 && <p className="text-base">{viewingQuote.addressLine2}</p>}
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">City</label>
+                  <p className="text-base mt-1">{viewingQuote.city}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">State</label>
+                  <p className="text-base mt-1">{viewingQuote.state}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Zip Code</label>
+                  <p className="text-base mt-1">{viewingQuote.postalCode}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">County</label>
+                  <p className="text-base mt-1">{viewingQuote.county || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full p-6 flex flex-col overflow-hidden">
@@ -857,7 +1030,9 @@ export default function QuotesPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>View Details</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setLocation(`/quotes/${quote.id}`)}>
+                                    View Details
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem>Edit Quote</DropdownMenuItem>
                                   <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                                 </DropdownMenuContent>

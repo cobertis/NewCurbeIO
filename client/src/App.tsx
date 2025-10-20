@@ -946,6 +946,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/quotes/:id">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Quotes />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/quotes">
         <ProtectedRoute>
           <DashboardLayout>
