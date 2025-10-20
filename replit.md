@@ -19,6 +19,14 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
     -   **Company Settings Tab:** Comprehensive company information management with 5 sections (Company Information, Physical Address, Business Profile, Authorized Representative, Branding), each with dedicated Save buttons in card headers. Includes read-only company slug display, editable business categorization (30 categories including Healthcare, Technology, Finance, Education, Real Estate, and more), and extensive niche selection (organized by category with options like Dentistry, SaaS Development, Life Insurance, etc.). All fields fully editable by admins/superadmins with real-time save functionality.
 -   **Timezone System:** User-selected timezones for date displays.
 -   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session-based authentication, and account status management with clear login feedback.
+    -   **Active Sessions Management:** Comprehensive session visibility in Settings page Security tab. Users can view all active sessions across devices with device information (user agent) and IP address. Features include:
+        -   Auto-refreshing session list (every 30 seconds) with compact display
+        -   Clear visual distinction between current session and other devices
+        -   Last active timestamps shown using relative time (e.g., "2 hours ago")
+        -   "Sign Out of All Other Sessions" button to remotely terminate all sessions except current one
+        -   Device info and IP captured at OTP verification during login
+        -   Direct PostgreSQL session table queries for real-time session data
+        -   Session metadata stored in connect-pg-simple session structure
 -   **Multi-tenancy:** Strict data isolation using `companyId` for all non-superadmin access, with superadmins having cross-company oversight.
 -   **Email System:** Global SMTP configuration, database-driven templates, and automated sending for system events.
 -   **Modular Feature System:** Superadmins can define and assign features to companies.
