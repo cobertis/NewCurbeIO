@@ -1056,14 +1056,14 @@ export default function QuotesPage() {
                                     </Avatar>
                                   </div>
                                 </TooltipTrigger>
-                                <TooltipContent side="right" className="p-3">
-                                  <div className="space-y-1">
-                                    <h4 className="font-semibold text-sm">Agent information</h4>
-                                    <div className="text-xs space-y-0.5">
-                                      <div><span className="font-medium">Name:</span> {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
-                                      <div><span className="font-medium">NPN:</span> {agent?.nationalProducerNumber || 'N/A'}</div>
-                                      <div><span className="font-medium">Email:</span> {agent?.email || 'No email'}</div>
-                                      <div><span className="font-medium">Role:</span> {agent?.role || 'N/A'}</div>
+                                <TooltipContent side="right" className="p-2">
+                                  <div className="space-y-0.5">
+                                    <div className="font-semibold text-xs mb-1">Agent information</div>
+                                    <div className="text-xs space-y-0">
+                                      <div>Name: {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
+                                      <div>NPN: {agent?.nationalProducerNumber || 'N/A'}</div>
+                                      <div>Email: {agent?.email || 'No email'}</div>
+                                      <div>Role: {agent?.role || 'N/A'}</div>
                                     </div>
                                   </div>
                                 </TooltipContent>
