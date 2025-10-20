@@ -629,19 +629,9 @@ export default function QuotesPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>First Name *</FormLabel>
-                              <div className="flex gap-2">
-                                <FormControl>
-                                  <Input {...field} data-testid="input-client-firstname" placeholder="First name" />
-                                </FormControl>
-                                <Button 
-                                  type="button" 
-                                  variant="outline"
-                                  data-testid="button-search-client"
-                                >
-                                  <Search className="h-4 w-4 mr-2" />
-                                  Search
-                                </Button>
-                              </div>
+                              <FormControl>
+                                <Input {...field} data-testid="input-client-firstname" placeholder="First name" />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1037,15 +1027,9 @@ export default function QuotesPage() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>First name *</FormLabel>
-                                  <div className="flex gap-2">
-                                    <FormControl>
-                                      <Input {...field} placeholder="First name" data-testid={`input-spouse-firstname-${index}`} />
-                                    </FormControl>
-                                    <Button type="button" variant="outline">
-                                      <Search className="h-4 w-4 mr-2" />
-                                      Search
-                                    </Button>
-                                  </div>
+                                  <FormControl>
+                                    <Input {...field} placeholder="First name" data-testid={`input-spouse-firstname-${index}`} />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -1239,15 +1223,9 @@ export default function QuotesPage() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>First name *</FormLabel>
-                                  <div className="flex gap-2">
-                                    <FormControl>
-                                      <Input {...field} placeholder="First name" data-testid={`input-dependent-firstname-${index}`} />
-                                    </FormControl>
-                                    <Button type="button" variant="outline">
-                                      <Search className="h-4 w-4 mr-2" />
-                                      Search
-                                    </Button>
-                                  </div>
+                                  <FormControl>
+                                    <Input {...field} placeholder="First name" data-testid={`input-dependent-firstname-${index}`} />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
