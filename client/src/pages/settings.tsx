@@ -1084,7 +1084,7 @@ export default function Settings() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column - Profile Card */}
         <div className="lg:col-span-4 xl:col-span-3">
-          <Card className="sticky top-6">
+          <Card>
             <CardContent className="p-6">
               <div className="space-y-6">
                 {/* Top Section - Avatar and Name */}
