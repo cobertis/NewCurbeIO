@@ -391,20 +391,6 @@ export default function QuotesPage() {
 
   return (
     <div className="h-full p-6 space-y-6 overflow-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Quotes</h1>
-          <p className="text-muted-foreground mt-1">Manage insurance quotes and proposals</p>
-        </div>
-        <Button
-          onClick={() => setShowWizard(true)}
-          data-testid="button-create-quote"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Quote
-        </Button>
-      </div>
-
       {!showWizard ? (
         <Card>
           <CardHeader>
