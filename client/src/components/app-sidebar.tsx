@@ -13,7 +13,11 @@ import {
   LifeBuoy,
   Mail,
   Megaphone,
-  AtSign
+  AtSign,
+  Settings,
+  Ticket,
+  MessageSquare,
+  AlertTriangle
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -32,7 +36,7 @@ import {
 import type { User } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 
-// Menu items for superadmin
+// Menu items for superadmin (COMPLETE LIST)
 const superadminMenuItems = [
   {
     title: "Dashboard",
@@ -70,9 +74,19 @@ const superadminMenuItems = [
     icon: FileText,
   },
   {
+    title: "Billing",
+    url: "/billing",
+    icon: CreditCard,
+  },
+  {
     title: "Quotes",
     url: "/quotes",
     icon: ClipboardList,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
   },
   {
     title: "Audit Logs",
@@ -80,12 +94,17 @@ const superadminMenuItems = [
     icon: Shield,
   },
   {
+    title: "Tickets",
+    url: "/tickets",
+    icon: Ticket,
+  },
+  {
     title: "Support",
     url: "/support",
     icon: LifeBuoy,
   },
   {
-    title: "Email Contacts",
+    title: "Contacts",
     url: "/contacts",
     icon: Mail,
   },
@@ -93,6 +112,16 @@ const superadminMenuItems = [
     title: "Campaigns",
     url: "/campaigns",
     icon: Megaphone,
+  },
+  {
+    title: "Incoming SMS",
+    url: "/incoming-sms",
+    icon: MessageSquare,
+  },
+  {
+    title: "System Alerts",
+    url: "/system-alerts",
+    icon: AlertTriangle,
   },
   {
     title: "Email Config",
