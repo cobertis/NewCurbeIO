@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare, Bell, Ticket, Mail } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import {
   Sidebar,
   SidebarContent,
@@ -150,7 +151,12 @@ export function AppSidebar() {
         credentials: "include",
       });
       if (response.ok) {
-        window.location.href = "/";
+        // Clear all query cache
+        queryClient.clear();
+        // Clear company logo cache
+        localStorage.removeItem('company_logo');
+        // Redirect to login
+        window.location.href = "/login";
       }
     } catch (error) {
       console.error("Logout failed:", error);
