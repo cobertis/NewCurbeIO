@@ -290,12 +290,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       });
 
       if (response.ok) {
+        // Clear all query cache
         queryClient.clear();
-        setLocation("/");
-        toast({
-          title: "Logged out",
-          description: "You have been logged out successfully.",
-        });
+        // Clear company logo cache
+        localStorage.removeItem('company_logo');
+        // Force hard reload to login page
+        window.location.href = "/login";
       } else {
         toast({
           variant: "destructive",
