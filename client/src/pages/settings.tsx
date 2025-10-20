@@ -1199,17 +1199,11 @@ export default function Settings() {
                     </div>
                   )}
 
-                  {/* Status and Plan */}
+                  {/* Status */}
                   <div className="pt-4 border-t">
-                    <div className="grid grid-cols-2 gap-2 text-center">
-                      <div className="p-3 rounded-md bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Status</p>
-                        <p className={`text-sm font-semibold ${getStatusColor()}`}>{getStatusDisplay()}</p>
-                      </div>
-                      <div className="p-3 rounded-md bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Plan</p>
-                        <p className="text-sm font-semibold">{getCurrentPlanName()}</p>
-                      </div>
+                    <div className="p-3 rounded-md bg-muted/50 text-center">
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <p className={`text-sm font-semibold ${getStatusColor()}`}>{getStatusDisplay()}</p>
                     </div>
                   </div>
                 </div>

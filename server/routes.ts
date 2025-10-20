@@ -496,6 +496,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!has2FAEnabled) {
         req.session.userId = user.id;
         
+        // Capture device info and IP address
+        req.session.deviceInfo = req.get('user-agent') || 'Unknown Device';
+        req.session.ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
+        
         // Set session duration (7 days)
         const sessionDuration = 7 * 24 * 60 * 60 * 1000;
         req.session.cookie.maxAge = sessionDuration;
@@ -551,6 +555,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If device is trusted for this user, skip OTP
         if (trustedUserId === user.id) {
           req.session.userId = user.id;
+          
+          // Capture device info and IP address
+          req.session.deviceInfo = req.get('user-agent') || 'Unknown Device';
+          req.session.ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
           
           // Set session duration (7 days)
           const sessionDuration = 7 * 24 * 60 * 60 * 1000;
