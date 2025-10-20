@@ -1061,7 +1061,7 @@ export default function QuotesPage() {
                                     <h4 className="font-semibold text-sm">Agent information</h4>
                                     <div className="text-xs space-y-0.5">
                                       <div><span className="font-medium">Name:</span> {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
-                                      <div><span className="font-medium">NPN:</span> {agent?.id.slice(0, 8) || 'N/A'}</div>
+                                      <div><span className="font-medium">NPN:</span> {agent?.nationalProducerNumber || 'N/A'}</div>
                                       <div><span className="font-medium">Email:</span> {agent?.email || 'No email'}</div>
                                       <div><span className="font-medium">Role:</span> {agent?.role || 'N/A'}</div>
                                     </div>
