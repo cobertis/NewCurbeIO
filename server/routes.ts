@@ -497,8 +497,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.userId = user.id;
         
         // Capture device info and IP address
-        req.session.deviceInfo = req.get('user-agent') || 'Unknown Device';
-        req.session.ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
+        const deviceInfo = req.get('user-agent') || 'Unknown Device';
+        const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
+        
+        req.session.deviceInfo = deviceInfo;
+        req.session.ipAddress = ipAddress;
+        
+        console.log(`[SESSION-DEBUG] Setting session data:`, {
+          userId: user.id,
+          deviceInfo,
+          ipAddress,
+          sessionId: req.sessionID
+        });
         
         // Set session duration (7 days)
         const sessionDuration = 7 * 24 * 60 * 60 * 1000;
@@ -514,10 +524,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Create login notification with IP address
-        const ipAddress = req.ip || req.connection.remoteAddress || null;
-        const userAgent = req.get("user-agent") || null;
         const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-        await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
+        await notificationService.notifyLogin(user.id, userName, ipAddress, deviceInfo);
         
         console.log(`✓ Direct login for ${user.email} - 2FA not enabled`);
         
@@ -526,6 +534,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error("Error saving session:", err);
             return res.status(500).json({ message: "Failed to save session" });
           }
+          
+          console.log(`[SESSION-DEBUG] Session saved successfully. Session data:`, {
+            userId: req.session.userId,
+            deviceInfo: req.session.deviceInfo,
+            ipAddress: req.session.ipAddress
+          });
           
           res.json({
             success: true,
