@@ -753,7 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Logout from all sessions across all devices
+  // Logout from all sessions and clear all security data (sessions + trusted devices)
   app.post("/api/logout-all-sessions", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId;
@@ -767,11 +767,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { neon } = await import("@neondatabase/serverless");
       const sql = neon(process.env.DATABASE_URL!);
       
-      // Delete all sessions for this user from the session table
-      // connect-pg-simple stores userId in sess JSON column
+      // 1. Delete all sessions for this user
       await sql`
         DELETE FROM session 
         WHERE sess->>'userId' = ${userId}
+      `;
+
+      // 2. Delete all trusted devices for this user
+      await sql`
+        DELETE FROM trusted_devices 
+        WHERE user_id = ${userId}
       `;
 
       await logger.logAuth({
@@ -780,25 +785,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: userId,
         email: user?.email || "unknown",
         metadata: {
-          type: "all_sessions",
-          message: "User logged out from all sessions across all devices"
+          type: "all_sessions_and_devices",
+          message: "User cleared all sessions and trusted devices"
         }
       });
 
-      // Destroy current session as well
+      // 3. Destroy current session
       req.session.destroy((err) => {
         if (err) {
           console.error("Error destroying current session:", err);
           return res.status(500).json({ message: "Failed to logout from all sessions" });
         }
+        
+        // 4. Clear trusted device cookie
+        res.clearCookie('trusted_device');
+        
         res.json({ 
           success: true,
-          message: "Successfully logged out from all devices"
+          message: "Successfully cleared all sessions and trusted devices"
         });
       });
     } catch (error) {
-      console.error("Error logging out from all sessions:", error);
-      res.status(500).json({ message: "Failed to logout from all sessions" });
+      console.error("Error clearing security data:", error);
+      res.status(500).json({ message: "Failed to clear security data" });
     }
   });
 

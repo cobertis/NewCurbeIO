@@ -756,26 +756,26 @@ export default function Settings() {
     },
   });
 
-  // Logout from all sessions mutation
+  // Sign out all sessions and clear all security data
   const logoutAllSessionsMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", "/api/logout-all-sessions", {});
     },
     onSuccess: () => {
       toast({
-        title: "Success",
-        description: "Successfully logged out from all devices",
+        title: "Security Cleared",
+        description: "All sessions and trusted devices have been removed",
       });
       // Redirect to login after successful logout
       setTimeout(() => {
-        window.location.href = "/";
-      }, 1000);
+        window.location.href = "/login";
+      }, 1500);
     },
     onError: () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to logout from all sessions",
+        description: "Failed to clear security data",
       });
     },
   });
@@ -1613,17 +1613,17 @@ export default function Settings() {
                   <div className="space-y-1">
                     <CardTitle>Active Sessions</CardTitle>
                     <CardDescription>
-                      Manage your active sessions and devices.
+                      Manage your active sessions and devices. Sign out from all sessions to clear all security data.
                     </CardDescription>
                   </div>
-                  {!isLoadingSessions && sessionsData?.sessions && sessionsData.sessions.length > 1 && (
+                  {!isLoadingSessions && sessionsData?.sessions && sessionsData.sessions.length >= 1 && (
                     <Button 
                       variant="destructive"
                       onClick={() => logoutAllSessionsMutation.mutate()}
                       disabled={logoutAllSessionsMutation.isPending}
-                      data-testid="button-sign-out-all"
+                      data-testid="button-sign-out-all-sessions"
                     >
-                      {logoutAllSessionsMutation.isPending ? "Signing Out..." : "Sign Out All"}
+                      {logoutAllSessionsMutation.isPending ? "Clearing..." : "Sign Out All Sessions"}
                     </Button>
                   )}
                 </CardHeader>
