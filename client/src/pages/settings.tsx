@@ -815,6 +815,48 @@ export default function Settings() {
     },
   });
 
+  // Toggle Email 2FA mutation
+  const toggleEmailTwoFactorMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return apiRequest("PATCH", "/api/settings/2fa/email", { enabled });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      toast({
+        title: "Success",
+        description: "Email 2FA settings updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update Email 2FA settings",
+      });
+    },
+  });
+
+  // Toggle SMS 2FA mutation
+  const toggleSmsTwoFactorMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return apiRequest("PATCH", "/api/settings/2fa/sms", { enabled });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      toast({
+        title: "Success",
+        description: "SMS 2FA settings updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update SMS 2FA settings",
+      });
+    },
+  });
+
   // Handler for Company Information Save
   const handleSaveCompanyInformation = async () => {
     setSavingSection("companyInfo");
@@ -1546,28 +1588,50 @@ export default function Settings() {
                   <CardHeader>
                     <CardTitle>Two-Factor Authentication (2FA)</CardTitle>
                     <CardDescription>
-                      Add an extra layer of security to your account with SMS verification.
+                      Add an extra layer of security to your account with email or SMS verification.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label htmlFor="twoFactorEnabled" className="text-base">
-                          Enable 2FA
+                        <Label htmlFor="twoFactorEmailEnabled" className="text-base">
+                          Email 2FA
                         </Label>
                         <p className="text-sm text-muted-foreground">
-                          {user?.twoFactorEnabled 
-                            ? "Two-factor authentication is currently enabled on your account"
+                          {user?.twoFactorEmailEnabled 
+                            ? "Email two-factor authentication is enabled on your account"
+                            : "Secure your account with email-based two-factor authentication"}
+                        </p>
+                      </div>
+                      <Switch
+                        id="twoFactorEmailEnabled"
+                        checked={user?.twoFactorEmailEnabled || false}
+                        onCheckedChange={(checked) => toggleEmailTwoFactorMutation.mutate(checked)}
+                        disabled={toggleEmailTwoFactorMutation.isPending}
+                        data-testid="switch-two-factor-email"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="twoFactorSmsEnabled" className="text-base">
+                          SMS 2FA
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          {user?.twoFactorSmsEnabled 
+                            ? "SMS two-factor authentication is enabled on your account"
                             : "Secure your account with SMS-based two-factor authentication"}
                         </p>
                       </div>
                       <Switch
-                        id="twoFactorEnabled"
-                        checked={user?.twoFactorEnabled || false}
-                        disabled={!user?.phone}
-                        data-testid="switch-two-factor"
+                        id="twoFactorSmsEnabled"
+                        checked={user?.twoFactorSmsEnabled || false}
+                        onCheckedChange={(checked) => toggleSmsTwoFactorMutation.mutate(checked)}
+                        disabled={!user?.phone || toggleSmsTwoFactorMutation.isPending}
+                        data-testid="switch-two-factor-sms"
                       />
                     </div>
+                    
                     {!user?.phone && (
                       <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-4 border border-yellow-200 dark:border-yellow-800">
                         <div className="flex">
@@ -1576,7 +1640,7 @@ export default function Settings() {
                           </div>
                           <div className="ml-3">
                             <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                              Phone number required
+                              Phone number required for SMS 2FA
                             </h3>
                             <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
                               <p>

@@ -488,6 +488,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
+      // Check if 2FA is enabled for this user
+      const has2FAEnabled = user.twoFactorEmailEnabled || user.twoFactorSmsEnabled;
+      console.log(`[LOGIN] 2FA Status - Email: ${user.twoFactorEmailEnabled}, SMS: ${user.twoFactorSmsEnabled}, Has 2FA: ${has2FAEnabled}`);
+
+      // If 2FA is not enabled, allow direct login without OTP
+      if (!has2FAEnabled) {
+        req.session.userId = user.id;
+        
+        // Set session duration (7 days)
+        const sessionDuration = 7 * 24 * 60 * 60 * 1000;
+        req.session.cookie.maxAge = sessionDuration;
+        req.session.cookie.expires = new Date(Date.now() + sessionDuration);
+        
+        await logger.logAuth({
+          req,
+          action: "login_no_2fa",
+          userId: user.id,
+          email: user.email,
+          metadata: { twoFactorEnabled: false },
+        });
+        
+        // Create login notification with IP address
+        const ipAddress = req.ip || req.connection.remoteAddress || null;
+        const userAgent = req.get("user-agent") || null;
+        const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+        await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
+        
+        console.log(`✓ Direct login for ${user.email} - 2FA not enabled`);
+        
+        return req.session.save((err) => {
+          if (err) {
+            console.error("Error saving session:", err);
+            return res.status(500).json({ message: "Failed to save session" });
+          }
+          
+          res.json({
+            success: true,
+            skipOTP: true,
+            user: {
+              id: user.id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              phone: user.phone,
+              role: user.role,
+              companyId: user.companyId,
+            },
+          });
+        });
+      }
+
       // Check for trusted device token
       const trustedDeviceToken = req.cookies?.trusted_device;
       console.log(`[LOGIN] Checking trusted device. Token exists: ${!!trustedDeviceToken}, User: ${user.email}`);
@@ -2664,6 +2715,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  // Toggle Email 2FA
+  app.patch("/api/settings/2fa/email", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user!; // User is guaranteed by middleware
+
+    try {
+      const { enabled } = z.object({
+        enabled: z.boolean()
+      }).parse(req.body);
+
+      const updatedUser = await storage.updateUser(user.id, {
+        twoFactorEmailEnabled: enabled,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...sanitizedUser } = updatedUser;
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Invalid request" });
+    }
+  });
+
+  // Toggle SMS 2FA
+  app.patch("/api/settings/2fa/sms", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user!; // User is guaranteed by middleware
+
+    try {
+      const { enabled } = z.object({
+        enabled: z.boolean()
+      }).parse(req.body);
+
+      // Check if user has phone number for SMS 2FA
+      if (enabled && !user.phone) {
+        return res.status(400).json({ message: "Phone number is required to enable SMS 2FA" });
+      }
+
+      const updatedUser = await storage.updateUser(user.id, {
+        twoFactorSmsEnabled: enabled,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...sanitizedUser } = updatedUser;
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Invalid request" });
     }
   });
 
