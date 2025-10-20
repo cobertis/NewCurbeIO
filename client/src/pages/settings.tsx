@@ -2111,24 +2111,51 @@ export default function Settings() {
                       {updateCompanyMutation.isPending && savingSection === "branding" ? "Saving..." : "Save"}
                     </Button>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="logo">Logo URL</Label>
-                      <Input
-                        id="logo"
-                        ref={logoRef}
-                        type="url"
-                        placeholder="https://example.com/logo.png"
-                        defaultValue={companyData?.company?.logo || ""}
-                        data-testid="input-logo"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Enter the URL of your company logo. Recommended size: 200x200px
-                      </p>
+                  <CardContent className="space-y-6">
+                    {/* Logo Section with Preview */}
+                    <div className="space-y-4">
+                      <Label htmlFor="logo" className="text-base font-semibold">Company Logo</Label>
+                      
+                      {/* Logo Preview */}
+                      {companyData?.company?.logo && (
+                        <div className="flex items-center gap-4 p-4 rounded-md border bg-muted/30">
+                          <div className="flex-shrink-0">
+                            <img 
+                              src={companyData.company.logo} 
+                              alt="Company Logo" 
+                              className="h-20 w-20 object-contain rounded-md border bg-white"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">Current Logo</p>
+                            <p className="text-xs text-muted-foreground truncate">{companyData.company.logo}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Logo URL Input */}
+                      <div className="space-y-2">
+                        <Input
+                          id="logo"
+                          ref={logoRef}
+                          type="url"
+                          placeholder="https://example.com/logo.png"
+                          defaultValue={companyData?.company?.logo || ""}
+                          data-testid="input-logo"
+                          className="font-mono text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Enter the URL of your company logo. Recommended size: 200x200px or larger for best quality.
+                        </p>
+                      </div>
                     </div>
 
+                    {/* Custom Domain Section */}
                     <div className="space-y-2">
-                      <Label htmlFor="domain">Custom Domain</Label>
+                      <Label htmlFor="domain" className="text-base font-semibold">Custom Domain</Label>
                       <Input
                         id="domain"
                         ref={domainRef}
