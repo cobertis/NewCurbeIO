@@ -64,7 +64,9 @@ export class LoggingService {
       | "otp_verify_failed" 
       | "login_with_otp"
       | "otp_resent"
-      | "account_activated";
+      | "account_activated"
+      | "password_reset_requested"
+      | "password_reset_completed";
     userId?: string;
     email: string;
     metadata?: Record<string, any>;

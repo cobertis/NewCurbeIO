@@ -1787,11 +1787,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Email or username is required" });
       }
 
-      // Try to find user by email or username
-      let user = await storage.getUserByEmail(identifier);
-      if (!user) {
-        user = await storage.getUserByUsername(identifier);
-      }
+      // Try to find user by email
+      const user = await storage.getUserByEmail(identifier);
 
       // Always return success even if user not found (security best practice)
       // This prevents email enumeration attacks
