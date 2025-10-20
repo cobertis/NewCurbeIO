@@ -34,6 +34,23 @@ const formatSSN = (value: string) => {
   }
 };
 
+// Format Phone Number with automatic formatting (XXX) XXX-XXXX
+const formatPhoneNumber = (value: string) => {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, '');
+  
+  // Apply formatting based on length
+  if (digits.length === 0) {
+    return '';
+  } else if (digits.length <= 3) {
+    return `(${digits}`;
+  } else if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  } else {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  }
+};
+
 // US States for dropdown
 const US_STATES = [
   { value: "AL", label: "Alabama" },
@@ -769,7 +786,17 @@ export default function QuotesPage() {
                             <FormItem>
                               <FormLabel>Phone Number *</FormLabel>
                               <FormControl>
-                                <Input {...field} type="tel" data-testid="input-client-phone" placeholder="(555) 123-4567" />
+                                <Input 
+                                  {...field}
+                                  type="tel" 
+                                  data-testid="input-client-phone" 
+                                  placeholder="(555) 123-4567"
+                                  maxLength={14}
+                                  onChange={(e) => {
+                                    const formatted = formatPhoneNumber(e.target.value);
+                                    field.onChange(formatted);
+                                  }}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1150,7 +1177,17 @@ export default function QuotesPage() {
                                 <FormItem>
                                   <FormLabel>Phone</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="Phone" data-testid={`input-spouse-phone-${index}`} />
+                                    <Input 
+                                      {...field}
+                                      type="tel"
+                                      placeholder="(555) 123-4567" 
+                                      data-testid={`input-spouse-phone-${index}`}
+                                      maxLength={14}
+                                      onChange={(e) => {
+                                        const formatted = formatPhoneNumber(e.target.value);
+                                        field.onChange(formatted);
+                                      }}
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1346,7 +1383,17 @@ export default function QuotesPage() {
                                 <FormItem>
                                   <FormLabel>Phone</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="Phone" data-testid={`input-dependent-phone-${index}`} />
+                                    <Input 
+                                      {...field}
+                                      type="tel"
+                                      placeholder="(555) 123-4567" 
+                                      data-testid={`input-dependent-phone-${index}`}
+                                      maxLength={14}
+                                      onChange={(e) => {
+                                        const formatted = formatPhoneNumber(e.target.value);
+                                        field.onChange(formatted);
+                                      }}
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
