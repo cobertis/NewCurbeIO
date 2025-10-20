@@ -27,6 +27,8 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import VerifyOTP from "@/pages/verify-otp";
 import ActivateAccount from "@/pages/activate-account";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Users from "@/pages/users";
@@ -876,6 +878,8 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/verify-otp" component={VerifyOTP} />
       <Route path="/activate-account" component={ActivateAccount} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <DashboardLayout>
