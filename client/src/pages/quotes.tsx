@@ -713,8 +713,8 @@ export default function QuotesPage() {
                         />
                       </div>
 
-                      {/* Row 2: DOB, SSN, Gender */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
+                      {/* Row 2: DOB, SSN, Gender, Phone Number, Email Address */}
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-6">
                         <FormField
                           control={form.control}
                           name="clientDateOfBirth"
@@ -734,7 +734,7 @@ export default function QuotesPage() {
                           name="clientSsn"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Social Security Number</FormLabel>
+                              <FormLabel>SSN</FormLabel>
                               <FormControl>
                                 <Input 
                                   {...field}
@@ -775,16 +775,13 @@ export default function QuotesPage() {
                             </FormItem>
                           )}
                         />
-                      </div>
 
-                      {/* Row 3: Phone Number, Email Address */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                         <FormField
                           control={form.control}
                           name="clientPhone"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Phone Number *</FormLabel>
+                              <FormLabel>Phone *</FormLabel>
                               <FormControl>
                                 <Input 
                                   {...field}
@@ -808,7 +805,7 @@ export default function QuotesPage() {
                           name="clientEmail"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email Address *</FormLabel>
+                              <FormLabel>Email *</FormLabel>
                               <FormControl>
                                 <Input type="email" {...field} data-testid="input-client-email" placeholder="client@example.com" />
                               </FormControl>
