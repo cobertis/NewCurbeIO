@@ -1052,6 +1052,10 @@ export default function Settings() {
   const handleDeleteLogo = () => {
     if (!companyData?.company?.id) return;
     setSavingSection("branding");
+    
+    // Clear the logo from localStorage cache immediately
+    localStorage.removeItem('company_logo');
+    
     updateCompanyMutation.mutate({ logo: null });
   };
 
