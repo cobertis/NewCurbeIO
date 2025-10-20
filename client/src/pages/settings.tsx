@@ -1263,7 +1263,7 @@ export default function Settings() {
         {/* Right Column - Settings Tabs */}
         <div className="lg:col-span-8 xl:col-span-9">
           <Tabs value={activeTab} onValueChange={(value) => setLocation(`/settings/${value}`)} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 lg:w-auto">
+            <TabsList className="grid w-full grid-cols-3 lg:flex lg:w-auto">
               <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
                 <UserIcon className="h-4 w-4" />
                 Profile
