@@ -66,6 +66,7 @@ const getPageTitle = (path: string): string => {
     '/plans': 'Plans',
     '/features': 'Features',
     '/quotes': 'Quotes',
+    '/quotes/new': 'New Quote',
     '/invoices': 'Invoices',
     '/settings': 'Settings',
     '/settings/profile': 'Settings - Profile',
@@ -935,6 +936,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Features />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/quotes/new">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Quotes />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
