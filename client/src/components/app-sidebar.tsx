@@ -165,16 +165,16 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="px-6 py-4">
-        <Link href="/" className="flex items-center justify-center h-full">
+      <SidebarHeader className="px-6">
+        <Link href="/" className="flex items-center justify-center h-full py-2">
           {displayLogo ? (
             <img 
               src={displayLogo} 
               alt={companyData?.company?.logo ? "Company Logo" : "Curbe.io"} 
-              className="w-full h-full object-contain max-h-16"
+              className="w-full h-full object-contain max-h-12"
             />
           ) : (
-            <div className="w-full h-16" />
+            <div className="w-full h-12" />
           )}
         </Link>
       </SidebarHeader>
