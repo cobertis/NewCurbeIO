@@ -236,6 +236,9 @@ export default function QuotesPage() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [productFilter, setProductFilter] = useState("all");
   
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/quotes/new";
@@ -434,7 +437,26 @@ export default function QuotesPage() {
   };
 
   const agents = agentsData?.users || [];
-  const quotes = quotesData?.quotes || [];
+  const allQuotes = quotesData?.quotes || [];
+  
+  // Filter quotes based on search and filters
+  const filteredQuotes = allQuotes.filter((quote) => {
+    // Search filter
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = 
+      searchQuery === "" ||
+      `${quote.clientFirstName} ${quote.clientLastName}`.toLowerCase().includes(searchLower) ||
+      quote.clientEmail.toLowerCase().includes(searchLower) ||
+      quote.clientPhone.includes(searchQuery);
+    
+    // Status filter
+    const matchesStatus = statusFilter === "all" || quote.status === statusFilter;
+    
+    // Product filter
+    const matchesProduct = productFilter === "all" || quote.productType === productFilter;
+    
+    return matchesSearch && matchesStatus && matchesProduct;
+  });
 
   // Step indicators
   const steps = [
@@ -462,7 +484,7 @@ export default function QuotesPage() {
           <CardContent>
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading quotes...</div>
-            ) : quotes.length === 0 ? (
+            ) : allQuotes.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No quotes yet</h3>
@@ -473,40 +495,116 @@ export default function QuotesPage() {
                 </Button>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client Name</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Effective Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {quotes.map((quote) => (
-                    <TableRow key={quote.id} data-testid={`row-quote-${quote.id}`}>
-                      <TableCell className="font-medium">
-                        {quote.clientFirstName} {quote.clientLastName}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {PRODUCT_TYPES.find(p => p.id === quote.productType)?.name || quote.productType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{format(new Date(quote.effectiveDate), "MMM d, yyyy")}</TableCell>
-                      <TableCell>
-                        <Badge variant={quote.status === "draft" ? "secondary" : "default"}>
-                          {quote.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                {/* Search and Filters */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search by client name, email, or phone..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full"
+                      data-testid="input-search-quotes"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="submitted">Submitted</SelectItem>
+                        <SelectItem value="pending_review">Pending Review</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={productFilter} onValueChange={setProductFilter}>
+                      <SelectTrigger className="w-[160px]" data-testid="select-product-filter">
+                        <SelectValue placeholder="Product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Products</SelectItem>
+                        {PRODUCT_TYPES.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Results count */}
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredQuotes.length} of {allQuotes.length} quotes
+                </div>
+
+                {/* Table */}
+                {filteredQuotes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No quotes match your search criteria
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Client Name</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Effective Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredQuotes.map((quote) => {
+                        const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
+                        return (
+                          <TableRow key={quote.id} data-testid={`row-quote-${quote.id}`}>
+                            <TableCell>
+                              <div className="font-medium">
+                                {quote.clientFirstName} {quote.clientLastName}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {quote.clientEmail}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {product?.name || quote.productType}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{format(new Date(quote.effectiveDate), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  quote.status === "draft" ? "secondary" : 
+                                  quote.status === "approved" ? "default" : 
+                                  quote.status === "rejected" ? "destructive" : 
+                                  "outline"
+                                }
+                              >
+                                {quote.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" data-testid={`button-view-quote-${quote.id}`}>
+                                View
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
