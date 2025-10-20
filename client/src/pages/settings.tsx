@@ -912,14 +912,15 @@ export default function Settings() {
   };
 
   // Handler for Timezone Save
-  const handleTimezoneUpdate = async () => {
-    if (!selectedTimezone) return;
+  const handleTimezoneUpdate = async (timezone?: string) => {
+    const timezoneToSave = timezone || selectedTimezone;
+    if (!timezoneToSave) return;
     
     try {
       const response = await fetch("/api/users/timezone", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timezone: selectedTimezone }),
+        body: JSON.stringify({ timezone: timezoneToSave }),
       });
 
       if (response.ok) {
@@ -2159,7 +2160,7 @@ export default function Settings() {
                           data-testid="input-website"
                         />
                       </div>
-                      <div className="space-y-2 md:col-span-2">
+                      <div className="space-y-2">
                         <Label htmlFor="platformLanguage">Platform Language</Label>
                         <Input
                           id="platformLanguage"
@@ -2168,41 +2169,42 @@ export default function Settings() {
                           data-testid="input-platform-language"
                         />
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="timezone">Your Timezone</Label>
-                        {selectedTimezone && (
-                          <span className="text-sm font-medium text-muted-foreground">
-                            {currentTime.toLocaleTimeString('en-US', {
-                              timeZone: selectedTimezone,
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                            {' '}
-                            {selectedTimezone.includes('New_York') ? 'EST'
-                              : selectedTimezone.includes('Chicago') ? 'CST'
-                              : selectedTimezone.includes('Denver') ? 'MST'
-                              : selectedTimezone.includes('Los_Angeles') ? 'PST'
-                              : selectedTimezone.includes('London') ? 'GMT'
-                              : selectedTimezone.includes('Paris') ? 'CET'
-                              : selectedTimezone.includes('Tokyo') ? 'JST'
-                              : selectedTimezone.includes('Sydney') ? 'AEST'
-                              : selectedTimezone.includes('Dubai') ? 'GST'
-                              : selectedTimezone.includes('Singapore') ? 'SGT'
-                              : selectedTimezone.includes('Hong_Kong') ? 'HKT'
-                              : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="timezone">Your Timezone</Label>
+                          {selectedTimezone && (
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {currentTime.toLocaleTimeString('en-US', {
+                                timeZone: selectedTimezone,
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
+                              {' '}
+                              {selectedTimezone.includes('New_York') ? 'EST'
+                                : selectedTimezone.includes('Chicago') ? 'CST'
+                                : selectedTimezone.includes('Denver') ? 'MST'
+                                : selectedTimezone.includes('Los_Angeles') ? 'PST'
+                                : selectedTimezone.includes('London') ? 'GMT'
+                                : selectedTimezone.includes('Paris') ? 'CET'
+                                : selectedTimezone.includes('Tokyo') ? 'JST'
+                                : selectedTimezone.includes('Sydney') ? 'AEST'
+                                : selectedTimezone.includes('Dubai') ? 'GST'
+                                : selectedTimezone.includes('Singapore') ? 'SGT'
+                                : selectedTimezone.includes('Hong_Kong') ? 'HKT'
+                                : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'}
+                            </span>
+                          )}
+                        </div>
                         <Select
                           value={selectedTimezone}
-                          onValueChange={setSelectedTimezone}
+                          onValueChange={(value) => {
+                            setSelectedTimezone(value);
+                            // Auto-save timezone on change
+                            handleTimezoneUpdate(value);
+                          }}
                         >
-                          <SelectTrigger id="timezone" data-testid="select-timezone" className="flex-1">
+                          <SelectTrigger id="timezone" data-testid="select-timezone">
                             <SelectValue placeholder="Select timezone" />
                           </SelectTrigger>
                           <SelectContent className="max-h-[300px]">
@@ -2259,13 +2261,6 @@ export default function Settings() {
                             <SelectItem value="UTC">(UTC+00:00) UTC, Greenwich</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button 
-                          onClick={handleTimezoneUpdate}
-                          disabled={!selectedTimezone}
-                          data-testid="button-save-timezone"
-                        >
-                          Save
-                        </Button>
                       </div>
                     </div>
                   </CardContent>
