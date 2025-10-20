@@ -16,7 +16,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -2713,8 +2713,35 @@ export default function Settings() {
 }
 
 function TeamMembersTable() {
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
   const { data: usersData, isLoading } = useQuery<{ users: User[] }>({
     queryKey: ["/api/users"],
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("PATCH", `/api/users/${id}/toggle-status`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Status Updated",
+        description: "The user status has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update user status.",
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -2739,6 +2766,19 @@ function TeamMembersTable() {
     );
   }
 
+  // Filter users based on search and filters
+  const filteredUsers = usersData.users.filter((user) => {
+    const matchesSearch = searchTerm === "" || 
+      (user.firstName?.toLowerCase()?.includes(searchTerm.toLowerCase()) ?? false) ||
+      (user.lastName?.toLowerCase()?.includes(searchTerm.toLowerCase()) ?? false) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'superadmin':
@@ -2746,7 +2786,307 @@ function TeamMembersTable() {
       case 'admin':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
       case 'user':
+      case 'member':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+      case 'viewer':
+        return 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    }
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'pending_activation':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      case 'deactivated':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    }
+  };
+
+  const handleViewDetails = (user: User) => {
+    setSelectedUser(user);
+    setDetailsDialogOpen(true);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+            data-testid="input-search-users"
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-full sm:w-40" data-testid="select-role-filter">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="superadmin">Superadmin</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="user">User</SelectItem>
+            <SelectItem value="member">Member</SelectItem>
+            <SelectItem value="viewer">Viewer</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-40" data-testid="select-status-filter">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="pending_activation">Pending</SelectItem>
+            <SelectItem value="deactivated">Deactivated</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Results count */}
+      <div className="text-sm text-muted-foreground">
+        Showing {filteredUsers.length} of {usersData.users.length} team members
+      </div>
+
+      {/* Users Table */}
+      <div className="rounded-md border">
+        <table className="min-w-full divide-y divide-border">
+          <thead>
+            <tr className="bg-muted/50">
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Contact
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Role
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-12 text-center">
+                  <UserIcon className="h-12 w-12 text-muted-foreground/50 mb-3 mx-auto" />
+                  <p className="text-sm font-medium">No users found</p>
+                  <p className="text-xs text-muted-foreground mt-1">Try adjusting your search or filters</p>
+                </td>
+              </tr>
+            ) : (
+              filteredUsers.map((user) => (
+                <tr key={user.id} className="hover-elevate" data-testid={`row-user-${user.id}`}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar || undefined} alt={`${user.firstName} ${user.lastName}`} />
+                        <AvatarFallback className="text-xs">
+                          {user.firstName?.[0]}{user.lastName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium" data-testid={`text-username-${user.id}`}>
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-xs">
+                        <AtSign className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">{user.email}</span>
+                      </div>
+                      {user.phone && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <PhoneIcon className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">{formatPhoneDisplay(user.phone)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge 
+                      className={cn("text-xs", getRoleBadgeColor(user.role))}
+                      data-testid={`badge-role-${user.id}`}
+                    >
+                      {user.role}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge 
+                      className={cn("text-xs", getStatusBadgeColor(user.status))}
+                      data-testid={`badge-status-${user.id}`}
+                    >
+                      {user.status === 'pending_activation' ? 'Pending' : user.status}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetails(user)}
+                        data-testid={`button-view-details-${user.id}`}
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleStatusMutation.mutate(user.id)}
+                        disabled={toggleStatusMutation.isPending}
+                        data-testid={`button-toggle-status-${user.id}`}
+                        title={user.isActive ? "Deactivate User" : "Activate User"}
+                      >
+                        <Power className={cn("h-4 w-4", user.isActive ? "text-green-600" : "text-gray-400")} />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* User Details Dialog */}
+      <UserDetailsDialog
+        user={selectedUser}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
+    </div>
+  );
+}
+
+// User Details Dialog Component
+interface UserDetailsDialogProps {
+  user: User | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps) {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<Partial<User>>({});
+
+  // Update form data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        role: user.role || "member",
+        timezone: user.timezone || "",
+        address: user.address || "",
+        agentInternalCode: user.agentInternalCode || "",
+        instructionLevel: user.instructionLevel || "",
+        nationalProducerNumber: user.nationalProducerNumber || "",
+        federallyFacilitatedMarketplace: user.federallyFacilitatedMarketplace || "",
+        referredBy: user.referredBy || "",
+      });
+      setIsEditing(false);
+    }
+  }, [user]);
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: Partial<User>) => {
+      if (!user) return;
+      const updateData: any = {};
+      
+      // Only include changed fields
+      if (data.firstName !== user.firstName) updateData.firstName = data.firstName;
+      if (data.lastName !== user.lastName) updateData.lastName = data.lastName;
+      if (data.phone !== user.phone && data.phone) {
+        updateData.phone = formatPhoneE164(data.phone);
+      }
+      if (data.role !== user.role) updateData.role = data.role;
+      if (data.timezone !== user.timezone) updateData.timezone = data.timezone;
+      if (data.address !== user.address) updateData.address = data.address;
+      if (data.agentInternalCode !== user.agentInternalCode) updateData.agentInternalCode = data.agentInternalCode;
+      if (data.instructionLevel !== user.instructionLevel) updateData.instructionLevel = data.instructionLevel;
+      if (data.nationalProducerNumber !== user.nationalProducerNumber) updateData.nationalProducerNumber = data.nationalProducerNumber;
+      if (data.federallyFacilitatedMarketplace !== user.federallyFacilitatedMarketplace) updateData.federallyFacilitatedMarketplace = data.federallyFacilitatedMarketplace;
+      if (data.referredBy !== user.referredBy) updateData.referredBy = data.referredBy;
+
+      return apiRequest("PATCH", `/api/users/${user.id}`, updateData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+      setIsEditing(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSave = () => {
+    updateUserMutation.mutate(formData);
+  };
+
+  const handleCancel = () => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        role: user.role || "member",
+        timezone: user.timezone || "",
+        address: user.address || "",
+        agentInternalCode: user.agentInternalCode || "",
+        instructionLevel: user.instructionLevel || "",
+        nationalProducerNumber: user.nationalProducerNumber || "",
+        federallyFacilitatedMarketplace: user.federallyFacilitatedMarketplace || "",
+        referredBy: user.referredBy || "",
+      });
+    }
+    setIsEditing(false);
+  };
+
+  if (!user) return null;
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'superadmin':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+      case 'admin':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'user':
+      case 'member':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+      case 'viewer':
+        return 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
     }
@@ -2766,77 +3106,276 @@ function TeamMembersTable() {
   };
 
   return (
-    <div className="rounded-md border">
-      <table className="min-w-full divide-y divide-border">
-        <thead>
-          <tr className="bg-muted/50">
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              User
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Contact
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Role
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Status
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {usersData.users.map((user) => (
-            <tr key={user.id} className="hover-elevate" data-testid={`row-user-${user.id}`}>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar || undefined} alt={`${user.firstName} ${user.lastName}`} />
-                    <AvatarFallback className="text-xs">
-                      {user.firstName?.[0]}{user.lastName?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium" data-testid={`text-username-${user.id}`}>
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2 text-xs">
-                    <AtSign className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">{user.email}</span>
-                  </div>
-                  {user.phone && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <PhoneIcon className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-muted-foreground">{formatPhoneDisplay(user.phone)}</span>
-                    </div>
-                  )}
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <Badge 
-                  className={cn("text-xs", getRoleBadgeColor(user.role))}
-                  data-testid={`badge-role-${user.id}`}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={user.avatar || undefined} alt={`${user.firstName} ${user.lastName}`} />
+                <AvatarFallback>
+                  {user.firstName?.[0]}{user.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <DialogTitle>{user.firstName} {user.lastName}</DialogTitle>
+                <DialogDescription>{user.email}</DialogDescription>
+              </div>
+            </div>
+            {!isEditing && (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-edit-user">
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            )}
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Status and Role */}
+          <div className="flex items-center gap-3">
+            <Badge className={cn("text-xs", getStatusBadgeColor(user.status))}>
+              {user.status === 'pending_activation' ? 'Pending' : user.status}
+            </Badge>
+            <Badge className={cn("text-xs", getRoleBadgeColor(user.role))}>
+              {user.role}
+            </Badge>
+            {user.emailVerified && (
+              <Badge variant="outline" className="text-xs">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Email Verified
+              </Badge>
+            )}
+          </div>
+
+          {/* Personal Information */}
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <UserIcon className="h-4 w-4" />
+              Personal Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={formData.firstName || ""}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  disabled={!isEditing}
+                  data-testid="input-first-name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={formData.lastName || ""}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  disabled={!isEditing}
+                  data-testid="input-last-name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={user.email}
+                  disabled
+                  className="bg-muted"
+                  data-testid="input-email"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={isEditing ? formatPhoneInput(formData.phone || "") : formatPhoneDisplay(user.phone || "")}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  disabled={!isEditing}
+                  data-testid="input-phone"
+                />
+              </div>
+              <div>
+                <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : ""}
+                  disabled
+                  className="bg-muted"
+                  data-testid="input-date-of-birth"
+                />
+              </div>
+              <div>
+                <Label htmlFor="role">Role</Label>
+                <Select
+                  value={formData.role || "member"}
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  disabled={!isEditing}
                 >
-                  {user.role}
-                </Badge>
-              </td>
-              <td className="px-4 py-3">
-                <Badge 
-                  className={cn("text-xs", getStatusBadgeColor(user.status))}
-                  data-testid={`badge-status-${user.id}`}
-                >
-                  {user.status === 'pending_activation' ? 'Pending' : user.status}
-                </Badge>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                  <SelectTrigger data-testid="select-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="superadmin">Superadmin</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Location & Timezone */}
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Location & Timezone
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  value={formData.address || ""}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  disabled={!isEditing}
+                  data-testid="input-address"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="timezone">Timezone</Label>
+                <Input
+                  id="timezone"
+                  value={formData.timezone || ""}
+                  onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                  disabled={!isEditing}
+                  placeholder="e.g., America/New_York"
+                  data-testid="input-timezone"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Insurance Profile (if applicable) */}
+          {(user.agentInternalCode || user.instructionLevel || user.nationalProducerNumber || user.federallyFacilitatedMarketplace || user.referredBy || isEditing) && (
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                Insurance Profile
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="agentInternalCode">Agent Internal Code</Label>
+                  <Input
+                    id="agentInternalCode"
+                    value={formData.agentInternalCode || ""}
+                    onChange={(e) => setFormData({ ...formData, agentInternalCode: e.target.value })}
+                    disabled={!isEditing}
+                    data-testid="input-agent-code"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="instructionLevel">Instruction Level</Label>
+                  <Input
+                    id="instructionLevel"
+                    value={formData.instructionLevel || ""}
+                    onChange={(e) => setFormData({ ...formData, instructionLevel: e.target.value })}
+                    disabled={!isEditing}
+                    data-testid="input-instruction-level"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nationalProducerNumber">National Producer Number</Label>
+                  <Input
+                    id="nationalProducerNumber"
+                    value={formData.nationalProducerNumber || ""}
+                    onChange={(e) => setFormData({ ...formData, nationalProducerNumber: e.target.value })}
+                    disabled={!isEditing}
+                    data-testid="input-npn"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="federallyFacilitatedMarketplace">FFM</Label>
+                  <Input
+                    id="federallyFacilitatedMarketplace"
+                    value={formData.federallyFacilitatedMarketplace || ""}
+                    onChange={(e) => setFormData({ ...formData, federallyFacilitatedMarketplace: e.target.value })}
+                    disabled={!isEditing}
+                    data-testid="input-ffm"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="referredBy">Referred By</Label>
+                  <Input
+                    id="referredBy"
+                    value={formData.referredBy || ""}
+                    onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })}
+                    disabled={!isEditing}
+                    data-testid="input-referred-by"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Account Information */}
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Account Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Created:</span>
+                <span>{user.createdAt ? format(new Date(user.createdAt), "MMM dd, yyyy") : "N/A"}</span>
+              </div>
+              {user.lastLoginAt && (
+                <div className="flex items-center gap-2">
+                  <LogIn className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Last Login:</span>
+                  <span>{formatDistanceToNow(new Date(user.lastLoginAt), { addSuffix: true })}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Email Notifications:</span>
+                <span>{user.emailNotifications ? "Enabled" : "Disabled"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">SMS Subscribed:</span>
+                <span>{user.smsSubscribed ? "Yes" : "No"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">2FA Email:</span>
+                <span>{user.twoFactorEmailEnabled ? "Enabled" : "Disabled"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <PhoneIcon className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">2FA SMS:</span>
+                <span>{user.twoFactorSmsEnabled ? "Enabled" : "Disabled"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {isEditing && (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancel} disabled={updateUserMutation.isPending} data-testid="button-cancel">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={updateUserMutation.isPending} data-testid="button-save">
+              {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
