@@ -18,6 +18,7 @@ interface GooglePlacesAddressAutocompleteProps {
     street: string;
     city: string;
     state: string;
+    county?: string;
     postalCode: string;
     country: string;
   }) => void;
@@ -119,6 +120,7 @@ export function GooglePlacesAddressAutocomplete({
           street: address.street,
           city: address.city,
           state: address.state,
+          county: address.county,
           postalCode: address.postalCode,
           country: address.country,
         });

@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow, format, startOfMonth, addMonths } from "date-fns";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 
 // US States for dropdown
 const US_STATES = [
@@ -168,16 +169,6 @@ const step2Schema = z.object({
   clientIsApplicant: z.boolean().default(false),
   clientTobaccoUser: z.boolean().default(false),
   clientSsn: z.string().optional(),
-});
-
-const step3Schema = z.object({
-  annualHouseholdIncome: z.string().optional(),
-  familyGroupSize: z.string().optional(),
-  spouses: z.array(familyMemberSchema).default([]),
-  dependents: z.array(familyMemberSchema).default([]),
-});
-
-const step4Schema = z.object({
   street: z.string().min(1, "Street address is required"),
   addressLine2: z.string().optional(),
   city: z.string().min(1, "City is required"),
@@ -187,7 +178,14 @@ const step4Schema = z.object({
   country: z.string().default("United States"),
 });
 
-const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema).merge(step4Schema);
+const step3Schema = z.object({
+  annualHouseholdIncome: z.string().optional(),
+  familyGroupSize: z.string().optional(),
+  spouses: z.array(familyMemberSchema).default([]),
+  dependents: z.array(familyMemberSchema).default([]),
+});
+
+const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
 
 export default function QuotesPage() {
   const [, setLocation] = useLocation();
@@ -322,17 +320,20 @@ export default function QuotesPage() {
         "clientDateOfBirth",
         "clientGender",
         "clientIsApplicant",
-        "clientTobaccoUser"
+        "clientTobaccoUser",
+        "clientSsn",
+        "street",
+        "city",
+        "state",
+        "postalCode"
       ]);
     } else if (currentStep === 3) {
       isValid = true; // Family members are optional
-    } else if (currentStep === 4) {
-      isValid = await form.trigger(["street", "city", "state", "postalCode", "county"]);
     }
 
-    if (isValid && currentStep < 4) {
+    if (isValid && currentStep < 3) {
       setCurrentStep(currentStep + 1);
-    } else if (isValid && currentStep === 4) {
+    } else if (isValid && currentStep === 3) {
       form.handleSubmit((data) => createQuoteMutation.mutate(data))();
     }
   };
@@ -384,9 +385,8 @@ export default function QuotesPage() {
   // Step indicators
   const steps = [
     { number: 1, title: "Policy Information", icon: FileText },
-    { number: 2, title: "Personal Information", icon: User },
+    { number: 2, title: "Personal Information & Address", icon: User },
     { number: 3, title: "Family Group", icon: Users },
-    { number: 4, title: "Address", icon: MapPin },
   ];
 
   return (
@@ -587,149 +587,286 @@ export default function QuotesPage() {
                   </div>
                 )}
 
-                {/* Step 2: Personal Information */}
+                {/* Step 2: Personal Information & Address */}
                 {currentStep === 2 && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                      {/* Row 1 */}
-                      <FormField
-                        control={form.control}
-                        name="clientFirstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First name *</FormLabel>
-                            <div className="flex gap-2">
+                  <div className="space-y-8">
+                    {/* Personal Information Section */}
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <User className="h-5 w-5 text-muted-foreground" />
+                        <h3 className="text-base font-semibold">Personal Information</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                        <FormField
+                          control={form.control}
+                          name="clientFirstName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>First Name *</FormLabel>
+                              <div className="flex gap-2">
+                                <FormControl>
+                                  <Input {...field} data-testid="input-client-firstname" placeholder="First name" />
+                                </FormControl>
+                                <Button 
+                                  type="button" 
+                                  variant="outline"
+                                  data-testid="button-search-client"
+                                >
+                                  <Search className="h-4 w-4 mr-2" />
+                                  Search
+                                </Button>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="clientMiddleName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Middle Name</FormLabel>
                               <FormControl>
-                                <Input {...field} data-testid="input-client-firstname" placeholder="First name" />
+                                <Input {...field} data-testid="input-client-middlename" placeholder="Middle name (optional)" />
                               </FormControl>
-                              <Button 
-                                type="button" 
-                                variant="outline"
-                                data-testid="button-search-client"
-                              >
-                                <Search className="h-4 w-4 mr-2" />
-                                Search
-                              </Button>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      <FormField
-                        control={form.control}
-                        name="clientMiddleName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Middle name (optional)</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-client-middlename" placeholder="Middle name" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Row 2 */}
-                      <FormField
-                        control={form.control}
-                        name="clientLastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last name *</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-client-lastname" placeholder="Last name" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="clientSecondLastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Second last name (optional)</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-client-secondlastname" placeholder="Second last name" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Row 3 */}
-                      <FormField
-                        control={form.control}
-                        name="clientDateOfBirth"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Date of birth</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} data-testid="input-client-dob" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="clientGender"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                        <FormField
+                          control={form.control}
+                          name="clientLastName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Last Name *</FormLabel>
                               <FormControl>
-                                <SelectTrigger data-testid="select-client-gender">
-                                  <SelectValue placeholder="Select gender" />
-                                </SelectTrigger>
+                                <Input {...field} data-testid="input-client-lastname" placeholder="Last name" />
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      {/* Row 4 */}
-                      <FormField
-                        control={form.control}
-                        name="clientPhone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Phone</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-client-phone" placeholder="Phone" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        <FormField
+                          control={form.control}
+                          name="clientSecondLastName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Second Last Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-client-secondlastname" placeholder="Second last name (optional)" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      <FormField
-                        control={form.control}
-                        name="clientEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input type="email" {...field} data-testid="input-client-email" placeholder="Email" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        <FormField
+                          control={form.control}
+                          name="clientSsn"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Social Security Number</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="text" 
+                                  data-testid="input-client-ssn" 
+                                  placeholder="XXX-XX-XXXX"
+                                  maxLength={11}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="clientDateOfBirth"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date of Birth</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} data-testid="input-client-dob" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="clientGender"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Gender</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-client-gender">
+                                    <SelectValue placeholder="Select gender" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="male">Male</SelectItem>
+                                  <SelectItem value="female">Female</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="clientPhone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone Number *</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="tel" data-testid="input-client-phone" placeholder="(555) 123-4567" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="clientEmail"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email Address *</FormLabel>
+                              <FormControl>
+                                <Input type="email" {...field} data-testid="input-client-email" placeholder="client@example.com" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
 
-                    {/* Checkboxes Section */}
-                    <div className="space-y-4 pt-4 border-t">
-                      <h3 className="text-sm font-semibold">Select all that apply</h3>
+                    {/* Address Section */}
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 pb-2 border-t pt-6">
+                        <MapPin className="h-5 w-5 text-muted-foreground" />
+                        <h3 className="text-base font-semibold">Address</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                        <div className="md:col-span-2">
+                          <GooglePlacesAddressAutocomplete
+                            value={form.watch("street")}
+                            onChange={(value) => form.setValue("street", value)}
+                            onAddressSelect={(address) => {
+                              form.setValue("street", address.street);
+                              form.setValue("city", address.city);
+                              form.setValue("state", address.state);
+                              form.setValue("postalCode", address.postalCode);
+                              form.setValue("county", address.county || "");
+                              form.setValue("country", address.country);
+                            }}
+                            label="Street Address *"
+                            placeholder="Start typing your address..."
+                            testId="input-street-address"
+                          />
+                          {form.formState.errors.street && (
+                            <p className="text-sm text-destructive mt-2">{form.formState.errors.street.message}</p>
+                          )}
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="addressLine2"
+                          render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                              <FormLabel>Apartment, Suite, Unit</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-address-line2" placeholder="Apt, Suite, Unit (optional)" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="city"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>City *</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-city" placeholder="City" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="state"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>State *</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-state">
+                                    <SelectValue placeholder="Select state" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {US_STATES.map((state) => (
+                                    <SelectItem key={state.value} value={state.value}>
+                                      {state.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="postalCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Postal Code *</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-postalcode" placeholder="ZIP Code" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="county"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>County</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-county" placeholder="Auto-detected" disabled />
+                              </FormControl>
+                              <p className="text-xs text-muted-foreground">Auto-detected from address</p>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Additional Options */}
+                    <div className="space-y-4 pt-6 border-t">
+                      <h3 className="text-sm font-semibold">Additional Information</h3>
                       
                       <FormField
                         control={form.control}
@@ -1256,124 +1393,6 @@ export default function QuotesPage() {
                   </div>
                 )}
 
-                {/* Step 4: Address */}
-                {currentStep === 4 && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 gap-6">
-                      <FormField
-                        control={form.control}
-                        name="street"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Address line #1 *</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-street" placeholder="Address line #1" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="addressLine2"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Address line #2</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-address-line2" placeholder="Apartment, suite, unit, etc." />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <FormField
-                          control={form.control}
-                          name="city"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>City *</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-city" placeholder="City" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="state"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>State *</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-state">
-                                    <SelectValue placeholder="Select state" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {US_STATES.map((state) => (
-                                    <SelectItem key={state.value} value={state.value}>
-                                      {state.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="postalCode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Postal Code *</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-postal-code" placeholder="Postal code" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="county"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>County</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-county" placeholder="County" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="country"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Country</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-country" placeholder="Country" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {/* Navigation Buttons */}
                 <div className="flex items-center justify-between pt-6 border-t">
                   <Button
@@ -1388,7 +1407,7 @@ export default function QuotesPage() {
                   </Button>
 
                   <div className="text-sm text-muted-foreground">
-                    Step {currentStep} of 4
+                    Step {currentStep} of 3
                   </div>
 
                   <Button
@@ -1397,7 +1416,7 @@ export default function QuotesPage() {
                     disabled={createQuoteMutation.isPending}
                     data-testid="button-next"
                   >
-                    {currentStep === 4 ? (
+                    {currentStep === 3 ? (
                       createQuoteMutation.isPending ? "Creating..." : "CREATE QUOTE"
                     ) : (
                       <>

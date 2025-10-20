@@ -1133,6 +1133,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       let street = '';
       let city = '';
       let state = '';
+      let county = '';
       let postalCode = '';
       let country = '';
       
@@ -1152,6 +1153,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (types.includes('administrative_area_level_1')) {
             state = component.shortText || component.longText;
           }
+          if (types.includes('administrative_area_level_2')) {
+            county = component.longText;
+          }
           if (types.includes('postal_code')) {
             postalCode = component.longText;
           }
@@ -1167,6 +1171,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         street,
         city,
         state,
+        county,
         postalCode,
         country
       };
