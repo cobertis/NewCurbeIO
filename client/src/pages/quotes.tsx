@@ -5,7 +5,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -237,8 +238,23 @@ export default function QuotesPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [productFilter, setProductFilter] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  
+  // Advanced filters state
+  const [filters, setFilters] = useState({
+    user: "",
+    assignedTo: "",
+    status: "all",
+    state: "",
+    zipCode: "",
+    productType: "all",
+    effectiveDateFrom: "",
+    effectiveDateTo: "",
+    submissionDateFrom: "",
+    submissionDateTo: "",
+    applicantsFrom: "",
+    applicantsTo: "",
+  });
   
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/quotes/new";
@@ -450,13 +466,56 @@ export default function QuotesPage() {
       quote.clientPhone.includes(searchQuery);
     
     // Status filter
-    const matchesStatus = statusFilter === "all" || quote.status === statusFilter;
+    const matchesStatus = filters.status === "all" || quote.status === filters.status;
     
     // Product filter
-    const matchesProduct = productFilter === "all" || quote.productType === productFilter;
+    const matchesProduct = filters.productType === "all" || quote.productType === filters.productType;
     
-    return matchesSearch && matchesStatus && matchesProduct;
+    // State filter
+    const matchesState = !filters.state || quote.state === filters.state;
+    
+    // Zip code filter
+    const matchesZipCode = !filters.zipCode || quote.postalCode.includes(filters.zipCode);
+    
+    // Assigned to filter (agentId)
+    const matchesAssignedTo = !filters.assignedTo || quote.agentId === filters.assignedTo;
+    
+    // Effective date range filter
+    const quoteEffectiveDate = new Date(quote.effectiveDate);
+    const matchesEffectiveDateFrom = !filters.effectiveDateFrom || quoteEffectiveDate >= new Date(filters.effectiveDateFrom);
+    const matchesEffectiveDateTo = !filters.effectiveDateTo || quoteEffectiveDate <= new Date(filters.effectiveDateTo);
+    
+    // Family group size (applicants) filter
+    const matchesApplicantsFrom = !filters.applicantsFrom || (quote.familyGroupSize && quote.familyGroupSize >= parseInt(filters.applicantsFrom));
+    const matchesApplicantsTo = !filters.applicantsTo || (quote.familyGroupSize && quote.familyGroupSize <= parseInt(filters.applicantsTo));
+    
+    return matchesSearch && matchesStatus && matchesProduct && matchesState && 
+           matchesZipCode && matchesAssignedTo && matchesEffectiveDateFrom && 
+           matchesEffectiveDateTo && matchesApplicantsFrom && matchesApplicantsTo;
   });
+  
+  // Check if any filters are active
+  const hasActiveFilters = filters.status !== "all" || filters.productType !== "all" || 
+    filters.state || filters.zipCode || filters.assignedTo || filters.effectiveDateFrom || 
+    filters.effectiveDateTo || filters.applicantsFrom || filters.applicantsTo;
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setFilters({
+      user: "",
+      assignedTo: "",
+      status: "all",
+      state: "",
+      zipCode: "",
+      productType: "all",
+      effectiveDateFrom: "",
+      effectiveDateTo: "",
+      submissionDateFrom: "",
+      submissionDateTo: "",
+      applicantsFrom: "",
+      applicantsTo: "",
+    });
+  };
 
   // Step indicators
   const steps = [
@@ -496,8 +555,8 @@ export default function QuotesPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Search and Filters */}
-                <div className="flex flex-col sm:flex-row gap-4">
+                {/* Search and Filters Button */}
+                <div className="flex gap-4">
                   <div className="flex-1">
                     <Input
                       placeholder="Search by client name, email, or phone..."
@@ -507,34 +566,185 @@ export default function QuotesPage() {
                       data-testid="input-search-quotes"
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="submitted">Submitted</SelectItem>
-                        <SelectItem value="pending_review">Pending Review</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={productFilter} onValueChange={setProductFilter}>
-                      <SelectTrigger className="w-[160px]" data-testid="select-product-filter">
-                        <SelectValue placeholder="Product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Products</SelectItem>
-                        {PRODUCT_TYPES.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" data-testid="button-filters">
+                        <Filter className="h-4 w-4 mr-2" />
+                        Filters
+                        {hasActiveFilters && (
+                          <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full">
+                            !
+                          </Badge>
+                        )}
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+                      <SheetHeader>
+                        <SheetTitle>Filter your quotes by</SheetTitle>
+                      </SheetHeader>
+                      <div className="space-y-6 py-6">
+                        {/* Search and Reset */}
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="default" 
+                            className="flex-1"
+                            onClick={() => setFiltersOpen(false)}
+                            data-testid="button-apply-filters"
+                          >
+                            <Search className="h-4 w-4 mr-2" />
+                            Search
+                          </Button>
+                          {hasActiveFilters && (
+                            <Button 
+                              variant="outline"
+                              onClick={resetFilters}
+                              data-testid="button-reset-filters"
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Reset filters
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Assigned to */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Assigned to</label>
+                          <Select 
+                            value={filters.assignedTo} 
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, assignedTo: value }))}
+                          >
+                            <SelectTrigger data-testid="select-assigned-to">
+                              <SelectValue placeholder="Filter by assigned user" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">All Users</SelectItem>
+                              {agents.map((agent) => (
+                                <SelectItem key={agent.id} value={agent.id}>
+                                  {agent.firstName} {agent.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Status */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Status</label>
+                          <Select 
+                            value={filters.status} 
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                          >
+                            <SelectTrigger data-testid="select-filter-status">
+                              <SelectValue placeholder="Filter by status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Status</SelectItem>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="submitted">Submitted</SelectItem>
+                              <SelectItem value="pending_review">Pending Review</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* State */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">State</label>
+                          <Select 
+                            value={filters.state} 
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, state: value }))}
+                          >
+                            <SelectTrigger data-testid="select-filter-state">
+                              <SelectValue placeholder="Filter by state" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">All States</SelectItem>
+                              {US_STATES.map((state) => (
+                                <SelectItem key={state.value} value={state.value}>
+                                  {state.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Zip Code */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Zip code</label>
+                          <Input
+                            placeholder="Filter by Zip code"
+                            value={filters.zipCode}
+                            onChange={(e) => setFilters(prev => ({ ...prev, zipCode: e.target.value }))}
+                            data-testid="input-filter-zip"
+                          />
+                        </div>
+
+                        {/* Product Type */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Product type</label>
+                          <Select 
+                            value={filters.productType} 
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, productType: value }))}
+                          >
+                            <SelectTrigger data-testid="select-filter-product">
+                              <SelectValue placeholder="Product type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Products</SelectItem>
+                              {PRODUCT_TYPES.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Effective Date Range */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Effective date</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              type="date"
+                              placeholder="From..."
+                              value={filters.effectiveDateFrom}
+                              onChange={(e) => setFilters(prev => ({ ...prev, effectiveDateFrom: e.target.value }))}
+                              data-testid="input-effective-from"
+                            />
+                            <Input
+                              type="date"
+                              placeholder="To..."
+                              value={filters.effectiveDateTo}
+                              onChange={(e) => setFilters(prev => ({ ...prev, effectiveDateTo: e.target.value }))}
+                              data-testid="input-effective-to"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Quantity of Applicants */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Quantity of applicants</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              type="number"
+                              placeholder="From"
+                              value={filters.applicantsFrom}
+                              onChange={(e) => setFilters(prev => ({ ...prev, applicantsFrom: e.target.value }))}
+                              data-testid="input-applicants-from"
+                            />
+                            <Input
+                              type="number"
+                              placeholder="To"
+                              value={filters.applicantsTo}
+                              onChange={(e) => setFilters(prev => ({ ...prev, applicantsTo: e.target.value }))}
+                              data-testid="input-applicants-to"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                 </div>
 
                 {/* Results count */}
