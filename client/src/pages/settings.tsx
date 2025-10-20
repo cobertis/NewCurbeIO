@@ -830,18 +830,18 @@ export default function Settings() {
     if (selectedTimezone) data.timezone = selectedTimezone;
     if (platformLanguageRef.current?.value) data.platformLanguage = platformLanguageRef.current.value;
     
-    // If timezone is being updated, also update the current user's timezone
-    if (selectedTimezone) {
+    // If timezone is being updated, also sync it to the user's timezone
+    if (selectedTimezone && selectedTimezone !== user?.timezone) {
       try {
-        await fetch("/api/users/timezone", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ timezone: selectedTimezone }),
-        });
-        // Invalidate session to refresh user data with new timezone
-        await queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+        await apiRequest("PATCH", "/api/users/timezone", { timezone: selectedTimezone });
+        console.log("User timezone synchronized:", selectedTimezone);
       } catch (error) {
-        console.error("Failed to update user timezone:", error);
+        console.error("Failed to sync user timezone:", error);
+        toast({
+          variant: "destructive",
+          title: "Warning",
+          description: "Company timezone updated but failed to sync to your user profile",
+        });
       }
     }
     
