@@ -189,7 +189,7 @@ export function AppSidebar() {
             <img 
               src={displayLogo} 
               alt={companyData?.company?.logo ? "Company Logo" : "Curbe.io"} 
-              className="w-full h-12 object-cover object-center"
+              className="w-full h-12 object-contain"
             />
           ) : (
             <div className="w-full h-12" />
