@@ -1057,9 +1057,9 @@ export default function QuotesPage() {
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent side="right" className="p-2">
-                                  <div className="space-y-0.5">
-                                    <div className="font-semibold text-xs mb-1">Agent information</div>
-                                    <div className="text-xs space-y-0">
+                                  <div>
+                                    <div className="font-semibold text-xs mb-0.5">Agent information</div>
+                                    <div className="text-xs leading-tight">
                                       <div>Name: {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
                                       <div>NPN: {agent?.nationalProducerNumber || 'N/A'}</div>
                                       <div>Email: {agent?.email || 'No email'}</div>
