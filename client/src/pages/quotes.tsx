@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -79,56 +79,67 @@ const PRODUCT_TYPES = [
     id: "medicare",
     name: "Medicare",
     description: "Government health insurance for individuals 65+ or with certain disabilities",
+    icon: Shield,
   },
   {
     id: "medicaid",
     name: "Medicaid",
     description: "State and federal program offering health coverage for low-income individuals and families",
+    icon: Heart,
   },
   {
     id: "aca",
     name: "Health Insurance (ACA)",
     description: "Health insurance under the Affordable Care Act offering essential health benefits and subsidies",
+    icon: Cross,
   },
   {
     id: "life",
     name: "Life Insurance",
     description: "Financial protection for your loved ones in the event of your passing",
+    icon: Heart,
   },
   {
     id: "private",
     name: "Private",
     description: "Health plans offered outside of government programs, with customizable coverage options",
+    icon: Building2,
   },
   {
     id: "dental",
     name: "Dental",
     description: "Coverage for preventive, basic, and major dental care services",
+    icon: Smile,
   },
   {
     id: "vision",
     name: "Vision",
     description: "Insurance for eye exams, glasses, contact lenses, and more",
+    icon: Eye,
   },
   {
     id: "supplemental",
     name: "Supplemental",
     description: "Additional insurance that pays benefits for specific events like accidents, critical illness, or hospital stays",
+    icon: Plus,
   },
   {
     id: "annuities",
     name: "Annuities",
     description: "Financial products that provide guaranteed income, typically for retirement",
+    icon: PiggyBank,
   },
   {
     id: "final_expense",
     name: "Final Expense",
     description: "Affordable life insurance to cover funeral and end-of-life costs",
+    icon: DollarSign,
   },
   {
     id: "travel",
     name: "Travel",
     description: "Coverage for medical emergencies, trip cancellations, and travel-related issues",
+    icon: Plane,
   },
 ];
 
