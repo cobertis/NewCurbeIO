@@ -32,6 +32,7 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
         -   Password complexity validation matching activation requirements
         -   Single-use tokens (marked as used after successful reset)
         -   Security enhancement: After password change, ALL active sessions and trusted devices are automatically cleared, forcing re-authentication with 2FA on all devices
+        -   Real-time notifications: Company admins and superadmins receive notifications when password reset is requested; user and superadmins receive notifications when reset is completed
         -   Audit logging for password reset requests and completions, including session/device clearing
         -   Security best practice: Always returns success message to prevent email enumeration
         -   Database table: password_reset_tokens (user_id, token, expires_at, used, used_at)

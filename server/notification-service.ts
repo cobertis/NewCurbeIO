@@ -510,6 +510,94 @@ class NotificationService {
   }
 
   /**
+   * Create notifications when a user requests a password reset
+   * Notifies company admins and all superadmins
+   */
+  async notifyPasswordResetRequested(userId: string, userEmail: string, userName: string) {
+    const user = await storage.getUser(userId);
+    if (!user) return [];
+
+    const notifications: InsertNotification[] = [];
+
+    // Notify company admins if user belongs to a company
+    if (user.companyId) {
+      const companyUsers = await storage.getUsersByCompany(user.companyId);
+      const adminUsers = companyUsers.filter(u => 
+        u.role === "admin" && 
+        u.id !== userId && 
+        u.status === "active"
+      );
+
+      for (const admin of adminUsers) {
+        notifications.push({
+          userId: admin.id,
+          type: "warning",
+          title: "Password Reset Request",
+          message: `${userName} (${userEmail}) has requested a password reset.`,
+          link: "/settings?tab=team",
+          isRead: false,
+        });
+      }
+    }
+
+    // Notify all superadmins
+    const superadminIds = await this.getSuperadminUserIds();
+    for (const superadminId of superadminIds) {
+      if (superadminId !== userId) {
+        notifications.push({
+          userId: superadminId,
+          type: "warning",
+          title: "Password Reset Request",
+          message: `${userName} (${userEmail}) has requested a password reset.`,
+          link: "/users",
+          isRead: false,
+        });
+      }
+    }
+
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
+  }
+
+  /**
+   * Create notifications when a password reset is completed
+   * Notifies the user and all superadmins
+   */
+  async notifyPasswordResetCompleted(userId: string, userEmail: string, userName: string) {
+    const notifications: InsertNotification[] = [];
+
+    // Notify the user who changed their password
+    notifications.push({
+      userId: userId,
+      type: "success",
+      title: "Password Changed Successfully",
+      message: "Your password has been changed. All active sessions and trusted devices have been cleared for security.",
+      link: "/settings?tab=security",
+      isRead: false,
+    });
+
+    // Notify all superadmins
+    const superadminIds = await this.getSuperadminUserIds();
+    for (const superadminId of superadminIds) {
+      if (superadminId !== userId) {
+        notifications.push({
+          userId: superadminId,
+          type: "info",
+          title: "Password Reset Completed",
+          message: `${userName} (${userEmail}) has successfully reset their password. All sessions and trusted devices have been cleared.`,
+          link: "/users",
+          isRead: false,
+        });
+      }
+    }
+
+    const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {

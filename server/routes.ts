@@ -1872,6 +1872,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         metadata: { method: "email" },
       });
 
+      // Send notifications to admins and superadmins
+      const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      await notificationService.notifyPasswordResetRequested(user.id, user.email, userName);
+
       res.json({ 
         success: true,
         message: "If an account with that email or username exists, a password reset link has been sent."
@@ -1998,6 +2002,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           trustedDevicesCleared: true
         },
       });
+
+      // Send notifications to user and superadmins
+      const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      await notificationService.notifyPasswordResetCompleted(user.id, user.email, userName);
 
       res.json({ 
         success: true,
