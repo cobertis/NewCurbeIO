@@ -1591,11 +1591,23 @@ export default function Settings() {
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Active Sessions</CardTitle>
-                    <CardDescription>
-                      Manage your active sessions and devices.
-                    </CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                    <div className="space-y-1">
+                      <CardTitle>Active Sessions</CardTitle>
+                      <CardDescription>
+                        Manage your active sessions and devices.
+                      </CardDescription>
+                    </div>
+                    {!isLoadingSessions && sessionsData?.sessions && sessionsData.sessions.length > 1 && (
+                      <Button 
+                        variant="destructive"
+                        onClick={() => logoutAllSessionsMutation.mutate()}
+                        disabled={logoutAllSessionsMutation.isPending}
+                        data-testid="button-sign-out-all"
+                      >
+                        {logoutAllSessionsMutation.isPending ? "Signing Out..." : "Sign Out All"}
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -1635,17 +1647,6 @@ export default function Settings() {
                               </div>
                             </div>
                           ))}
-                          {sessionsData.sessions.length > 1 && (
-                            <Button 
-                              variant="outline" 
-                              className="w-full mt-2" 
-                              onClick={() => logoutAllSessionsMutation.mutate()}
-                              disabled={logoutAllSessionsMutation.isPending}
-                              data-testid="button-sign-out-all"
-                            >
-                              {logoutAllSessionsMutation.isPending ? "Signing Out..." : "Sign Out of All Other Sessions"}
-                            </Button>
-                          )}
                         </>
                       ) : (
                         <div className="text-center py-4 text-sm text-muted-foreground">
