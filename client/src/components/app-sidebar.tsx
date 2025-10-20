@@ -110,7 +110,7 @@ export function AppSidebar() {
   });
 
   // Get company data to access the logo
-  const { data: companyData } = useQuery<{ company: { logo?: string } }>({
+  const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: { logo?: string } }>({
     queryKey: ["/api/companies", userData?.user?.companyId],
     enabled: !!userData?.user?.companyId,
   });
@@ -139,8 +139,22 @@ export function AppSidebar() {
   const isSuperAdmin = user?.role === "superadmin";
   const unreadCount = unreadData?.unreadCount || 0;
   
-  // Use company logo if available, otherwise use default logo
-  const displayLogo = companyData?.company?.logo || logo;
+  // Determine which logo to display
+  // Only show logo once we know if company has custom logo or not
+  const getDisplayLogo = () => {
+    // If user has company and we're still loading company data, don't show any logo yet
+    if (user?.companyId && isLoadingCompany) {
+      return null;
+    }
+    // If company data loaded and has logo, use it
+    if (companyData?.company?.logo) {
+      return companyData.company.logo;
+    }
+    // Otherwise use default logo
+    return logo;
+  };
+  
+  const displayLogo = getDisplayLogo();
 
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.superAdminOnly) {
@@ -153,11 +167,15 @@ export function AppSidebar() {
     <Sidebar className="border-r border-border bg-background">
       <SidebarHeader className="px-6 py-4">
         <Link href="/" className="flex items-center justify-center h-full">
-          <img 
-            src={displayLogo} 
-            alt={companyData?.company?.logo ? "Company Logo" : "Curbe.io"} 
-            className="w-full h-full object-contain max-h-16"
-          />
+          {displayLogo ? (
+            <img 
+              src={displayLogo} 
+              alt={companyData?.company?.logo ? "Company Logo" : "Curbe.io"} 
+              className="w-full h-full object-contain max-h-16"
+            />
+          ) : (
+            <div className="w-full h-16" />
+          )}
         </Link>
       </SidebarHeader>
 
