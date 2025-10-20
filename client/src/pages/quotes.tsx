@@ -309,6 +309,7 @@ export default function QuotesPage() {
         ...data,
         effectiveDate: new Date(data.effectiveDate),
         clientDateOfBirth: data.clientDateOfBirth ? new Date(data.clientDateOfBirth) : undefined,
+        familyGroupSize: data.familyGroupSize ? parseInt(data.familyGroupSize, 10) : undefined,
       });
     },
     onSuccess: () => {
