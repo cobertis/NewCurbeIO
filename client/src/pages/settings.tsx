@@ -3236,14 +3236,56 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
             </h3>
             <div>
               <Label htmlFor="timezone">Timezone</Label>
-              <Input
-                id="timezone"
+              <Select
                 value={formData.timezone || ""}
-                onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                onValueChange={(value) => setFormData({ ...formData, timezone: value })}
                 disabled={!isEditing}
-                placeholder="e.g., America/New_York"
-                data-testid="input-timezone"
-              />
+              >
+                <SelectTrigger id="timezone" data-testid="select-timezone">
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">America - USA</div>
+                  <SelectItem value="America/New_York">(UTC-05:00) EST, New York, Toronto</SelectItem>
+                  <SelectItem value="America/Chicago">(UTC-06:00) CST, Chicago, Mexico City</SelectItem>
+                  <SelectItem value="America/Denver">(UTC-07:00) MST, Denver, Phoenix</SelectItem>
+                  <SelectItem value="America/Los_Angeles">(UTC-08:00) PST, Los Angeles, Vancouver</SelectItem>
+                  <SelectItem value="America/Anchorage">(UTC-09:00) AKST, Anchorage</SelectItem>
+                  <SelectItem value="Pacific/Honolulu">(UTC-10:00) HST, Honolulu</SelectItem>
+                  
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Central and South America</div>
+                  <SelectItem value="America/Argentina/Buenos_Aires">(UTC-03:00) ART, Buenos Aires</SelectItem>
+                  <SelectItem value="America/Sao_Paulo">(UTC-03:00) BRT, São Paulo, Rio de Janeiro</SelectItem>
+                  <SelectItem value="America/Santiago">(UTC-03:00) CLT, Santiago</SelectItem>
+                  <SelectItem value="America/Bogota">(UTC-05:00) COT, Bogotá</SelectItem>
+                  <SelectItem value="America/Lima">(UTC-05:00) PET, Lima</SelectItem>
+                  <SelectItem value="America/Caracas">(UTC-04:00) AST, Caracas</SelectItem>
+                  
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Europe</div>
+                  <SelectItem value="Europe/London">(UTC+00:00) GMT, London, Dublin</SelectItem>
+                  <SelectItem value="Europe/Paris">(UTC+01:00) CET, Paris, Madrid, Berlin</SelectItem>
+                  <SelectItem value="Europe/Istanbul">(UTC+02:00) EET, Istanbul, Athens, Cairo</SelectItem>
+                  <SelectItem value="Europe/Moscow">(UTC+03:00) MSK, Moscow, Saint Petersburg</SelectItem>
+                  
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Africa</div>
+                  <SelectItem value="Africa/Lagos">(UTC+01:00) WAT, Lagos, Kinshasa</SelectItem>
+                  <SelectItem value="Africa/Johannesburg">(UTC+02:00) SAST, Johannesburg, Cape Town</SelectItem>
+                  <SelectItem value="Africa/Nairobi">(UTC+03:00) EAT, Nairobi, Addis Ababa</SelectItem>
+                  
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Asia</div>
+                  <SelectItem value="Asia/Kolkata">(UTC+05:30) IST, Kolkata, New Delhi, Mumbai</SelectItem>
+                  <SelectItem value="Asia/Jakarta">(UTC+07:00) WIB, Jakarta, Bangkok</SelectItem>
+                  <SelectItem value="Asia/Shanghai">(UTC+08:00) CST, Shanghai, Beijing, Hong Kong</SelectItem>
+                  <SelectItem value="Asia/Hong_Kong">(UTC+08:00) HKT, Hong Kong</SelectItem>
+                  <SelectItem value="Asia/Singapore">(UTC+08:00) SGT, Singapore</SelectItem>
+                  <SelectItem value="Asia/Tokyo">(UTC+09:00) JST, Tokyo, Seoul</SelectItem>
+                  
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Australia and Pacific</div>
+                  <SelectItem value="Australia/Sydney">(UTC+11:00) AEDT, Sydney, Melbourne</SelectItem>
+                  <SelectItem value="Australia/Perth">(UTC+08:00) AWST, Perth</SelectItem>
+                  <SelectItem value="Pacific/Auckland">(UTC+13:00) NZDT, Auckland</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
