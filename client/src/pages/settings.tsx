@@ -392,6 +392,7 @@ export default function Settings() {
   
   // Timezone state
   const [selectedTimezone, setSelectedTimezone] = useState("");
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Notifications state
   const [notificationSearch, setNotificationSearch] = useState("");
@@ -484,10 +485,22 @@ export default function Settings() {
     if (companyData?.company) {
       setSelectedCategory((companyData.company as any).businessCategory || "");
       setSelectedNiche((companyData.company as any).businessNiche || "");
-      setSelectedTimezone(companyData.company.timezone || "UTC");
       setAddressValue(companyData.company.address || "");
     }
   }, [companyData]);
+
+  // Initialize timezone from user data (not company data)
+  useEffect(() => {
+    setSelectedTimezone(user?.timezone || "");
+  }, [user?.timezone]);
+
+  // Update current time every second for timezone display
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Update profile info mutation (personal information)
   const updateProfileInfoMutation = useMutation({
@@ -893,25 +906,40 @@ export default function Settings() {
     if (companyEmailRef.current?.value) data.email = companyEmailRef.current.value;
     if (companyPhoneRef.current?.value) data.phone = companyPhoneRef.current.value;
     if (websiteRef.current?.value) data.website = websiteRef.current.value;
-    if (selectedTimezone) data.timezone = selectedTimezone;
     if (platformLanguageRef.current?.value) data.platformLanguage = platformLanguageRef.current.value;
     
-    // If timezone is being updated, also sync it to the user's timezone
-    if (selectedTimezone && selectedTimezone !== user?.timezone) {
-      try {
-        await apiRequest("PATCH", "/api/users/timezone", { timezone: selectedTimezone });
-        console.log("User timezone synchronized:", selectedTimezone);
-      } catch (error) {
-        console.error("Failed to sync user timezone:", error);
-        toast({
-          variant: "destructive",
-          title: "Warning",
-          description: "Company timezone updated but failed to sync to your user profile",
-        });
-      }
-    }
-    
     updateCompanyMutation.mutate(data);
+  };
+
+  // Handler for Timezone Save
+  const handleTimezoneUpdate = async () => {
+    if (!selectedTimezone) return;
+    
+    try {
+      const response = await fetch("/api/users/timezone", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: selectedTimezone }),
+      });
+
+      if (response.ok) {
+        await queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/session"] });
+        toast({
+          title: "Timezone updated",
+          description: "Your timezone preference has been saved.",
+        });
+      } else {
+        throw new Error("Failed to update timezone");
+      }
+    } catch (error) {
+      console.error("Error updating timezone:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update timezone. Please try again.",
+      });
+    }
   };
 
   // Handler for Physical Address Save
@@ -2124,17 +2152,54 @@ export default function Settings() {
                           data-testid="input-website"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="timezone">Timezone</Label>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="platformLanguage">Platform Language</Label>
+                        <Input
+                          id="platformLanguage"
+                          ref={platformLanguageRef}
+                          defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
+                          data-testid="input-platform-language"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="timezone">Your Timezone</Label>
+                        {selectedTimezone && (
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {currentTime.toLocaleTimeString('en-US', {
+                              timeZone: selectedTimezone,
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                            {' '}
+                            {selectedTimezone.includes('New_York') ? 'EST'
+                              : selectedTimezone.includes('Chicago') ? 'CST'
+                              : selectedTimezone.includes('Denver') ? 'MST'
+                              : selectedTimezone.includes('Los_Angeles') ? 'PST'
+                              : selectedTimezone.includes('London') ? 'GMT'
+                              : selectedTimezone.includes('Paris') ? 'CET'
+                              : selectedTimezone.includes('Tokyo') ? 'JST'
+                              : selectedTimezone.includes('Sydney') ? 'AEST'
+                              : selectedTimezone.includes('Dubai') ? 'GST'
+                              : selectedTimezone.includes('Singapore') ? 'SGT'
+                              : selectedTimezone.includes('Hong_Kong') ? 'HKT'
+                              : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
                         <Select
                           value={selectedTimezone}
                           onValueChange={setSelectedTimezone}
                         >
-                          <SelectTrigger id="timezone" data-testid="select-timezone">
+                          <SelectTrigger id="timezone" data-testid="select-timezone" className="flex-1">
                             <SelectValue placeholder="Select timezone" />
                           </SelectTrigger>
-                          <SelectContent>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">North America</div>
+                          <SelectContent className="max-h-[300px]">
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">America - USA</div>
                             <SelectItem value="America/New_York">(UTC-05:00) EST, New York, Toronto</SelectItem>
                             <SelectItem value="America/Chicago">(UTC-06:00) CST, Chicago, Mexico City</SelectItem>
                             <SelectItem value="America/Denver">(UTC-07:00) MST, Denver, Phoenix</SelectItem>
@@ -2187,15 +2252,13 @@ export default function Settings() {
                             <SelectItem value="UTC">(UTC+00:00) UTC, Greenwich</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="platformLanguage">Platform Language</Label>
-                        <Input
-                          id="platformLanguage"
-                          ref={platformLanguageRef}
-                          defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
-                          data-testid="input-platform-language"
-                        />
+                        <Button 
+                          onClick={handleTimezoneUpdate}
+                          disabled={!selectedTimezone}
+                          data-testid="button-save-timezone"
+                        >
+                          Save
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
