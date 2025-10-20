@@ -534,13 +534,19 @@ export default function QuotesPage() {
                         <div key={step.number} className="flex flex-col items-center">
                           <div
                             className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-300 ${
-                              isActive
+                              isCompleted
+                                ? "bg-green-500 text-white"
+                                : isActive
                                 ? "bg-blue-500 text-white"
                                 : "bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                             }`}
                             data-testid={`step-indicator-${step.number}`}
                           >
-                            <span className="text-sm font-semibold">{step.number}</span>
+                            {isCompleted ? (
+                              <Check className="h-5 w-5" />
+                            ) : (
+                              <span className="text-sm font-semibold">{step.number}</span>
+                            )}
                           </div>
                           <div className="mt-2 text-xs font-medium text-center whitespace-nowrap">
                             <div className={isActive ? "text-foreground" : "text-muted-foreground"}>
