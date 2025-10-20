@@ -590,7 +590,7 @@ export const updateCompanySchema = z.object({
   postalCode: z.string().optional(),
   country: z.string().optional(),
   domain: z.string().optional(),
-  logo: z.string().url().optional(),
+  logo: z.string().url().optional().or(z.null()),
   website: z.string().url().optional(),
   industry: z.string().optional(),
   companySize: z.string().optional(),

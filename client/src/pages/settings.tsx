@@ -1021,6 +1021,12 @@ export default function Settings() {
     reader.readAsDataURL(file);
   };
 
+  const handleDeleteLogo = () => {
+    if (!companyData?.company?.id) return;
+    setSavingSection("branding");
+    updateCompanyMutation.mutate({ logo: null });
+  };
+
   // Get user initials for avatar
   const getUserInitials = () => {
     if (!user) return "U";
@@ -1317,8 +1323,20 @@ export default function Settings() {
           {/* Business Branding Card - Compact Logo Upload */}
           {isAdmin && (
             <Card className="mt-6">
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base">Company Logo</CardTitle>
+                {companyData?.company?.logo && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDeleteLogo}
+                    disabled={updateCompanyMutation.isPending && savingSection === "branding"}
+                    data-testid="button-delete-logo"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 <div 
