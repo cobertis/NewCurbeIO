@@ -496,9 +496,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!has2FAEnabled) {
         req.session.userId = user.id;
         
-        // Capture device info and IP address
-        const deviceInfo = req.get('user-agent') || 'Unknown Device';
+        // Capture IP address
         const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
+        
+        // Parse user agent to extract device info (same logic as notifications)
+        const userAgent = req.get('user-agent');
+        let deviceInfo = 'Unknown device';
+        if (userAgent) {
+          // Browser detection - check Edge before Chrome
+          if (userAgent.includes('Edg')) deviceInfo = 'Edge';
+          else if (userAgent.includes('Chrome')) deviceInfo = 'Chrome';
+          else if (userAgent.includes('Firefox')) deviceInfo = 'Firefox';
+          else if (userAgent.includes('Safari')) deviceInfo = 'Safari';
+          
+          // Add OS info
+          if (userAgent.includes('Windows')) deviceInfo += ' on Windows';
+          else if (userAgent.includes('Mac')) deviceInfo += ' on Mac';
+          else if (userAgent.includes('Linux')) deviceInfo += ' on Linux';
+          else if (userAgent.includes('Android')) deviceInfo += ' on Android';
+          else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) deviceInfo += ' on iOS';
+        }
         
         req.session.deviceInfo = deviceInfo;
         req.session.ipAddress = ipAddress;
@@ -525,7 +542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Create login notification with IP address
         const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-        await notificationService.notifyLogin(user.id, userName, ipAddress, deviceInfo);
+        await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
         
         console.log(`✓ Direct login for ${user.email} - 2FA not enabled`);
         
@@ -570,9 +587,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (trustedUserId === user.id) {
           req.session.userId = user.id;
           
-          // Capture device info and IP address
-          req.session.deviceInfo = req.get('user-agent') || 'Unknown Device';
-          req.session.ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
+          // Capture IP address
+          const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
+          
+          // Parse user agent to extract device info (same logic as notifications)
+          const userAgent = req.get('user-agent');
+          let deviceInfo = 'Unknown device';
+          if (userAgent) {
+            // Browser detection - check Edge before Chrome
+            if (userAgent.includes('Edg')) deviceInfo = 'Edge';
+            else if (userAgent.includes('Chrome')) deviceInfo = 'Chrome';
+            else if (userAgent.includes('Firefox')) deviceInfo = 'Firefox';
+            else if (userAgent.includes('Safari')) deviceInfo = 'Safari';
+            
+            // Add OS info
+            if (userAgent.includes('Windows')) deviceInfo += ' on Windows';
+            else if (userAgent.includes('Mac')) deviceInfo += ' on Mac';
+            else if (userAgent.includes('Linux')) deviceInfo += ' on Linux';
+            else if (userAgent.includes('Android')) deviceInfo += ' on Android';
+            else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) deviceInfo += ' on iOS';
+          }
+          
+          req.session.deviceInfo = deviceInfo;
+          req.session.ipAddress = ipAddress;
           
           // Set session duration (7 days)
           const sessionDuration = 7 * 24 * 60 * 60 * 1000;
@@ -588,8 +625,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Create login notification with IP address
-          const ipAddress = req.ip || req.connection.remoteAddress || null;
-          const userAgent = req.get("user-agent") || null;
           const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
           await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
           
@@ -1403,9 +1438,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete req.session.pendingUserId;
       req.session.userId = user.id;
 
-      // Capture device info and IP address
-      req.session.deviceInfo = req.get('user-agent') || 'Unknown Device';
-      req.session.ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
+      // Capture IP address
+      const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
+      
+      // Parse user agent to extract device info (same logic as notifications)
+      const userAgent = req.get('user-agent');
+      let deviceInfo = 'Unknown device';
+      if (userAgent) {
+        // Browser detection - check Edge before Chrome
+        if (userAgent.includes('Edg')) deviceInfo = 'Edge';
+        else if (userAgent.includes('Chrome')) deviceInfo = 'Chrome';
+        else if (userAgent.includes('Firefox')) deviceInfo = 'Firefox';
+        else if (userAgent.includes('Safari')) deviceInfo = 'Safari';
+        
+        // Add OS info
+        if (userAgent.includes('Windows')) deviceInfo += ' on Windows';
+        else if (userAgent.includes('Mac')) deviceInfo += ' on Mac';
+        else if (userAgent.includes('Linux')) deviceInfo += ' on Linux';
+        else if (userAgent.includes('Android')) deviceInfo += ' on Android';
+        else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) deviceInfo += ' on iOS';
+      }
+      
+      req.session.deviceInfo = deviceInfo;
+      req.session.ipAddress = ipAddress;
 
       // Set session duration - always 7 days since we use trusted device tokens
       const sessionDuration = 7 * 24 * 60 * 60 * 1000; // 7 days
