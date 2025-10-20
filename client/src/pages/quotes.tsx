@@ -224,7 +224,7 @@ export default function QuotesPage() {
     resolver: zodResolver(completeQuoteSchema),
     defaultValues: {
       effectiveDate: format(getFirstDayOfNextMonth(), "yyyy-MM-dd"),
-      agentId: "",
+      agentId: userData?.user?.id || "",
       productType: "",
       clientFirstName: "",
       clientMiddleName: "",
@@ -250,6 +250,13 @@ export default function QuotesPage() {
       country: "United States",
     },
   });
+
+  // Set agentId when user data loads
+  useEffect(() => {
+    if (userData?.user?.id) {
+      form.setValue("agentId", userData.user.id);
+    }
+  }, [userData?.user?.id, form]);
 
   const { fields: spouseFields, append: appendSpouse, remove: removeSpouse } = useFieldArray({
     control: form.control,
@@ -278,7 +285,7 @@ export default function QuotesPage() {
       setShowWizard(false);
       form.reset({
         effectiveDate: format(getFirstDayOfNextMonth(), "yyyy-MM-dd"),
-        agentId: "",
+        agentId: userData?.user?.id || "",
         productType: "",
         clientFirstName: "",
         clientMiddleName: "",
