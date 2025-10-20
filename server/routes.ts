@@ -24,7 +24,8 @@ import {
   insertEmailTemplateSchema,
   insertFeatureSchema,
   updateFeatureSchema,
-  insertFinancialSupportTicketSchema
+  insertFinancialSupportTicketSchema,
+  insertQuoteSchema
 } from "@shared/schema";
 import "./types";
 
@@ -7750,6 +7751,194 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error("[TWILIO INCOMING WEBHOOK] Error:", error);
       res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // ==================== QUOTES ====================
+  
+  // Create quote
+  app.post("/api/quotes", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      // Convert date strings to Date objects before validation
+      const payload = {
+        ...req.body,
+        companyId: currentUser.companyId,
+        createdBy: currentUser.id,
+        effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : undefined,
+        clientDateOfBirth: req.body.clientDateOfBirth ? new Date(req.body.clientDateOfBirth) : undefined,
+      };
+      
+      // Validate request body using Zod schema
+      const validatedData = insertQuoteSchema.parse(payload);
+      
+      const quote = await storage.createQuote(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote",
+        entityId: quote.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          productType: quote.productType,
+          clientEmail: quote.clientEmail,
+          createdBy: currentUser.email,
+        },
+      });
+      
+      res.status(201).json({ quote });
+    } catch (error: any) {
+      console.error("Error creating quote:", error);
+      res.status(400).json({ message: error.message || "Failed to create quote" });
+    }
+  });
+  
+  // Get all quotes for company
+  app.get("/api/quotes", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      let quotes: Awaited<ReturnType<typeof storage.getQuotesByCompany>> = [];
+      
+      if (currentUser.role === "superadmin") {
+        // Superadmin can see all quotes across all companies
+        // For now, we'll return quotes from current company
+        // TODO: Add query param to filter by companyId for superadmin
+        if (currentUser.companyId) {
+          quotes = await storage.getQuotesByCompany(currentUser.companyId);
+        }
+      } else if (currentUser.companyId) {
+        // Regular users see only their company's quotes
+        quotes = await storage.getQuotesByCompany(currentUser.companyId);
+      }
+      
+      res.json({ quotes });
+    } catch (error: any) {
+      console.error("Error fetching quotes:", error);
+      res.status(500).json({ message: "Failed to fetch quotes" });
+    }
+  });
+  
+  // Get single quote by ID
+  app.get("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      res.json({ quote });
+    } catch (error: any) {
+      console.error("Error fetching quote:", error);
+      res.status(500).json({ message: "Failed to fetch quote" });
+    }
+  });
+  
+  // Update quote
+  app.patch("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Convert date strings to Date objects before validation
+      const payload = {
+        ...req.body,
+        effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : undefined,
+        clientDateOfBirth: req.body.clientDateOfBirth ? new Date(req.body.clientDateOfBirth) : undefined,
+      };
+      
+      // Validate partial update data (don't allow changing companyId or createdBy)
+      const updateSchema = insertQuoteSchema.partial().omit({
+        companyId: true,
+        createdBy: true,
+      });
+      
+      const validatedData = updateSchema.parse(payload);
+      
+      const updatedQuote = await storage.updateQuote(id, validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ quote: updatedQuote });
+    } catch (error: any) {
+      console.error("Error updating quote:", error);
+      res.status(400).json({ message: error.message || "Failed to update quote" });
+    }
+  });
+  
+  // Delete quote
+  app.delete("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check access: superadmin or same company admin
+      if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - Admin or Superadmin only" });
+      }
+      
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const deleted = await storage.deleteQuote(id);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete quote" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Quote deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting quote:", error);
+      res.status(500).json({ message: "Failed to delete quote" });
     }
   });
 

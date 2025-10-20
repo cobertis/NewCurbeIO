@@ -1256,3 +1256,57 @@ export const insertFinancialSupportTicketSchema = createInsertSchema(financialSu
 
 export type FinancialSupportTicket = typeof financialSupportTickets.$inferSelect;
 export type InsertFinancialSupportTicket = z.infer<typeof insertFinancialSupportTicketSchema>;
+
+// =====================================================
+// QUOTES (Insurance Quote Management)
+// =====================================================
+
+export const quotes = pgTable("quotes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // User who created the quote
+  
+  // Step 1: Policy Information
+  effectiveDate: timestamp("effective_date").notNull(), // Policy effective date
+  agentId: varchar("agent_id").references(() => users.id, { onDelete: "set null" }), // Agent on record for this client
+  productType: text("product_type").notNull(), // medicare, medicaid, aca, life, private, dental, vision, supplemental, annuities, final_expense, travel
+  
+  // Step 2: Personal Information (Client)
+  clientFirstName: text("client_first_name").notNull(),
+  clientLastName: text("client_last_name").notNull(),
+  clientEmail: text("client_email").notNull(),
+  clientPhone: text("client_phone").notNull(),
+  clientDateOfBirth: timestamp("client_date_of_birth"),
+  clientGender: text("client_gender"), // male, female, other
+  clientSsn: text("client_ssn"), // Encrypted/masked SSN
+  
+  // Step 3: Family Group
+  familyMembers: jsonb("family_members").default([]), // Array of family member objects
+  
+  // Step 4: Address
+  street: text("street").notNull(),
+  addressLine2: text("address_line_2"), // Apt, Suite, Unit, etc.
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  postalCode: text("postal_code").notNull(),
+  country: text("country").notNull().default("United States"),
+  
+  // Quote Status
+  status: text("status").notNull().default("draft"), // draft, submitted, pending_review, approved, rejected, converted_to_policy
+  
+  // Additional Information
+  notes: text("notes"), // Internal notes
+  estimatedPremium: text("estimated_premium"), // Estimated premium amount
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertQuoteSchema = createInsertSchema(quotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = z.infer<typeof insertQuoteSchema>;

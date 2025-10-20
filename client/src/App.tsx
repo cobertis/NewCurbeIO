@@ -52,6 +52,7 @@ import Billing from "@/pages/billing";
 import PlanSelection from "@/pages/plan-selection";
 import Tickets from "@/pages/tickets";
 import EmailConfiguration from "@/pages/email-configuration";
+import Quotes from "@/pages/quotes";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -64,6 +65,7 @@ const getPageTitle = (path: string): string => {
     '/companies': 'Companies',
     '/plans': 'Plans',
     '/features': 'Features',
+    '/quotes': 'Quotes',
     '/invoices': 'Invoices',
     '/settings': 'Settings',
     '/settings/profile': 'Settings - Profile',
@@ -933,6 +935,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Features />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/quotes">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Quotes />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

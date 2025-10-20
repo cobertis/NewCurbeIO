@@ -68,7 +68,9 @@ import {
   type SubscriptionDiscount,
   type InsertSubscriptionDiscount,
   type FinancialSupportTicket,
-  type InsertFinancialSupportTicket
+  type InsertFinancialSupportTicket,
+  type Quote,
+  type InsertQuote
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -106,7 +108,8 @@ import {
   outgoingSmsMessages,
   smsChatNotes,
   subscriptionDiscounts,
-  financialSupportTickets
+  financialSupportTickets,
+  quotes
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -398,6 +401,22 @@ export interface IStorage {
     respondedAt?: Date;
   }): Promise<FinancialSupportTicket | undefined>;
   deleteFinancialSupportTicket(id: string): Promise<boolean>;
+  
+  // Quotes
+  createQuote(quote: InsertQuote): Promise<Quote>;
+  getQuote(id: string): Promise<(Quote & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }) | undefined>;
+  getQuotesByCompany(companyId: string): Promise<Array<Quote & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>>;
+  getQuotesByAgent(agentId: string): Promise<Array<Quote & {
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>>;
+  updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined>;
+  deleteQuote(id: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -2396,6 +2415,150 @@ export class DbStorage implements IStorage {
     const result = await db
       .delete(financialSupportTickets)
       .where(eq(financialSupportTickets.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ==================== QUOTES ====================
+
+  async createQuote(insertQuote: InsertQuote): Promise<Quote> {
+    const [quote] = await db
+      .insert(quotes)
+      .values(insertQuote as any)
+      .returning();
+    return quote;
+  }
+
+  async getQuote(id: string): Promise<(Quote & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }) | undefined> {
+    const result = await db
+      .select({
+        quote: quotes,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(quotes)
+      .leftJoin(users, eq(quotes.createdBy, users.id))
+      .where(eq(quotes.id, id))
+      .limit(1);
+
+    if (!result || result.length === 0) {
+      return undefined;
+    }
+
+    const quote = result[0];
+    let agent = null;
+
+    if (quote.quote.agentId) {
+      const agentUser = await this.getUser(quote.quote.agentId);
+      if (agentUser) {
+        agent = {
+          id: agentUser.id,
+          firstName: agentUser.firstName,
+          lastName: agentUser.lastName,
+          email: agentUser.email,
+        };
+      }
+    }
+
+    return {
+      ...quote.quote,
+      creator: quote.creator,
+      agent,
+    } as any;
+  }
+
+  async getQuotesByCompany(companyId: string): Promise<Array<Quote & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>> {
+    const results = await db
+      .select({
+        quote: quotes,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(quotes)
+      .leftJoin(users, eq(quotes.createdBy, users.id))
+      .where(eq(quotes.companyId, companyId))
+      .orderBy(desc(quotes.createdAt));
+
+    const quotesWithDetails = await Promise.all(
+      results.map(async (result) => {
+        let agent = null;
+        if (result.quote.agentId) {
+          const agentUser = await this.getUser(result.quote.agentId);
+          if (agentUser) {
+            agent = {
+              id: agentUser.id,
+              firstName: agentUser.firstName,
+              lastName: agentUser.lastName,
+              email: agentUser.email,
+            };
+          }
+        }
+
+        return {
+          ...result.quote,
+          creator: result.creator,
+          agent,
+        } as any;
+      })
+    );
+
+    return quotesWithDetails;
+  }
+
+  async getQuotesByAgent(agentId: string): Promise<Array<Quote & {
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>> {
+    const results = await db
+      .select({
+        quote: quotes,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(quotes)
+      .leftJoin(users, eq(quotes.createdBy, users.id))
+      .where(eq(quotes.agentId, agentId))
+      .orderBy(desc(quotes.createdAt));
+
+    return results.map((result) => ({
+      ...result.quote,
+      creator: result.creator,
+    })) as any;
+  }
+
+  async updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined> {
+    const [updated] = await db
+      .update(quotes)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(quotes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteQuote(id: string): Promise<boolean> {
+    const result = await db
+      .delete(quotes)
+      .where(eq(quotes.id, id))
       .returning();
     return result.length > 0;
   }
