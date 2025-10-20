@@ -566,22 +566,22 @@ export default function QuotesPage() {
                                 key={product.id}
                                 type="button"
                                 onClick={() => handleProductSelect(product.id)}
-                                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                                className={`p-4 rounded-lg border text-left transition-all ${
                                   selectedProduct === product.id
-                                    ? "border-primary bg-primary/10"
+                                    ? "border-primary bg-primary/5 shadow-sm"
                                     : "border-border bg-card hover-elevate"
                                 }`}
                                 data-testid={`card-product-${product.id}`}
                               >
                                 <div className="flex items-start gap-3">
-                                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
-                                    selectedProduct === product.id ? "bg-primary/20" : "bg-primary/10"
+                                  <div className={`flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center ${
+                                    selectedProduct === product.id ? "bg-primary" : "bg-primary/90"
                                   }`}>
-                                    <product.icon className="h-5 w-5 text-primary" />
+                                    <product.icon className="h-5 w-5 text-primary-foreground" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-sm mb-1.5 text-foreground">{product.name}</h3>
-                                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{product.description}</p>
+                                    <h3 className="font-semibold text-sm mb-1 text-foreground">{product.name}</h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">{product.description}</p>
                                   </div>
                                 </div>
                               </button>
