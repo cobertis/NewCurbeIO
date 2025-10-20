@@ -1,5 +1,20 @@
 import { useState, useEffect } from "react";
-import { LayoutDashboard, ClipboardList, LogOut } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  ClipboardList, 
+  LogOut,
+  BarChart3,
+  Users,
+  Building2,
+  CreditCard,
+  Package,
+  FileText,
+  Shield,
+  LifeBuoy,
+  Mail,
+  Megaphone,
+  AtSign
+} from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -17,7 +32,77 @@ import {
 import type { User } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 
-const menuItems = [
+// Menu items for superadmin
+const superadminMenuItems = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Users",
+    url: "/users",
+    icon: Users,
+  },
+  {
+    title: "Companies",
+    url: "/companies",
+    icon: Building2,
+  },
+  {
+    title: "Plans",
+    url: "/plans",
+    icon: CreditCard,
+  },
+  {
+    title: "Features",
+    url: "/features",
+    icon: Package,
+  },
+  {
+    title: "Invoices",
+    url: "/invoices",
+    icon: FileText,
+  },
+  {
+    title: "Quotes",
+    url: "/quotes",
+    icon: ClipboardList,
+  },
+  {
+    title: "Audit Logs",
+    url: "/audit-logs",
+    icon: Shield,
+  },
+  {
+    title: "Support",
+    url: "/support",
+    icon: LifeBuoy,
+  },
+  {
+    title: "Email Contacts",
+    url: "/contacts",
+    icon: Mail,
+  },
+  {
+    title: "Campaigns",
+    url: "/campaigns",
+    icon: Megaphone,
+  },
+  {
+    title: "Email Config",
+    url: "/email-configuration",
+    icon: AtSign,
+  },
+];
+
+// Menu items for regular users (admin, agent, etc.)
+const regularUserMenuItems = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -43,6 +128,11 @@ export function AppSidebar() {
     queryKey: ["/api/companies", userData?.user?.companyId],
     enabled: !!userData?.user?.companyId,
   });
+
+  // Determine which menu to show based on user role
+  const menuItems = userData?.user?.role === "superadmin" 
+    ? superadminMenuItems 
+    : regularUserMenuItems;
 
   // Load cached logo from localStorage on mount
   useEffect(() => {
