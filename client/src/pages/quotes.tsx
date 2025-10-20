@@ -590,143 +590,141 @@ export default function QuotesPage() {
                 {/* Step 2: Personal Information */}
                 {currentStep === 2 && (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Left Column */}
-                      <div className="space-y-6">
-                        <FormField
-                          control={form.control}
-                          name="clientFirstName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>First name *</FormLabel>
-                              <div className="flex gap-2">
-                                <FormControl>
-                                  <Input {...field} data-testid="input-client-firstname" placeholder="First name" />
-                                </FormControl>
-                                <Button 
-                                  type="button" 
-                                  variant="outline"
-                                  data-testid="button-search-client"
-                                >
-                                  <Search className="h-4 w-4 mr-2" />
-                                  Search
-                                </Button>
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientLastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Last name *</FormLabel>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                      {/* Row 1 */}
+                      <FormField
+                        control={form.control}
+                        name="clientFirstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First name *</FormLabel>
+                            <div className="flex gap-2">
                               <FormControl>
-                                <Input {...field} data-testid="input-client-lastname" placeholder="Last name" />
+                                <Input {...field} data-testid="input-client-firstname" placeholder="First name" />
                               </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                              <Button 
+                                type="button" 
+                                variant="outline"
+                                data-testid="button-search-client"
+                              >
+                                <Search className="h-4 w-4 mr-2" />
+                                Search
+                              </Button>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="clientDateOfBirth"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Date of birth</FormLabel>
+                      <FormField
+                        control={form.control}
+                        name="clientMiddleName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Middle name (optional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} data-testid="input-client-middlename" placeholder="Middle name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Row 2 */}
+                      <FormField
+                        control={form.control}
+                        name="clientLastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last name *</FormLabel>
+                            <FormControl>
+                              <Input {...field} data-testid="input-client-lastname" placeholder="Last name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="clientSecondLastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Second last name (optional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} data-testid="input-client-secondlastname" placeholder="Second last name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Row 3 */}
+                      <FormField
+                        control={form.control}
+                        name="clientDateOfBirth"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date of birth</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} data-testid="input-client-dob" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="clientGender"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Gender</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <Input type="date" {...field} data-testid="input-client-dob" />
+                                <SelectTrigger data-testid="select-client-gender">
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
                               </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                              <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="clientPhone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Phone</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-client-phone" placeholder="Phone" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      {/* Row 4 */}
+                      <FormField
+                        control={form.control}
+                        name="clientPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone</FormLabel>
+                            <FormControl>
+                              <Input {...field} data-testid="input-client-phone" placeholder="Phone" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                      {/* Right Column */}
-                      <div className="space-y-6">
-                        <FormField
-                          control={form.control}
-                          name="clientMiddleName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Middle name (optional)</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-client-middlename" placeholder="Middle name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientSecondLastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Second last name (optional)</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-client-secondlastname" placeholder="Second last name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientGender"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Gender</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-client-gender">
-                                    <SelectValue placeholder="Select gender" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="male">Male</SelectItem>
-                                  <SelectItem value="female">Female</SelectItem>
-                                  <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientEmail"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email</FormLabel>
-                              <FormControl>
-                                <Input type="email" {...field} data-testid="input-client-email" placeholder="Email" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name="clientEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" {...field} data-testid="input-client-email" placeholder="Email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
                     {/* Checkboxes Section */}
@@ -869,139 +867,137 @@ export default function QuotesPage() {
                           </Button>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Left Column */}
-                            <div className="space-y-6">
-                              <FormField
-                                control={form.control}
-                                name={`spouses.${index}.firstName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>First name *</FormLabel>
-                                    <div className="flex gap-2">
-                                      <FormControl>
-                                        <Input {...field} placeholder="First name" data-testid={`input-spouse-firstname-${index}`} />
-                                      </FormControl>
-                                      <Button type="button" variant="outline">
-                                        <Search className="h-4 w-4 mr-2" />
-                                        Search
-                                      </Button>
-                                    </div>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`spouses.${index}.lastName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Last name *</FormLabel>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                            {/* Row 1 */}
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.firstName`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>First name *</FormLabel>
+                                  <div className="flex gap-2">
                                     <FormControl>
-                                      <Input {...field} placeholder="Last name" data-testid={`input-spouse-lastname-${index}`} />
+                                      <Input {...field} placeholder="First name" data-testid={`input-spouse-firstname-${index}`} />
                                     </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                                    <Button type="button" variant="outline">
+                                      <Search className="h-4 w-4 mr-2" />
+                                      Search
+                                    </Button>
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                              <FormField
-                                control={form.control}
-                                name={`spouses.${index}.dateOfBirth`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Date of birth</FormLabel>
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.middleName`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Middle name (optional)</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Middle name" data-testid={`input-spouse-middlename-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            {/* Row 2 */}
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.lastName`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Last name *</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Last name" data-testid={`input-spouse-lastname-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.secondLastName`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Second last name (optional)</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Second last name" data-testid={`input-spouse-secondlastname-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            {/* Row 3 */}
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.dateOfBirth`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Date of birth</FormLabel>
+                                  <FormControl>
+                                    <Input type="date" {...field} data-testid={`input-spouse-dob-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.gender`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Gender</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
-                                      <Input type="date" {...field} data-testid={`input-spouse-dob-${index}`} />
+                                      <SelectTrigger data-testid={`select-spouse-gender-${index}`}>
+                                        <SelectValue placeholder="Select gender" />
+                                      </SelectTrigger>
                                     </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                                    <SelectContent>
+                                      <SelectItem value="male">Male</SelectItem>
+                                      <SelectItem value="female">Female</SelectItem>
+                                      <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                              <FormField
-                                control={form.control}
-                                name={`spouses.${index}.phone`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Phone</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="Phone" data-testid={`input-spouse-phone-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
+                            {/* Row 4 */}
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.phone`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Phone</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Phone" data-testid={`input-spouse-phone-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                            {/* Right Column */}
-                            <div className="space-y-6">
-                              <FormField
-                                control={form.control}
-                                name={`spouses.${index}.middleName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Middle name (optional)</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="Middle name" data-testid={`input-spouse-middlename-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`spouses.${index}.secondLastName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Second last name (optional)</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="Second last name" data-testid={`input-spouse-secondlastname-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`spouses.${index}.gender`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Gender</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger data-testid={`select-spouse-gender-${index}`}>
-                                          <SelectValue placeholder="Select gender" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="male">Male</SelectItem>
-                                        <SelectItem value="female">Female</SelectItem>
-                                        <SelectItem value="other">Other</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`spouses.${index}.email`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Email</FormLabel>
-                                    <FormControl>
-                                      <Input type="email" {...field} placeholder="Email" data-testid={`input-spouse-email-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.email`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Email</FormLabel>
+                                  <FormControl>
+                                    <Input type="email" {...field} placeholder="Email" data-testid={`input-spouse-email-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
 
                           {/* Checkboxes */}
@@ -1073,139 +1069,137 @@ export default function QuotesPage() {
                           </Button>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Left Column */}
-                            <div className="space-y-6">
-                              <FormField
-                                control={form.control}
-                                name={`dependents.${index}.firstName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>First name *</FormLabel>
-                                    <div className="flex gap-2">
-                                      <FormControl>
-                                        <Input {...field} placeholder="First name" data-testid={`input-dependent-firstname-${index}`} />
-                                      </FormControl>
-                                      <Button type="button" variant="outline">
-                                        <Search className="h-4 w-4 mr-2" />
-                                        Search
-                                      </Button>
-                                    </div>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`dependents.${index}.lastName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Last name *</FormLabel>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                            {/* Row 1 */}
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.firstName`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>First name *</FormLabel>
+                                  <div className="flex gap-2">
                                     <FormControl>
-                                      <Input {...field} placeholder="Last name" data-testid={`input-dependent-lastname-${index}`} />
+                                      <Input {...field} placeholder="First name" data-testid={`input-dependent-firstname-${index}`} />
                                     </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                                    <Button type="button" variant="outline">
+                                      <Search className="h-4 w-4 mr-2" />
+                                      Search
+                                    </Button>
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                              <FormField
-                                control={form.control}
-                                name={`dependents.${index}.dateOfBirth`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Date of birth</FormLabel>
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.middleName`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Middle name (optional)</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Middle name" data-testid={`input-dependent-middlename-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            {/* Row 2 */}
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.lastName`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Last name *</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Last name" data-testid={`input-dependent-lastname-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.secondLastName`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Second last name (optional)</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Second last name" data-testid={`input-dependent-secondlastname-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            {/* Row 3 */}
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.dateOfBirth`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Date of birth</FormLabel>
+                                  <FormControl>
+                                    <Input type="date" {...field} data-testid={`input-dependent-dob-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.gender`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Gender</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
-                                      <Input type="date" {...field} data-testid={`input-dependent-dob-${index}`} />
+                                      <SelectTrigger data-testid={`select-dependent-gender-${index}`}>
+                                        <SelectValue placeholder="Select gender" />
+                                      </SelectTrigger>
                                     </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                                    <SelectContent>
+                                      <SelectItem value="male">Male</SelectItem>
+                                      <SelectItem value="female">Female</SelectItem>
+                                      <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                              <FormField
-                                control={form.control}
-                                name={`dependents.${index}.phone`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Phone</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="Phone" data-testid={`input-dependent-phone-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
+                            {/* Row 4 */}
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.phone`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Phone</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Phone" data-testid={`input-dependent-phone-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                            {/* Right Column */}
-                            <div className="space-y-6">
-                              <FormField
-                                control={form.control}
-                                name={`dependents.${index}.middleName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Middle name (optional)</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="Middle name" data-testid={`input-dependent-middlename-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`dependents.${index}.secondLastName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Second last name (optional)</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="Second last name" data-testid={`input-dependent-secondlastname-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`dependents.${index}.gender`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Gender</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger data-testid={`select-dependent-gender-${index}`}>
-                                          <SelectValue placeholder="Select gender" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="male">Male</SelectItem>
-                                        <SelectItem value="female">Female</SelectItem>
-                                        <SelectItem value="other">Other</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`dependents.${index}.email`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Email</FormLabel>
-                                    <FormControl>
-                                      <Input type="email" {...field} placeholder="Email" data-testid={`input-dependent-email-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.email`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Email</FormLabel>
+                                  <FormControl>
+                                    <Input type="email" {...field} placeholder="Email" data-testid={`input-dependent-email-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
 
                           {/* Checkboxes */}
