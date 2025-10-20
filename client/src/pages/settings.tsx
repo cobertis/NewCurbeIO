@@ -16,7 +16,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload } from "lucide-react";
 import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -362,6 +362,7 @@ export default function Settings() {
 
   const [emailTestAddress, setEmailTestAddress] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
   
   // Company Information refs
   const companyNameRef = useRef<HTMLInputElement>(null);
@@ -381,9 +382,6 @@ export default function Settings() {
   const postalCodeRef = useRef<HTMLInputElement>(null);
   const countryRef = useRef<HTMLInputElement>(null);
   
-  // Branding refs
-  const logoRef = useRef<HTMLInputElement>(null);
-  const domainRef = useRef<HTMLInputElement>(null);
   
   // Combobox state
   const [openCategory, setOpenCategory] = useState(false);
@@ -919,17 +917,6 @@ export default function Settings() {
     updateCompanyMutation.mutate(data);
   };
 
-  // Handler for Branding Save
-  const handleSaveBranding = () => {
-    setSavingSection("branding");
-    const data: any = {};
-    
-    if (logoRef.current?.value) data.logo = logoRef.current.value;
-    if (domainRef.current?.value) data.domain = domainRef.current.value;
-    
-    updateCompanyMutation.mutate(data);
-  };
-
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
@@ -964,6 +951,53 @@ export default function Settings() {
     reader.onloadend = () => {
       const result = reader.result as string;
       updateAvatarMutation.mutate(result);
+    };
+    reader.onerror = () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to read image file",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoClick = () => {
+    logoFileInputRef.current?.click();
+  };
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Invalid File",
+        description: "Please select an image file (JPG, PNG, GIF, etc.)",
+      });
+      return;
+    }
+
+    // Validate size (max 2.5MB)
+    const maxSize = 2.5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        variant: "destructive",
+        title: "File Too Large",
+        description: "Please select an image smaller than 2.5MB",
+      });
+      return;
+    }
+
+    // Read file and convert to data URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      // Update company logo
+      setSavingSection("branding");
+      updateCompanyMutation.mutate({ logo: result });
     };
     reader.onerror = () => {
       toast({
@@ -1260,116 +1294,62 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Business Branding Card */}
+          {/* Business Branding Card - Compact Logo Upload */}
           {isAdmin && (
             <Card className="mt-6">
-              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                <div className="space-y-1">
-                  <CardTitle>Business Branding</CardTitle>
-                  <CardDescription>
-                    Company logo and custom domain
-                  </CardDescription>
-                </div>
-                <Button 
-                  onClick={handleSaveBranding}
-                  disabled={updateCompanyMutation.isPending && savingSection === "branding"}
-                  data-testid="button-save-branding"
-                >
-                  {updateCompanyMutation.isPending && savingSection === "branding" ? "Saving..." : "Save"}
-                </Button>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Company Logo</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Logo Section - Full Width */}
-                <div className="space-y-3">
-                  <Label htmlFor="logo" className="text-base font-semibold">Company Logo</Label>
+              <CardContent>
+                <div 
+                  className="relative group cursor-pointer"
+                  onClick={handleLogoClick}
+                  data-testid="button-upload-logo"
+                >
+                  {companyData?.company?.logo ? (
+                    // Show logo with hover overlay
+                    <>
+                      <div className="flex items-center justify-center p-6 rounded-md border-2 bg-muted/30">
+                        <img 
+                          src={companyData.company.logo} 
+                          alt="Company Logo" 
+                          className="max-h-24 max-w-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                          data-testid="img-company-logo"
+                        />
+                      </div>
+                      <div className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                        <Upload className="h-6 w-6 text-white" />
+                        <p className="text-sm font-medium text-white">Click to change logo</p>
+                      </div>
+                    </>
+                  ) : (
+                    // Empty state
+                    <div className="flex flex-col items-center justify-center p-8 rounded-md border-2 border-dashed bg-muted/30 hover-elevate transition-colors">
+                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium mb-1">Click to upload logo</p>
+                      <p className="text-xs text-muted-foreground">
+                        PNG, JPG or GIF (max. 2.5MB)
+                      </p>
+                    </div>
+                  )}
                   
-                  {/* Logo Display Area - Full Width */}
-                  <div className="w-full">
-                    {companyData?.company?.logo ? (
-                      // Show logo with Replace/Delete buttons
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-center p-8 rounded-md border-2 border-dashed bg-muted/30">
-                          <img 
-                            src={companyData.company.logo} 
-                            alt="Company Logo" 
-                            className="max-h-32 max-w-full object-contain"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                            data-testid="img-company-logo"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const newUrl = prompt('Enter new logo URL:', companyData.company?.logo || '');
-                              if (newUrl && logoRef.current) {
-                                logoRef.current.value = newUrl;
-                              }
-                            }}
-                            data-testid="button-replace-logo"
-                          >
-                            Replace
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              if (logoRef.current) {
-                                logoRef.current.value = '';
-                              }
-                            }}
-                            data-testid="button-delete-logo"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      // Empty state with instructions
-                      <div className="flex flex-col items-center justify-center p-12 rounded-md border-2 border-dashed bg-muted/30 text-center">
-                        <p className="text-sm font-medium mb-1">Drag a file to this area to upload</p>
-                        <p className="text-xs text-muted-foreground">
-                          The proposed size is 350px * 180px. No bigger than 2.5 MB
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* URL Input */}
-                  <Input
-                    id="logo"
-                    ref={logoRef}
-                    type="url"
-                    placeholder="https://example.com/logo.png"
-                    defaultValue={companyData?.company?.logo || ""}
-                    data-testid="input-logo"
-                    className="font-mono text-sm"
+                  {/* Hidden file input */}
+                  <input
+                    ref={logoFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoFileChange}
+                    data-testid="input-logo-file"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the URL of your company logo. Recommended size: 350px × 180px or larger for best quality.
-                  </p>
                 </div>
-
-                {/* Custom Domain Section */}
-                <div className="space-y-2">
-                  <Label htmlFor="domain" className="text-base font-semibold">Custom Domain</Label>
-                  <Input
-                    id="domain"
-                    ref={domainRef}
-                    type="text"
-                    placeholder="app.yourcompany.com"
-                    defaultValue={companyData?.company?.domain || ""}
-                    data-testid="input-domain"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Custom domain for your company portal (optional)
-                  </p>
-                </div>
+                
+                {updateCompanyMutation.isPending && savingSection === "branding" && (
+                  <p className="text-xs text-muted-foreground text-center mt-2">Uploading...</p>
+                )}
               </CardContent>
             </Card>
           )}
