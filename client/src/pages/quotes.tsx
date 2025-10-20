@@ -438,7 +438,7 @@ export default function QuotesPage() {
       gender: "",
       phone: "",
       email: "",
-      isApplicant: false,
+      isApplicant: true,
       tobaccoUser: false,
     });
   };
@@ -453,7 +453,7 @@ export default function QuotesPage() {
       gender: "",
       phone: "",
       email: "",
-      isApplicant: false,
+      isApplicant: true,
       tobaccoUser: false,
     });
   };
