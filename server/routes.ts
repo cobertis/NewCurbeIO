@@ -28,7 +28,7 @@ import {
 } from "@shared/schema";
 import "./types";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize logging service
   const logger = new LoggingService(storage);
   
@@ -2170,6 +2170,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log("Timezone updated successfully for user:", currentUser.id);
+      
+      // Broadcast user update for real-time UI refresh
+      const { broadcastUserUpdate } = await import("./websocket");
+      broadcastUserUpdate(updatedUser.id, updatedUser.companyId || '');
+      
       const { password, ...sanitizedUser } = updatedUser;
       res.json({ user: sanitizedUser });
     } catch (error: any) {
@@ -2238,6 +2243,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedBy: currentUser.email,
         },
       });
+
+      // Broadcast user update for real-time UI refresh
+      const { broadcastUserUpdate } = await import("./websocket");
+      broadcastUserUpdate(updatedUser.id, updatedUser.companyId || '');
 
       const { password, ...sanitizedUser } = updatedUser;
       res.json({ user: sanitizedUser });
@@ -2549,6 +2558,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedBy: currentUser.email,
         },
       });
+      
+      // Broadcast company update for real-time UI refresh
+      const { broadcastCompanyUpdate } = await import("./websocket");
+      broadcastCompanyUpdate(updatedCompany.id);
       
       res.json({ company: updatedCompany });
     } catch (error) {
@@ -7498,8 +7511,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
-  // Setup WebSocket for real-time chat updates
-  setupWebSocket(httpServer);
+  // Setup WebSocket for real-time chat updates with session validation
+  setupWebSocket(httpServer, sessionStore);
 
   return httpServer;
 }

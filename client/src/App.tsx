@@ -179,6 +179,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   // WebSocket listener for real-time notification updates
   const handleWebSocketMessage = useCallback((message: any) => {
+    // Defense in depth: Verify tenant scope for events with companyId
+    const isRelevantToCurrentUser = (eventCompanyId?: string) => {
+      if (!eventCompanyId) return true; // Global events
+      if (user?.role === 'superadmin') return true; // Superadmins see all
+      return user?.companyId === eventCompanyId; // Same tenant
+    };
+
     if (message.type === 'conversation_update') {
       // When a new SMS arrives, invalidate notifications to show the new notification
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -192,6 +199,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       // Play sound when new notification arrives
       playNotificationSound();
     } else if (message.type === 'subscription_update') {
+      // Verify tenant scope before processing
+      if (!isRelevantToCurrentUser(message.companyId)) {
+        console.warn('[WEBSOCKET] Ignoring subscription_update for different tenant');
+        return;
+      }
       // When a subscription is updated via Stripe webhook, refresh subscription data
       const companyId = message.companyId;
       console.log('[WEBSOCKET] Subscription updated for company:', companyId);
@@ -201,8 +213,45 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription"] });
       queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId] });
+    } else if (message.type === 'company_update') {
+      // Verify tenant scope before processing
+      if (!isRelevantToCurrentUser(message.companyId)) {
+        console.warn('[WEBSOCKET] Ignoring company_update for different tenant');
+        return;
+      }
+      // When company data is updated, refresh company-related queries
+      const companyId = message.companyId;
+      console.log('[WEBSOCKET] Company updated:', companyId);
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/company"] });
+    } else if (message.type === 'user_update') {
+      // Verify tenant scope before processing
+      if (!isRelevantToCurrentUser(message.companyId)) {
+        console.warn('[WEBSOCKET] Ignoring user_update for different tenant');
+        return;
+      }
+      // When user data is updated, refresh user-related queries
+      const userId = message.userId;
+      const companyId = message.companyId;
+      console.log('[WEBSOCKET] User updated:', userId);
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
+    } else if (message.type === 'data_invalidation') {
+      // Verify tenant scope before processing
+      if (message.companyId && !isRelevantToCurrentUser(message.companyId)) {
+        console.warn('[WEBSOCKET] Ignoring data_invalidation for different tenant');
+        return;
+      }
+      // Generic data invalidation for any query keys
+      const queryKeys = message.queryKeys as string[];
+      console.log('[WEBSOCKET] Invalidating queries:', queryKeys.join(', '));
+      queryKeys.forEach(key => {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      });
     }
-  }, [playNotificationSound]);
+  }, [playNotificationSound, user]);
 
   useWebSocket(handleWebSocketMessage);
 

@@ -4,9 +4,13 @@ interface WebSocketMessage {
   type: string;
   phoneNumber?: string;
   data?: any;
+  companyId?: string;
+  userId?: string;
 }
 
-export function useWebSocket(onMessage: (message: WebSocketMessage) => void) {
+export function useWebSocket(
+  onMessage: (message: WebSocketMessage) => void
+) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttempts = useRef(0);
@@ -24,7 +28,7 @@ export function useWebSocket(onMessage: (message: WebSocketMessage) => void) {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('[WebSocket] Connected - server will authenticate using session');
         reconnectAttempts.current = 0;
       };
 

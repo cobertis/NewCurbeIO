@@ -29,6 +29,8 @@ export default function Dashboard() {
   
   const { data: statsData } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard-stats"],
+    // Dashboard stats refresh every 2 minutes for real-time insights
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
 
   const totalUsers = statsData?.totalUsers || 0;
