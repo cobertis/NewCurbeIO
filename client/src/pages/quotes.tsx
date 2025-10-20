@@ -1466,7 +1466,7 @@ export default function QuotesPage() {
                                     </Avatar>
                                   </div>
                                 </TooltipTrigger>
-                                <TooltipContent side="right" className="p-2">
+                                <TooltipContent side="right" sideOffset={5} align="center" className="p-2">
                                   <div>
                                     <div className="font-semibold text-xs mb-0.5">Agent information</div>
                                     <div className="text-xs leading-tight">
