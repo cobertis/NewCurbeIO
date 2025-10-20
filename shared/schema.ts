@@ -229,6 +229,28 @@ export type InsertActivationToken = z.infer<typeof insertActivationTokenSchema>;
 export type SelectActivationToken = typeof activationTokens.$inferSelect;
 
 // =====================================================
+// PASSWORD RESET TOKENS (Password Reset)
+// =====================================================
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(), // Secure random token
+  expiresAt: timestamp("expires_at").notNull(), // Expires in 1 hour
+  used: boolean("used").notNull().default(false),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type SelectPasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// =====================================================
 // TRUSTED DEVICES (Remember this device)
 // =====================================================
 
