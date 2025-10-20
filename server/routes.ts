@@ -7793,6 +7793,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
+      // Create notification for the assigned agent and admins
+      try {
+        const clientName = `${quote.clientFirstName} ${quote.clientLastName}`;
+        const notificationTitle = "New Quote Created";
+        const notificationMessage = `A new quote has been created for client ${clientName}`;
+        const notificationLink = `/quotes/${quote.id}`;
+        
+        // Get all users in the company who should be notified
+        const companyUsers = await storage.getUsersByCompany(currentUser.companyId!);
+        const usersToNotify = companyUsers.filter(user => 
+          user.id === quote.agentId || user.role === 'admin' || user.role === 'superadmin'
+        );
+        
+        // Create notifications for each user
+        for (const user of usersToNotify) {
+          await storage.createNotification({
+            userId: user.id,
+            type: 'info',
+            title: notificationTitle,
+            message: notificationMessage,
+            link: notificationLink,
+          });
+        }
+      } catch (notificationError) {
+        console.error("Error creating notifications for new quote:", notificationError);
+        // Don't fail the quote creation if notifications fail
+      }
+      
       res.status(201).json({ quote });
     } catch (error: any) {
       console.error("Error creating quote:", error);
