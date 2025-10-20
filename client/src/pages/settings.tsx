@@ -785,8 +785,19 @@ export default function Settings() {
     mutationFn: async (enabled: boolean) => {
       return apiRequest("PATCH", "/api/settings/2fa/email", { enabled });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+    onSuccess: async (data) => {
+      // Update the cache with the new user data from the response
+      queryClient.setQueryData(["/api/session"], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          user: data.user
+        };
+      });
+      
+      // Also invalidate to ensure fresh data
+      await queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      
       toast({
         title: "Success",
         description: "Email 2FA settings updated successfully",
@@ -806,8 +817,19 @@ export default function Settings() {
     mutationFn: async (enabled: boolean) => {
       return apiRequest("PATCH", "/api/settings/2fa/sms", { enabled });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+    onSuccess: async (data) => {
+      // Update the cache with the new user data from the response
+      queryClient.setQueryData(["/api/session"], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          user: data.user
+        };
+      });
+      
+      // Also invalidate to ensure fresh data
+      await queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      
       toast({
         title: "Success",
         description: "SMS 2FA settings updated successfully",
