@@ -452,6 +452,9 @@ export class DbStorage implements IStorage {
     if (data.emailSubscribed !== undefined) mappedData.emailSubscribed = data.emailSubscribed;
     if (data.emailNotifications !== undefined) mappedData.emailNotifications = data.emailNotifications;
     if (data.invoiceAlerts !== undefined) mappedData.invoiceAlerts = data.invoiceAlerts;
+    // 2FA preferences
+    if (data.twoFactorEmailEnabled !== undefined) mappedData.twoFactorEmailEnabled = data.twoFactorEmailEnabled;
+    if (data.twoFactorSmsEnabled !== undefined) mappedData.twoFactorSmsEnabled = data.twoFactorSmsEnabled;
     // Timezone preference
     if (data.timezone !== undefined) mappedData.timezone = data.timezone;
     // Insurance Profile Information
