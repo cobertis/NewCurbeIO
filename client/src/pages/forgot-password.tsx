@@ -19,7 +19,7 @@ export default function ForgotPassword() {
     if (!identifier.trim()) {
       toast({
         title: "Field Required",
-        description: "Please enter your email or username",
+        description: "Please enter your email",
         variant: "destructive",
       });
       return;
@@ -84,7 +84,7 @@ export default function ForgotPassword() {
                 Check Your Email
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                If an account exists with that email or username, we've sent you a password reset link. Please check your inbox and follow the instructions.
+                If an account exists with that email, we've sent you a password reset link. Please check your inbox and follow the instructions.
               </p>
             </div>
             
@@ -132,7 +132,7 @@ export default function ForgotPassword() {
               Forgot Password?
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Enter your email or username and we'll send you a link to reset your password
+              Enter your email and we'll send you a link to reset your password
             </p>
           </div>
 
@@ -143,7 +143,7 @@ export default function ForgotPassword() {
               <Input
                 id="identifier"
                 type="text"
-                placeholder="Email or Username"
+                placeholder="Email"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
