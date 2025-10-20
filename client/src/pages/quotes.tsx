@@ -983,7 +983,10 @@ export default function QuotesPage() {
                                     <Info className="h-4 w-4 text-muted-foreground" />
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p className="max-w-xs">Indicate if this member uses tobacco products.</p>
+                                    <div className="max-w-xs space-y-2">
+                                      <p>Select this if you've used tobacco <strong>4 or more times per week for the past 6 months</strong>.</p>
+                                      <p className="text-xs">You may pay more for insurance, but if you don't report that you are a tobacco user, and then later develop a tobacco-related illness, you can be <strong>denied</strong> coverage.</p>
+                                    </div>
                                   </TooltipContent>
                                 </Tooltip>
                               </FormLabel>
@@ -1274,7 +1277,10 @@ export default function QuotesPage() {
                                           <Info className="h-4 w-4 text-muted-foreground" />
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p className="max-w-xs">Indicate if this member uses tobacco products.</p>
+                                          <div className="max-w-xs space-y-2">
+                                            <p>Select this if you've used tobacco <strong>4 or more times per week for the past 6 months</strong>.</p>
+                                            <p className="text-xs">You may pay more for insurance, but if you don't report that you are a tobacco user, and then later develop a tobacco-related illness, you can be <strong>denied</strong> coverage.</p>
+                                          </div>
                                         </TooltipContent>
                                       </Tooltip>
                                     </FormLabel>
@@ -1494,7 +1500,10 @@ export default function QuotesPage() {
                                           <Info className="h-4 w-4 text-muted-foreground" />
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p className="max-w-xs">Indicate if this member uses tobacco products.</p>
+                                          <div className="max-w-xs space-y-2">
+                                            <p>Select this if you've used tobacco <strong>4 or more times per week for the past 6 months</strong>.</p>
+                                            <p className="text-xs">You may pay more for insurance, but if you don't report that you are a tobacco user, and then later develop a tobacco-related illness, you can be <strong>denied</strong> coverage.</p>
+                                          </div>
                                         </TooltipContent>
                                       </Tooltip>
                                     </FormLabel>
