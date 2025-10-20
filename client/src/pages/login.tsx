@@ -72,9 +72,11 @@ export default function Login() {
           });
           setLocation("/");
         } else {
-          // Redirect to OTP verification page with email and phone
+          // Redirect to OTP verification page with email, phone, and 2FA flags
           const phoneParam = data.user.phone ? `&phone=${encodeURIComponent(data.user.phone)}` : '';
-          setLocation(`/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(email)}${phoneParam}`);
+          const email2FAParam = data.user.twoFactorEmailEnabled ? '&email2FA=true' : '';
+          const sms2FAParam = data.user.twoFactorSmsEnabled ? '&sms2FA=true' : '';
+          setLocation(`/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(email)}${phoneParam}${email2FAParam}${sms2FAParam}`);
         }
       } else {
         toast({

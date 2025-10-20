@@ -17,9 +17,12 @@ export default function VerifyOTP() {
   const userId = params.get("userId");
   const userEmail = params.get("email");
   const userPhone = params.get("phone");
+  const email2FAEnabled = params.get("email2FA") === "true";
+  const sms2FAEnabled = params.get("sms2FA") === "true";
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [method, setMethod] = useState<"email" | "sms">("email");
+  // Set default method to the first enabled 2FA method
+  const [method, setMethod] = useState<"email" | "sms">(email2FAEnabled ? "email" : "sms");
   const [rememberDevice, setRememberDevice] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -298,56 +301,60 @@ export default function VerifyOTP() {
                   className="space-y-3"
                   data-testid="radio-group-method"
                 >
-                  {/* Email Option */}
-                  <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
-                    method === "email" 
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" 
-                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-                  }`}>
-                    <RadioGroupItem value="email" id="email-method" data-testid="radio-email" />
-                    <Label 
-                      htmlFor="email-method" 
-                      className="flex items-center justify-between flex-1 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">Email</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">{maskedEmail}</div>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
-
-                  {/* SMS Option */}
-                  <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
-                    !hasPhone 
-                      ? "opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700" 
-                      : method === "sms" 
-                        ? "border-green-500 bg-green-50 dark:bg-green-950/20" 
+                  {/* Email Option - Only show if email 2FA is enabled */}
+                  {email2FAEnabled && (
+                    <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
+                      method === "email" 
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" 
                         : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-                  }`}>
-                    <RadioGroupItem 
-                      value="sms" 
-                      id="sms-method" 
-                      disabled={!hasPhone}
-                      data-testid="radio-sms" 
-                    />
-                    <Label 
-                      htmlFor="sms-method" 
-                      className={`flex items-center justify-between flex-1 ${hasPhone ? "cursor-pointer" : "cursor-not-allowed"}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">SMS</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {hasPhone ? maskedPhone : "No phone number on file"}
+                    }`}>
+                      <RadioGroupItem value="email" id="email-method" data-testid="radio-email" />
+                      <Label 
+                        htmlFor="email-method" 
+                        className="flex items-center justify-between flex-1 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">Email</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{maskedEmail}</div>
                           </div>
                         </div>
-                      </div>
-                    </Label>
-                  </div>
+                      </Label>
+                    </div>
+                  )}
+
+                  {/* SMS Option - Only show if SMS 2FA is enabled */}
+                  {sms2FAEnabled && (
+                    <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
+                      !hasPhone 
+                        ? "opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700" 
+                        : method === "sms" 
+                          ? "border-green-500 bg-green-50 dark:bg-green-950/20" 
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}>
+                      <RadioGroupItem 
+                        value="sms" 
+                        id="sms-method" 
+                        disabled={!hasPhone}
+                        data-testid="radio-sms" 
+                      />
+                      <Label 
+                        htmlFor="sms-method" 
+                        className={`flex items-center justify-between flex-1 ${hasPhone ? "cursor-pointer" : "cursor-not-allowed"}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">SMS</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {hasPhone ? maskedPhone : "No phone number on file"}
+                            </div>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
                 </RadioGroup>
               </div>
 
