@@ -45,6 +45,8 @@ import {
   type InsertOtpCode,
   type SelectActivationToken,
   type InsertActivationToken,
+  type SelectPasswordResetToken,
+  type InsertPasswordResetToken,
   type SelectTrustedDevice,
   type InsertTrustedDevice,
   type ContactList,
@@ -94,6 +96,7 @@ import {
   companyFeatures,
   otpCodes,
   activationTokens,
+  passwordResetTokens,
   trustedDevices,
   contactLists,
   contactListMembers,
@@ -238,6 +241,13 @@ export interface IStorage {
   markActivationTokenUsed(token: string): Promise<boolean>;
   validateAndUseToken(token: string): Promise<string | null>;
   deleteExpiredActivationTokens(): Promise<boolean>;
+  
+  // Password Reset Tokens
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<SelectPasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<SelectPasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(token: string): Promise<boolean>;
+  validateAndUsePasswordResetToken(token: string): Promise<string | null>;
+  deleteExpiredPasswordResetTokens(): Promise<boolean>;
   
   // Trusted Devices
   saveTrustedDevice(device: InsertTrustedDevice): Promise<SelectTrustedDevice>;
@@ -1206,6 +1216,91 @@ export class DbStorage implements IStorage {
     await db.delete(activationTokens).where(and(
       eq(activationTokens.used, false)
     ));
+    return true;
+  }
+  
+  // ==================== PASSWORD RESET TOKENS ====================
+  
+  async createPasswordResetToken(token: InsertPasswordResetToken): Promise<SelectPasswordResetToken> {
+    const result = await db.insert(passwordResetTokens).values(token).returning();
+    return result[0];
+  }
+  
+  async getPasswordResetToken(token: string): Promise<SelectPasswordResetToken | undefined> {
+    const result = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.token, token),
+        eq(passwordResetTokens.used, false)
+      ))
+      .limit(1);
+    return result[0];
+  }
+  
+  async markPasswordResetTokenUsed(token: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.token, token),
+        eq(passwordResetTokens.used, false)
+      ))
+      .limit(1);
+    
+    if (result.length === 0) {
+      return false;
+    }
+    
+    const resetToken = result[0];
+    const now = new Date();
+    
+    if (resetToken.expiresAt < now) {
+      return false;
+    }
+    
+    await db
+      .update(passwordResetTokens)
+      .set({ used: true, usedAt: now })
+      .where(eq(passwordResetTokens.id, resetToken.id));
+    
+    return true;
+  }
+  
+  async validateAndUsePasswordResetToken(token: string): Promise<string | null> {
+    const result = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.token, token),
+        eq(passwordResetTokens.used, false)
+      ))
+      .limit(1);
+    
+    if (result.length === 0) {
+      return null;
+    }
+    
+    const resetToken = result[0];
+    const now = new Date();
+    
+    if (resetToken.expiresAt < now) {
+      return null;
+    }
+    
+    await db
+      .update(passwordResetTokens)
+      .set({ used: true, usedAt: now })
+      .where(eq(passwordResetTokens.id, resetToken.id));
+    
+    return resetToken.userId;
+  }
+  
+  async deleteExpiredPasswordResetTokens(): Promise<boolean> {
+    const now = new Date();
+    await db.delete(passwordResetTokens).where(
+      eq(passwordResetTokens.used, false)
+    );
     return true;
   }
   
