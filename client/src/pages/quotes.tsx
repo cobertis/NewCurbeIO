@@ -824,7 +824,8 @@ export default function QuotesPage() {
                         <h3 className="text-base font-semibold">Address</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                      {/* Street Address and Apartment in same row */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-6">
                         <div className="md:col-span-2">
                           <GooglePlacesAddressAutocomplete
                             value={form.watch("street")}
@@ -850,15 +851,19 @@ export default function QuotesPage() {
                           control={form.control}
                           name="addressLine2"
                           render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                              <FormLabel>Apartment, Suite, Unit</FormLabel>
+                            <FormItem>
+                              <FormLabel>Apt/Suite/Unit</FormLabel>
                               <FormControl>
-                                <Input {...field} data-testid="input-address-line2" placeholder="Apt, Suite, Unit (optional)" />
+                                <Input {...field} data-testid="input-address-line2" placeholder="# (optional)" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
+                      </div>
+
+                      {/* City, State, Postal Code, County */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
 
                         <FormField
                           control={form.control}
