@@ -610,14 +610,14 @@ export default function QuotesPage() {
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Assigned to</label>
                           <Select 
-                            value={filters.assignedTo} 
-                            onValueChange={(value) => setFilters(prev => ({ ...prev, assignedTo: value }))}
+                            value={filters.assignedTo || "all"} 
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, assignedTo: value === "all" ? "" : value }))}
                           >
                             <SelectTrigger data-testid="select-assigned-to">
                               <SelectValue placeholder="Filter by assigned user" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">All Users</SelectItem>
+                              <SelectItem value="all">All Users</SelectItem>
                               {agents.map((agent) => (
                                 <SelectItem key={agent.id} value={agent.id}>
                                   {agent.firstName} {agent.lastName}
@@ -652,14 +652,14 @@ export default function QuotesPage() {
                         <div className="space-y-2">
                           <label className="text-sm font-medium">State</label>
                           <Select 
-                            value={filters.state} 
-                            onValueChange={(value) => setFilters(prev => ({ ...prev, state: value }))}
+                            value={filters.state || "all"} 
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, state: value === "all" ? "" : value }))}
                           >
                             <SelectTrigger data-testid="select-filter-state">
                               <SelectValue placeholder="Filter by state" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">All States</SelectItem>
+                              <SelectItem value="all">All States</SelectItem>
                               {US_STATES.map((state) => (
                                 <SelectItem key={state.value} value={state.value}>
                                   {state.label}
