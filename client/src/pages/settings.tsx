@@ -3000,7 +3000,6 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
         phone: user.phone || "",
         role: user.role || "member",
         timezone: user.timezone || "",
-        address: user.address || "",
         agentInternalCode: user.agentInternalCode || "",
         instructionLevel: user.instructionLevel || "",
         nationalProducerNumber: user.nationalProducerNumber || "",
@@ -3024,7 +3023,6 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
       }
       if (data.role !== user.role) updateData.role = data.role;
       if (data.timezone !== user.timezone) updateData.timezone = data.timezone;
-      if (data.address !== user.address) updateData.address = data.address;
       if (data.agentInternalCode !== user.agentInternalCode) updateData.agentInternalCode = data.agentInternalCode;
       if (data.instructionLevel !== user.instructionLevel) updateData.instructionLevel = data.instructionLevel;
       if (data.nationalProducerNumber !== user.nationalProducerNumber) updateData.nationalProducerNumber = data.nationalProducerNumber;
@@ -3063,7 +3061,6 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
         phone: user.phone || "",
         role: user.role || "member",
         timezone: user.timezone || "",
-        address: user.address || "",
         agentInternalCode: user.agentInternalCode || "",
         instructionLevel: user.instructionLevel || "",
         nationalProducerNumber: user.nationalProducerNumber || "",
@@ -3229,34 +3226,22 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
             </div>
           </div>
 
-          {/* Location & Timezone */}
+          {/* Timezone */}
           <div>
             <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <MapPin className="h-4 w-4" />
-              Location & Timezone
+              Timezone
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.address || ""}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  disabled={!isEditing}
-                  data-testid="input-address"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Input
-                  id="timezone"
-                  value={formData.timezone || ""}
-                  onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                  disabled={!isEditing}
-                  placeholder="e.g., America/New_York"
-                  data-testid="input-timezone"
-                />
-              </div>
+            <div>
+              <Label htmlFor="timezone">Timezone</Label>
+              <Input
+                id="timezone"
+                value={formData.timezone || ""}
+                onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                disabled={!isEditing}
+                placeholder="e.g., America/New_York"
+                data-testid="input-timezone"
+              />
             </div>
           </div>
 
@@ -3334,32 +3319,20 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
                 <span className="text-muted-foreground">Created:</span>
                 <span>{user.createdAt ? format(new Date(user.createdAt), "MMM dd, yyyy") : "N/A"}</span>
               </div>
-              {user.lastLoginAt && (
-                <div className="flex items-center gap-2">
-                  <LogIn className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Last Login:</span>
-                  <span>{formatDistanceToNow(new Date(user.lastLoginAt), { addSuffix: true })}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <LogIn className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Last Login:</span>
+                <span>{user.lastLoginAt ? formatDistanceToNow(new Date(user.lastLoginAt), { addSuffix: true }) : "Never"}</span>
+              </div>
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Email Notifications:</span>
-                <span>{user.emailNotifications ? "Enabled" : "Disabled"}</span>
+                <span className="text-muted-foreground">Email:</span>
+                <span>{user.twoFactorEmailEnabled ? "Active" : "Inactive"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">SMS Subscribed:</span>
-                <span>{user.smsSubscribed ? "Yes" : "No"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">2FA Email:</span>
-                <span>{user.twoFactorEmailEnabled ? "Enabled" : "Disabled"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <PhoneIcon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">2FA SMS:</span>
-                <span>{user.twoFactorSmsEnabled ? "Enabled" : "Disabled"}</span>
+                <span className="text-muted-foreground">SMS:</span>
+                <span>{user.twoFactorSmsEnabled ? "Active" : "Inactive"}</span>
               </div>
             </div>
           </div>
