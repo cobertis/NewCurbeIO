@@ -74,6 +74,29 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
     -   **Automated Product/Price Synchronization:** `POST /api/plans/sync-from-stripe` (superadmin-only) to automatically import active Stripe products and prices, ensuring Stripe is the source of truth.
     -   **Integrated Financial Support System:** Financial support request system fully integrated within Modify Subscription dialog, with view navigation between main options, financial ineligibility notice, support request form, and downgrade/cancel flows. All superadmins receive real-time WebSocket notifications for new financial support tickets.
     -   **Subscription Cancellation with Auto-Deactivation:** Clear cancellation dialog warning users about account access loss after subscription end date. Automatic company and user deactivation via Stripe webhook (`customer.subscription.deleted`) when subscription expires - sets company `isActive: false` and all users `status: 'deactivated'`.
+-   **Quotes Management System:** Complete insurance quote management system with multi-step wizard interface for creating and managing client quotes.
+    -   **4-Step Quote Wizard:** Streamlined quote creation process with four logical steps:
+        -   **Step 1 - Policy Information:** Product type selection via visual cards (11 insurance types), effective date picker (defaults to 1st of next month), and agent assignment
+        -   **Step 2 - Personal Information:** Client details including name, email, phone, date of birth, and gender
+        -   **Step 3 - Family Group:** Optional family member information for family coverage plans
+        -   **Step 4 - Address Information:** Complete address collection with street, city, state, postal code, and country
+    -   **Insurance Product Types:** Comprehensive coverage for 11 insurance categories - Medicare, Medicaid, ACA (Health Insurance), Life Insurance, Private Health, Dental, Vision, Supplemental, Annuities, Final Expense, and Travel insurance
+    -   **Quote Management Features:**
+        -   Quote listing table with product type badges, effective dates, client information, and status tracking
+        -   Multi-tenant isolation ensuring quotes are scoped to company
+        -   Audit logging for quote creation, updates, and deletions
+        -   Draft and active status tracking
+        -   Quote assignment to specific agents within the company
+    -   **Technical Implementation:**
+        -   REST API routes with Zod validation for create, read, update, delete operations
+        -   Date string to Date object conversion before validation to handle frontend-backend serialization
+        -   Protected multi-tenant fields (companyId, createdBy) enforced server-side
+        -   Storage layer with SQL joins to enrich quote data with creator information
+        -   Form validation with react-hook-form and zod-resolver
+        -   Responsive wizard UI with step indicators and navigation controls
+    -   **Routes:** POST /api/quotes (create), GET /api/quotes (list), GET /api/quotes/:id (get), PATCH /api/quotes/:id (update), DELETE /api/quotes/:id (delete)
+    -   **Database Schema:** quotes table with comprehensive fields for policy, client, family, and address information
+    -   **Navigation:** Accessible via sidebar menu under "Features" → "Quotes"
 
 ### System Design Choices
 The system utilizes PostgreSQL with Drizzle ORM for data management and enforces strict multi-tenancy. Security is paramount, implemented through robust password management, account activation, and 2FA. The modular feature system ensures flexibility and extensibility.
