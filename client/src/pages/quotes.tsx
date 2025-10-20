@@ -15,6 +15,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User as UserType, type Quote } from "@shared/schema";
 import { useState, useEffect } from "react";
+import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
@@ -242,6 +243,8 @@ export default function QuotesPage() {
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Advanced filters state
   const [filters, setFilters] = useState({
@@ -506,6 +509,18 @@ export default function QuotesPage() {
   const hasActiveFilters = filters.status !== "all" || filters.productType !== "all" || 
     filters.state || filters.zipCode || filters.assignedTo || filters.effectiveDateFrom || 
     filters.effectiveDateTo || filters.applicantsFrom || filters.applicantsTo;
+  
+  // Pagination logic
+  const totalItems = filteredQuotes.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedQuotes = filteredQuotes.slice(startIndex, endIndex);
+  
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters]);
   
   // Reset all filters
   const resetFilters = () => {
@@ -922,9 +937,60 @@ export default function QuotesPage() {
                   </Sheet>
                 </div>
 
-                {/* Results count */}
-                <div className="text-sm text-muted-foreground">
-                  Showing {filteredQuotes.length} of {allQuotes.length} quotes
+                {/* Show selector and pagination info */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Show</span>
+                    <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                      setItemsPerPage(parseInt(value));
+                      setCurrentPage(1);
+                    }}>
+                      <SelectTrigger className="w-20" data-testid="select-items-per-page">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Showing {totalItems > 0 ? startIndex + 1 : 0} to {endIndex} of {totalItems} Entries
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      data-testid="button-prev-page"
+                    >
+                      <ChevronLeftIcon className="h-4 w-4" />
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => setCurrentPage(page)}
+                        data-testid={`button-page-${page}`}
+                        className={currentPage === page ? "" : ""}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      data-testid="button-next-page"
+                    >
+                      <ChevronRightIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Table */}
@@ -949,7 +1015,7 @@ export default function QuotesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredQuotes.map((quote) => {
+                      {paginatedQuotes.map((quote) => {
                         const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
                         const agent = agents.find(a => a.id === quote.agentId);
                         const assignedAgent = agents.find(a => a.id === quote.agentId);
