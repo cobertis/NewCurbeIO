@@ -1776,6 +1776,221 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== PASSWORD RESET ENDPOINTS ====================
+
+  // Request password reset - send email with reset link
+  app.post("/api/auth/request-password-reset", async (req: Request, res: Response) => {
+    try {
+      const { identifier } = req.body; // Can be email or username
+
+      if (!identifier) {
+        return res.status(400).json({ message: "Email or username is required" });
+      }
+
+      // Try to find user by email or username
+      let user = await storage.getUserByEmail(identifier);
+      if (!user) {
+        user = await storage.getUserByUsername(identifier);
+      }
+
+      // Always return success even if user not found (security best practice)
+      // This prevents email enumeration attacks
+      if (!user) {
+        return res.json({ 
+          success: true,
+          message: "If an account with that email or username exists, a password reset link has been sent."
+        });
+      }
+
+      // Check if user is active
+      if (user.status !== 'active') {
+        return res.json({ 
+          success: true,
+          message: "If an account with that email or username exists, a password reset link has been sent."
+        });
+      }
+
+      // Generate reset token
+      const crypto = await import('crypto');
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Save reset token to database
+      await storage.createPasswordResetToken({
+        userId: user.id,
+        token: resetToken,
+        expiresAt,
+        used: false,
+      });
+
+      // Generate reset link
+      const resetLink = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+
+      // Get password reset email template from database
+      const template = await storage.getEmailTemplateBySlug("password-reset");
+      if (!template) {
+        console.error("Password reset email template not found");
+        return res.status(500).json({ message: "Failed to send password reset email" });
+      }
+
+      // Get company name for email
+      let companyName = "Curbe";
+      if (user.companyId) {
+        const company = await storage.getCompany(user.companyId);
+        if (company) {
+          companyName = company.name;
+        }
+      }
+
+      // Replace variables in template
+      let htmlContent = template.htmlContent
+        .replace(/\{\{firstName\}\}/g, user.firstName || 'there')
+        .replace(/\{\{company_name\}\}/g, companyName)
+        .replace(/\{\{reset_link\}\}/g, resetLink);
+
+      let textContent = template.textContent
+        ?.replace(/\{\{firstName\}\}/g, user.firstName || 'there')
+        .replace(/\{\{company_name\}\}/g, companyName)
+        .replace(/\{\{reset_link\}\}/g, resetLink);
+
+      // Send email
+      const { emailService } = await import("./email");
+      const emailSent = await emailService.sendEmail({
+        to: user.email,
+        subject: template.subject.replace(/\{\{company_name\}\}/g, companyName),
+        html: htmlContent,
+        text: textContent || `Reset your password by clicking this link: ${resetLink}`,
+      });
+
+      if (!emailSent) {
+        console.error("Failed to send password reset email");
+        return res.status(500).json({ message: "Failed to send password reset email" });
+      }
+
+      await logger.logAuth({
+        req,
+        action: "password_reset_requested",
+        userId: user.id,
+        email: user.email,
+        metadata: { method: "email" },
+      });
+
+      res.json({ 
+        success: true,
+        message: "If an account with that email or username exists, a password reset link has been sent."
+      });
+    } catch (error) {
+      console.error("Error requesting password reset:", error);
+      res.status(500).json({ message: "Failed to request password reset" });
+    }
+  });
+
+  // Validate password reset token
+  app.get("/api/auth/validate-password-reset-token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ message: "Token is required" });
+      }
+
+      const resetToken = await storage.getPasswordResetToken(token);
+
+      if (!resetToken) {
+        return res.status(404).json({ message: "Invalid password reset token" });
+      }
+
+      // Check if token has expired
+      const now = new Date();
+      if (resetToken.expiresAt < now) {
+        return res.status(400).json({ message: "Password reset link has expired" });
+      }
+
+      // Check if token has already been used
+      if (resetToken.usedAt) {
+        return res.status(400).json({ message: "This password reset link has already been used" });
+      }
+
+      res.json({ 
+        success: true,
+        message: "Token is valid"
+      });
+    } catch (error) {
+      console.error("Error validating password reset token:", error);
+      res.status(500).json({ message: "Failed to validate token" });
+    }
+  });
+
+  // Reset password with token
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        return res.status(400).json({ message: "Token and password are required" });
+      }
+
+      // Validate password complexity
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
+
+      if (!/[A-Z]/.test(password)) {
+        return res.status(400).json({ message: "Password must contain at least one uppercase letter" });
+      }
+
+      if (!/[a-z]/.test(password)) {
+        return res.status(400).json({ message: "Password must contain at least one lowercase letter" });
+      }
+
+      if (!/[0-9]/.test(password)) {
+        return res.status(400).json({ message: "Password must contain at least one number" });
+      }
+
+      if (!/[^a-zA-Z0-9]/.test(password)) {
+        return res.status(400).json({ message: "Password must contain at least one special character (!@#$%^&*)" });
+      }
+
+      // Validate and use the token (marks it as used)
+      const userId = await storage.validateAndUsePasswordResetToken(token);
+
+      if (!userId) {
+        return res.status(400).json({ message: "Invalid or expired password reset token" });
+      }
+
+      // Get user to verify they exist
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Hash the new password
+      const hashedPassword = await hashPassword(password);
+
+      // Update user with new password and update passwordChangedAt timestamp
+      await storage.updateUser(userId, {
+        password: hashedPassword,
+        passwordChangedAt: new Date(),
+      });
+
+      await logger.logAuth({
+        req,
+        action: "password_reset_completed",
+        userId: user.id,
+        email: user.email,
+        metadata: { method: "reset_token" },
+      });
+
+      res.json({ 
+        success: true,
+        message: "Password reset successfully"
+      });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   // ==================== STATS ENDPOINTS ====================
 
   app.get("/api/stats", requireActiveCompany, async (req: Request, res: Response) => {
