@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare, Bell, Ticket, Mail, ClipboardList } from "lucide-react";
+import { LayoutDashboard, ClipboardList, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -14,7 +14,6 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
 import type { User } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 
@@ -25,87 +24,9 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Analytics",
-    url: "/analytics",
-    icon: BarChart3,
-  },
-  {
-    title: "Companies",
-    url: "/companies",
-    icon: Building2,
-    superAdminOnly: true,
-  },
-  {
-    title: "Users",
-    url: "/users",
-    icon: Users,
-  },
-  {
-    title: "Plans",
-    url: "/plans",
-    icon: CreditCard,
-    superAdminOnly: true,
-  },
-  {
-    title: "Features",
-    url: "/features",
-    icon: Package,
-    superAdminOnly: true,
-  },
-  {
     title: "Quotes",
     url: "/quotes",
     icon: ClipboardList,
-  },
-  {
-    title: "Invoices",
-    url: "/invoices",
-    icon: Receipt,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
-  {
-    title: "Email Settings",
-    url: "/email-configuration",
-    icon: Mail,
-    superAdminOnly: true,
-  },
-  {
-    title: "Audit Logs",
-    url: "/audit-logs",
-    icon: FileText,
-  },
-  {
-    title: "Tickets",
-    url: "/tickets",
-    icon: Ticket,
-    superAdminOnly: true,
-  },
-  {
-    title: "Support",
-    url: "/support",
-    icon: HelpCircle,
-  },
-  {
-    title: "Campaigns",
-    url: "/campaigns",
-    icon: Send,
-    superAdminOnly: true,
-  },
-  {
-    title: "Incoming SMS",
-    url: "/incoming-sms",
-    icon: MessageSquare,
-    superAdminOnly: true,
-  },
-  {
-    title: "System Alerts",
-    url: "/system-alerts",
-    icon: Bell,
-    superAdminOnly: true,
   },
 ];
 
@@ -121,12 +42,6 @@ export function AppSidebar() {
   const { data: companyData, isSuccess: companyDataLoaded } = useQuery<{ company: { logo?: string } }>({
     queryKey: ["/api/companies", userData?.user?.companyId],
     enabled: !!userData?.user?.companyId,
-  });
-
-  // Get unread SMS count for badge
-  const { data: unreadData } = useQuery<{ unreadCount: number }>({
-    queryKey: ["/api/chat/unread-count"],
-    enabled: userData?.user?.role === "superadmin",
   });
 
   // Load cached logo from localStorage on mount
@@ -168,10 +83,6 @@ export function AppSidebar() {
     }
   };
 
-  const user = userData?.user;
-  const isSuperAdmin = user?.role === "superadmin";
-  const unreadCount = unreadData?.unreadCount || 0;
-  
   // Determine which logo to display
   const getDisplayLogo = () => {
     // If company data has loaded successfully
@@ -184,13 +95,6 @@ export function AppSidebar() {
   };
   
   const displayLogo = getDisplayLogo();
-
-  const visibleMenuItems = menuItems.filter((item) => {
-    if (item.superAdminOnly) {
-      return isSuperAdmin;
-    }
-    return true;
-  });
 
   return (
     <Sidebar className="border-r border-border bg-background">
@@ -212,7 +116,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {visibleMenuItems.map((item) => (
+              {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -229,15 +133,6 @@ export function AppSidebar() {
                     <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
                       <item.icon className="h-5 w-5 shrink-0" />
                       <span className="flex-1">{item.title}</span>
-                      {item.url === "/incoming-sms" && unreadCount > 0 && (
-                        <Badge 
-                          variant="destructive" 
-                          className="ml-auto h-5 min-w-5 px-1.5 text-xs font-semibold"
-                          data-testid="badge-unread-sms"
-                        >
-                          {unreadCount}
-                        </Badge>
-                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
