@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -948,7 +949,14 @@ export default function QuotesPage() {
                             <div className="space-y-1 leading-none">
                               <FormLabel className="flex items-center gap-2 cursor-pointer">
                                 Is this member an applicant?
-                                <Info className="h-4 w-4 text-muted-foreground" />
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">Select this option to add the family member to the coverage. Unselect if the member is eligible through a job, Medicaid, CHIP, or Medicare.</p>
+                                  </TooltipContent>
+                                </Tooltip>
                               </FormLabel>
                             </div>
                           </FormItem>
@@ -970,7 +978,14 @@ export default function QuotesPage() {
                             <div className="space-y-1 leading-none">
                               <FormLabel className="flex items-center gap-2 cursor-pointer">
                                 Tobacco user
-                                <Info className="h-4 w-4 text-muted-foreground" />
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">Indicate if this member uses tobacco products.</p>
+                                  </TooltipContent>
+                                </Tooltip>
                               </FormLabel>
                             </div>
                           </FormItem>
@@ -1225,7 +1240,14 @@ export default function QuotesPage() {
                                   <div className="space-y-1 leading-none">
                                     <FormLabel className="flex items-center gap-2 cursor-pointer">
                                       Is this member an applicant?
-                                      <Info className="h-4 w-4 text-muted-foreground" />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">Select this option to add the family member to the coverage. Unselect if the member is eligible through a job, Medicaid, CHIP, or Medicare.</p>
+                                        </TooltipContent>
+                                      </Tooltip>
                                     </FormLabel>
                                   </div>
                                 </FormItem>
@@ -1247,7 +1269,14 @@ export default function QuotesPage() {
                                   <div className="space-y-1 leading-none">
                                     <FormLabel className="flex items-center gap-2 cursor-pointer">
                                       Tobacco user
-                                      <Info className="h-4 w-4 text-muted-foreground" />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">Indicate if this member uses tobacco products.</p>
+                                        </TooltipContent>
+                                      </Tooltip>
                                     </FormLabel>
                                   </div>
                                 </FormItem>
@@ -1431,7 +1460,14 @@ export default function QuotesPage() {
                                   <div className="space-y-1 leading-none">
                                     <FormLabel className="flex items-center gap-2 cursor-pointer">
                                       Is this member an applicant?
-                                      <Info className="h-4 w-4 text-muted-foreground" />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">Select this option to add the family member to the coverage. Unselect if the member is eligible through a job, Medicaid, CHIP, or Medicare.</p>
+                                        </TooltipContent>
+                                      </Tooltip>
                                     </FormLabel>
                                   </div>
                                 </FormItem>
@@ -1453,7 +1489,14 @@ export default function QuotesPage() {
                                   <div className="space-y-1 leading-none">
                                     <FormLabel className="flex items-center gap-2 cursor-pointer">
                                       Tobacco user
-                                      <Info className="h-4 w-4 text-muted-foreground" />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">Indicate if this member uses tobacco products.</p>
+                                        </TooltipContent>
+                                      </Tooltip>
                                     </FormLabel>
                                   </div>
                                 </FormItem>
