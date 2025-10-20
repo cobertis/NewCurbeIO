@@ -1026,22 +1026,29 @@ export default function QuotesPage() {
                               <Checkbox data-testid={`checkbox-quote-${quote.id}`} />
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={agent?.avatar || undefined} />
-                                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                                    {agent?.firstName?.[0] || 'A'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="font-medium text-sm">
-                                    {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="cursor-pointer">
+                                    <Avatar className="h-8 w-8">
+                                      <AvatarImage src={agent?.avatar || undefined} />
+                                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                        {agent?.firstName?.[0] || 'A'}
+                                      </AvatarFallback>
+                                    </Avatar>
                                   </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {agent?.email || 'No email'}
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="p-3">
+                                  <div className="space-y-1">
+                                    <h4 className="font-semibold text-sm">Agent information</h4>
+                                    <div className="text-xs space-y-0.5">
+                                      <div><span className="font-medium">Name:</span> {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
+                                      <div><span className="font-medium">NPN:</span> {agent?.id.slice(0, 8) || 'N/A'}</div>
+                                      <div><span className="font-medium">Email:</span> {agent?.email || 'No email'}</div>
+                                      <div><span className="font-medium">Role:</span> {agent?.role || 'N/A'}</div>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
+                                </TooltipContent>
+                              </Tooltip>
                             </TableCell>
                             <TableCell>
                               <div className="font-medium text-sm">
