@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { LayoutDashboard, BarChart3, Users, Building2, CreditCard, Package, Receipt, Settings, FileText, HelpCircle, LogOut, Send, MessageSquare, Bell, Ticket, Mail } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -104,13 +105,14 @@ const menuItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const [cachedLogo, setCachedLogo] = useState<string | null>(null);
   
   const { data: userData } = useQuery<{ user: User & { companyName?: string } }>({
     queryKey: ["/api/session"],
   });
 
   // Get company data to access the logo
-  const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: { logo?: string } }>({
+  const { data: companyData, isSuccess: companyDataLoaded } = useQuery<{ company: { logo?: string } }>({
     queryKey: ["/api/companies", userData?.user?.companyId],
     enabled: !!userData?.user?.companyId,
   });
@@ -120,6 +122,26 @@ export function AppSidebar() {
     queryKey: ["/api/chat/unread-count"],
     enabled: userData?.user?.role === "superadmin",
   });
+
+  // Load cached logo from localStorage on mount
+  useEffect(() => {
+    const cached = localStorage.getItem('company_logo');
+    if (cached) {
+      setCachedLogo(cached);
+    }
+  }, []);
+
+  // Update cache when company data changes
+  useEffect(() => {
+    if (companyData?.company?.logo) {
+      localStorage.setItem('company_logo', companyData.company.logo);
+      setCachedLogo(companyData.company.logo);
+    } else if (companyData && !companyData.company?.logo) {
+      // Company loaded but no logo - clear cache
+      localStorage.removeItem('company_logo');
+      setCachedLogo(null);
+    }
+  }, [companyData]);
 
   const handleLogout = async () => {
     try {
@@ -140,18 +162,14 @@ export function AppSidebar() {
   const unreadCount = unreadData?.unreadCount || 0;
   
   // Determine which logo to display
-  // Only show logo once we know if company has custom logo or not
   const getDisplayLogo = () => {
-    // If user has company and we're still loading company data, don't show any logo yet
-    if (user?.companyId && isLoadingCompany) {
-      return null;
+    // If company data has loaded successfully
+    if (companyDataLoaded) {
+      // Use company logo if exists, otherwise default Curbe logo
+      return companyData?.company?.logo || logo;
     }
-    // If company data loaded and has logo, use it
-    if (companyData?.company?.logo) {
-      return companyData.company.logo;
-    }
-    // Otherwise use default logo
-    return logo;
+    // Company data still loading - use cached logo if available, otherwise default
+    return cachedLogo || logo;
   };
   
   const displayLogo = getDisplayLogo();
