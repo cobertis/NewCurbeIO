@@ -581,7 +581,7 @@ export default function QuotesPage() {
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-2">
                   {/* Step 1: Policy Information */}
                   {currentStep === 1 && (
-                    <div className="space-y-8">
+                    <div className="space-y-8 px-8">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <FormField
                         control={form.control}
@@ -665,7 +665,7 @@ export default function QuotesPage() {
 
                 {/* Step 2: Personal Information & Address */}
                 {currentStep === 2 && (
-                  <div className="space-y-10">
+                  <div className="space-y-10 px-8">
                     {/* Personal Information Section */}
                     <div className="space-y-6">
                       <div className="flex items-center gap-3 pb-3 border-b">
@@ -1022,7 +1022,7 @@ export default function QuotesPage() {
 
                 {/* Step 3: Family Group */}
                 {currentStep === 3 && (
-                  <div className="space-y-8">
+                  <div className="space-y-8 px-8">
                     {/* Income and Family Size */}
                     <FormField
                       control={form.control}
