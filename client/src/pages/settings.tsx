@@ -21,6 +21,7 @@ import type { User, CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -402,6 +403,9 @@ export default function Settings() {
   // Track which company section is currently saving
   const [savingSection, setSavingSection] = useState<string | null>(null);
   
+  // Address autocomplete state
+  const [addressValue, setAddressValue] = useState("");
+  
   const user = userData?.user;
 
   // Fetch company data if user has a companyId
@@ -474,6 +478,7 @@ export default function Settings() {
       setSelectedCategory((companyData.company as any).businessCategory || "");
       setSelectedNiche((companyData.company as any).businessNiche || "");
       setSelectedTimezone(companyData.company.timezone || "UTC");
+      setAddressValue(companyData.company.address || "");
     }
   }, [companyData]);
 
@@ -2200,15 +2205,33 @@ export default function Settings() {
                     </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="address">Street Address</Label>
-                      <Input
-                        id="address"
-                        ref={addressRef}
-                        defaultValue={companyData?.company?.address || ""}
-                        data-testid="input-address"
-                      />
-                    </div>
+                    <GooglePlacesAddressAutocomplete
+                      value={addressValue}
+                      onChange={(value) => {
+                        setAddressValue(value);
+                        if (addressRef.current) {
+                          addressRef.current.value = value;
+                        }
+                      }}
+                      onAddressSelect={(address) => {
+                        setAddressValue(address.street);
+                        if (addressRef.current) addressRef.current.value = address.street;
+                        if (cityRef.current) cityRef.current.value = address.city;
+                        if (stateRef.current) stateRef.current.value = address.state;
+                        if (postalCodeRef.current) postalCodeRef.current.value = address.postalCode;
+                        if (countryRef.current) countryRef.current.value = address.country;
+                      }}
+                      label="Street Address"
+                      placeholder="Start typing your address..."
+                      testId="input-address"
+                    />
+                    
+                    {/* Hidden ref to maintain compatibility with save handler */}
+                    <input
+                      ref={addressRef}
+                      type="hidden"
+                      value={addressValue}
+                    />
 
                     <div className="space-y-2">
                       <Label htmlFor="addressLine2">Address Line 2</Label>
