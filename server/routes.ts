@@ -790,15 +790,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // 3. Destroy current session
+      // 3. Clear trusted device cookie BEFORE destroying session
+      res.clearCookie('trusted_device', {
+        path: '/',
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax'
+      });
+
+      // 4. Destroy current session
       req.session.destroy((err) => {
         if (err) {
           console.error("Error destroying current session:", err);
           return res.status(500).json({ message: "Failed to logout from all sessions" });
         }
-        
-        // 4. Clear trusted device cookie
-        res.clearCookie('trusted_device');
         
         res.json({ 
           success: true,
