@@ -559,23 +559,30 @@ export default function QuotesPage() {
                       name="productType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-destructive">Select a product to quote (required)</FormLabel>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+                          <FormLabel className="text-sm text-muted-foreground">Select a product a quote <span className="text-destructive">(required)</span></FormLabel>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                             {PRODUCT_TYPES.map((product) => (
                               <button
                                 key={product.id}
                                 type="button"
                                 onClick={() => handleProductSelect(product.id)}
-                                className={`p-4 rounded-lg border text-left transition-all ${
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${
                                   selectedProduct === product.id
-                                    ? "border-primary bg-primary/5 shadow-sm"
-                                    : "border-border bg-card hover:border-primary/50 hover:bg-accent/50"
+                                    ? "border-primary bg-primary/10"
+                                    : "border-border bg-card hover-elevate"
                                 }`}
                                 data-testid={`card-product-${product.id}`}
                               >
-                                <div className="space-y-2">
-                                  <h3 className="font-semibold text-sm">{product.name}</h3>
-                                  <p className="text-xs text-muted-foreground leading-relaxed">{product.description}</p>
+                                <div className="flex items-start gap-3">
+                                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                                    selectedProduct === product.id ? "bg-primary/20" : "bg-primary/10"
+                                  }`}>
+                                    <product.icon className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-sm mb-1.5 text-foreground">{product.name}</h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{product.description}</p>
+                                  </div>
                                 </div>
                               </button>
                             ))}
