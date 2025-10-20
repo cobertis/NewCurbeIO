@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -547,7 +547,7 @@ export default function QuotesPage() {
     { number: 3, title: "Family Group", icon: Users },
   ];
 
-  // If viewing a specific quote, show details view
+  // If viewing a specific quote, show modern dashboard
   if (isViewingQuote) {
     if (!viewingQuote) {
       return (
@@ -565,92 +565,160 @@ export default function QuotesPage() {
 
     const product = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType);
     const agent = agents.find(a => a.id === viewingQuote.agentId);
+    const totalApplicants = 1 + 
+      (viewingQuote.spouses?.filter((s: any) => s.isApplicant).length || 0) + 
+      (viewingQuote.dependents?.filter((d: any) => d.isApplicant).length || 0);
+    const totalFamilyMembers = 1 + 
+      (viewingQuote.spouses?.length || 0) + 
+      (viewingQuote.dependents?.length || 0);
+    const totalDependents = viewingQuote.dependents?.length || 0;
 
     return (
-      <div className="h-full p-6 flex flex-col overflow-hidden">
-        <Card className="flex-1 overflow-auto">
-          <CardHeader>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setLocation("/quotes")}
-                  data-testid="button-back-to-quotes"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Back to Quotes
-                </Button>
-                <div>
-                  <CardTitle className="text-2xl">Quote Details</CardTitle>
-                  <CardDescription className="text-sm">ID: {viewingQuote.id}</CardDescription>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" data-testid="button-edit-quote">
-                  Edit Quote
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                    <DropdownMenuItem>Download PDF</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            {/* Policy Information Section */}
+      <div className="flex flex-col lg:flex-row h-full">
+        {/* Sidebar Summary */}
+        <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r bg-background p-6 overflow-y-auto flex-shrink-0">
+          <div className="space-y-6">
+            {/* Back Button */}
+            <Button 
+              variant="ghost" 
+              onClick={() => setLocation("/quotes")} 
+              className="w-full justify-start"
+              data-testid="button-back-to-quotes"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Quotes
+            </Button>
+
+            {/* Summary Card */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b pb-2">Policy Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Product Type</label>
-                  <p className="text-base mt-1 font-medium">{product?.name || viewingQuote.productType}</p>
+              <h2 className="text-lg font-semibold">Summary</h2>
+              
+              <div className="space-y-3">
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Quote ID</label>
+                  <p className="text-sm font-medium">{viewingQuote.id.slice(0, 8).toUpperCase()}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Effective Date</label>
-                  <p className="text-base mt-1">{format(new Date(viewingQuote.effectiveDate), "MMMM dd, yyyy")}</p>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Agent</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={agent?.avatar || undefined} />
+                      <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                        {agent?.firstName?.[0] || 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{agent?.firstName || 'Unknown'} {agent?.lastName || ''}</span>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Assigned to</label>
+                  <p className="text-sm">-</p>
+                </div>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Internal code</label>
+                  <p className="text-sm font-mono">{viewingQuote.id.slice(0, 12).toUpperCase()}</p>
+                </div>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Carrier</label>
+                  <p className="text-sm font-medium">{product?.name || viewingQuote.productType}</p>
+                </div>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Effective date</label>
+                  <p className="text-sm">{format(new Date(viewingQuote.effectiveDate), "MM/dd/yyyy")}</p>
+                </div>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">No. of applicants</label>
+                  <p className="text-sm font-medium">{totalApplicants}</p>
+                </div>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Status</label>
                   <div className="mt-1">
-                    <Badge 
-                      variant={
-                        viewingQuote.status === "draft" ? "secondary" : 
-                        viewingQuote.status === "approved" ? "default" : 
-                        viewingQuote.status === "rejected" ? "destructive" : 
-                        "outline"
-                      }
-                    >
-                      {viewingQuote.status}
+                    <Badge variant={viewingQuote.status === 'active' ? 'default' : 'secondary'}>
+                      {viewingQuote.status === 'active' ? 'Quote' : viewingQuote.status || 'Draft'}
                     </Badge>
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Agent on Record</label>
-                  <p className="text-base mt-1">{agent?.firstName} {agent?.lastName}</p>
-                  <p className="text-sm text-muted-foreground">{agent?.email}</p>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Tags</label>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <Badge variant="outline" className="text-xs">New sale</Badge>
+                  </div>
                 </div>
+
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Created</label>
-                  <p className="text-base mt-1">{format(new Date(viewingQuote.createdAt), "MMM dd, yyyy h:mm a")}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Family Group Size</label>
-                  <p className="text-base mt-1">{viewingQuote.familyGroupSize || 1} {viewingQuote.familyGroupSize === 1 ? 'person' : 'people'}</p>
+                  <label className="text-xs text-muted-foreground">Last update</label>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(viewingQuote.updatedAt || viewingQuote.createdAt), "MMM dd, yyyy h:mm a")}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Client Information Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b pb-2">Client</h3>
+            {/* Household Information */}
+            <div className="space-y-3 pt-4 border-t">
+              <h3 className="text-sm font-semibold">Household Information</h3>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Holder</span>
+                  <span className="text-xs font-medium">{viewingQuote.clientFirstName} {viewingQuote.clientLastName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Date of birth</span>
+                  <span className="text-xs">{viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MM/dd/yyyy") : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Phone</span>
+                  <span className="text-xs">{viewingQuote.clientPhone || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Location</span>
+                  <span className="text-xs">{viewingQuote.state} {viewingQuote.postalCode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Annual income</span>
+                  <span className="text-xs">$0.00</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Member ID</span>
+                  <span className="text-xs">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            {/* Header with Actions */}
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2">
+                  {product?.icon && <product.icon className="h-6 w-6 text-blue-600" />}
+                  {viewingQuote.clientFirstName} {viewingQuote.clientLastName} - {product?.name || viewingQuote.productType}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {viewingQuote.productType.toUpperCase()}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" data-testid="button-edit-quote">
+                Edit
+              </Button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Policy Information Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Policy Information</h3>
               
               {/* Primary Info Card */}
               <div className="bg-muted/30 p-4 rounded-lg border">
@@ -698,37 +766,379 @@ export default function QuotesPage() {
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Address Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b pb-2">Address</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-muted-foreground">Street Address</label>
-                  <p className="text-base mt-1">{viewingQuote.street}</p>
-                  {viewingQuote.addressLine2 && <p className="text-base">{viewingQuote.addressLine2}</p>}
+              {/* Policy Information Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Monthly premium</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">$0<sup className="text-sm">.00</sup></p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Savings total</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">$0<sup className="text-sm">.00</sup></p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Plan was</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">$0<sup className="text-sm">.00</sup></p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Additional Policy Details */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Member ID</p>
+                  <p className="text-sm">-</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">City</label>
-                  <p className="text-base mt-1">{viewingQuote.city}</p>
+                  <p className="text-xs text-muted-foreground">Marketplace ID</p>
+                  <p className="text-sm">-</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">State</label>
-                  <p className="text-base mt-1">{viewingQuote.state}</p>
+                  <p className="text-xs text-muted-foreground">Effective date</p>
+                  <p className="text-sm">{format(new Date(viewingQuote.effectiveDate), "MM/dd/yyyy")}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Zip Code</label>
-                  <p className="text-base mt-1">{viewingQuote.postalCode}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">County</label>
-                  <p className="text-base mt-1">{viewingQuote.county || 'N/A'}</p>
+                  <p className="text-xs text-muted-foreground">Cancellation date</p>
+                  <p className="text-sm">-</p>
                 </div>
               </div>
+              </div>
+
+              {/* Family Members Section */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Family members</CardTitle>
+                  <Button size="sm" variant="outline" data-testid="button-add-member">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add member
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-6 mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Total applicants</span>
+                      <Badge variant="secondary">{totalApplicants}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Total family members</span>
+                      <Badge variant="secondary">{totalFamilyMembers}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Total dependents</span>
+                      <Badge variant="secondary">{totalDependents}</Badge>
+                    </div>
+                  </div>
+
+                  {/* Primary Applicant */}
+                  <div className="space-y-3">
+                    <div className="p-4 bg-muted/50 rounded-lg border">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-blue-600 text-white">
+                              {viewingQuote.clientFirstName?.[0] || 'C'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold">
+                              {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
+                              <Badge variant="outline" className="ml-2 text-xs">Self</Badge>
+                              {viewingQuote.clientIsApplicant && <Badge variant="default" className="ml-1 text-xs">Applicant</Badge>}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'} ({viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0})
+                              <span className="ml-2">{viewingQuote.clientPhone}</span>
+                              <span className="ml-2">{viewingQuote.clientEmail}</span>
+                            </p>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="ghost" data-testid="button-view-primary">
+                          View
+                        </Button>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Citizen • SSN: xxx-xx-{viewingQuote.clientSsn?.slice(-4) || 'xxxx'} • {viewingQuote.state} • $0.00
+                      </div>
+                    </div>
+
+                    {/* Spouses */}
+                    {viewingQuote.spouses?.map((spouse: any, index: number) => (
+                      <div key={`spouse-${index}`} className="p-4 bg-background rounded-lg border">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback>
+                                {spouse.firstName?.[0] || 'S'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold">
+                                {spouse.firstName} {spouse.lastName}
+                                <Badge variant="outline" className="ml-2 text-xs">Spouse</Badge>
+                                {spouse.isApplicant && <Badge variant="default" className="ml-1 text-xs">Applicant</Badge>}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'} ({spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0})
+                                {spouse.phone && <span className="ml-2">{spouse.phone}</span>}
+                                {spouse.email && <span className="ml-2">{spouse.email}</span>}
+                              </p>
+                            </div>
+                          </div>
+                          <Button size="sm" variant="ghost" data-testid={`button-view-spouse-${index}`}>
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Dependents */}
+                    {viewingQuote.dependents?.map((dependent: any, index: number) => (
+                      <div key={`dependent-${index}`} className="p-4 bg-background rounded-lg border">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback>
+                                {dependent.firstName?.[0] || 'D'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold">
+                                {dependent.firstName} {dependent.lastName}
+                                <Badge variant="outline" className="ml-2 text-xs">Dependent</Badge>
+                                {dependent.isApplicant && <Badge variant="default" className="ml-1 text-xs">Applicant</Badge>}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'} ({dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0})
+                                {dependent.phone && <span className="ml-2">{dependent.phone}</span>}
+                                {dependent.email && <span className="ml-2">{dependent.email}</span>}
+                              </p>
+                            </div>
+                          </div>
+                          <Button size="sm" variant="ghost" data-testid={`button-view-dependent-${index}`}>
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Addresses Section */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Physical address
+                    </CardTitle>
+                    <Button size="sm" variant="ghost">
+                      Edit
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm">{viewingQuote.street}</p>
+                    {viewingQuote.addressLine2 && <p className="text-sm">{viewingQuote.addressLine2}</p>}
+                    <p className="text-sm">
+                      {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
+                    </p>
+                    {viewingQuote.county && <p className="text-sm text-muted-foreground">{viewingQuote.county} County</p>}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Mailing address
+                    </CardTitle>
+                    <Button size="sm" variant="ghost">
+                      Edit
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm">{viewingQuote.street}</p>
+                    {viewingQuote.addressLine2 && <p className="text-sm">{viewingQuote.addressLine2}</p>}
+                    <p className="text-sm">
+                      {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
+                    </p>
+                    {viewingQuote.county && <p className="text-sm text-muted-foreground">{viewingQuote.county} County</p>}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Billing address
+                    </CardTitle>
+                    <Button size="sm" variant="ghost">
+                      Edit
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm">{viewingQuote.street}</p>
+                    {viewingQuote.addressLine2 && <p className="text-sm">{viewingQuote.addressLine2}</p>}
+                    <p className="text-sm">
+                      {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
+                    </p>
+                    {viewingQuote.county && <p className="text-sm text-muted-foreground">{viewingQuote.county} County</p>}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Payment Information */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Payment information</CardTitle>
+                  <Button size="sm" variant="ghost">
+                    Edit
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-6">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Recurrent payment</p>
+                      <p className="text-sm font-medium">Yes</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">First payment date</p>
+                      <p className="text-sm">{format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Preferred payment day</p>
+                      <p className="text-sm">1</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Payment Cards */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Payment cards</CardTitle>
+                  <Button size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No payment cards on file
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Bank Accounts */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Bank accounts</CardTitle>
+                  <Button size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <Building2 className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                    <p className="text-sm font-medium">Bank account not found</p>
+                    <p className="text-xs text-muted-foreground">You do not have any bank account associated to your profile just yet.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Notes or Comments */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Notes or comments</CardTitle>
+                  <Button size="sm" variant="ghost">
+                    Edit
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="Add any notes or comments about this quote..."
+                    className="min-h-[100px]"
+                    data-testid="textarea-notes"
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Primary Doctor Information */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Primary Doctor information</CardTitle>
+                  <Button size="sm" variant="ghost">
+                    Edit
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="Add primary doctor information..."
+                    className="min-h-[100px]"
+                    data-testid="textarea-doctor"
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Medicines Needed */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Medicines needed</CardTitle>
+                  <Button size="sm" variant="ghost">
+                    Edit
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="List any medicines needed..."
+                    className="min-h-[100px]"
+                    data-testid="textarea-medicines"
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Other Policies */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Other policies of the applicant</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Effective year:</span>
+                    <Select defaultValue="2025">
+                      <SelectTrigger className="w-24 h-8" data-testid="select-year">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2024">2024</SelectItem>
+                        <SelectItem value="2025">2025</SelectItem>
+                        <SelectItem value="2026">2026</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">No other policies found for this applicant</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
