@@ -1273,15 +1273,22 @@ export const quotes = pgTable("quotes", {
   
   // Step 2: Personal Information (Client)
   clientFirstName: text("client_first_name").notNull(),
+  clientMiddleName: text("client_middle_name"),
   clientLastName: text("client_last_name").notNull(),
+  clientSecondLastName: text("client_second_last_name"),
   clientEmail: text("client_email").notNull(),
   clientPhone: text("client_phone").notNull(),
   clientDateOfBirth: timestamp("client_date_of_birth"),
   clientGender: text("client_gender"), // male, female, other
+  clientIsApplicant: boolean("client_is_applicant").default(false),
+  clientTobaccoUser: boolean("client_tobacco_user").default(false),
   clientSsn: text("client_ssn"), // Encrypted/masked SSN
   
   // Step 3: Family Group
-  familyMembers: jsonb("family_members").default([]), // Array of family member objects
+  annualHouseholdIncome: text("annual_household_income"), // Stored as text to handle currency formatting
+  familyGroupSize: integer("family_group_size"),
+  spouses: jsonb("spouses").default([]), // Array of spouse objects
+  dependents: jsonb("dependents").default([]), // Array of dependent objects
   
   // Step 4: Address
   street: text("street").notNull(),
@@ -1289,6 +1296,7 @@ export const quotes = pgTable("quotes", {
   city: text("city").notNull(),
   state: text("state").notNull(),
   postalCode: text("postal_code").notNull(),
+  county: text("county"),
   country: text("country").notNull().default("United States"),
   
   // Quote Status
