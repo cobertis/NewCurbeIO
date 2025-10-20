@@ -487,44 +487,46 @@ export default function QuotesPage() {
       ) : (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                {steps.map((step, index) => {
-                  const isCompleted = currentStep > step.number;
-                  const isCurrent = currentStep === step.number;
-                  const isPending = currentStep < step.number;
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex-1 max-w-3xl">
+                <div className="relative">
+                  {/* Progress Line */}
+                  <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-800" style={{ zIndex: 0 }}>
+                    <div 
+                      className="h-full bg-blue-500 transition-all duration-300" 
+                      style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+                    />
+                  </div>
                   
-                  return (
-                    <div key={step.number} className="flex flex-col items-center">
-                      <div className="flex items-center">
-                        <div
-                          className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
-                            isCompleted
-                              ? "bg-green-500 text-white"
-                              : isCurrent
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                          }`}
-                          data-testid={`step-indicator-${step.number}`}
-                        >
-                          {isCompleted ? (
-                            <Check className="h-5 w-5" />
-                          ) : (
+                  {/* Steps */}
+                  <div className="relative flex justify-between" style={{ zIndex: 1 }}>
+                    {steps.map((step) => {
+                      const isCompleted = currentStep > step.number;
+                      const isCurrent = currentStep === step.number;
+                      const isActive = isCompleted || isCurrent;
+                      
+                      return (
+                        <div key={step.number} className="flex flex-col items-center">
+                          <div
+                            className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-300 ${
+                              isActive
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                            }`}
+                            data-testid={`step-indicator-${step.number}`}
+                          >
                             <span className="text-sm font-semibold">{step.number}</span>
-                          )}
+                          </div>
+                          <div className="mt-2 text-xs font-medium text-center whitespace-nowrap">
+                            <div className={isActive ? "text-foreground" : "text-muted-foreground"}>
+                              {step.title}
+                            </div>
+                          </div>
                         </div>
-                        {index < steps.length - 1 && (
-                          <div className="w-12 h-0.5 bg-gray-300 dark:bg-gray-700 mx-2" />
-                        )}
-                      </div>
-                      <div className="mt-2 text-xs font-medium text-center max-w-[100px]">
-                        <span className={isCurrent ? "text-foreground" : "text-muted-foreground"}>
-                          {step.title}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
               <Button
                 variant="ghost"
