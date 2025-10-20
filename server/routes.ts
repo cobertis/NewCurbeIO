@@ -1500,9 +1500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
-      // Create login notification with IP address
-      const ipAddress = req.ip || req.connection.remoteAddress || null;
-      const userAgent = req.get("user-agent") || null;
+      // Create login notification with IP address (using already captured variables)
       const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
       await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
 
