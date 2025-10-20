@@ -441,9 +441,9 @@ export default function QuotesPage() {
   ];
 
   return (
-    <div className="h-full p-6 space-y-6 overflow-auto">
+    <div className="h-full p-6 flex flex-col overflow-hidden">
       {!showWizard ? (
-        <Card>
+        <Card className="overflow-auto">
           <CardHeader>
             <CardTitle>All Quotes</CardTitle>
             <CardDescription>View and manage your insurance quotes</CardDescription>
@@ -500,7 +500,7 @@ export default function QuotesPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader>
             <div className="flex items-center justify-between gap-6 mb-8">
               <div className="flex-1 min-w-0">
@@ -558,13 +558,15 @@ export default function QuotesPage() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto">
             <Form {...form}>
-              <form className="space-y-6">
-                {/* Step 1: Policy Information */}
-                {currentStep === 1 && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form className="h-full flex flex-col">
+                {/* Scrollable Form Content */}
+                <div className="flex-1 overflow-auto pr-2">
+                  {/* Step 1: Policy Information */}
+                  {currentStep === 1 && (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={form.control}
                         name="effectiveDate"
@@ -1519,11 +1521,12 @@ export default function QuotesPage() {
                         </CardContent>
                       </Card>
                     ))}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
 
-                {/* Navigation Buttons */}
-                <div className="flex items-center justify-between pt-6 border-t">
+                {/* Navigation Buttons - Fixed at bottom */}
+                <div className="flex items-center justify-between pt-4 mt-4 border-t shrink-0">
                   <Button
                     type="button"
                     variant="outline"
