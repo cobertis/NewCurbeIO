@@ -3339,7 +3339,7 @@ export default function QuotesPage() {
                           name="clientSsn"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>SSN</FormLabel>
+                              <FormLabel>SSN *</FormLabel>
                               <FormControl>
                                 <Input 
                                   {...field}
