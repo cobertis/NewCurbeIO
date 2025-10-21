@@ -1,0 +1,209 @@
+51The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Understand this error
+51The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Understand this error
+51The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Understand this error
+Curbeio-CRM:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Understand this error
+Curbeio-CRM:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Understand this error
+Curbeio-CRM:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Understand this error
+_app-39dea94da059629e.js:28 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+_app-39dea94da059629e.js:28 [LaunchDarkly] LaunchDarkly client initialized
+Curbeio-CRM:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+_app-39dea94da059629e.js:28 Adding extension: Icon Generator Object
+_app-39dea94da059629e.js:28 task queue exceeded allotted deadline by 37ms
+(anonymous) @ _app-39dea94da059629e.js:28Understand this warning
+29Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'battery'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'layout-animations'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'navigation-override'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'oversized-images'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'publickey-credentials'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'speaker-selection'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'unoptimized-images'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'unsized-media'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Unrecognized feature: 'pointer-lock'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+framework-649e0d7342462f90.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-649e0d7342462f90.js:1Understand this warning
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+cdn.growthbook.io/sub/sdk-9jiRKLpeCAeQD7C:1  Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERRORUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/diagnostic/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/diagnostic/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/diagnostic/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/diagnostic/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+Curbeio-CRM:1 Access to XMLHttpRequest at 'https://events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820' from origin 'https://replit.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+events.launchdarkly.com/events/bulk/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+_app-39dea94da059629e.js:28 codemirror error, see below
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 RangeError: Field is not present in this state
+    at tm.field (3102-aa02688a6c179b26.js:1:95963)
+    at Object.markers (6380-b8324c63cd5baae5.js:1:2133747)
+    at iH.measure (275e5802-f1709a48af3a4bbb.js:1:146658)
+    at 275e5802-f1709a48af3a4bbb.js:1:128041
+    at Array.map (<anonymous>)
+    at iw.measure (275e5802-f1709a48af3a4bbb.js:1:128020)
+    at 275e5802-f1709a48af3a4bbb.js:1:130251
+    at n (_app-39dea94da059629e.js:28:2959)
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 codemirror error, see below
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 RangeError: Field is not present in this state
+    at tm.field (3102-aa02688a6c179b26.js:1:95963)
+    at Object.markers (6380-b8324c63cd5baae5.js:1:2133747)
+    at iH.measure (275e5802-f1709a48af3a4bbb.js:1:146658)
+    at 275e5802-f1709a48af3a4bbb.js:1:128041
+    at Array.map (<anonymous>)
+    at iw.measure (275e5802-f1709a48af3a4bbb.js:1:128020)
+    at 275e5802-f1709a48af3a4bbb.js:1:130251
+    at n (_app-39dea94da059629e.js:28:2959)
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 [Coframe] Mutation callback infinite loop protection triggered, disconnecting mutation observer Object
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+bubble_compiled.js:4628 Uncaught TypeError: Cannot read properties of null (reading 'closure_lm_512909')
+    at goog.events.getListenerMap_ (bubble_compiled.js:4628:156)
+    at goog.events.listen_ (bubble_compiled.js:4617:136)
+    at goog.events.listen (bubble_compiled.js:4616:333)
+    at module$contents$gtx$Translation_Translation.renderTranslation (bubble_compiled.js:4947:268)
+    at module$contents$gtx$Bubble_Bubble.createInnerContent (bubble_compiled.js:5014:127)
+    at module$contents$gtx$Bubble_Bubble.handleGetCSS (bubble_compiled.js:5009:195)
+    at c.onload (bubble_compiled.js:5023:443)Understand this error
+cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1760996244571%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252Ft%252Fgofastmover%252Frepls%252FCurbeio-CRM%2522%252C%2522trackingOnly%2522%253Atrue%257D:10 Uncaught (in promise) Error: Timeout waiting for command after 3600000ms for:
+e=>!("treatmentApplied"!==e.subscribe||!e.callback)Understand this error
+_app-39dea94da059629e.js:28 codemirror error, see below
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 RangeError: Field is not present in this state
+    at tm.field (3102-aa02688a6c179b26.js:1:95963)
+    at Object.markers (6380-b8324c63cd5baae5.js:1:2133747)
+    at iH.measure (275e5802-f1709a48af3a4bbb.js:1:146658)
+    at 275e5802-f1709a48af3a4bbb.js:1:128041
+    at Array.map (<anonymous>)
+    at iw.measure (275e5802-f1709a48af3a4bbb.js:1:128020)
+    at 275e5802-f1709a48af3a4bbb.js:1:130251
+    at n (_app-39dea94da059629e.js:28:2959)
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 codemirror error, see below
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 RangeError: Field is not present in this state
+    at tm.field (3102-aa02688a6c179b26.js:1:95963)
+    at Object.markers (6380-b8324c63cd5baae5.js:1:2133747)
+    at iH.measure (275e5802-f1709a48af3a4bbb.js:1:146658)
+    at 275e5802-f1709a48af3a4bbb.js:1:128041
+    at Array.map (<anonymous>)
+    at iw.measure (275e5802-f1709a48af3a4bbb.js:1:128020)
+    at 275e5802-f1709a48af3a4bbb.js:1:130251
+    at n (_app-39dea94da059629e.js:28:2959)
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 codemirror error, see below
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 RangeError: Field is not present in this state
+    at tm.field (3102-aa02688a6c179b26.js:1:95963)
+    at Object.markers (6380-b8324c63cd5baae5.js:1:2133747)
+    at iH.measure (275e5802-f1709a48af3a4bbb.js:1:146658)
+    at 275e5802-f1709a48af3a4bbb.js:1:128041
+    at Array.map (<anonymous>)
+    at iw.measure (275e5802-f1709a48af3a4bbb.js:1:128020)
+    at 275e5802-f1709a48af3a4bbb.js:1:130251
+    at n (_app-39dea94da059629e.js:28:2959)
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 codemirror error, see below
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 RangeError: Field is not present in this state
+    at tm.field (3102-aa02688a6c179b26.js:1:95963)
+    at Object.markers (6380-b8324c63cd5baae5.js:1:2133747)
+    at iH.measure (275e5802-f1709a48af3a4bbb.js:1:146658)
+    at 275e5802-f1709a48af3a4bbb.js:1:128041
+    at Array.map (<anonymous>)
+    at iw.measure (275e5802-f1709a48af3a4bbb.js:1:128020)
+    at 275e5802-f1709a48af3a4bbb.js:1:130251
+    at n (_app-39dea94da059629e.js:28:2959)
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+sp.replit.com/v1/t:1  Failed to load resource: the server responded with a status of 400 ()Understand this error
+_app-39dea94da059629e.js:28 codemirror error, see below
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 RangeError: Field is not present in this state
+    at tm.field (3102-aa02688a6c179b26.js:1:95963)
+    at Object.markers (6380-b8324c63cd5baae5.js:1:1816146)
+    at iH.measure (275e5802-f1709a48af3a4bbb.js:1:146658)
+    at 275e5802-f1709a48af3a4bbb.js:1:128041
+    at Array.map (<anonymous>)
+    at iw.measure (275e5802-f1709a48af3a4bbb.js:1:128020)
+    at 275e5802-f1709a48af3a4bbb.js:1:130251
+    at n (_app-39dea94da059629e.js:28:2959)
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 codemirror error, see below
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+_app-39dea94da059629e.js:28 RangeError: Field is not present in this state
+    at tm.field (3102-aa02688a6c179b26.js:1:95963)
+    at Object.markers (6380-b8324c63cd5baae5.js:1:2133747)
+    at iH.measure (275e5802-f1709a48af3a4bbb.js:1:146658)
+    at 275e5802-f1709a48af3a4bbb.js:1:128041
+    at Array.map (<anonymous>)
+    at iw.measure (275e5802-f1709a48af3a4bbb.js:1:128020)
+    at 275e5802-f1709a48af3a4bbb.js:1:130251
+    at n (_app-39dea94da059629e.js:28:2959)
+(anonymous) @ _app-39dea94da059629e.js:28Understand this error
+5333.d37971c95d8cc35e.js:1 WebSocket connection to 'wss://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev:5900/' failed: WebSocket is closed before the connection is established.
+value @ 5333.d37971c95d8cc35e.js:1Understand this warning
+_app-39dea94da059629e.js:28 task queue exceeded allotted deadline by 56ms
+(anonymous) @ _app-39dea94da059629e.js:28Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2lj%3A:32 Allow attribute will take precedence over 'allowpaymentrequest'.

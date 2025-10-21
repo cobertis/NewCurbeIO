@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 interface WebSocketMessage {
   type: string;
@@ -16,8 +17,17 @@ export function useWebSocket(
   const reconnectAttempts = useRef(0);
   const shouldReconnectRef = useRef(true);
 
+  // Check if user is authenticated before attempting connection
+  const { data: sessionData, isLoading: isLoadingSession } = useQuery<{ user: any }>({
+    queryKey: ["/api/session"],
+    retry: false,
+  });
+
+  const isAuthenticated = !!sessionData?.user;
+  const shouldAttemptConnection = isAuthenticated && !isLoadingSession;
+
   const connect = useCallback(() => {
-    if (!shouldReconnectRef.current) {
+    if (!shouldReconnectRef.current || !shouldAttemptConnection) {
       return;
     }
 
@@ -48,8 +58,8 @@ export function useWebSocket(
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         
-        // Only reconnect if component is still mounted
-        if (!shouldReconnectRef.current) {
+        // Only reconnect if component is still mounted and user is authenticated
+        if (!shouldReconnectRef.current || !shouldAttemptConnection) {
           return;
         }
         
@@ -58,7 +68,7 @@ export function useWebSocket(
         reconnectAttempts.current++;
         
         reconnectTimeoutRef.current = setTimeout(() => {
-          if (shouldReconnectRef.current) {
+          if (shouldReconnectRef.current && shouldAttemptConnection) {
             console.log(`Reconnecting... (attempt ${reconnectAttempts.current})`);
             connect();
           }
@@ -69,11 +79,15 @@ export function useWebSocket(
     } catch (error) {
       console.error('Error creating WebSocket:', error);
     }
-  }, [onMessage]);
+  }, [onMessage, shouldAttemptConnection]);
 
   useEffect(() => {
     shouldReconnectRef.current = true;
-    connect();
+    
+    // Only connect if authenticated and session is loaded
+    if (shouldAttemptConnection) {
+      connect();
+    }
 
     return () => {
       // Mark as unmounted to prevent reconnection
@@ -89,7 +103,7 @@ export function useWebSocket(
         wsRef.current.close();
       }
     };
-  }, [connect]);
+  }, [connect, shouldAttemptConnection]);
 
   return wsRef.current;
 }

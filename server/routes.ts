@@ -2335,9 +2335,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
+      // Convert dateOfBirth string to Date object if provided
+      const dateOfBirth = userData.dateOfBirth 
+        ? new Date(userData.dateOfBirth) 
+        : undefined;
+
       // Create user WITHOUT password (will be set during activation)
       const newUser = await storage.createUser({ 
-        ...userData, 
+        ...userData,
+        dateOfBirth, // Convert string to Date object
         password: undefined, // No password - user will set it during activation
         isActive: true,
         emailVerified: false,
@@ -2471,6 +2477,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             validatedData.status = 'active';
           }
         }
+      }
+
+      // Convert dateOfBirth string to Date object if provided
+      if (validatedData.dateOfBirth && typeof validatedData.dateOfBirth === 'string') {
+        validatedData.dateOfBirth = new Date(validatedData.dateOfBirth);
       }
 
       console.log("About to update user with data:", validatedData);
