@@ -277,6 +277,14 @@ const PRODUCT_TYPES = [
   },
 ];
 
+// Create INSURANCE_PRODUCTS from PRODUCT_TYPES for compatibility
+const INSURANCE_PRODUCTS = PRODUCT_TYPES.map(product => ({
+  value: product.id,
+  label: product.name,
+  name: product.name,
+  icon: product.icon,
+}));
+
 // Helper function to get first day of next month
 function getFirstDayOfNextMonth(): Date {
   return startOfMonth(addMonths(new Date(), 1));
@@ -319,7 +327,7 @@ const step2Schema = z.object({
   clientMiddleName: z.string().optional(),
   clientLastName: z.string().min(1, "Last name is required"),
   clientSecondLastName: z.string().optional(),
-  clientEmail: z.string().email("Valid email is required"),
+  clientEmail: z.string().email().optional().or(z.literal('')),
   clientPhone: z.string().min(1, "Phone number is required"),
   clientDateOfBirth: z.string().optional(),
   clientGender: z.string().optional(),
@@ -1918,11 +1926,10 @@ export default function QuotesPage() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6">
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
@@ -3411,9 +3418,9 @@ export default function QuotesPage() {
                           name="clientEmail"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email *</FormLabel>
+                              <FormLabel>Email</FormLabel>
                               <FormControl>
-                                <Input type="email" {...field} data-testid="input-client-email" placeholder="client@example.com" />
+                                <Input type="email" {...field} data-testid="input-client-email" placeholder="client@example.com (optional)" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -4203,6 +4210,7 @@ export default function QuotesPage() {
                     ))}
                   </div>
                 )}
+                </div>
 
                 {/* Form Navigation */}
                 <div className="flex justify-between gap-4 px-8 pb-8 pt-6 border-t sticky bottom-0 bg-background">
@@ -4240,8 +4248,8 @@ export default function QuotesPage() {
                 </div>
               </form>
             </Form>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Quote List View */}
@@ -4678,11 +4686,10 @@ export default function QuotesPage() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6">
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
