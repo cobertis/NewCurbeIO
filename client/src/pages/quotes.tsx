@@ -1575,15 +1575,15 @@ export default function QuotesPage() {
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
                         <div className="text-lg font-bold text-foreground">{totalApplicants}</div>
-                        <div className="text-xs text-muted-foreground">Appl.</div>
+                        <div className="text-xs text-muted-foreground">Applicants</div>
                       </div>
                       <div>
                         <div className="text-lg font-bold text-foreground">{totalFamilyMembers}</div>
-                        <div className="text-xs text-muted-foreground">Memb.</div>
+                        <div className="text-xs text-muted-foreground">Members</div>
                       </div>
                       <div>
                         <div className="text-lg font-bold text-foreground">{totalDependents}</div>
-                        <div className="text-xs text-muted-foreground">Dep.</div>
+                        <div className="text-xs text-muted-foreground">Dependents</div>
                       </div>
                     </div>
                   </div>
