@@ -1970,9 +1970,9 @@ export default function QuotesPage() {
               </Card>
               </div>
 
-              {/* Family Members Section - 2 Column Grid */}
+              {/* Family Members Section - Compact Table */}
               <Card className="bg-accent/5">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Users className="h-5 w-5 text-primary" />
@@ -1998,190 +1998,166 @@ export default function QuotesPage() {
                     Add Member
                   </Button>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CardContent className="p-0">
+                  <div className="border-t">
                     {/* Primary Applicant */}
-                    <Card className="bg-primary/5 border-primary/20">
-                      <CardContent className="p-4">
-                        <div className="flex gap-3">
-                          <Avatar className="h-14 w-14 border-2 border-primary/20">
-                            <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-lg">
-                              {viewingQuote.clientFirstName?.[0]}{viewingQuote.clientLastName?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-1">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-sm truncate">
-                                  {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                                </h4>
-                                <div className="flex gap-1 mt-1 flex-wrap">
-                                  <Badge variant="default" className="text-xs">Self</Badge>
-                                  {viewingQuote.clientIsApplicant && (
-                                    <Badge variant="secondary" className="text-xs">Applicant</Badge>
-                                  )}
-                                  {viewingQuote.clientTobaccoUser && (
-                                    <Badge variant="outline" className="text-xs">Tobacco</Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                className="h-7 w-7 p-0" 
-                                onClick={() => setEditingMember({ type: 'primary' })}
-                                data-testid="button-view-primary"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                            <div className="space-y-1 text-xs text-muted-foreground mt-2">
-                              <div className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                <span>{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}</span>
-                                <span>•</span>
-                                <span>{viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
-                              </div>
-                              {viewingQuote.clientPhone && (
-                                <div className="flex items-center gap-1">
-                                  <Phone className="h-3 w-3" />
-                                  <span className="truncate">{viewingQuote.clientPhone}</span>
-                                </div>
-                              )}
-                              {viewingQuote.clientEmail && (
-                                <div className="flex items-center gap-1">
-                                  <Mail className="h-3 w-3" />
-                                  <span className="truncate">{viewingQuote.clientEmail}</span>
-                                </div>
-                              )}
-                            </div>
+                    <div className="flex items-center gap-3 p-3 bg-primary/5 border-b hover-elevate">
+                      <Avatar className="h-9 w-9 border-2 border-primary/20">
+                        <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
+                          {viewingQuote.clientFirstName?.[0]}{viewingQuote.clientLastName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                        <div className="md:col-span-3">
+                          <p className="font-semibold text-sm truncate">
+                            {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
+                          </p>
+                          <div className="flex gap-1 mt-0.5">
+                            <Badge variant="default" className="text-xs h-4 px-1.5">Self</Badge>
+                            {viewingQuote.clientIsApplicant && (
+                              <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                            )}
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                        <div className="md:col-span-2 text-xs text-muted-foreground">
+                          {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'} • {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs
+                        </div>
+                        <div className="md:col-span-3 text-xs text-muted-foreground truncate">
+                          {viewingQuote.clientPhone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="h-3 w-3 inline" />
+                              {viewingQuote.clientPhone}
+                            </span>
+                          )}
+                        </div>
+                        <div className="md:col-span-3 text-xs text-muted-foreground truncate">
+                          {viewingQuote.clientEmail && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-3 w-3 inline" />
+                              {viewingQuote.clientEmail}
+                            </span>
+                          )}
+                        </div>
+                        <div className="md:col-span-1 flex justify-end">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 w-7 p-0" 
+                            onClick={() => setEditingMember({ type: 'primary' })}
+                            data-testid="button-view-primary"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Spouses */}
                     {viewingQuote.spouses?.map((spouse: any, index: number) => (
-                      <Card key={`spouse-${index}`} className="bg-background">
-                        <CardContent className="p-4">
-                          <div className="flex gap-3">
-                            <Avatar className="h-14 w-14 border-2 border-muted">
-                              <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-lg">
-                                {spouse.firstName?.[0]}{spouse.lastName?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between mb-1">
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-semibold text-sm truncate">
-                                    {spouse.firstName} {spouse.middleName} {spouse.lastName} {spouse.secondLastName}
-                                  </h4>
-                                  <div className="flex gap-1 mt-1 flex-wrap">
-                                    <Badge variant="outline" className="text-xs">Spouse</Badge>
-                                    {spouse.isApplicant && (
-                                      <Badge variant="secondary" className="text-xs">Applicant</Badge>
-                                    )}
-                                    {spouse.tobaccoUser && (
-                                      <Badge variant="outline" className="text-xs">Tobacco</Badge>
-                                    )}
-                                  </div>
-                                </div>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  className="h-7 w-7 p-0" 
-                                  onClick={() => setEditingMember({ type: 'spouse', index })}
-                                  data-testid={`button-view-spouse-${index}`}
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                              <div className="space-y-1 text-xs text-muted-foreground mt-2">
-                                <div className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  <span>{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}</span>
-                                  <span>•</span>
-                                  <span>{spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
-                                </div>
-                                {spouse.phone && (
-                                  <div className="flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    <span className="truncate">{spouse.phone}</span>
-                                  </div>
-                                )}
-                                {spouse.email && (
-                                  <div className="flex items-center gap-1">
-                                    <Mail className="h-3 w-3" />
-                                    <span className="truncate">{spouse.email}</span>
-                                  </div>
-                                )}
-                              </div>
+                      <div key={`spouse-${index}`} className="flex items-center gap-3 p-3 border-b hover-elevate">
+                        <Avatar className="h-9 w-9 border-2 border-muted">
+                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-sm">
+                            {spouse.firstName?.[0]}{spouse.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                          <div className="md:col-span-3">
+                            <p className="font-semibold text-sm truncate">
+                              {spouse.firstName} {spouse.lastName}
+                            </p>
+                            <div className="flex gap-1 mt-0.5">
+                              <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
+                              {spouse.isApplicant && (
+                                <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                              )}
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                          <div className="md:col-span-2 text-xs text-muted-foreground">
+                            {spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'} • {spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs
+                          </div>
+                          <div className="md:col-span-3 text-xs text-muted-foreground truncate">
+                            {spouse.phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3 inline" />
+                                {spouse.phone}
+                              </span>
+                            )}
+                          </div>
+                          <div className="md:col-span-3 text-xs text-muted-foreground truncate">
+                            {spouse.email && (
+                              <span className="flex items-center gap-1">
+                                <Mail className="h-3 w-3 inline" />
+                                {spouse.email}
+                              </span>
+                            )}
+                          </div>
+                          <div className="md:col-span-1 flex justify-end">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0" 
+                              onClick={() => setEditingMember({ type: 'spouse', index })}
+                              data-testid={`button-view-spouse-${index}`}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     ))}
 
                     {/* Dependents */}
                     {viewingQuote.dependents?.map((dependent: any, index: number) => (
-                      <Card key={`dependent-${index}`} className="bg-background">
-                        <CardContent className="p-4">
-                          <div className="flex gap-3">
-                            <Avatar className="h-14 w-14 border-2 border-muted">
-                              <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-lg">
-                                {dependent.firstName?.[0]}{dependent.lastName?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between mb-1">
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-semibold text-sm truncate">
-                                    {dependent.firstName} {dependent.middleName} {dependent.lastName} {dependent.secondLastName}
-                                  </h4>
-                                  <div className="flex gap-1 mt-1 flex-wrap">
-                                    <Badge variant="outline" className="text-xs">{dependent.relation || 'Dependent'}</Badge>
-                                    {dependent.isApplicant && (
-                                      <Badge variant="secondary" className="text-xs">Applicant</Badge>
-                                    )}
-                                    {dependent.tobaccoUser && (
-                                      <Badge variant="outline" className="text-xs">Tobacco</Badge>
-                                    )}
-                                  </div>
-                                </div>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  className="h-7 w-7 p-0" 
-                                  onClick={() => setEditingMember({ type: 'dependent', index })}
-                                  data-testid={`button-view-dependent-${index}`}
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                              <div className="space-y-1 text-xs text-muted-foreground mt-2">
-                                <div className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  <span>{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}</span>
-                                  <span>•</span>
-                                  <span>{dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
-                                </div>
-                                {dependent.phone && (
-                                  <div className="flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    <span className="truncate">{dependent.phone}</span>
-                                  </div>
-                                )}
-                                {dependent.email && (
-                                  <div className="flex items-center gap-1">
-                                    <Mail className="h-3 w-3" />
-                                    <span className="truncate">{dependent.email}</span>
-                                  </div>
-                                )}
-                              </div>
+                      <div key={`dependent-${index}`} className="flex items-center gap-3 p-3 border-b last:border-b-0 hover-elevate">
+                        <Avatar className="h-9 w-9 border-2 border-muted">
+                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-sm">
+                            {dependent.firstName?.[0]}{dependent.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                          <div className="md:col-span-3">
+                            <p className="font-semibold text-sm truncate">
+                              {dependent.firstName} {dependent.lastName}
+                            </p>
+                            <div className="flex gap-1 mt-0.5">
+                              <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
+                              {dependent.isApplicant && (
+                                <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                              )}
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                          <div className="md:col-span-2 text-xs text-muted-foreground">
+                            {dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'} • {dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs
+                          </div>
+                          <div className="md:col-span-3 text-xs text-muted-foreground truncate">
+                            {dependent.phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3 inline" />
+                                {dependent.phone}
+                              </span>
+                            )}
+                          </div>
+                          <div className="md:col-span-3 text-xs text-muted-foreground truncate">
+                            {dependent.email && (
+                              <span className="flex items-center gap-1">
+                                <Mail className="h-3 w-3 inline" />
+                                {dependent.email}
+                              </span>
+                            )}
+                          </div>
+                          <div className="md:col-span-1 flex justify-end">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0" 
+                              onClick={() => setEditingMember({ type: 'dependent', index })}
+                              data-testid={`button-view-dependent-${index}`}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </CardContent>
