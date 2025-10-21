@@ -2326,24 +2326,6 @@ export default function QuotesPage() {
                 </CardContent>
               </Card>
 
-              {/* Bank Accounts */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle>Bank accounts</CardTitle>
-                  <Button size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <Building2 className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                    <p className="text-sm font-medium">Bank account not found</p>
-                    <p className="text-xs text-muted-foreground">You do not have any bank account associated to your profile just yet.</p>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Notes or Comments */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
