@@ -620,11 +620,6 @@ export default function QuotesPage() {
                 </div>
 
                 <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">Assigned to</label>
-                  <p className="text-sm">-</p>
-                </div>
-
-                <div className="pb-3 border-b">
                   <label className="text-xs text-muted-foreground">Carrier</label>
                   <p className="text-sm font-medium">{product?.name || viewingQuote.productType}</p>
                 </div>
