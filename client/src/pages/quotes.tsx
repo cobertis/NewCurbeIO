@@ -312,6 +312,7 @@ const familyMemberSchema = z.object({
   employerPhone: z.string().optional(),
   position: z.string().optional(),
   annualIncome: z.string().optional(),
+  incomeFrequency: z.string().default('monthly'), // weekly, biweekly, monthly
   selfEmployed: z.boolean().default(false),
   // Immigration fields
   immigrationStatus: z.string().optional(),
@@ -398,6 +399,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         employerPhone: '',
         position: '',
         annualIncome: '',
+        incomeFrequency: 'monthly',
         selfEmployed: false,
         // Immigration fields (placeholders for now - will be fetched from quote_member_immigration table)
         immigrationStatus: '',
@@ -415,6 +417,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         employerPhone: '',
         position: '',
         annualIncome: '',
+        incomeFrequency: 'monthly',
         selfEmployed: false,
         // Immigration fields defaults
         immigrationStatus: '',
@@ -432,6 +435,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         employerPhone: '',
         position: '',
         annualIncome: '',
+        incomeFrequency: 'monthly',
         selfEmployed: false,
         // Immigration fields defaults
         immigrationStatus: '',
@@ -1051,25 +1055,78 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     )}
                   />
 
-                  {/* Annual Income */}
+                  {/* Income Frequency */}
                   <FormField
                     control={editForm.control}
-                    name="annualIncome"
+                    name="incomeFrequency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Annual income <span className="text-destructive">(required)</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            type="number" 
-                            step="0.01"
-                            placeholder="0.00" 
-                            data-testid="input-annual-income"
-                          />
-                        </FormControl>
+                        <FormLabel>Pay period <span className="text-destructive">(required)</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || "monthly"}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-income-frequency">
+                              <SelectValue placeholder="Select pay period" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="biweekly">Biweekly (every 2 weeks)</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
+                  />
+
+                  {/* Income Amount */}
+                  <FormField
+                    control={editForm.control}
+                    name="annualIncome"
+                    render={({ field }) => {
+                      const frequency = editForm.watch('incomeFrequency') || 'monthly';
+                      const frequencyLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Biweekly' : 'Monthly';
+                      
+                      // Calculate annual income based on frequency
+                      const calculateAnnualIncome = (amount: string) => {
+                        const num = parseFloat(amount || '0');
+                        if (isNaN(num) || num <= 0) return '0';
+                        
+                        switch (frequency) {
+                          case 'weekly':
+                            return (num * 52).toFixed(2);
+                          case 'biweekly':
+                            return (num * 26).toFixed(2);
+                          case 'monthly':
+                            return (num * 12).toFixed(2);
+                          default:
+                            return amount;
+                        }
+                      };
+                      
+                      const annualAmount = calculateAnnualIncome(field.value || '0');
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel>{frequencyLabel} income <span className="text-destructive">(required)</span></FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              step="0.01"
+                              placeholder="0.00" 
+                              data-testid="input-income-amount"
+                            />
+                          </FormControl>
+                          {field.value && parseFloat(field.value) > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                              Annual: ${parseFloat(annualAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
 
@@ -1589,6 +1646,7 @@ export default function QuotesPage() {
       employerPhone: "",
       position: "",
       annualIncome: "",
+      incomeFrequency: "monthly",
       immigrationStatus: "",
       uscisNumber: "",
       immigrationStatusCategory: "",
@@ -1614,6 +1672,7 @@ export default function QuotesPage() {
       employerPhone: "",
       position: "",
       annualIncome: "",
+      incomeFrequency: "monthly",
       immigrationStatus: "",
       uscisNumber: "",
       immigrationStatusCategory: "",
