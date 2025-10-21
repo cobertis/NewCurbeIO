@@ -312,7 +312,7 @@ const familyMemberSchema = z.object({
   employerPhone: z.string().optional(),
   position: z.string().optional(),
   annualIncome: z.string().optional(),
-  incomeFrequency: z.string().default('monthly'), // weekly, biweekly, monthly
+  incomeFrequency: z.string().default('annually'), // weekly, biweekly, monthly, annually
   selfEmployed: z.boolean().default(false),
   // Immigration fields
   immigrationStatus: z.string().optional(),
@@ -401,7 +401,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         employerPhone: '',
         position: '',
         annualIncome: '',
-        incomeFrequency: 'monthly',
+        incomeFrequency: 'annually',
         selfEmployed: false,
         // Immigration fields (placeholders for now - will be fetched from quote_member_immigration table)
         immigrationStatus: '',
@@ -420,7 +420,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         employerPhone: '',
         position: '',
         annualIncome: '',
-        incomeFrequency: 'monthly',
+        incomeFrequency: 'annually',
         selfEmployed: false,
         // Immigration fields defaults
         immigrationStatus: '',
@@ -439,7 +439,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         employerPhone: '',
         position: '',
         annualIncome: '',
-        incomeFrequency: 'monthly',
+        incomeFrequency: 'annually',
         selfEmployed: false,
         // Immigration fields defaults
         immigrationStatus: '',
@@ -1201,16 +1201,17 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Pay Period <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || "monthly"}>
+                        <Select onValueChange={field.onChange} value={field.value || "annually"}>
                           <FormControl>
                             <SelectTrigger data-testid="select-income-frequency" className="bg-background">
                               <SelectValue placeholder="How often are you paid?" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="weekly">Weekly (52 times/year)</SelectItem>
-                            <SelectItem value="biweekly">Biweekly (26 times/year)</SelectItem>
+                            <SelectItem value="annually">Annually (1 time/year)</SelectItem>
                             <SelectItem value="monthly">Monthly (12 times/year)</SelectItem>
+                            <SelectItem value="biweekly">Biweekly (26 times/year)</SelectItem>
+                            <SelectItem value="weekly">Weekly (52 times/year)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1223,14 +1224,16 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     control={editForm.control}
                     name="annualIncome"
                     render={({ field }) => {
-                      const frequency = editForm.watch('incomeFrequency') || 'monthly';
-                      const frequencyLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Biweekly' : 'Monthly';
+                      const frequency = editForm.watch('incomeFrequency') || 'annually';
+                      const frequencyLabel = frequency === 'annually' ? 'Annual' : frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Biweekly' : 'Monthly';
                       
                       const calculateAnnualIncome = (amount: string) => {
                         const num = parseFloat(amount || '0');
                         if (isNaN(num) || num <= 0) return '0';
                         
                         switch (frequency) {
+                          case 'annually':
+                            return amount; // No calculation needed for annual
                           case 'weekly':
                             return (num * 52).toFixed(2);
                           case 'biweekly':
@@ -1243,6 +1246,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                       };
                       
                       const annualAmount = calculateAnnualIncome(field.value || '0');
+                      const showAnnualEquivalent = field.value && parseFloat(field.value) > 0 && frequency !== 'annually';
                       
                       return (
                         <FormItem>
@@ -1260,7 +1264,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                               />
                             </div>
                           </FormControl>
-                          {field.value && parseFloat(field.value) > 0 && (
+                          {showAnnualEquivalent && (
                             <div className="rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
                               <p className="text-xs font-medium text-primary">
                                 Annual Equivalent: ${parseFloat(annualAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
