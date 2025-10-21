@@ -598,7 +598,7 @@ export default function QuotesPage() {
               <div className="space-y-3">
                 <div className="pb-3 border-b">
                   <label className="text-xs text-muted-foreground">Quote ID</label>
-                  <p className="text-xs font-mono break-all">{viewingQuote.id.toLowerCase()}</p>
+                  <p className="text-sm font-mono">{viewingQuote.id.slice(0, 8).toUpperCase()}</p>
                 </div>
 
                 <div className="pb-3 border-b">
