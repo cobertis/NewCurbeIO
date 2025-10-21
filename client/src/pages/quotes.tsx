@@ -3411,7 +3411,7 @@ export default function QuotesPage() {
                           name="clientEmail"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email *</FormLabel>
+                              <FormLabel>Email</FormLabel>
                               <FormControl>
                                 <Input type="email" {...field} data-testid="input-client-email" placeholder="client@example.com" />
                               </FormControl>
