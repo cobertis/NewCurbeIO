@@ -1038,9 +1038,64 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
               {/* Tab 3: Immigration Status */}
               <TabsContent value="immigration" className="flex-1 overflow-y-auto space-y-6 pr-2">
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Immigration status information will be managed here.</p>
-                  {/* TODO: Implement immigration fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Immigration Status */}
+                  <FormField
+                    control={editForm.control}
+                    name="immigrationStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Immigration status <span className="text-destructive">(required)</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-immigration-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="asylum">Asylum</SelectItem>
+                            <SelectItem value="citizen">Citizen</SelectItem>
+                            <SelectItem value="humanitarian_parole">Humanitarian parole</SelectItem>
+                            <SelectItem value="resident">Resident</SelectItem>
+                            <SelectItem value="temporary_protected_status">Temporary protected status</SelectItem>
+                            <SelectItem value="work_authorization">Work authorization</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* USCIS # */}
+                  <FormField
+                    control={editForm.control}
+                    name="uscisNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>USCIS #</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="234305831" data-testid="input-uscis-number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Immigration Status Category */}
+                  <FormField
+                    control={editForm.control}
+                    name="immigrationStatusCategory"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel>Immigration status category</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="I-94 069574863A4" data-testid="input-immigration-category" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </TabsContent>
 
