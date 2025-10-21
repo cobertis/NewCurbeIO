@@ -601,7 +601,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               </TabsList>
 
               {/* Tab 1: Basic Information */}
-              <TabsContent value="basic" className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <TabsContent value="basic" className="flex-1 overflow-y-auto space-y-6 p-4">
                 <div className="grid grid-cols-2 gap-4">
               {/* First Name - Middle Name */}
               <FormField
@@ -977,7 +977,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               </TabsContent>
 
               {/* Tab 2: Income & Employment */}
-              <TabsContent value="income" className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <TabsContent value="income" className="flex-1 overflow-y-auto space-y-6 p-4">
                 <div className="grid grid-cols-2 gap-4">
                   {/* Employer Name */}
                   <FormField
@@ -1074,7 +1074,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               </TabsContent>
 
               {/* Tab 3: Immigration Status */}
-              <TabsContent value="immigration" className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <TabsContent value="immigration" className="flex-1 overflow-y-auto space-y-6 p-4">
                 <div className="grid grid-cols-2 gap-4">
                   {/* Immigration Status */}
                   <FormField
@@ -1137,7 +1137,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               </TabsContent>
 
               {/* Tab 4: Documents */}
-              <TabsContent value="documents" className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <TabsContent value="documents" className="flex-1 overflow-y-auto space-y-6 p-4">
                 <div className="space-y-4">
                   <div className="rounded-md border">
                     <Table>
