@@ -1262,7 +1262,7 @@ export type InsertFinancialSupportTicket = z.infer<typeof insertFinancialSupport
 // =====================================================
 
 export const quotes = pgTable("quotes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id", { length: 8 }).primaryKey(), // Short 8-character unique identifier
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // User who created the quote
   

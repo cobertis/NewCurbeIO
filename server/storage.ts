@@ -2422,9 +2422,27 @@ export class DbStorage implements IStorage {
   // ==================== QUOTES ====================
 
   async createQuote(insertQuote: InsertQuote): Promise<Quote> {
+    const { generateShortId } = await import("./id-generator");
+    
+    // Generate unique short ID
+    let shortId: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    do {
+      shortId = generateShortId();
+      const existing = await db.select().from(quotes).where(eq(quotes.id, shortId)).limit(1);
+      if (existing.length === 0) break;
+      attempts++;
+    } while (attempts < maxAttempts);
+    
+    if (attempts >= maxAttempts) {
+      throw new Error("Failed to generate unique quote ID");
+    }
+    
     const [quote] = await db
       .insert(quotes)
-      .values(insertQuote as any)
+      .values({ ...insertQuote, id: shortId } as any)
       .returning();
     return quote;
   }
