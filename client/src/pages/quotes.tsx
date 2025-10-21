@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, EyeOff, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Upload, Download, Briefcase, Globe } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, EyeOff, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Upload, Download, Briefcase, Globe, SlidersHorizontal } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -529,9 +529,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       <SheetContent 
         className="w-full sm:max-w-2xl overflow-y-auto" 
         side="right"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <SheetHeader>
           <SheetTitle>
@@ -1922,7 +1919,7 @@ export default function QuotesPage() {
 
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+            <div className="p-6">
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
@@ -2665,6 +2662,7 @@ export default function QuotesPage() {
           </div>
         </div>
       </div>
+    </div>
     );
   }
 
@@ -4354,9 +4352,9 @@ export default function QuotesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All products</SelectItem>
-                        {INSURANCE_PRODUCTS.map((product) => (
-                          <SelectItem key={product.value} value={product.value}>
-                            {product.label}
+                        {PRODUCT_TYPES.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -4460,7 +4458,7 @@ export default function QuotesPage() {
               ) : (
                 <div className="space-y-3">
                   {paginatedQuotes.map((quote: Quote) => {
-                    const product = INSURANCE_PRODUCTS.find(p => p.value === quote.productType);
+                    const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
                     
                     return (
                       <Card 
@@ -4682,7 +4680,7 @@ export default function QuotesPage() {
 
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+            <div className="p-6">
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
@@ -5195,6 +5193,7 @@ export default function QuotesPage() {
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* Edit Member Sheet */}
