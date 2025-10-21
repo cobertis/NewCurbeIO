@@ -2815,7 +2815,7 @@ export default function QuotesPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Location</span>
-                  <span className="text-xs">{viewingQuote.state} {viewingQuote.postalCode}</span>
+                  <span className="text-xs">{viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Total annual income</span>
