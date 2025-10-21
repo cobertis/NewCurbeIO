@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -607,11 +607,6 @@ export default function QuotesPage() {
               
               <div className="space-y-3">
                 <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">Quote ID</label>
-                  <p className="text-sm font-mono">{viewingQuote.id.slice(0, 8).toUpperCase()}</p>
-                </div>
-
-                <div className="pb-3 border-b">
                   <label className="text-xs text-muted-foreground">Agent</label>
                   <div className="flex items-center gap-2 mt-1">
                     <Avatar className="h-6 w-6">
@@ -724,9 +719,19 @@ export default function QuotesPage() {
                           <h1 className="text-2xl font-bold">
                             {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                           </h1>
-                          <Badge variant={viewingQuote.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                            {viewingQuote.status === 'active' ? 'Active Quote' : viewingQuote.status || 'Draft'}
-                          </Badge>
+                          {viewingQuote.status === 'active' ? (
+                            <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
+                              Active Quote
+                            </Badge>
+                          ) : viewingQuote.status === 'draft' ? (
+                            <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                              Draft
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              {viewingQuote.status || 'Draft'}
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
@@ -744,9 +749,45 @@ export default function QuotesPage() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" data-testid="button-edit-quote">
-                    Edit Quote
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="default" size="sm" data-testid="button-search-plans">
+                      Search plans
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" data-testid="button-options">
+                          Options
+                          <ChevronDown className="h-4 w-4 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Block Policy
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Bell className="h-4 w-4 mr-2" />
+                          New Reminder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Print Policy
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel Policy
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archive
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1707,8 +1748,13 @@ export default function QuotesPage() {
                                 >
                                   {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
                                 </div>
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  {quote.clientIsApplicant ? 'Self' : 'Not Applicant'} - {quote.clientGender ? quote.clientGender.charAt(0).toUpperCase() + quote.clientGender.slice(1) : 'N/A'}
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                                    {quote.clientIsApplicant ? 'Self' : 'Not Applicant'}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {quote.clientGender ? quote.clientGender.charAt(0).toUpperCase() + quote.clientGender.slice(1) : 'N/A'}
+                                  </span>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   {quote.state} {quote.postalCode}
