@@ -17,7 +17,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User as UserType, type Quote } from "@shared/schema";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { z } from "zod";
@@ -273,6 +273,537 @@ const step3Schema = z.object({
 });
 
 const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
+
+// Edit Member Sheet Component - Extracted outside to prevent recreation on each render
+function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending }: any) {
+  const editMemberSchema = memberType === 'dependent'
+    ? dependentSchema
+    : familyMemberSchema;
+
+  // Use useMemo to prevent unnecessary recalculation and form resets
+  const memberData = useMemo(() => {
+    if (!quote || !memberType) return null;
+    
+    if (memberType === 'primary') {
+      return {
+        firstName: quote.clientFirstName || '',
+        middleName: quote.clientMiddleName || '',
+        lastName: quote.clientLastName || '',
+        secondLastName: quote.clientSecondLastName || '',
+        email: quote.clientEmail || '',
+        phone: quote.clientPhone || '',
+        dateOfBirth: quote.clientDateOfBirth ? format(new Date(quote.clientDateOfBirth), 'yyyy-MM-dd') : '',
+        ssn: quote.clientSsn || '',
+        gender: quote.clientGender || '',
+        isApplicant: quote.clientIsApplicant ?? true,
+        tobaccoUser: quote.clientTobaccoUser ?? false,
+        preferredLanguage: quote.clientPreferredLanguage || '',
+        countryOfBirth: quote.clientCountryOfBirth || '',
+        maritalStatus: quote.clientMaritalStatus || '',
+        weight: quote.clientWeight || '',
+        height: quote.clientHeight || '',
+      };
+    } else if (memberType === 'spouse' && memberIndex !== undefined) {
+      const spouse = quote.spouses?.[memberIndex];
+      return spouse ? {
+        ...spouse,
+        dateOfBirth: spouse.dateOfBirth ? format(new Date(spouse.dateOfBirth), 'yyyy-MM-dd') : '',
+      } : null;
+    } else if (memberType === 'dependent' && memberIndex !== undefined) {
+      const dependent = quote.dependents?.[memberIndex];
+      return dependent ? {
+        ...dependent,
+        dateOfBirth: dependent.dateOfBirth ? format(new Date(dependent.dateOfBirth), 'yyyy-MM-dd') : '',
+      } : null;
+    }
+    return null;
+  }, [quote?.id, memberType, memberIndex]); // Only depend on IDs, not complete objects
+  
+  const editForm = useForm({
+    resolver: zodResolver(editMemberSchema),
+    defaultValues: memberData || {},
+  });
+
+  const prevOpenRef = useRef(false);
+  
+  // Simplified reset logic - only reset on opening transition (false -> true)
+  useEffect(() => {
+    const isOpening = open && !prevOpenRef.current;
+    if (isOpening && memberData) {
+      editForm.reset(memberData);
+    }
+    prevOpenRef.current = open;
+  }, [open]); // ONLY depend on open, NOT on memberData
+
+  const handleSave = (data: any) => {
+    // Close any open popovers
+    setCountryPopoverOpen(false);
+    
+    if (memberType === 'primary') {
+      onSave({
+        clientFirstName: data.firstName,
+        clientMiddleName: data.middleName,
+        clientLastName: data.lastName,
+        clientSecondLastName: data.secondLastName,
+        clientEmail: data.email,
+        clientPhone: data.phone,
+        clientDateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        clientSsn: data.ssn,
+        clientGender: data.gender,
+        clientIsApplicant: data.isApplicant,
+        clientTobaccoUser: data.tobaccoUser,
+        clientPreferredLanguage: data.preferredLanguage,
+        clientCountryOfBirth: data.countryOfBirth,
+        clientMaritalStatus: data.maritalStatus,
+        clientWeight: data.weight,
+        clientHeight: data.height,
+      });
+    } else if (memberType === 'spouse') {
+      const updatedSpouses = [...(quote.spouses || [])];
+      updatedSpouses[memberIndex!] = {
+        ...data,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+      };
+      onSave({ spouses: updatedSpouses });
+    } else if (memberType === 'dependent') {
+      const updatedDependents = [...(quote.dependents || [])];
+      updatedDependents[memberIndex!] = {
+        ...data,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+      };
+      onSave({ dependents: updatedDependents });
+    }
+  };
+
+  const [showEditSsn, setShowEditSsn] = useState(false);
+  const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
+
+  // Reset SSN visibility when Sheet closes
+  useEffect(() => {
+    if (!open) {
+      setShowEditSsn(false);
+    }
+  }, [open]);
+
+  if (!memberData) return null;
+
+  return (
+    <Sheet 
+      open={open} 
+      onOpenChange={(isOpen) => {
+        // Only allow closing the sheet, never opening from here
+        if (!isOpen && !isPending) {
+          onOpenChange(false);
+        }
+      }}
+    >
+      <SheetContent 
+        className="w-full sm:max-w-2xl overflow-y-auto" 
+        side="right"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        <SheetHeader>
+          <SheetTitle>
+            Edit {memberType === 'primary' ? 'Primary Applicant' : memberType === 'spouse' ? 'Spouse' : 'Dependent'}
+          </SheetTitle>
+        </SheetHeader>
+        <Form {...editForm}>
+          <form onSubmit={editForm.handleSubmit(handleSave)} className="space-y-6 py-6">
+            <div className="grid grid-cols-2 gap-4">
+              {/* First Name - Middle Name */}
+              <FormField
+                control={editForm.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name *</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-firstname" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="middleName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Middle Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-middlename" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Last Name - Second Last Name */}
+              <FormField
+                control={editForm.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name *</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-lastname" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="secondLastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Second Last Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-secondlastname" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* DOB - SSN */}
+              <FormField
+                control={editForm.control}
+                name="dateOfBirth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date of Birth *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-dob" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="ssn"
+                render={({ field }) => {
+                  return (
+                    <FormItem>
+                      <FormLabel>SSN *</FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type={showEditSsn ? "text" : "password"}
+                            onChange={(e) => {
+                              // Extract only digits - save WITHOUT formatting
+                              const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                              field.onChange(digits);
+                            }}
+                            value={showEditSsn ? formatSSN(field.value) : field.value}
+                            className="pr-10"
+                            autoComplete="off"
+                            placeholder="XXX-XX-XXXX"
+                            data-testid="input-ssn"
+                          />
+                        </FormControl>
+                        <div
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowEditSsn(prev => !prev);
+                          }}
+                          className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                          role="button"
+                          tabIndex={-1}
+                          aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
+                          data-testid="button-ssn-visibility"
+                        >
+                          {showEditSsn ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              {/* Phone - Email */}
+              <FormField
+                control={editForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone {memberType === 'primary' && '*'}</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                        data-testid="input-phone"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email {memberType === 'primary' && '*'}</FormLabel>
+                    <FormControl>
+                      <Input type="email" {...field} data-testid="input-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Gender - Marital Status */}
+              <FormField
+                control={editForm.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-gender">
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="maritalStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Marital Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-maritalstatus">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="single">Single</SelectItem>
+                        <SelectItem value="married">Married</SelectItem>
+                        <SelectItem value="divorced">Divorced</SelectItem>
+                        <SelectItem value="widowed">Widowed</SelectItem>
+                        <SelectItem value="separated">Separated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Country of Birth - Preferred Language */}
+              <FormField
+                control={editForm.control}
+                name="countryOfBirth"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Country of Birth</FormLabel>
+                    <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="justify-between font-normal"
+                            data-testid="select-countryofbirth"
+                          >
+                            {field.value || "Select country"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search country..." />
+                          <CommandList>
+                            <CommandEmpty>No country found.</CommandEmpty>
+                            <CommandGroup>
+                              {COUNTRIES.map((country) => (
+                                <CommandItem
+                                  key={country}
+                                  value={country}
+                                  onSelect={() => {
+                                    field.onChange(country);
+                                    setCountryPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${
+                                      field.value === country ? "opacity-100" : "opacity-0"
+                                    }`}
+                                  />
+                                  {country}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="preferredLanguage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preferred Language</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-preferredlanguage">
+                          <SelectValue placeholder="Select language" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="english">English</SelectItem>
+                        <SelectItem value="spanish">Spanish</SelectItem>
+                        <SelectItem value="french">French</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Weight - Height */}
+              <FormField
+                control={editForm.control}
+                name="weight"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Weight (Lbs)</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" placeholder="150" data-testid="input-weight" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="height"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Height (Ft)</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="5'10&quot;" data-testid="input-height" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Relation (only for dependents) */}
+              {memberType === 'dependent' && (
+                <FormField
+                  control={editForm.control}
+                  name="relation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Relation *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-relation">
+                            <SelectValue placeholder="Select relation" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="child">Child</SelectItem>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="sibling">Sibling</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+            
+            <div className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="isApplicant"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-isapplicant"
+                      />
+                    </FormControl>
+                    <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="tobaccoUser"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-tobacco"
+                      />
+                    </FormControl>
+                    <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                data-testid="button-save"
+              >
+                {isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 export default function QuotesPage() {
   const [location, setLocation] = useLocation();
@@ -617,533 +1148,6 @@ export default function QuotesPage() {
     { number: 2, title: "Personal Information & Address", icon: User },
     { number: 3, title: "Family Group", icon: Users },
   ];
-
-  // Edit Member Sheet Component
-  function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending }: any) {
-    const editMemberSchema = memberType === 'dependent'
-      ? dependentSchema
-      : familyMemberSchema;
-
-    const getMemberData = () => {
-      if (!quote || !memberType) return null;
-      
-      if (memberType === 'primary') {
-        return {
-          firstName: quote.clientFirstName || '',
-          middleName: quote.clientMiddleName || '',
-          lastName: quote.clientLastName || '',
-          secondLastName: quote.clientSecondLastName || '',
-          email: quote.clientEmail || '',
-          phone: quote.clientPhone || '',
-          dateOfBirth: quote.clientDateOfBirth ? format(new Date(quote.clientDateOfBirth), 'yyyy-MM-dd') : '',
-          ssn: quote.clientSsn || '',
-          gender: quote.clientGender || '',
-          isApplicant: quote.clientIsApplicant ?? true,
-          tobaccoUser: quote.clientTobaccoUser ?? false,
-          preferredLanguage: quote.clientPreferredLanguage || '',
-          countryOfBirth: quote.clientCountryOfBirth || '',
-          maritalStatus: quote.clientMaritalStatus || '',
-          weight: quote.clientWeight || '',
-          height: quote.clientHeight || '',
-        };
-      } else if (memberType === 'spouse' && memberIndex !== undefined) {
-        const spouse = quote.spouses?.[memberIndex];
-        return spouse ? {
-          ...spouse,
-          dateOfBirth: spouse.dateOfBirth ? format(new Date(spouse.dateOfBirth), 'yyyy-MM-dd') : '',
-        } : null;
-      } else if (memberType === 'dependent' && memberIndex !== undefined) {
-        const dependent = quote.dependents?.[memberIndex];
-        return dependent ? {
-          ...dependent,
-          dateOfBirth: dependent.dateOfBirth ? format(new Date(dependent.dateOfBirth), 'yyyy-MM-dd') : '',
-        } : null;
-      }
-      return null;
-    };
-
-    const memberData = getMemberData();
-    
-    const editForm = useForm({
-      resolver: zodResolver(editMemberSchema),
-      defaultValues: memberData || {},
-    });
-
-    const prevOpenRef = useRef(false);
-    
-    useEffect(() => {
-      // Only reset when the Sheet first opens (transition from closed to open)
-      const isOpening = open && !prevOpenRef.current;
-      if (isOpening && memberData) {
-        editForm.reset(memberData);
-      }
-      prevOpenRef.current = open;
-    }, [open]);
-
-    const handleSave = (data: any) => {
-      // Close any open popovers
-      setCountryPopoverOpen(false);
-      
-      if (memberType === 'primary') {
-        onSave({
-          clientFirstName: data.firstName,
-          clientMiddleName: data.middleName,
-          clientLastName: data.lastName,
-          clientSecondLastName: data.secondLastName,
-          clientEmail: data.email,
-          clientPhone: data.phone,
-          clientDateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-          clientSsn: data.ssn,
-          clientGender: data.gender,
-          clientIsApplicant: data.isApplicant,
-          clientTobaccoUser: data.tobaccoUser,
-          clientPreferredLanguage: data.preferredLanguage,
-          clientCountryOfBirth: data.countryOfBirth,
-          clientMaritalStatus: data.maritalStatus,
-          clientWeight: data.weight,
-          clientHeight: data.height,
-        });
-      } else if (memberType === 'spouse') {
-        const updatedSpouses = [...(quote.spouses || [])];
-        updatedSpouses[memberIndex!] = {
-          ...data,
-          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        };
-        onSave({ spouses: updatedSpouses });
-      } else if (memberType === 'dependent') {
-        const updatedDependents = [...(quote.dependents || [])];
-        updatedDependents[memberIndex!] = {
-          ...data,
-          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        };
-        onSave({ dependents: updatedDependents });
-      }
-    };
-
-    const [showEditSsn, setShowEditSsn] = useState(false);
-    const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
-
-    // Reset SSN visibility when Sheet closes
-    useEffect(() => {
-      if (!open) {
-        setShowEditSsn(false);
-      }
-    }, [open]);
-
-    if (!memberData) return null;
-
-    return (
-      <Sheet 
-        open={open} 
-        onOpenChange={(isOpen) => {
-          // Only allow closing the sheet, never opening from here
-          if (!isOpen && !isPending) {
-            onOpenChange(false);
-          }
-        }}
-      >
-        <SheetContent 
-          className="w-full sm:max-w-2xl overflow-y-auto" 
-          side="right"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <SheetHeader>
-            <SheetTitle>
-              Edit {memberType === 'primary' ? 'Primary Applicant' : memberType === 'spouse' ? 'Spouse' : 'Dependent'}
-            </SheetTitle>
-          </SheetHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(handleSave)} className="space-y-6 py-6">
-              <div className="grid grid-cols-2 gap-4">
-                {/* First Name - Middle Name */}
-                <FormField
-                  control={editForm.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First Name *</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-firstname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="middleName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Middle Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-middlename" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Last Name - Second Last Name */}
-                <FormField
-                  control={editForm.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last Name *</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-lastname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="secondLastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Second Last Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-secondlastname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* DOB - SSN */}
-                <FormField
-                  control={editForm.control}
-                  name="dateOfBirth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date of Birth *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} data-testid="input-dob" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="ssn"
-                  render={({ field }) => {
-                    return (
-                      <FormItem>
-                        <FormLabel>SSN *</FormLabel>
-                        <div className="relative">
-                          <FormControl>
-                            <Input
-                              {...field}
-                              type={showEditSsn ? "text" : "password"}
-                              onChange={(e) => field.onChange(formatSSN(e.target.value))}
-                              className="pr-10"
-                              autoComplete="off"
-                              placeholder="XXX-XX-XXXX"
-                              data-testid="input-ssn"
-                            />
-                          </FormControl>
-                          <div
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setShowEditSsn(prev => !prev);
-                            }}
-                            className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
-                            role="button"
-                            tabIndex={-1}
-                            aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
-                            data-testid="button-ssn-visibility"
-                          >
-                            {showEditSsn ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </div>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-
-                {/* Phone - Email */}
-                <FormField
-                  control={editForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone {memberType === 'primary' && '*'}</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field}
-                          value={field.value || ''}
-                          onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
-                          data-testid="input-phone"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email {memberType === 'primary' && '*'}</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} data-testid="input-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Gender - Marital Status */}
-                <FormField
-                  control={editForm.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gender *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-gender">
-                            <SelectValue placeholder="Select gender" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="maritalStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Marital Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-maritalstatus">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="single">Single</SelectItem>
-                          <SelectItem value="married">Married</SelectItem>
-                          <SelectItem value="divorced">Divorced</SelectItem>
-                          <SelectItem value="widowed">Widowed</SelectItem>
-                          <SelectItem value="separated">Separated</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Country of Birth - Preferred Language */}
-                <FormField
-                  control={editForm.control}
-                  name="countryOfBirth"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Country of Birth</FormLabel>
-                      <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className="justify-between font-normal"
-                              data-testid="select-countryofbirth"
-                            >
-                              {field.value || "Select country"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Search country..." />
-                            <CommandList>
-                              <CommandEmpty>No country found.</CommandEmpty>
-                              <CommandGroup>
-                                {COUNTRIES.map((country) => (
-                                  <CommandItem
-                                    key={country}
-                                    value={country}
-                                    onSelect={() => {
-                                      field.onChange(country);
-                                      setCountryPopoverOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={`mr-2 h-4 w-4 ${
-                                        field.value === country ? "opacity-100" : "opacity-0"
-                                      }`}
-                                    />
-                                    {country}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="preferredLanguage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Preferred Language</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-preferredlanguage">
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="english">English</SelectItem>
-                          <SelectItem value="spanish">Spanish</SelectItem>
-                          <SelectItem value="french">French</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Weight - Height */}
-                <FormField
-                  control={editForm.control}
-                  name="weight"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weight (Lbs)</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="number" placeholder="150" data-testid="input-weight" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="height"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Height (Ft)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="5'10&quot;" data-testid="input-height" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Relation (only for dependents) */}
-                {memberType === 'dependent' && (
-                  <FormField
-                    control={editForm.control}
-                    name="relation"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Relation *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-relation">
-                              <SelectValue placeholder="Select relation" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="child">Child</SelectItem>
-                            <SelectItem value="parent">Parent</SelectItem>
-                            <SelectItem value="sibling">Sibling</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
-              
-              <div className="space-y-4">
-                <FormField
-                  control={editForm.control}
-                  name="isApplicant"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="checkbox-isapplicant"
-                        />
-                      </FormControl>
-                      <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="tobaccoUser"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="checkbox-tobacco"
-                        />
-                      </FormControl>
-                      <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
-                  data-testid="button-cancel"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                  data-testid="button-save"
-                >
-                  {isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </SheetContent>
-      </Sheet>
-    );
-  }
 
   // Edit Addresses Sheet Component
   function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
