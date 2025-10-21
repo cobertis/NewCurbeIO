@@ -8578,6 +8578,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const decryptedIncome = {
         ...income,
         annualIncome: income.annualIncome ? decrypt(income.annualIncome) : null,
+        totalAnnualIncome: income.totalAnnualIncome ? decrypt(income.totalAnnualIncome) : null,
       };
       
       res.json({ income: decryptedIncome });

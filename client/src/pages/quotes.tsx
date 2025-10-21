@@ -543,6 +543,13 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     }
   }, [open, memberType, memberIndex, memberData, editForm])
 
+  // Update form when income or immigration data loads after modal is already open
+  useEffect(() => {
+    if (open && memberData) {
+      editForm.reset(memberData);
+    }
+  }, [incomeData, immigrationData])
+
   const handleSave = async (data: z.infer<typeof editMemberSchema>) => {
     console.log('[EditMemberSheet] handleSave called with data:', data);
     console.log('[EditMemberSheet] Form errors:', editForm.formState.errors);
