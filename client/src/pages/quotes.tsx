@@ -630,8 +630,21 @@ export default function QuotesPage() {
                 </div>
 
                 <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">No. of applicants</label>
-                  <p className="text-sm font-medium">{totalApplicants}</p>
+                  <label className="text-xs text-muted-foreground mb-2 block">Household</label>
+                  <div className="bg-muted/30 rounded-md p-3 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-foreground/60">Applicants</span>
+                      <Badge variant="secondary" className="text-xs font-semibold">{totalApplicants}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-foreground/60">Members</span>
+                      <Badge variant="secondary" className="text-xs font-semibold">{totalFamilyMembers}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-foreground/60">Dependents</span>
+                      <Badge variant="secondary" className="text-xs font-semibold">{totalDependents}</Badge>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pb-3 border-b">
