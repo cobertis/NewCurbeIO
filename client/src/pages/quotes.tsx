@@ -11,8 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, EyeOff, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Upload, Download, Briefcase, Globe, SlidersHorizontal } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, EyeOff, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -529,6 +528,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       <SheetContent 
         className="w-full sm:max-w-2xl overflow-y-auto" 
         side="right"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <SheetHeader>
           <SheetTitle>
@@ -1916,10 +1918,11 @@ export default function QuotesPage() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-6">
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
@@ -2662,7 +2665,6 @@ export default function QuotesPage() {
           </div>
         </div>
       </div>
-    </div>
     );
   }
 
@@ -4201,7 +4203,6 @@ export default function QuotesPage() {
                     ))}
                   </div>
                 )}
-                </div>
 
                 {/* Form Navigation */}
                 <div className="flex justify-between gap-4 px-8 pb-8 pt-6 border-t sticky bottom-0 bg-background">
@@ -4239,8 +4240,8 @@ export default function QuotesPage() {
                 </div>
               </form>
             </Form>
-          </CardContent>
-        </Card>
+          </Card>
+        </div>
       )}
 
       {/* Quote List View */}
@@ -4352,9 +4353,9 @@ export default function QuotesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All products</SelectItem>
-                        {PRODUCT_TYPES.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
+                        {INSURANCE_PRODUCTS.map((product) => (
+                          <SelectItem key={product.value} value={product.value}>
+                            {product.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -4458,7 +4459,7 @@ export default function QuotesPage() {
               ) : (
                 <div className="space-y-3">
                   {paginatedQuotes.map((quote: Quote) => {
-                    const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
+                    const product = INSURANCE_PRODUCTS.find(p => p.value === quote.productType);
                     
                     return (
                       <Card 
@@ -4677,10 +4678,11 @@ export default function QuotesPage() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-6">
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
@@ -5193,7 +5195,6 @@ export default function QuotesPage() {
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Edit Member Sheet */}
@@ -5214,6 +5215,226 @@ export default function QuotesPage() {
         }}
         isPending={updateQuoteMutation.isPending}
       />
+    </div>
+  );
+}
+                                          tabIndex={-1}
+                                          aria-label={showDependentSsn[index] ? "Hide SSN" : "Show SSN"}
+                                          data-testid={`button-dependent-ssn-visibility-${index}`}
+                                        >
+                                          {showDependentSsn[index] ? (
+                                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                          ) : (
+                                            <Eye className="h-4 w-4 text-muted-foreground" />
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.gender`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Gender *</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger data-testid={`select-dependent-gender-${index}`}>
+                                        <SelectValue placeholder="Select gender" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="male">Male</SelectItem>
+                                      <SelectItem value="female">Female</SelectItem>
+                                      <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.relation`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Relation *</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger data-testid={`select-dependent-relation-${index}`}>
+                                        <SelectValue placeholder="Select relation" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="child">Child</SelectItem>
+                                      <SelectItem value="parent">Parent</SelectItem>
+                                      <SelectItem value="sibling">Sibling</SelectItem>
+                                      <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {/* Row 3: Phone, Email */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.phone`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Phone</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field}
+                                      type="tel"
+                                      placeholder="(555) 123-4567" 
+                                      data-testid={`input-dependent-phone-${index}`}
+                                      maxLength={14}
+                                      onChange={(e) => {
+                                        const formatted = formatPhoneNumber(e.target.value);
+                                        field.onChange(formatted);
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.email`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Email</FormLabel>
+                                  <FormControl>
+                                    <Input type="email" {...field} placeholder="Email" data-testid={`input-dependent-email-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {/* Checkboxes */}
+                          <div className="space-y-4 pt-6 mt-6 border-t">
+                            <h3 className="text-sm font-semibold">Select all that apply</h3>
+                            
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.isApplicant`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid={`checkbox-dependent-applicant-${index}`}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
+                                      Is this member an applicant?
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">Select this option to add the family member to the coverage. Unselect if the member is eligible through a job, Medicaid, CHIP, or Medicare.</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.tobaccoUser`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid={`checkbox-dependent-tobacco-${index}`}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
+                                      Tobacco user
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <div className="max-w-xs space-y-2">
+                                            <p>Select this if you've used tobacco <strong>4 or more times per week for the past 6 months</strong>.</p>
+                                            <p className="text-xs">You may pay more for insurance, but if you don't report that you are a tobacco user, and then later develop a tobacco-related illness, you can be <strong>denied</strong> coverage.</p>
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Navigation Buttons - Fixed at bottom */}
+                <div className="flex items-center justify-between pt-4 border-t shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
+                    disabled={currentStep === 1}
+                    data-testid="button-back"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+
+                  <div className="text-sm text-muted-foreground">
+                    Step {currentStep} of 3
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={createQuoteMutation.isPending}
+                    data-testid="button-next"
+                  >
+                    {currentStep === 3 ? (
+                      createQuoteMutation.isPending ? "Creating..." : "CREATE QUOTE"
+                    ) : (
+                      <>
+                        Next
+                        <ChevronRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
