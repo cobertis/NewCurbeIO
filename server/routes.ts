@@ -8198,16 +8198,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
       
-      // Check if user is superadmin requesting unmasked PII
-      const reveal = req.query.reveal === 'true' && currentUser.role === 'superadmin';
+      // Check if user is authorized to reveal PII
+      const reveal = req.query.reveal === 'true';
       
-      // Process sensitive fields - mask PII by default, decrypt only for superadmin with reveal=true
+      // Process sensitive fields - mask PII by default, show plain text if reveal=true
       const processedMembers = members.map(m => ({
         ...m,
-        ssn: reveal ? (m.ssn ? decrypt(m.ssn) : null) : maskSSN(m.ssn, true),
+        ssn: reveal ? m.ssn : maskSSN(m.ssn, false),
       }));
       
-      // Audit log when superadmin reveals PII
+      // Audit log when PII is revealed
       if (reveal) {
         await logger.logAuth({
           req,
@@ -8256,16 +8256,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found in this quote" });
       }
       
-      // Check if user is superadmin requesting unmasked PII
-      const reveal = req.query.reveal === 'true' && currentUser.role === 'superadmin';
+      // Check if user is authorized to reveal PII
+      const reveal = req.query.reveal === 'true';
       
-      // Process sensitive fields - mask PII by default, decrypt only for superadmin with reveal=true
+      // Process sensitive fields - mask PII by default, show plain text if reveal=true
       const processedMember = {
         ...member,
-        ssn: reveal ? (member.ssn ? decrypt(member.ssn) : null) : maskSSN(member.ssn, true),
+        ssn: reveal ? member.ssn : maskSSN(member.ssn, false),
       };
       
-      // Audit log when superadmin reveals PII
+      // Audit log when PII is revealed
       if (reveal) {
         await logger.logAuth({
           req,
@@ -8311,19 +8311,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         quoteId,
       });
       
-      // Encrypt sensitive fields before saving
-      const dataToSave = {
-        ...validatedData,
-        ssn: validatedData.ssn ? encrypt(validatedData.ssn) : null,
-      };
-      
-      const member = await storage.createQuoteMember(dataToSave);
-      
-      // Decrypt for response
-      const decryptedMember = {
-        ...member,
-        ssn: member.ssn ? decrypt(member.ssn) : null,
-      };
+      // SSN stored as plain text (no encryption)
+      const member = await storage.createQuoteMember(validatedData);
       
       await logger.logCrud({
         req,
@@ -8337,7 +8326,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.status(201).json({ member: decryptedMember });
+      res.status(201).json({ member });
     } catch (error: any) {
       console.error("Error creating quote member:", error);
       if (error.name === 'ZodError') {
@@ -8380,23 +8369,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Validate request body
       const validatedData = updateQuoteMemberSchema.parse(req.body);
       
-      // Encrypt sensitive fields if present
-      const dataToSave: any = { ...validatedData };
-      if (validatedData.ssn !== undefined) {
-        dataToSave.ssn = validatedData.ssn ? encrypt(validatedData.ssn) : null;
-      }
-      
-      const updatedMember = await storage.updateQuoteMember(memberId, dataToSave, quote.companyId);
+      // SSN stored as plain text (no encryption)
+      const updatedMember = await storage.updateQuoteMember(memberId, validatedData, quote.companyId);
       
       if (!updatedMember) {
         return res.status(500).json({ message: "Failed to update member" });
       }
-      
-      // Decrypt for response
-      const decryptedMember = {
-        ...updatedMember,
-        ssn: updatedMember.ssn ? decrypt(updatedMember.ssn) : null,
-      };
       
       await logger.logCrud({
         req,
@@ -8410,7 +8388,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ member: decryptedMember });
+      res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating quote member:", error);
       if (error.name === 'ZodError') {
@@ -8708,18 +8686,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Immigration information not found" });
       }
       
-      // Check if user is superadmin requesting unmasked PII
-      const reveal = req.query.reveal === 'true' && currentUser.role === 'superadmin';
+      // Check if user is authorized to reveal PII
+      const reveal = req.query.reveal === 'true';
       
-      // Process sensitive fields - mask PII by default, decrypt only for superadmin with reveal=true
+      // Process sensitive fields - mask PII by default, show plain text if reveal=true
       const processedImmigration = {
         ...immigration,
-        visaNumber: reveal ? (immigration.visaNumber ? decrypt(immigration.visaNumber) : null) : maskDocumentNumber(immigration.visaNumber, true),
-        greenCardNumber: reveal ? (immigration.greenCardNumber ? decrypt(immigration.greenCardNumber) : null) : maskDocumentNumber(immigration.greenCardNumber, true),
-        i94Number: reveal ? (immigration.i94Number ? decrypt(immigration.i94Number) : null) : maskDocumentNumber(immigration.i94Number, true),
+        visaNumber: reveal ? immigration.visaNumber : maskDocumentNumber(immigration.visaNumber, false),
+        greenCardNumber: reveal ? immigration.greenCardNumber : maskDocumentNumber(immigration.greenCardNumber, false),
+        i94Number: reveal ? immigration.i94Number : maskDocumentNumber(immigration.i94Number, false),
       };
       
-      // Audit log when superadmin reveals PII
+      // Audit log when PII is revealed
       if (reveal) {
         await logger.logAuth({
           req,
@@ -8771,23 +8749,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId: member.companyId,
       });
       
-      // Encrypt sensitive fields before saving
-      const dataToSave = {
-        ...validatedData,
-        visaNumber: validatedData.visaNumber ? encrypt(validatedData.visaNumber) : null,
-        greenCardNumber: validatedData.greenCardNumber ? encrypt(validatedData.greenCardNumber) : null,
-        i94Number: validatedData.i94Number ? encrypt(validatedData.i94Number) : null,
-      };
-      
-      const immigration = await storage.createOrUpdateQuoteMemberImmigration(dataToSave);
-      
-      // Decrypt for response
-      const decryptedImmigration = {
-        ...immigration,
-        visaNumber: immigration.visaNumber ? decrypt(immigration.visaNumber) : null,
-        greenCardNumber: immigration.greenCardNumber ? decrypt(immigration.greenCardNumber) : null,
-        i94Number: immigration.i94Number ? decrypt(immigration.i94Number) : null,
-      };
+      // Immigration numbers stored as plain text (no encryption)
+      const immigration = await storage.createOrUpdateQuoteMemberImmigration(validatedData);
       
       await logger.logCrud({
         req,
@@ -8801,7 +8764,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ immigration: decryptedImmigration });
+      res.json({ immigration });
     } catch (error: any) {
       console.error("Error upserting member immigration:", error);
       if (error.name === 'ZodError') {
