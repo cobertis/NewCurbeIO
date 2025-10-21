@@ -472,31 +472,43 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   // Handle revealing SSN - fetch from backend if masked, otherwise toggle visibility
   const handleRevealSSN = async () => {
     const currentSSN = editForm.getValues('ssn');
-    const isMasked = currentSSN?.includes('***');
+    const digits = normalizeSSN(currentSSN);
+    const isIncomplete = digits.length < 9; // SSN is masked/incomplete if less than 9 digits
     
-    if (isMasked && !showEditSsn) {
+    if (isIncomplete && !showEditSsn) {
       // Fetch the full SSN from backend with ?reveal=true
       try {
         const response = await fetch(`/api/quotes/${quote.id}?reveal=true`, {
           credentials: 'include'
         });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch revealed data');
+        }
+        
         const data = await response.json();
         
-        // Update the SSN in the form with the revealed value
+        // Update the SSN in the form with the revealed value (9 digits)
         if (memberType === 'primary' && data.quote.clientSsn) {
-          editForm.setValue('ssn', normalizeSSN(data.quote.clientSsn));
+          const revealedSSN = normalizeSSN(data.quote.clientSsn);
+          console.log('[SSN Reveal] Primary - Setting revealed SSN:', revealedSSN.length, 'digits');
+          editForm.setValue('ssn', revealedSSN);
         } else if (memberType === 'spouse' && memberIndex !== undefined && data.quote.spouses?.[memberIndex]?.ssn) {
-          editForm.setValue('ssn', normalizeSSN(data.quote.spouses[memberIndex].ssn));
+          const revealedSSN = normalizeSSN(data.quote.spouses[memberIndex].ssn);
+          console.log('[SSN Reveal] Spouse - Setting revealed SSN:', revealedSSN.length, 'digits');
+          editForm.setValue('ssn', revealedSSN);
         } else if (memberType === 'dependent' && memberIndex !== undefined && data.quote.dependents?.[memberIndex]?.ssn) {
-          editForm.setValue('ssn', normalizeSSN(data.quote.dependents[memberIndex].ssn));
+          const revealedSSN = normalizeSSN(data.quote.dependents[memberIndex].ssn);
+          console.log('[SSN Reveal] Dependent - Setting revealed SSN:', revealedSSN.length, 'digits');
+          editForm.setValue('ssn', revealedSSN);
         }
         
         setShowEditSsn(true);
       } catch (error) {
-        console.error('Failed to reveal SSN:', error);
+        console.error('[SSN Reveal] Failed to reveal SSN:', error);
       }
     } else {
-      // Normal toggle visibility
+      // Normal toggle visibility (SSN is already complete)
       setShowEditSsn(prev => !prev);
     }
   };
