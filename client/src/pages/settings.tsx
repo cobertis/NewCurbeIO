@@ -2765,11 +2765,16 @@ function TeamMembersTable() {
 
   const createMutation = useMutation({
     mutationFn: async (data: UserForm) => {
+      console.log("[CREATE USER] Form data:", data);
+      console.log("[CREATE USER] Current company ID:", currentUserCompanyId);
+      
       const dataToSend = {
         ...data,
         companyId: currentUserCompanyId, // Automatically set to current user's company
         phone: data.phone ? formatPhoneE164(data.phone) : undefined,
       };
+      
+      console.log("[CREATE USER] Data to send:", dataToSend);
       return apiRequest("POST", "/api/users", dataToSend);
     },
     onSuccess: () => {
