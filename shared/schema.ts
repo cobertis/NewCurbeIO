@@ -745,6 +745,7 @@ export const updateUserSchema = z.object({
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
   isActive: z.boolean().optional(),
+  status: z.enum(["pending_activation", "active", "deactivated"]).optional(),
   agentInternalCode: z.string().optional(),
   instructionLevel: z.string().optional(),
   nationalProducerNumber: z.string().regex(/^\d{6,10}$/, "NPN must be 6-10 digits").optional().or(z.literal("")),

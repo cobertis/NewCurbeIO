@@ -316,10 +316,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // Helper function to mask SSN in quotes
   // WARNING: NEVER log or return full SSN values - this contains PII (Personally Identifiable Information)
   // This function masks SSN to show only last 4 digits (e.g., "***-**-1234")
-  function maskQuoteSSN<T extends any>(quote: T): T {
+  function maskQuoteSSN<T extends Record<string, any>>(quote: T): T {
     if (!quote) return quote;
     
-    const masked = { ...quote };
+    const masked = { ...quote } as any;
     
     // Mask client SSN
     if (masked.clientSsn && typeof masked.clientSsn === 'string') {
@@ -349,7 +349,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
     }
     
-    return masked;
+    return masked as T;
   }
 
   // Middleware to check authentication only
@@ -575,7 +575,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         req.session.deviceInfo = deviceInfo;
         req.session.ipAddress = ipAddress;
-        req.session.createdAt = new Date().toISOString();
         
         console.log(`[SESSION-DEBUG] Setting session data:`, {
           userId: user.id,
@@ -599,7 +598,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Create login notification with IP address
         const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-        await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
+        await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent ?? null);
         
         console.log(`✓ Direct login for ${user.email} - 2FA not enabled`);
         
@@ -669,7 +668,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           req.session.deviceInfo = deviceInfo;
           req.session.ipAddress = ipAddress;
-          req.session.createdAt = new Date().toISOString();
           
           // Set session duration (7 days)
           const sessionDuration = 7 * 24 * 60 * 60 * 1000;
@@ -686,7 +684,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Create login notification with IP address
           const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-          await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
+          await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent ?? null);
           
           console.log(`✓ Trusted device login for ${user.email} - skipping OTP`);
           
@@ -940,7 +938,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         email: adminData.email,
         firstName: adminData.firstName || '',
         lastName: adminData.lastName || '',
-        phone: adminData.phone || null,
+        phone: adminData.phone ?? null,
         role: 'admin',
         companyId: newCompany.id,
         status: 'pending_activation', // Account pending activation until user clicks email link
@@ -1551,7 +1549,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       req.session.deviceInfo = deviceInfo;
       req.session.ipAddress = ipAddress;
-      req.session.createdAt = new Date().toISOString();
 
       // Set session duration - always 7 days since we use trusted device tokens
       const sessionDuration = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -1593,7 +1590,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Create login notification with IP address (using already captured variables)
       const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-      await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent);
+      await notificationService.notifyLogin(user.id, userName, ipAddress, userAgent ?? null);
 
       // Force save session with new cookie settings
       req.session.save((err) => {
@@ -2390,15 +2387,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      // Convert dateOfBirth string to Date object if provided
+      // Convert dateOfBirth string to timestamp string if provided
       const dateOfBirth = userData.dateOfBirth 
-        ? new Date(userData.dateOfBirth) 
+        ? new Date(userData.dateOfBirth).toISOString() 
         : undefined;
 
       // Create user WITHOUT password (will be set during activation)
       const newUser = await storage.createUser({ 
         ...userData,
-        dateOfBirth, // Convert string to Date object
+        dateOfBirth, // Convert string to ISO timestamp
         password: undefined, // No password - user will set it during activation
         isActive: true,
         emailVerified: false,
@@ -2534,9 +2531,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      // Convert dateOfBirth string to Date object if provided
+      // Convert dateOfBirth string to ISO timestamp if provided
       if (validatedData.dateOfBirth && typeof validatedData.dateOfBirth === 'string') {
-        validatedData.dateOfBirth = new Date(validatedData.dateOfBirth);
+        validatedData.dateOfBirth = new Date(validatedData.dateOfBirth).toISOString();
       }
 
       console.log("About to update user with data:", validatedData);
@@ -4362,11 +4359,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         };
         
         // Only update dates if they have valid values
-        if (updatedSubscription.current_period_start) {
-          updateData.currentPeriodStart = toDate(updatedSubscription.current_period_start);
+        if (updatedSubscription.currentPeriodStart) {
+          updateData.currentPeriodStart = toDate(updatedSubscription.currentPeriodStart);
         }
-        if (updatedSubscription.current_period_end) {
-          updateData.currentPeriodEnd = toDate(updatedSubscription.current_period_end);
+        if (updatedSubscription.currentPeriodEnd) {
+          updateData.currentPeriodEnd = toDate(updatedSubscription.currentPeriodEnd);
         }
         
         // Clear trial dates since trial is skipped
@@ -4471,8 +4468,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Preserve trial dates from local subscription
         trialStart: subscription.trialStart,
         trialEnd: subscription.trialEnd,
-        currentPeriodStart: toDate(updatedStripeSubscription.current_period_start) || new Date(),
-        currentPeriodEnd: toDate(updatedStripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        currentPeriodStart: toDate(updatedStripeSubscription.currentPeriodStart) || new Date(),
+        currentPeriodEnd: toDate(updatedStripeSubscription.currentPeriodEnd) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
 
       const message = immediate 
@@ -4523,7 +4520,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Update local subscription
       await storage.updateSubscription(subscription.id, {
         cancelAtPeriodEnd: cancelAtPeriodEnd !== false,
-        cancelledAt: cancelAtPeriodEnd === false ? new Date() : null,
       });
 
       res.json({ 
@@ -4583,7 +4579,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Update local subscription
       await storage.updateSubscription(subscription.id, {
         cancelAtPeriodEnd: false,
-        cancelledAt: null,
       });
 
       res.json({ 
@@ -4761,8 +4756,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const { getSubscriptionDiscount } = await import("./stripe");
         const stripeDiscount = await getSubscriptionDiscount(subscription.stripeSubscriptionId);
 
-        if (stripeDiscount && stripeDiscount.coupon) {
-          const coupon = stripeDiscount.coupon as any;
+        if (stripeDiscount && (stripeDiscount as any).coupon) {
+          const coupon = (stripeDiscount as any).coupon;
           
           // Check if discount has expired
           const now = new Date();

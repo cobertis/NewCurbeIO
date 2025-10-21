@@ -32,6 +32,7 @@ import {
   SidebarMenuItem,
   SidebarFooter,
   SidebarHeader,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import type { User } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
@@ -147,6 +148,7 @@ const regularUserMenuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const [cachedLogo, setCachedLogo] = useState<string | null>(null);
+  const { isMobile, setOpenMobile } = useSidebar();
   
   const { data: userData } = useQuery<{ user: User & { companyName?: string } }>({
     queryKey: ["/api/session"],
@@ -182,6 +184,13 @@ export function AppSidebar() {
       setCachedLogo(null);
     }
   }, [companyData]);
+
+  // Close mobile sidebar when location changes
+  useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [location, isMobile, setOpenMobile]);
 
   const handleLogout = async () => {
     try {

@@ -57,6 +57,7 @@ export class LoggingService {
       | "login" 
       | "logout" 
       | "login_failed" 
+      | "login_no_2fa"
       | "login_credentials_verified"
       | "login_trusted_device"
       | "otp_sent" 
@@ -66,7 +67,8 @@ export class LoggingService {
       | "otp_resent"
       | "account_activated"
       | "password_reset_requested"
-      | "password_reset_completed";
+      | "password_reset_completed"
+      | "pii_reveal";
     userId?: string;
     email: string;
     metadata?: Record<string, any>;
