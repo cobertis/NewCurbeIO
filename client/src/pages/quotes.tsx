@@ -198,9 +198,9 @@ const familyMemberSchema = z.object({
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
   secondLastName: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  ssn: z.string().optional(),
-  gender: z.string().optional(),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  ssn: z.string().min(1, "SSN is required"),
+  gender: z.string().min(1, "Gender is required"),
   phone: z.string().optional(),
   email: z.string().optional(),
   isApplicant: z.boolean().default(false),
@@ -2249,7 +2249,7 @@ export default function QuotesPage() {
                               name={`spouses.${index}.dateOfBirth`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Date of Birth</FormLabel>
+                                  <FormLabel>Date of Birth *</FormLabel>
                                   <FormControl>
                                     <Input type="date" {...field} data-testid={`input-spouse-dob-${index}`} />
                                   </FormControl>
@@ -2263,7 +2263,7 @@ export default function QuotesPage() {
                               name={`spouses.${index}.ssn`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>SSN</FormLabel>
+                                  <FormLabel>SSN *</FormLabel>
                                   <FormControl>
                                     <Input 
                                       {...field}
@@ -2287,7 +2287,7 @@ export default function QuotesPage() {
                               name={`spouses.${index}.gender`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Gender</FormLabel>
+                                  <FormLabel>Gender *</FormLabel>
                                   <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                       <SelectTrigger data-testid={`select-spouse-gender-${index}`}>
@@ -2501,7 +2501,7 @@ export default function QuotesPage() {
                               name={`dependents.${index}.dateOfBirth`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Date of Birth</FormLabel>
+                                  <FormLabel>Date of Birth *</FormLabel>
                                   <FormControl>
                                     <Input type="date" {...field} data-testid={`input-dependent-dob-${index}`} />
                                   </FormControl>
@@ -2515,7 +2515,7 @@ export default function QuotesPage() {
                               name={`dependents.${index}.ssn`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>SSN</FormLabel>
+                                  <FormLabel>SSN *</FormLabel>
                                   <FormControl>
                                     <Input 
                                       {...field}
@@ -2539,7 +2539,7 @@ export default function QuotesPage() {
                               name={`dependents.${index}.gender`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Gender</FormLabel>
+                                  <FormLabel>Gender *</FormLabel>
                                   <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                       <SelectTrigger data-testid={`select-dependent-gender-${index}`}>
