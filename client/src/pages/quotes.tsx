@@ -567,21 +567,42 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       }}
     >
       <SheetContent 
-        className="w-full sm:max-w-2xl overflow-y-auto" 
+        className="w-full sm:max-w-2xl flex flex-col p-0" 
         side="right"
       >
-        <SheetHeader>
-          <SheetTitle>
-            Edit {memberType === 'primary' ? 'Primary Applicant' : memberType === 'spouse' ? 'Spouse' : 'Dependent'}
-          </SheetTitle>
-          <SheetDescription>
-            Update the information for this family member
-          </SheetDescription>
-        </SheetHeader>
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <SheetTitle>
+              Edit {memberType === 'primary' ? 'Primary Applicant' : memberType === 'spouse' ? 'Spouse' : 'Dependent'}
+            </SheetTitle>
+            <SheetDescription>
+              Update the information for this family member
+            </SheetDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isPending}
+              data-testid="button-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isPending}
+              data-testid="button-save"
+              onClick={editForm.handleSubmit(handleSave)}
+            >
+              {isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
         <Form {...editForm}>
-          <form onSubmit={editForm.handleSubmit(handleSave)} className="flex flex-col h-full">
+          <form onSubmit={editForm.handleSubmit(handleSave)} className="flex flex-col flex-1 min-h-0">
             <Tabs defaultValue="basic" className="flex-1 flex flex-col">
-              <TabsList className="grid w-full grid-cols-4 mb-4">
+              <TabsList className="grid w-full grid-cols-4 mb-4 mx-4 mt-4">
                 <TabsTrigger value="basic" className="text-xs">
                   <User className="h-4 w-4 mr-1" />
                   Basic Info
@@ -1006,7 +1027,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                             {...field}
                             value={field.value || ''}
                             onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
-                            placeholder="+1(999)999-9999"
+                            placeholder="(999) 999-9999"
                             data-testid="input-employer-phone"
                           />
                         </FormControl>
@@ -1307,25 +1328,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 </div>
               </TabsContent>
             </Tabs>
-
-            <div className="flex gap-2 justify-end pt-4 border-t mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isPending}
-                data-testid="button-cancel"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isPending}
-                data-testid="button-save"
-              >
-                {isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
           </form>
         </Form>
       </SheetContent>
