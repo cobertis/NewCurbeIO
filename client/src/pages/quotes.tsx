@@ -803,12 +803,12 @@ export default function QuotesPage() {
                           <User className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <label className="text-xs font-medium text-muted-foreground">Primary Holder</label>
+                          <label className="text-xs font-medium text-foreground/60">Primary Holder</label>
                           <p className="text-sm font-semibold mt-0.5">
                             {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                           </p>
                           <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="default" className="text-xs bg-blue-600 hover:bg-blue-700">
                               {viewingQuote.clientIsApplicant ? 'Self' : 'Not Applicant'}
                             </Badge>
                             {viewingQuote.clientTobaccoUser && (
@@ -823,7 +823,7 @@ export default function QuotesPage() {
                           <Mail className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <label className="text-xs font-medium text-muted-foreground">Email</label>
+                          <label className="text-xs font-medium text-foreground/60">Email</label>
                           <p className="text-sm mt-0.5">{viewingQuote.clientEmail}</p>
                         </div>
                       </div>
@@ -833,7 +833,7 @@ export default function QuotesPage() {
                           <Phone className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                          <label className="text-xs font-medium text-foreground/60">Phone</label>
                           <p className="text-sm mt-0.5">{viewingQuote.clientPhone}</p>
                         </div>
                       </div>
@@ -843,11 +843,11 @@ export default function QuotesPage() {
                           <Calendar className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <label className="text-xs font-medium text-muted-foreground">Date of Birth</label>
+                          <label className="text-xs font-medium text-foreground/60">Date of Birth</label>
                           <p className="text-sm mt-0.5">
                             {viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
                             {viewingQuote.clientDateOfBirth && (
-                              <span className="text-muted-foreground ml-2">
+                              <span className="text-foreground/60 ml-2">
                                 ({Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
                               </span>
                             )}
@@ -863,7 +863,7 @@ export default function QuotesPage() {
                           <IdCard className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <label className="text-xs font-medium text-muted-foreground">SSN</label>
+                          <label className="text-xs font-medium text-foreground/60">SSN</label>
                           <p className="text-sm mt-0.5 font-mono">
                             {viewingQuote.clientSsn ? '***-**-' + viewingQuote.clientSsn.slice(-4) : 'N/A'}
                           </p>
@@ -875,7 +875,7 @@ export default function QuotesPage() {
                           <User className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <label className="text-xs font-medium text-muted-foreground">Gender</label>
+                          <label className="text-xs font-medium text-foreground/60">Gender</label>
                           <p className="text-sm mt-0.5">
                             {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
                           </p>
@@ -887,7 +887,7 @@ export default function QuotesPage() {
                           <Home className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <label className="text-xs font-medium text-muted-foreground">Street Address</label>
+                          <label className="text-xs font-medium text-foreground/60">Street Address</label>
                           <p className="text-sm mt-0.5">
                             {viewingQuote.street}
                             {viewingQuote.addressLine2 && <span>, {viewingQuote.addressLine2}</span>}
@@ -900,11 +900,11 @@ export default function QuotesPage() {
                           <MapPin className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <label className="text-xs font-medium text-muted-foreground">Location</label>
+                          <label className="text-xs font-medium text-foreground/60">Location</label>
                           <p className="text-sm mt-0.5">
                             {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
                             {viewingQuote.county && (
-                              <span className="block text-xs text-muted-foreground mt-0.5">{viewingQuote.county} County</span>
+                              <span className="block text-xs text-foreground/60 mt-0.5">{viewingQuote.county} County</span>
                             )}
                           </p>
                         </div>
@@ -920,13 +920,13 @@ export default function QuotesPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 bg-muted rounded">
-                        <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                        <DollarSign className="h-3.5 w-3.5 text-foreground/60" />
                       </div>
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Monthly Premium</CardTitle>
+                      <CardTitle className="text-xs font-medium text-foreground/70">Monthly Premium</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-lg font-semibold text-muted-foreground">Pending</p>
+                    <p className="text-lg font-semibold text-foreground/60">Pending</p>
                   </CardContent>
                 </Card>
 
@@ -934,13 +934,13 @@ export default function QuotesPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 bg-muted rounded">
-                        <PiggyBank className="h-3.5 w-3.5 text-muted-foreground" />
+                        <PiggyBank className="h-3.5 w-3.5 text-foreground/60" />
                       </div>
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Savings Total</CardTitle>
+                      <CardTitle className="text-xs font-medium text-foreground/70">Savings Total</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-lg font-semibold text-muted-foreground">Pending</p>
+                    <p className="text-lg font-semibold text-foreground/60">Pending</p>
                   </CardContent>
                 </Card>
 
@@ -948,13 +948,13 @@ export default function QuotesPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 bg-muted rounded">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <FileText className="h-3.5 w-3.5 text-foreground/60" />
                       </div>
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Original Cost</CardTitle>
+                      <CardTitle className="text-xs font-medium text-foreground/70">Original Cost</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-lg font-semibold text-muted-foreground">Pending</p>
+                    <p className="text-lg font-semibold text-foreground/60">Pending</p>
                   </CardContent>
                 </Card>
               </div>
