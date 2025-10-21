@@ -1538,7 +1538,7 @@ export default function QuotesPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Annual income</span>
-                  <span className="text-xs">$0.00</span>
+                  <span className="text-xs">{viewingQuote.annualHouseholdIncome || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Member ID</span>
