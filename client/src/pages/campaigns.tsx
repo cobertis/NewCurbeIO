@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { HtmlEditor } from "@/components/html-editor";
 import { formatPhoneDisplay } from "@/lib/phone-formatter";
+import { useTabsState } from "@/hooks/use-tabs-state";
 
 interface EmailCampaign {
   id: string;
@@ -105,7 +106,7 @@ export default function Campaigns() {
   const [campaignToSend, setCampaignToSend] = useState<EmailCampaign | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<EmailCampaign | null>(null);
-  const [activeTab, setActiveTab] = useState("reports");
+  const [activeTab, setActiveTab] = useTabsState(["reports", "campaigns", "sms", "lists"], "reports");
   const [createListOpen, setCreateListOpen] = useState(false);
   const [editListOpen, setEditListOpen] = useState(false);
   const [editingList, setEditingList] = useState<ContactList | null>(null);
