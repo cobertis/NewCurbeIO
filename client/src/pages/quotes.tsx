@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow, format, startOfMonth, addMonths } from "date-fns";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
+import { useTabsState } from "@/hooks/use-tabs-state";
 
 // Type definitions for spouse and dependent objects (matching zod schemas in shared/schema.ts)
 type Spouse = {
@@ -371,6 +372,7 @@ interface EditMemberSheetProps {
 
 function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending, onMemberChange }: EditMemberSheetProps) {
   const { toast } = useToast();
+  const [memberTab, setMemberTab] = useTabsState(["basic", "income", "immigration", "documents"], "basic");
   const editMemberSchema = memberType === 'dependent'
     ? dependentSchema
     : familyMemberSchema;
@@ -832,7 +834,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         </div>
         <Form {...editForm}>
           <form onSubmit={editForm.handleSubmit(handleSave)} className="flex flex-col flex-1 min-h-0">
-            <Tabs defaultValue="basic" className="flex-1 flex flex-col">
+            <Tabs value={memberTab} onValueChange={setMemberTab} className="flex-1 flex flex-col">
               <TabsList className="grid w-full grid-cols-4 mb-4 mx-4 mt-4">
                 <TabsTrigger value="basic" className="text-xs">
                   <User className="h-4 w-4 mr-1" />

@@ -21,6 +21,7 @@ import { z } from "zod";
 import { formatPhoneInput, formatPhoneE164 } from "@/lib/phone-formatter";
 import { useState } from "react";
 import { CompanyBillingTab } from "@/components/company-billing-tab";
+import { useTabsState } from "@/hooks/use-tabs-state";
 
 const userFormSchema = insertUserSchema.omit({ password: true }).extend({
   role: z.enum(["admin", "member", "viewer"]),
@@ -39,6 +40,7 @@ export default function CompanyDetail() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useTabsState(["overview", "billing"], "overview");
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [assignPlanOpen, setAssignPlanOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
@@ -219,7 +221,7 @@ export default function CompanyDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList data-testid="tabs-company-details">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <LayoutDashboard className="h-4 w-4 mr-2" />
