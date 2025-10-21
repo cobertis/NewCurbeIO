@@ -805,11 +805,9 @@ export default function QuotesPage() {
                   control={editForm.control}
                   name="ssn"
                   render={({ field }) => {
-                    const displayValue = showEditSsn 
-                      ? field.value || ''
-                      : field.value 
-                        ? '***-**-' + field.value.slice(-4)
-                        : '';
+                    const full = field.value ?? "";
+                    const last4 = full.replace(/\D/g, "").slice(-4);
+                    const display = showEditSsn ? full : (full ? `***-**-${last4}` : "");
                     
                     return (
                       <FormItem>
@@ -817,23 +815,26 @@ export default function QuotesPage() {
                         <FormControl>
                           <div className="relative">
                             <Input
-                              value={displayValue}
+                              value={display}
                               onChange={(e) => {
                                 if (showEditSsn) {
                                   field.onChange(formatSSN(e.target.value));
                                 }
                               }}
                               onFocus={() => setShowEditSsn(true)}
-                              data-testid="input-ssn"
                               className="pr-10"
+                              autoComplete="off"
+                              data-testid="input-ssn"
                             />
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
-                              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                              size="icon"
+                              onMouseDown={(e) => e.preventDefault()}
                               onClick={() => setShowEditSsn(!showEditSsn)}
-                              data-testid="button-toggle-edit-ssn"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                              aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
+                              data-testid="button-ssn-visibility"
                             >
                               {showEditSsn ? (
                                 <EyeOff className="h-4 w-4 text-muted-foreground" />
