@@ -879,25 +879,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 </span>
               </SheetDescription>
             </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isPending}
-                data-testid="button-cancel"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                disabled={isPending}
-                data-testid="button-save"
-                onClick={editForm.handleSubmit(handleSave)}
-              >
-                {isPending ? 'Saving...' : 'Save'}
-              </Button>
-            </div>
+            <Button
+              type="button"
+              disabled={isPending}
+              data-testid="button-save"
+              onClick={editForm.handleSubmit(handleSave)}
+            >
+              {isPending ? 'Saving...' : 'Save'}
+            </Button>
           </div>
 
           {/* Navigation buttons */}
