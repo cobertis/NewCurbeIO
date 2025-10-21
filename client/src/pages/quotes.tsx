@@ -481,6 +481,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   }, [open, memberType, memberIndex, memberData, editForm])
 
   const handleSave = async (data: z.infer<typeof editMemberSchema>) => {
+    console.log('[EditMemberSheet] handleSave called with data:', data);
+    console.log('[EditMemberSheet] Form errors:', editForm.formState.errors);
+    
     // Close any open popovers
     setCountryPopoverOpen(false);
     
