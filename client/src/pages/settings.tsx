@@ -28,6 +28,8 @@ import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/pho
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
+import { useTabsState } from "@/hooks/use-tabs-state";
+import { useMemo } from "react";
 
 // Business categories
 const categories = [
@@ -442,7 +444,16 @@ export default function Settings() {
     return "profile"; // default
   };
 
-  const activeTab = getCurrentTab();
+  // Calculate available tabs based on user role
+  const availableTabs = useMemo(() => {
+    const baseTabs = ["profile", "security", "preferences", "notifications"];
+    if (isAdmin) {
+      return ["profile", "company", "team", "security", "preferences", "notifications"];
+    }
+    return baseTabs;
+  }, [isAdmin]);
+
+  const [activeTab, setActiveTab] = useTabsState(availableTabs, getCurrentTab());
 
   // Profile form state (personal information only)
   const [profileForm, setProfileForm] = useState({
@@ -1416,7 +1427,7 @@ export default function Settings() {
 
         {/* Right Column - Settings Tabs */}
         <div className="lg:col-span-8 xl:col-span-9">
-          <Tabs value={activeTab} onValueChange={(value) => setLocation(`/settings/${value}`)} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setLocation(`/settings/${value}`); }} className="space-y-6">
             <TabsList className="inline-flex h-auto flex-wrap w-full lg:w-auto">
               <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
                 <UserIcon className="h-4 w-4" />
