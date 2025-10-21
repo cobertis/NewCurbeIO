@@ -1441,6 +1441,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                         }
                       };
                       
+                      // Format number with commas for display
+                      const formatNumberWithCommas = (value: string) => {
+                        if (!value) return '';
+                        const num = parseFloat(value);
+                        if (isNaN(num)) return value;
+                        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      };
+                      
                       const annualAmount = calculateAnnualIncome(field.value || '0');
                       const showAnnualEquivalent = field.value && parseFloat(field.value) > 0 && frequency !== 'annually';
                       
@@ -1451,11 +1459,11 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                               <Input 
-                                {...field}
                                 type="text"
                                 placeholder="0.00" 
                                 data-testid="input-income-amount"
                                 className="pl-7 bg-background"
+                                value={formatNumberWithCommas(field.value)}
                                 onChange={(e) => {
                                   let value = e.target.value;
                                   // Remove all non-numeric characters except decimal point
@@ -1476,6 +1484,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                                 }}
                                 onBlur={(e) => {
                                   let value = e.target.value;
+                                  // Remove commas before parsing
+                                  value = value.replace(/,/g, '');
                                   if (value && value !== '') {
                                     const num = parseFloat(value);
                                     if (!isNaN(num)) {
