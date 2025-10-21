@@ -767,7 +767,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 Cancel
               </Button>
               <Button
-                type="submit"
+                type="button"
                 disabled={isPending}
                 data-testid="button-save"
                 onClick={editForm.handleSubmit(handleSave)}
