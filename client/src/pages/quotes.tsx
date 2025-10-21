@@ -2979,12 +2979,24 @@ export default function QuotesPage() {
                         </div>
                         <div className="flex-1">
                           <label className="text-xs font-medium text-foreground/60">Date of Birth</label>
-                          <p className="text-sm mt-0.5">
-                            {viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
+                          <p className="text-sm mt-0.5 flex items-center gap-1.5">
+                            <span>
+                              {viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
+                              {viewingQuote.clientDateOfBirth && (
+                                <span className="text-foreground/60 ml-2">
+                                  ({Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
+                                </span>
+                              )}
+                            </span>
                             {viewingQuote.clientDateOfBirth && (
-                              <span className="text-foreground/60 ml-2">
-                                ({Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
-                              </span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{format(new Date(viewingQuote.clientDateOfBirth), "MMMM dd, yyyy")}</p>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </p>
                         </div>
@@ -3199,8 +3211,18 @@ export default function QuotesPage() {
                             )}
                           </div>
                         </div>
-                        <div className="md:col-span-2 text-xs text-muted-foreground">
-                          {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'} • {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs
+                        <div className="md:col-span-2 text-xs text-muted-foreground flex items-center gap-1">
+                          <span>{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'} • {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
+                          {viewingQuote.clientDateOfBirth && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{format(new Date(viewingQuote.clientDateOfBirth), "MMMM dd, yyyy")}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                         <div className="md:col-span-3 text-xs text-muted-foreground truncate">
                           {viewingQuote.clientPhone && (
@@ -3252,8 +3274,18 @@ export default function QuotesPage() {
                               )}
                             </div>
                           </div>
-                          <div className="md:col-span-2 text-xs text-muted-foreground">
-                            {spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'} • {spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs
+                          <div className="md:col-span-2 text-xs text-muted-foreground flex items-center gap-1">
+                            <span>{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'} • {spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
+                            {spouse.dateOfBirth && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{format(new Date(spouse.dateOfBirth), "MMMM dd, yyyy")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
                           <div className="md:col-span-3 text-xs text-muted-foreground truncate">
                             {spouse.phone && (
@@ -3306,8 +3338,18 @@ export default function QuotesPage() {
                               )}
                             </div>
                           </div>
-                          <div className="md:col-span-2 text-xs text-muted-foreground">
-                            {dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'} • {dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs
+                          <div className="md:col-span-2 text-xs text-muted-foreground flex items-center gap-1">
+                            <span>{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'} • {dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
+                            {dependent.dateOfBirth && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{format(new Date(dependent.dateOfBirth), "MMMM dd, yyyy")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
                           <div className="md:col-span-3 text-xs text-muted-foreground truncate">
                             {dependent.phone && (
