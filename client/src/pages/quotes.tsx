@@ -1832,6 +1832,7 @@ export default function QuotesPage() {
   
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
+  const [addingMember, setAddingMember] = useState(false);
   const [editingAddresses, setEditingAddresses] = useState(false);
   const [editingPayment, setEditingPayment] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
@@ -2710,6 +2711,460 @@ export default function QuotesPage() {
     );
   }
 
+  // Add Member Sheet Component
+  function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
+    const { toast } = useToast();
+    
+    const addMemberSchema = z.object({
+      isApplicant: z.boolean().default(false),
+      preferredLanguage: z.string().optional(),
+      relation: z.string().min(1, "Relation is required"),
+      firstName: z.string().min(1, "First name is required"),
+      middleName: z.string().optional(),
+      lastName: z.string().min(1, "Last name is required"),
+      secondLastName: z.string().optional(),
+      countryOfBirth: z.string().optional(),
+      maritalStatus: z.string().optional(),
+      dateOfBirth: z.string().min(1, "Date of birth is required"),
+      gender: z.string().optional(),
+      email: z.string().email("Invalid email").optional().or(z.literal('')),
+      phone: z.string().optional(),
+      weight: z.string().optional(),
+      height: z.string().optional(),
+      tobaccoUser: z.boolean().default(false),
+    });
+
+    const addMemberForm = useForm({
+      resolver: zodResolver(addMemberSchema),
+      defaultValues: {
+        isApplicant: false,
+        preferredLanguage: '',
+        relation: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        secondLastName: '',
+        countryOfBirth: '',
+        maritalStatus: '',
+        dateOfBirth: '',
+        gender: '',
+        email: '',
+        phone: '',
+        weight: '',
+        height: '',
+        tobaccoUser: false,
+      },
+    });
+
+    // Reset form when sheet opens
+    useEffect(() => {
+      if (open) {
+        addMemberForm.reset();
+      }
+    }, [open]);
+
+    const handleSave = async (data: any) => {
+      try {
+        console.log('[AddMemberSheet] Creating new member:', data);
+        
+        // Call API to create member
+        const response = await fetch(`/api/quotes/${quote.id}/members`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            role: data.relation,
+            memberData: {
+              firstName: data.firstName,
+              middleName: data.middleName || null,
+              lastName: data.lastName,
+              secondLastName: data.secondLastName || null,
+              dateOfBirth: data.dateOfBirth,
+              gender: data.gender || null,
+              email: data.email || null,
+              phone: data.phone || null,
+              ssn: null,
+              isApplicant: data.isApplicant,
+              weight: data.weight || null,
+              height: data.height || null,
+              tobaccoUser: data.tobaccoUser,
+              preferredLanguage: data.preferredLanguage || null,
+              countryOfBirth: data.countryOfBirth || null,
+              maritalStatus: data.maritalStatus || null,
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to create member');
+        }
+
+        const result = await response.json();
+        console.log('[AddMemberSheet] Member created:', result);
+
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members'] });
+
+        toast({
+          title: "Success",
+          description: "Family member added successfully",
+        });
+
+        onOpenChange(false);
+      } catch (error: any) {
+        console.error('[AddMemberSheet] Error creating member:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message || "Failed to add family member",
+        });
+      }
+    };
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>Add family member</SheetTitle>
+          </SheetHeader>
+          <Form {...addMemberForm}>
+            <form onSubmit={addMemberForm.handleSubmit(handleSave)} className="space-y-4 py-6">
+              {/* Is Applicant Toggle */}
+              <FormField
+                control={addMemberForm.control}
+                name="isApplicant"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between">
+                    <FormLabel>Is this member an applicant?</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">No</span>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-is-applicant"
+                        />
+                        <span className="text-xs">Yes</span>
+                      </div>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {/* Preferred Language */}
+              <FormField
+                control={addMemberForm.control}
+                name="preferredLanguage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preferred language</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-preferred-language">
+                          <SelectValue placeholder="Select preferred language" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="english">English</SelectItem>
+                        <SelectItem value="spanish">Spanish</SelectItem>
+                        <SelectItem value="french">French</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Relation with Primary */}
+              <FormField
+                control={addMemberForm.control}
+                name="relation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Relation with primary <span className="text-destructive">*</span></FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-relation">
+                          <SelectValue placeholder="Select relation with primary" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="spouse">Spouse</SelectItem>
+                        <SelectItem value="child">Child</SelectItem>
+                        <SelectItem value="parent">Parent</SelectItem>
+                        <SelectItem value="sibling">Sibling</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* First and Middle Name Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={addMemberForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First name <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter first name" data-testid="input-first-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addMemberForm.control}
+                  name="middleName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Middle name</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter middle name" data-testid="input-middle-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Last Name and Second Last Name Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={addMemberForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last name <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter last name" data-testid="input-last-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addMemberForm.control}
+                  name="secondLastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Second last name</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter second last name" data-testid="input-second-last-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Country of Birth and Marital Status Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={addMemberForm.control}
+                  name="countryOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country of birth</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-country-of-birth">
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="usa">United States</SelectItem>
+                          <SelectItem value="mexico">Mexico</SelectItem>
+                          <SelectItem value="canada">Canada</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addMemberForm.control}
+                  name="maritalStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Marital status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-marital-status">
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="single">Single</SelectItem>
+                          <SelectItem value="married">Married</SelectItem>
+                          <SelectItem value="divorced">Divorced</SelectItem>
+                          <SelectItem value="widowed">Widowed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Date of Birth and Gender Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={addMemberForm.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of birth <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="date"
+                          data-testid="input-date-of-birth"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addMemberForm.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-gender">
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Email */}
+              <FormField
+                control={addMemberForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="Enter an email address" data-testid="input-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Phone */}
+              <FormField
+                control={addMemberForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="+1(999)999-9999" data-testid="input-phone" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Weight and Height Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={addMemberForm.control}
+                  name="weight"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Weight (Lbs)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter weight" data-testid="input-weight" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addMemberForm.control}
+                  name="height"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Height (Ft)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter height" data-testid="input-height" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Tobacco User Toggle */}
+              <FormField
+                control={addMemberForm.control}
+                name="tobaccoUser"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between">
+                    <FormLabel>Tobacco user</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">No</span>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-tobacco-user"
+                        />
+                        <span className="text-xs">Yes</span>
+                      </div>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {/* Buttons */}
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isPending}
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  data-testid="button-save"
+                >
+                  {isPending ? 'Adding...' : 'Add Member'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   // If viewing a specific quote, show modern dashboard
   if (isViewingQuote) {
     // Show loading state while fetching quotes
@@ -3320,7 +3775,12 @@ export default function QuotesPage() {
                       </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="outline" data-testid="button-add-member">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setAddingMember(true)}
+                    data-testid="button-add-member"
+                  >
                     <Plus className="h-4 w-4 mr-1" />
                     Add Member
                   </Button>
@@ -3755,6 +4215,13 @@ export default function QuotesPage() {
                 });
               }}
               isPending={updateQuoteMutation.isPending}
+            />
+
+            <AddMemberSheet
+              open={addingMember}
+              onOpenChange={setAddingMember}
+              quote={viewingQuote}
+              isPending={false}
             />
       </div>
     );
