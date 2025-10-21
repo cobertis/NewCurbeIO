@@ -1446,7 +1446,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     control={editForm.control}
                     name="annualIncome"
                     render={({ field }) => {
-                      const [isFocused, setIsFocused] = React.useState(false);
+                      const [isFocused, setIsFocused] = useState(false);
                       const frequency = editForm.watch('incomeFrequency') || 'annually';
                       const frequencyLabel = frequency === 'annually' ? 'Annual' : frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Biweekly' : 'Monthly';
                       
