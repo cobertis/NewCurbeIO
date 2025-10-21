@@ -812,8 +812,8 @@ export default function QuotesPage() {
                     return (
                       <FormItem>
                         <FormLabel>SSN *</FormLabel>
-                        <FormControl>
-                          <div className="relative">
+                        <div className="relative">
+                          <FormControl>
                             <Input
                               value={display}
                               onChange={(e) => {
@@ -826,24 +826,24 @@ export default function QuotesPage() {
                               autoComplete="off"
                               data-testid="input-ssn"
                             />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => setShowEditSsn(!showEditSsn)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
-                              aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
-                              data-testid="button-ssn-visibility"
-                            >
-                              {showEditSsn ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </Button>
-                          </div>
-                        </FormControl>
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => setShowEditSsn(!showEditSsn)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                            aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
+                            data-testid="button-ssn-visibility"
+                          >
+                            {showEditSsn ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     );
