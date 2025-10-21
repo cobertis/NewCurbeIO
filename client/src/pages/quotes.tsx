@@ -1823,6 +1823,7 @@ export default function QuotesPage() {
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [showSsn, setShowSsn] = useState(false);
+  const [revealedClientSsn, setRevealedClientSsn] = useState<string | null>(null);
   
   // SSN visibility states for wizard
   const [showClientSsn, setShowClientSsn] = useState(false);
@@ -1906,6 +1907,12 @@ export default function QuotesPage() {
       form.setValue("agentId", userData.user.id);
     }
   }, [userData?.user?.id, form]);
+
+  // Reset SSN reveal state when changing quotes
+  useEffect(() => {
+    setShowSsn(false);
+    setRevealedClientSsn(null);
+  }, [params?.id]);
 
   const { fields: spouseFields, append: appendSpouse, remove: removeSpouse } = useFieldArray({
     control: form.control,
@@ -2752,6 +2759,38 @@ export default function QuotesPage() {
         }).format(totalHouseholdIncome)
       : '-';
 
+    // Handle revealing SSN in header
+    const handleToggleSsnInHeader = async () => {
+      if (!showSsn && !revealedClientSsn && viewingQuote.clientSsn) {
+        // Need to fetch full SSN from backend
+        try {
+          const response = await fetch(`/api/quotes/${viewingQuote.id}?reveal=true`, {
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch revealed SSN');
+          }
+          
+          const data = await response.json();
+          if (data.quote.clientSsn) {
+            setRevealedClientSsn(data.quote.clientSsn);
+            setShowSsn(true);
+          }
+        } catch (error) {
+          console.error('[SSN Header] Failed to reveal SSN:', error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to reveal SSN. Please try again.",
+          });
+        }
+      } else {
+        // Toggle visibility
+        setShowSsn(prev => !prev);
+      }
+    };
+
     return (
       <div className="h-full overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full">
@@ -2887,7 +2926,7 @@ export default function QuotesPage() {
                             <span className="flex items-center gap-1.5">
                               <IdCard className="h-3 w-3" />
                               {viewingQuote.clientSsn 
-                                ? (showSsn ? viewingQuote.clientSsn : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
+                                ? (showSsn && revealedClientSsn ? revealedClientSsn : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
                                 : 'N/A'}
                             </span>
                             {viewingQuote.clientSsn && (
@@ -2895,7 +2934,7 @@ export default function QuotesPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 w-7 p-0 -ml-1"
-                                onClick={() => setShowSsn(!showSsn)}
+                                onClick={handleToggleSsnInHeader}
                                 data-testid="button-toggle-ssn-header"
                               >
                                 {showSsn ? (
