@@ -569,9 +569,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       <SheetContent 
         className="w-full sm:max-w-2xl overflow-y-auto" 
         side="right"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <SheetHeader>
           <SheetTitle>
