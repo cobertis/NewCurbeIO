@@ -70,7 +70,18 @@ import {
   type FinancialSupportTicket,
   type InsertFinancialSupportTicket,
   type Quote,
-  type InsertQuote
+  type InsertQuote,
+  type QuoteMember,
+  type InsertQuoteMember,
+  type UpdateQuoteMember,
+  type QuoteMemberIncome,
+  type InsertQuoteMemberIncome,
+  type UpdateQuoteMemberIncome,
+  type QuoteMemberImmigration,
+  type InsertQuoteMemberImmigration,
+  type UpdateQuoteMemberImmigration,
+  type QuoteMemberDocument,
+  type InsertQuoteMemberDocument
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -109,7 +120,11 @@ import {
   smsChatNotes,
   subscriptionDiscounts,
   financialSupportTickets,
-  quotes
+  quotes,
+  quoteMembers,
+  quoteMemberIncome,
+  quoteMemberImmigration,
+  quoteMemberDocuments
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -417,6 +432,29 @@ export interface IStorage {
   }>>;
   updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined>;
   deleteQuote(id: string): Promise<boolean>;
+  
+  // Quote Members
+  getQuoteMembersByQuoteId(quoteId: string, companyId: string): Promise<QuoteMember[]>;
+  getQuoteMemberById(memberId: string, companyId: string): Promise<QuoteMember | null>;
+  createQuoteMember(data: InsertQuoteMember): Promise<QuoteMember>;
+  updateQuoteMember(memberId: string, data: UpdateQuoteMember, companyId: string): Promise<QuoteMember | null>;
+  deleteQuoteMember(memberId: string, companyId: string): Promise<boolean>;
+  
+  // Quote Member Income
+  getQuoteMemberIncome(memberId: string, companyId: string): Promise<QuoteMemberIncome | null>;
+  createOrUpdateQuoteMemberIncome(data: InsertQuoteMemberIncome): Promise<QuoteMemberIncome>;
+  deleteQuoteMemberIncome(memberId: string, companyId: string): Promise<boolean>;
+  
+  // Quote Member Immigration
+  getQuoteMemberImmigration(memberId: string, companyId: string): Promise<QuoteMemberImmigration | null>;
+  createOrUpdateQuoteMemberImmigration(data: InsertQuoteMemberImmigration): Promise<QuoteMemberImmigration>;
+  deleteQuoteMemberImmigration(memberId: string, companyId: string): Promise<boolean>;
+  
+  // Quote Member Documents
+  getQuoteMemberDocuments(memberId: string, companyId: string): Promise<QuoteMemberDocument[]>;
+  getQuoteMemberDocumentById(documentId: string, companyId: string): Promise<QuoteMemberDocument | null>;
+  createQuoteMemberDocument(data: InsertQuoteMemberDocument): Promise<QuoteMemberDocument>;
+  deleteQuoteMemberDocument(documentId: string, companyId: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -2577,6 +2615,207 @@ export class DbStorage implements IStorage {
     const result = await db
       .delete(quotes)
       .where(eq(quotes.id, id))
+      .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== QUOTE MEMBERS ====================
+  
+  async getQuoteMembersByQuoteId(quoteId: string, companyId: string): Promise<QuoteMember[]> {
+    return db
+      .select()
+      .from(quoteMembers)
+      .where(
+        and(
+          eq(quoteMembers.quoteId, quoteId),
+          eq(quoteMembers.companyId, companyId)
+        )
+      )
+      .orderBy(quoteMembers.createdAt);
+  }
+  
+  async getQuoteMemberById(memberId: string, companyId: string): Promise<QuoteMember | null> {
+    const [member] = await db
+      .select()
+      .from(quoteMembers)
+      .where(
+        and(
+          eq(quoteMembers.id, memberId),
+          eq(quoteMembers.companyId, companyId)
+        )
+      );
+    return member || null;
+  }
+  
+  async createQuoteMember(data: InsertQuoteMember): Promise<QuoteMember> {
+    const [member] = await db
+      .insert(quoteMembers)
+      .values(data)
+      .returning();
+    return member;
+  }
+  
+  async updateQuoteMember(memberId: string, data: UpdateQuoteMember, companyId: string): Promise<QuoteMember | null> {
+    const [updated] = await db
+      .update(quoteMembers)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(quoteMembers.id, memberId),
+          eq(quoteMembers.companyId, companyId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+  
+  async deleteQuoteMember(memberId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(quoteMembers)
+      .where(
+        and(
+          eq(quoteMembers.id, memberId),
+          eq(quoteMembers.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== QUOTE MEMBER INCOME ====================
+  
+  async getQuoteMemberIncome(memberId: string, companyId: string): Promise<QuoteMemberIncome | null> {
+    const [income] = await db
+      .select()
+      .from(quoteMemberIncome)
+      .where(
+        and(
+          eq(quoteMemberIncome.memberId, memberId),
+          eq(quoteMemberIncome.companyId, companyId)
+        )
+      );
+    return income || null;
+  }
+  
+  async createOrUpdateQuoteMemberIncome(data: InsertQuoteMemberIncome): Promise<QuoteMemberIncome> {
+    const [result] = await db
+      .insert(quoteMemberIncome)
+      .values(data)
+      .onConflictDoUpdate({
+        target: quoteMemberIncome.memberId,
+        set: {
+          ...data,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+  
+  async deleteQuoteMemberIncome(memberId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(quoteMemberIncome)
+      .where(
+        and(
+          eq(quoteMemberIncome.memberId, memberId),
+          eq(quoteMemberIncome.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== QUOTE MEMBER IMMIGRATION ====================
+  
+  async getQuoteMemberImmigration(memberId: string, companyId: string): Promise<QuoteMemberImmigration | null> {
+    const [immigration] = await db
+      .select()
+      .from(quoteMemberImmigration)
+      .where(
+        and(
+          eq(quoteMemberImmigration.memberId, memberId),
+          eq(quoteMemberImmigration.companyId, companyId)
+        )
+      );
+    return immigration || null;
+  }
+  
+  async createOrUpdateQuoteMemberImmigration(data: InsertQuoteMemberImmigration): Promise<QuoteMemberImmigration> {
+    const [result] = await db
+      .insert(quoteMemberImmigration)
+      .values(data)
+      .onConflictDoUpdate({
+        target: quoteMemberImmigration.memberId,
+        set: {
+          ...data,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+  
+  async deleteQuoteMemberImmigration(memberId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(quoteMemberImmigration)
+      .where(
+        and(
+          eq(quoteMemberImmigration.memberId, memberId),
+          eq(quoteMemberImmigration.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== QUOTE MEMBER DOCUMENTS ====================
+  
+  async getQuoteMemberDocuments(memberId: string, companyId: string): Promise<QuoteMemberDocument[]> {
+    return db
+      .select()
+      .from(quoteMemberDocuments)
+      .where(
+        and(
+          eq(quoteMemberDocuments.memberId, memberId),
+          eq(quoteMemberDocuments.companyId, companyId)
+        )
+      )
+      .orderBy(quoteMemberDocuments.uploadedAt);
+  }
+  
+  async getQuoteMemberDocumentById(documentId: string, companyId: string): Promise<QuoteMemberDocument | null> {
+    const [document] = await db
+      .select()
+      .from(quoteMemberDocuments)
+      .where(
+        and(
+          eq(quoteMemberDocuments.id, documentId),
+          eq(quoteMemberDocuments.companyId, companyId)
+        )
+      );
+    return document || null;
+  }
+  
+  async createQuoteMemberDocument(data: InsertQuoteMemberDocument): Promise<QuoteMemberDocument> {
+    const [document] = await db
+      .insert(quoteMemberDocuments)
+      .values(data)
+      .returning();
+    return document;
+  }
+  
+  async deleteQuoteMemberDocument(documentId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(quoteMemberDocuments)
+      .where(
+        and(
+          eq(quoteMemberDocuments.id, documentId),
+          eq(quoteMemberDocuments.companyId, companyId)
+        )
+      )
       .returning();
     return result.length > 0;
   }

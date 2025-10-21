@@ -26,9 +26,24 @@ import {
   updateFeatureSchema,
   insertFinancialSupportTicketSchema,
   insertQuoteSchema,
-  updateQuoteSchema
+  updateQuoteSchema,
+  insertQuoteMemberSchema,
+  updateQuoteMemberSchema,
+  insertQuoteMemberIncomeSchema,
+  updateQuoteMemberIncomeSchema,
+  insertQuoteMemberImmigrationSchema,
+  updateQuoteMemberImmigrationSchema,
+  insertQuoteMemberDocumentSchema
 } from "@shared/schema";
+import { encrypt, decrypt, maskSSN, maskIncome, maskDocumentNumber } from "./crypto";
+import path from "path";
+import fs from "fs";
+import crypto from "crypto";
 import "./types";
+
+// Security constants for document uploads
+const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize logging service
@@ -8067,6 +8082,984 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting quote:", error);
       res.status(500).json({ message: "Failed to delete quote" });
+    }
+  });
+
+  // ==================== QUOTE MEMBERS ====================
+  
+  // Get all members for a quote
+  app.get("/api/quotes/:quoteId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
+      
+      // Check if user is superadmin requesting unmasked PII
+      const reveal = req.query.reveal === 'true' && currentUser.role === 'superadmin';
+      
+      // Process sensitive fields - mask PII by default, decrypt only for superadmin with reveal=true
+      const processedMembers = members.map(m => ({
+        ...m,
+        ssn: reveal ? (m.ssn ? decrypt(m.ssn) : null) : maskSSN(m.ssn, true),
+      }));
+      
+      // Audit log when superadmin reveals PII
+      if (reveal) {
+        await logger.logAuth({
+          req,
+          action: "pii_reveal",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "quote_members",
+            quoteId,
+            fields: ["ssn"],
+          },
+        });
+      }
+      
+      res.json({ members: processedMembers });
+    } catch (error: any) {
+      console.error("Error getting quote members:", error);
+      res.status(500).json({ message: "Failed to get quote members" });
+    }
+  });
+  
+  // Get single member by ID
+  app.get("/api/quotes/:quoteId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, memberId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const member = await storage.getQuoteMemberById(memberId, quote.companyId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Verify member belongs to this quote
+      if (member.quoteId !== quoteId) {
+        return res.status(404).json({ message: "Member not found in this quote" });
+      }
+      
+      // Check if user is superadmin requesting unmasked PII
+      const reveal = req.query.reveal === 'true' && currentUser.role === 'superadmin';
+      
+      // Process sensitive fields - mask PII by default, decrypt only for superadmin with reveal=true
+      const processedMember = {
+        ...member,
+        ssn: reveal ? (member.ssn ? decrypt(member.ssn) : null) : maskSSN(member.ssn, true),
+      };
+      
+      // Audit log when superadmin reveals PII
+      if (reveal) {
+        await logger.logAuth({
+          req,
+          action: "pii_reveal",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "quote_member",
+            memberId,
+            quoteId,
+            fields: ["ssn"],
+          },
+        });
+      }
+      
+      res.json({ member: processedMember });
+    } catch (error: any) {
+      console.error("Error getting quote member:", error);
+      res.status(500).json({ message: "Failed to get quote member" });
+    }
+  });
+  
+  // Create new member
+  app.post("/api/quotes/:quoteId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body
+      const validatedData = insertQuoteMemberSchema.parse({
+        ...req.body,
+        quoteId,
+      });
+      
+      // Encrypt sensitive fields before saving
+      const dataToSave = {
+        ...validatedData,
+        ssn: validatedData.ssn ? encrypt(validatedData.ssn) : null,
+      };
+      
+      const member = await storage.createQuoteMember(dataToSave);
+      
+      // Decrypt for response
+      const decryptedMember = {
+        ...member,
+        ssn: member.ssn ? decrypt(member.ssn) : null,
+      };
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_member",
+        entityId: member.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          createdBy: currentUser.email,
+        },
+      });
+      
+      res.status(201).json({ member: decryptedMember });
+    } catch (error: any) {
+      console.error("Error creating quote member:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to create quote member" });
+    }
+  });
+  
+  // Update member
+  app.patch("/api/quotes/:quoteId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, memberId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const member = await storage.getQuoteMemberById(memberId, quote.companyId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Verify member belongs to this quote
+      if (member.quoteId !== quoteId) {
+        return res.status(404).json({ message: "Member not found in this quote" });
+      }
+      
+      // Validate request body
+      const validatedData = updateQuoteMemberSchema.parse(req.body);
+      
+      // Encrypt sensitive fields if present
+      const dataToSave: any = { ...validatedData };
+      if (validatedData.ssn !== undefined) {
+        dataToSave.ssn = validatedData.ssn ? encrypt(validatedData.ssn) : null;
+      }
+      
+      const updatedMember = await storage.updateQuoteMember(memberId, dataToSave, quote.companyId);
+      
+      if (!updatedMember) {
+        return res.status(500).json({ message: "Failed to update member" });
+      }
+      
+      // Decrypt for response
+      const decryptedMember = {
+        ...updatedMember,
+        ssn: updatedMember.ssn ? decrypt(updatedMember.ssn) : null,
+      };
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_member",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ member: decryptedMember });
+    } catch (error: any) {
+      console.error("Error updating quote member:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to update quote member" });
+    }
+  });
+  
+  // Delete member
+  app.delete("/api/quotes/:quoteId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, memberId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const member = await storage.getQuoteMemberById(memberId, quote.companyId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Verify member belongs to this quote
+      if (member.quoteId !== quoteId) {
+        return res.status(404).json({ message: "Member not found in this quote" });
+      }
+      
+      const deleted = await storage.deleteQuoteMember(memberId, quote.companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete member" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Member deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting quote member:", error);
+      res.status(500).json({ message: "Failed to delete quote member" });
+    }
+  });
+
+  // ==================== MEMBER INCOME ====================
+  
+  // Get member income
+  app.get("/api/quotes/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const income = await storage.getQuoteMemberIncome(memberId, quote.companyId);
+      if (!income) {
+        return res.status(404).json({ message: "Income information not found" });
+      }
+      
+      // Check if user is superadmin requesting unmasked PII
+      const reveal = req.query.reveal === 'true' && currentUser.role === 'superadmin';
+      
+      // Process sensitive fields - mask PII by default, decrypt only for superadmin with reveal=true
+      const processedIncome = {
+        ...income,
+        annualIncome: reveal ? (income.annualIncome ? decrypt(income.annualIncome) : null) : maskIncome(income.annualIncome, true),
+      };
+      
+      // Audit log when superadmin reveals PII
+      if (reveal) {
+        await logger.logAuth({
+          req,
+          action: "pii_reveal",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "quote_member_income",
+            memberId,
+            fields: ["annualIncome"],
+          },
+        });
+      }
+      
+      res.json({ income: processedIncome });
+    } catch (error: any) {
+      console.error("Error getting member income:", error);
+      res.status(500).json({ message: "Failed to get member income" });
+    }
+  });
+  
+  // Create or update member income (upsert)
+  app.put("/api/quotes/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body
+      const validatedData = insertQuoteMemberIncomeSchema.parse({
+        ...req.body,
+        memberId,
+      });
+      
+      // Encrypt sensitive fields before saving
+      const dataToSave = {
+        ...validatedData,
+        annualIncome: validatedData.annualIncome ? encrypt(validatedData.annualIncome) : null,
+      };
+      
+      const income = await storage.createOrUpdateQuoteMemberIncome(dataToSave);
+      
+      // Decrypt for response
+      const decryptedIncome = {
+        ...income,
+        annualIncome: income.annualIncome ? decrypt(income.annualIncome) : null,
+      };
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_member_income",
+        entityId: income.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ income: decryptedIncome });
+    } catch (error: any) {
+      console.error("Error upserting member income:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to save member income" });
+    }
+  });
+  
+  // Delete member income
+  app.delete("/api/quotes/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const deleted = await storage.deleteQuoteMemberIncome(memberId, quote.companyId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Income information not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member_income",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Income information deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting member income:", error);
+      res.status(500).json({ message: "Failed to delete member income" });
+    }
+  });
+
+  // ==================== MEMBER IMMIGRATION ====================
+  
+  // Get member immigration
+  app.get("/api/quotes/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const immigration = await storage.getQuoteMemberImmigration(memberId, quote.companyId);
+      if (!immigration) {
+        return res.status(404).json({ message: "Immigration information not found" });
+      }
+      
+      // Check if user is superadmin requesting unmasked PII
+      const reveal = req.query.reveal === 'true' && currentUser.role === 'superadmin';
+      
+      // Process sensitive fields - mask PII by default, decrypt only for superadmin with reveal=true
+      const processedImmigration = {
+        ...immigration,
+        visaNumber: reveal ? (immigration.visaNumber ? decrypt(immigration.visaNumber) : null) : maskDocumentNumber(immigration.visaNumber, true),
+        greenCardNumber: reveal ? (immigration.greenCardNumber ? decrypt(immigration.greenCardNumber) : null) : maskDocumentNumber(immigration.greenCardNumber, true),
+        i94Number: reveal ? (immigration.i94Number ? decrypt(immigration.i94Number) : null) : maskDocumentNumber(immigration.i94Number, true),
+      };
+      
+      // Audit log when superadmin reveals PII
+      if (reveal) {
+        await logger.logAuth({
+          req,
+          action: "pii_reveal",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "quote_member_immigration",
+            memberId,
+            fields: ["visaNumber", "greenCardNumber", "i94Number"],
+          },
+        });
+      }
+      
+      res.json({ immigration: processedImmigration });
+    } catch (error: any) {
+      console.error("Error getting member immigration:", error);
+      res.status(500).json({ message: "Failed to get member immigration" });
+    }
+  });
+  
+  // Create or update member immigration (upsert)
+  app.put("/api/quotes/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body
+      const validatedData = insertQuoteMemberImmigrationSchema.parse({
+        ...req.body,
+        memberId,
+      });
+      
+      // Encrypt sensitive fields before saving
+      const dataToSave = {
+        ...validatedData,
+        visaNumber: validatedData.visaNumber ? encrypt(validatedData.visaNumber) : null,
+        greenCardNumber: validatedData.greenCardNumber ? encrypt(validatedData.greenCardNumber) : null,
+        i94Number: validatedData.i94Number ? encrypt(validatedData.i94Number) : null,
+      };
+      
+      const immigration = await storage.createOrUpdateQuoteMemberImmigration(dataToSave);
+      
+      // Decrypt for response
+      const decryptedImmigration = {
+        ...immigration,
+        visaNumber: immigration.visaNumber ? decrypt(immigration.visaNumber) : null,
+        greenCardNumber: immigration.greenCardNumber ? decrypt(immigration.greenCardNumber) : null,
+        i94Number: immigration.i94Number ? decrypt(immigration.i94Number) : null,
+      };
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_member_immigration",
+        entityId: immigration.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ immigration: decryptedImmigration });
+    } catch (error: any) {
+      console.error("Error upserting member immigration:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to save member immigration" });
+    }
+  });
+  
+  // Delete member immigration
+  app.delete("/api/quotes/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const deleted = await storage.deleteQuoteMemberImmigration(memberId, quote.companyId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Immigration information not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member_immigration",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Immigration information deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting member immigration:", error);
+      res.status(500).json({ message: "Failed to delete member immigration" });
+    }
+  });
+
+  // ==================== MEMBER DOCUMENTS ====================
+  
+  // Get all documents for a member
+  app.get("/api/quotes/members/:memberId/documents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const documents = await storage.getQuoteMemberDocuments(memberId, quote.companyId);
+      
+      res.json({ documents });
+    } catch (error: any) {
+      console.error("Error getting member documents:", error);
+      res.status(500).json({ message: "Failed to get member documents" });
+    }
+  });
+  
+  // Upload document (base64 JSON)
+  app.post("/api/quotes/members/:memberId/documents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const { documentType, documentName, fileType, base64Data, description } = req.body;
+      
+      // Validate required fields
+      if (!documentType || !documentName || !fileType || !base64Data) {
+        return res.status(400).json({ 
+          message: "Missing required fields: documentType, documentName, fileType, base64Data" 
+        });
+      }
+      
+      // SECURITY: Validate MIME type against whitelist
+      if (!ALLOWED_MIME_TYPES.includes(fileType)) {
+        return res.status(400).json({ 
+          message: "Invalid file type. Allowed types: PDF, JPEG, PNG, JPG" 
+        });
+      }
+      
+      // Decode base64 to buffer
+      let fileBuffer: Buffer;
+      try {
+        fileBuffer = Buffer.from(base64Data, 'base64');
+      } catch (error) {
+        return res.status(400).json({ message: "Invalid base64 data" });
+      }
+      
+      // SECURITY: Validate file size (10MB max)
+      if (fileBuffer.length > MAX_FILE_SIZE) {
+        return res.status(400).json({ 
+          message: `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB` 
+        });
+      }
+      
+      // Create upload directory with strict path (prevents path traversal)
+      const uploadDir = path.join(process.cwd(), 'server', 'uploads', quote.companyId, member.quoteId, memberId);
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      // SECURITY: Generate secure filename with crypto random bytes
+      // Sanitize original filename and extract extension
+      const sanitizedName = documentName.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\.{2,}/g, '_');
+      const ext = path.extname(sanitizedName);
+      const timestamp = Date.now();
+      const randomId = crypto.randomBytes(8).toString('hex');
+      const safeFilename = `${timestamp}-${randomId}${ext}`;
+      const filePath = path.join(uploadDir, safeFilename);
+      
+      // Write file to disk
+      fs.writeFileSync(filePath, fileBuffer);
+      
+      // Store relative path in database
+      const relativePath = path.join('uploads', quote.companyId, member.quoteId, memberId, safeFilename);
+      
+      // Validate and create document record
+      const validatedData = insertQuoteMemberDocumentSchema.parse({
+        memberId,
+        documentType,
+        documentName,
+        documentPath: relativePath,
+        fileType,
+        fileSize: fileBuffer.length,
+        description: description || null,
+        uploadedBy: currentUser.id,
+      });
+      
+      const document = await storage.createQuoteMemberDocument(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_member_document",
+        entityId: document.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          documentType,
+          fileName: safeFilename,
+          fileSize: fileBuffer.length,
+          uploadedBy: currentUser.email,
+        },
+      });
+      
+      res.status(201).json({ document });
+    } catch (error: any) {
+      console.error("Error uploading document:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to upload document" });
+    }
+  });
+  
+  // Get single document metadata
+  app.get("/api/quotes/members/:memberId/documents/:docId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId, docId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const document = await storage.getQuoteMemberDocumentById(docId, quote.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify document belongs to this member
+      if (document.memberId !== memberId) {
+        return res.status(404).json({ message: "Document not found for this member" });
+      }
+      
+      res.json({ document });
+    } catch (error: any) {
+      console.error("Error getting document:", error);
+      res.status(500).json({ message: "Failed to get document" });
+    }
+  });
+  
+  // Download document file
+  app.get("/api/quotes/members/:memberId/documents/:docId/download", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId, docId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const document = await storage.getQuoteMemberDocumentById(docId, quote.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify document belongs to this member
+      if (document.memberId !== memberId) {
+        return res.status(404).json({ message: "Document not found for this member" });
+      }
+      
+      // Get full file path
+      const filePath = path.join(process.cwd(), 'server', document.documentPath);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "Document file not found on disk" });
+      }
+      
+      // SECURITY: Sanitize filename for Content-Disposition header to prevent header injection
+      const safeFilename = document.documentName.replace(/["\r\n]/g, '');
+      
+      // SECURITY: Validate MIME type against whitelist before serving
+      const safeContentType = ALLOWED_MIME_TYPES.includes(document.fileType) 
+        ? document.fileType 
+        : 'application/octet-stream';
+      
+      // Set secure content headers
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+      res.setHeader('Content-Type', safeContentType);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      
+      // Send file
+      res.sendFile(filePath);
+    } catch (error: any) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+  
+  // Delete document and file
+  app.delete("/api/quotes/members/:memberId/documents/:docId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId, docId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const document = await storage.getQuoteMemberDocumentById(docId, quote.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify document belongs to this member
+      if (document.memberId !== memberId) {
+        return res.status(404).json({ message: "Document not found for this member" });
+      }
+      
+      // Delete file from disk
+      const filePath = path.join(process.cwd(), 'server', document.documentPath);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      // Delete document record from database
+      const deleted = await storage.deleteQuoteMemberDocument(docId, quote.companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete document record" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member_document",
+        entityId: docId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          documentType: document.documentType,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Document deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
     }
   });
 

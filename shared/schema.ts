@@ -1374,3 +1374,202 @@ export const updateQuoteSchema = insertQuoteSchema.partial().omit({
 
 export type Quote = typeof quotes.$inferSelect;
 export type InsertQuote = z.infer<typeof insertQuoteSchema>;
+
+// =====================================================
+// QUOTE MEMBERS (Normalized member data)
+// =====================================================
+
+export const quoteMembers = pgTable("quote_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }),
+  
+  // Member role and identification
+  role: text("role").notNull(), // client, spouse, dependent
+  
+  // Personal Information
+  firstName: text("first_name").notNull(),
+  middleName: text("middle_name"),
+  lastName: text("last_name").notNull(),
+  secondLastName: text("second_last_name"),
+  dateOfBirth: timestamp("date_of_birth"),
+  ssn: text("ssn"), // Encrypted SSN
+  gender: text("gender"), // male, female, other
+  phone: text("phone"),
+  email: text("email"),
+  
+  // Additional Information
+  isApplicant: boolean("is_applicant").default(false),
+  tobaccoUser: boolean("tobacco_user").default(false),
+  preferredLanguage: text("preferred_language"),
+  countryOfBirth: text("country_of_birth"),
+  maritalStatus: text("marital_status"), // single, married, divorced, widowed
+  weight: text("weight"), // Weight in lbs
+  height: text("height"), // Height in feet and inches
+  
+  // For dependents only
+  relation: text("relation"), // child, parent, sibling, other (only for dependents)
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// QUOTE MEMBER INCOME (Income information)
+// =====================================================
+
+export const quoteMemberIncome = pgTable("quote_member_income", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: varchar("member_id").notNull().references(() => quoteMembers.id, { onDelete: "cascade" }).unique(),
+  
+  // Employment Information
+  employmentStatus: text("employment_status"), // employed, self_employed, unemployed, retired, student, disabled
+  employerName: text("employer_name"),
+  jobTitle: text("job_title"),
+  yearsEmployed: integer("years_employed"),
+  
+  // Income Details
+  annualIncome: text("annual_income"), // Encrypted - stored as text
+  incomeFrequency: text("income_frequency"), // annually, monthly, weekly, bi_weekly
+  
+  // Additional Income
+  hasAdditionalIncome: boolean("has_additional_income").default(false),
+  additionalIncomeSources: jsonb("additional_income_sources").default([]), // [{ type: 'rental', amount: '1000' }, ...]
+  
+  // Tax Information
+  taxFilingStatus: text("tax_filing_status"), // single, married_filing_jointly, married_filing_separately, head_of_household
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// QUOTE MEMBER IMMIGRATION (Immigration status)
+// =====================================================
+
+export const quoteMemberImmigration = pgTable("quote_member_immigration", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: varchar("member_id").notNull().references(() => quoteMembers.id, { onDelete: "cascade" }).unique(),
+  
+  // Citizenship Information
+  citizenshipStatus: text("citizenship_status"), // us_citizen, permanent_resident, visa_holder, refugee, asylum_seeker, undocumented
+  
+  // Visa/Green Card Information
+  visaType: text("visa_type"), // H1B, F1, J1, L1, O1, etc. (only if visa_holder)
+  visaNumber: text("visa_number"), // Encrypted
+  greenCardNumber: text("green_card_number"), // Encrypted
+  
+  // Entry and Status
+  entryDate: timestamp("entry_date"), // Date of entry to US
+  visaExpirationDate: timestamp("visa_expiration_date"),
+  
+  // Work Authorization
+  hasWorkAuthorization: boolean("has_work_authorization").default(false),
+  workAuthorizationType: text("work_authorization_type"), // EAD, visa_based, citizen, etc.
+  workAuthorizationExpiration: timestamp("work_authorization_expiration"),
+  
+  // I-94 Information
+  i94Number: text("i94_number"), // Encrypted
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// QUOTE MEMBER DOCUMENTS (Document uploads)
+// =====================================================
+
+export const quoteMemberDocuments = pgTable("quote_member_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: varchar("member_id").notNull().references(() => quoteMembers.id, { onDelete: "cascade" }),
+  
+  // Document Information
+  documentType: text("document_type").notNull(), // passport, visa, work_permit, green_card, tax_return, pay_stub, proof_of_residence, birth_certificate, other
+  documentName: text("document_name").notNull(), // Original filename
+  documentPath: text("document_path").notNull(), // Relative path to file on disk
+  
+  // File Metadata
+  fileType: text("file_type").notNull(), // MIME type (e.g., application/pdf, image/jpeg)
+  fileSize: integer("file_size").notNull(), // File size in bytes
+  
+  // Optional Description
+  description: text("description"),
+  
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// ZOD SCHEMAS FOR NORMALIZED TABLES
+// =====================================================
+
+// Quote Member Insert Schema
+export const insertQuoteMemberSchema = createInsertSchema(quoteMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateQuoteMemberSchema = insertQuoteMemberSchema.partial().omit({
+  companyId: true,
+  quoteId: true,
+  role: true,
+});
+
+// Income Insert Schema
+export const insertQuoteMemberIncomeSchema = createInsertSchema(quoteMemberIncome).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  additionalIncomeSources: z.array(z.object({
+    type: z.string(),
+    amount: z.string(),
+    description: z.string().optional(),
+  })).optional(),
+});
+
+export const updateQuoteMemberIncomeSchema = insertQuoteMemberIncomeSchema.partial().omit({
+  companyId: true,
+  memberId: true,
+});
+
+// Immigration Insert Schema
+export const insertQuoteMemberImmigrationSchema = createInsertSchema(quoteMemberImmigration).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateQuoteMemberImmigrationSchema = insertQuoteMemberImmigrationSchema.partial().omit({
+  companyId: true,
+  memberId: true,
+});
+
+// Document Insert Schema
+export const insertQuoteMemberDocumentSchema = createInsertSchema(quoteMemberDocuments).omit({
+  id: true,
+  createdAt: true,
+  uploadedAt: true,
+});
+
+// Types
+export type QuoteMember = typeof quoteMembers.$inferSelect;
+export type InsertQuoteMember = z.infer<typeof insertQuoteMemberSchema>;
+export type UpdateQuoteMember = z.infer<typeof updateQuoteMemberSchema>;
+
+export type QuoteMemberIncome = typeof quoteMemberIncome.$inferSelect;
+export type InsertQuoteMemberIncome = z.infer<typeof insertQuoteMemberIncomeSchema>;
+export type UpdateQuoteMemberIncome = z.infer<typeof updateQuoteMemberIncomeSchema>;
+
+export type QuoteMemberImmigration = typeof quoteMemberImmigration.$inferSelect;
+export type InsertQuoteMemberImmigration = z.infer<typeof insertQuoteMemberImmigrationSchema>;
+export type UpdateQuoteMemberImmigration = z.infer<typeof updateQuoteMemberImmigrationSchema>;
+
+export type QuoteMemberDocument = typeof quoteMemberDocuments.$inferSelect;
+export type InsertQuoteMemberDocument = z.infer<typeof insertQuoteMemberDocumentSchema>;
