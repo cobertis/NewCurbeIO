@@ -1446,6 +1446,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     control={editForm.control}
                     name="annualIncome"
                     render={({ field }) => {
+                      const [isFocused, setIsFocused] = React.useState(false);
                       const frequency = editForm.watch('incomeFrequency') || 'annually';
                       const frequencyLabel = frequency === 'annually' ? 'Annual' : frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Biweekly' : 'Monthly';
                       
@@ -1467,10 +1468,12 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                         }
                       };
                       
-                      // Display value with commas
-                      const displayValue = field.value ? 
-                        parseFloat(field.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
-                        : '';
+                      // Display value with commas when NOT focused
+                      const displayValue = isFocused ? (field.value || '') : (
+                        field.value ? 
+                          parseFloat(field.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+                          : ''
+                      );
                       
                       const annualAmount = calculateAnnualIncome(field.value || '0');
                       const showAnnualEquivalent = field.value && parseFloat(field.value) > 0 && frequency !== 'annually';
@@ -1487,6 +1490,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                                 data-testid="input-income-amount"
                                 className="pl-7 bg-background"
                                 value={displayValue}
+                                onFocus={() => setIsFocused(true)}
                                 onChange={(e) => {
                                   let value = e.target.value;
                                   // Remove all non-numeric characters except decimal point
@@ -1506,6 +1510,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                                   field.onChange(value);
                                 }}
                                 onBlur={(e) => {
+                                  setIsFocused(false);
                                   let value = e.target.value;
                                   // Remove commas before parsing
                                   value = value.replace(/,/g, '');
