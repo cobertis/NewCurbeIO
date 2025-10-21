@@ -457,6 +457,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   });
 
   const prevOpenRef = useRef(false);
+  const prevMemberRef = useRef<string>('');
   
   // Simplified reset logic - only reset on opening transition (false -> true)
   useEffect(() => {
@@ -466,6 +467,18 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     }
     prevOpenRef.current = open;
   }, [open]); // ONLY depend on open, NOT on memberData
+
+  // Reset form when navigating between members
+  useEffect(() => {
+    if (open && memberData) {
+      const memberKey = `${memberType}-${memberIndex ?? 'primary'}`;
+      if (memberKey !== prevMemberRef.current) {
+        editForm.reset(memberData);
+        setShowEditSsn(false); // Reset SSN visibility when changing members
+        prevMemberRef.current = memberKey;
+      }
+    }
+  }, [open, memberType, memberIndex, memberData, editForm])
 
   const handleSave = (data: z.infer<typeof editMemberSchema>) => {
     // Close any open popovers
