@@ -17,7 +17,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User as UserType, type Quote } from "@shared/schema";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { z } from "zod";
@@ -669,11 +669,15 @@ export default function QuotesPage() {
       defaultValues: memberData || {},
     });
 
+    const prevOpenRef = useRef(false);
+    
     useEffect(() => {
-      if (memberData && open) {
+      // Only reset when the Sheet opens (transition from closed to open)
+      if (open && !prevOpenRef.current && memberData) {
         editForm.reset(memberData);
       }
-    }, [memberType, memberIndex, quote, open]);
+      prevOpenRef.current = open;
+    }, [open, memberData]);
 
     const handleSave = (data: any) => {
       // Close any open popovers
