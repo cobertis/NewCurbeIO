@@ -8001,6 +8001,59 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Get total household income for a quote (sum of all family members)
+  app.get("/api/quotes/:id/household-income", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Get all quote members for this quote
+      const members = await storage.getQuoteMembersByQuoteId(id, currentUser.companyId!);
+      
+      // Calculate total income by summing all members' annual income
+      let totalIncome = 0;
+      
+      for (const member of members) {
+        // Get income data for this member
+        const incomeData = await storage.getQuoteMemberIncome(member.id, currentUser.companyId!);
+        
+        if (incomeData?.annualIncome) {
+          try {
+            // Decrypt the annual income (it's stored encrypted)
+            const decryptedIncome = decrypt(incomeData.annualIncome);
+            
+            if (decryptedIncome) {
+              const incomeAmount = parseFloat(decryptedIncome);
+              
+              if (!isNaN(incomeAmount)) {
+                totalIncome += incomeAmount;
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to decrypt income for member ${member.id}:`, error);
+            // Skip this member's income if decryption fails
+          }
+        }
+      }
+      
+      res.json({ totalIncome });
+    } catch (error: any) {
+      console.error("Error calculating household income:", error);
+      res.status(500).json({ message: "Failed to calculate household income" });
+    }
+  });
+
   // Update quote
   // WARNING: This endpoint handles PII (SSN) - never log full request body or return unmasked SSN
   app.patch("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {

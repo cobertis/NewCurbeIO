@@ -1833,6 +1833,12 @@ export default function QuotesPage() {
   const isViewingQuote = !!quoteId && quoteId !== "new";
   const viewingQuote = (isViewingQuote ? allQuotes.find(q => q.id === quoteId) : null) as QuoteWithArrays | null | undefined;
   
+  // Fetch total household income from all family members
+  const { data: householdIncomeData } = useQuery({
+    queryKey: ['/api/quotes', quoteId, 'household-income'],
+    enabled: isViewingQuote && !!viewingQuote?.id,
+  });
+  
   // Filter quotes based on search and filters
   const filteredQuotes = allQuotes.filter((quote) => {
     // Search filter
@@ -2458,6 +2464,17 @@ export default function QuotesPage() {
       (viewingQuote.dependents?.length || 0);
     const totalDependents = viewingQuote.dependents?.length || 0;
 
+    // Calculate formatted income
+    const totalHouseholdIncome = householdIncomeData?.totalIncome || 0;
+    const formattedIncome = totalHouseholdIncome > 0 
+      ? new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format(totalHouseholdIncome)
+      : '-';
+
     return (
       <div className="h-full overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full">
@@ -2525,8 +2542,8 @@ export default function QuotesPage() {
                   <span className="text-xs">{viewingQuote.state} {viewingQuote.postalCode}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">Annual income</span>
-                  <span className="text-xs">{viewingQuote.annualHouseholdIncome || '-'}</span>
+                  <span className="text-xs text-muted-foreground">Total annual income</span>
+                  <span className="text-xs font-semibold">{formattedIncome}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Member ID</span>
