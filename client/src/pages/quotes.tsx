@@ -350,8 +350,6 @@ const step2Schema = z.object({
 });
 
 const step3Schema = z.object({
-  annualHouseholdIncome: z.string().optional(),
-  familyGroupSize: z.string().optional(),
   spouses: z.array(spouseSchema).default([]),
   dependents: z.array(dependentSchema).default([]),
 });
@@ -1855,8 +1853,6 @@ export default function QuotesPage() {
       clientIsApplicant: true,
       clientTobaccoUser: false,
       clientSsn: "",
-      annualHouseholdIncome: "",
-      familyGroupSize: "",
       spouses: [],
       dependents: [],
       street: "",
@@ -1901,16 +1897,21 @@ export default function QuotesPage() {
           ...dependent,
           ssn: normalizeSSN(dependent.ssn),
         })),
-        familyGroupSize: data.familyGroupSize ? parseInt(data.familyGroupSize, 10) : undefined,
       });
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       toast({
         title: "Quote created",
         description: "Your quote has been created successfully.",
       });
-      setLocation("/quotes");
+      // Redirect to the newly created quote
+      const quoteId = response.quote?.id;
+      if (quoteId) {
+        setLocation(`/quotes/${quoteId}`);
+      } else {
+        setLocation("/quotes");
+      }
       form.reset({
         effectiveDate: format(getFirstDayOfNextMonth(), "yyyy-MM-dd"),
         agentId: userData?.user?.id || "",
@@ -1926,8 +1927,6 @@ export default function QuotesPage() {
         clientIsApplicant: true,
         clientTobaccoUser: false,
         clientSsn: "",
-        annualHouseholdIncome: "",
-        familyGroupSize: "",
         spouses: [],
         dependents: [],
         street: "",
@@ -2160,7 +2159,7 @@ export default function QuotesPage() {
   const steps = [
     { number: 1, title: "Policy Information", icon: FileText },
     { number: 2, title: "Personal Information & Address", icon: User },
-    { number: 3, title: "Family Group", icon: Users },
+    { number: 3, title: "Family Members", icon: Users },
   ];
 
   // Edit Addresses Sheet Component
@@ -4511,65 +4510,14 @@ export default function QuotesPage() {
                   </div>
                 )}
 
-                {/* Step 3: Family Group */}
+                {/* Step 3: Family Members */}
                 {currentStep === 3 && (
                   <div className="space-y-6 px-8">
-                    {/* Household Information Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 pb-2 border-b">
-                        <DollarSign className="h-5 w-5 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">Household Information</h3>
-                      </div>
-                      
-                      <FormField
-                        control={form.control}
-                        name="annualHouseholdIncome"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Annual household income</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                                <Input 
-                                  {...field} 
-                                  className="pl-7" 
-                                  placeholder="Annual household income" 
-                                  data-testid="input-household-income"
-                                />
-                              </div>
-                            </FormControl>
-                            <p className="text-sm text-muted-foreground">
-                              Health Insurance services require you to provide your annual household income so we can provide more accurate quotes.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="familyGroupSize"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Family group size</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                placeholder="Family group size" 
-                                data-testid="input-family-size"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
                     {/* Family Members Section */}
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2 pb-2 border-t pt-4">
+                      <div className="flex items-center gap-2 pb-2 border-b">
                         <Users className="h-5 w-5 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">Family Members</h3>
+                        <h3 className="text-lg font-semibold">Spouses and Dependents</h3>
                       </div>
                       
                       <p className="text-sm text-muted-foreground">
