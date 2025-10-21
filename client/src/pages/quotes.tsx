@@ -377,9 +377,71 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     ? dependentSchema
     : familyMemberSchema;
 
+  // Fetch quote members to get member IDs
+  const { data: membersData } = useQuery<{ members: any[] }>({
+    queryKey: ['/api/quotes', quote?.id, 'members'],
+    enabled: !!quote?.id && open,
+  });
+
+  // Find the current member ID based on memberType and memberIndex
+  const currentMemberId = useMemo(() => {
+    if (!membersData?.members) return null;
+    
+    if (memberType === 'primary') {
+      return membersData.members.find(m => m.role === 'client')?.id;
+    } else if (memberType === 'spouse' && memberIndex !== undefined) {
+      const spouses = membersData.members.filter(m => m.role === 'spouse');
+      return spouses[memberIndex]?.id;
+    } else if (memberType === 'dependent' && memberIndex !== undefined) {
+      const dependents = membersData.members.filter(m => m.role === 'dependent');
+      return dependents[memberIndex]?.id;
+    }
+    return null;
+  }, [membersData, memberType, memberIndex]);
+
+  // Fetch income data for this member (404 is OK - means no income data yet)
+  const { data: incomeData } = useQuery<{ income: any }>({
+    queryKey: ['/api/quotes/members', currentMemberId, 'income'],
+    queryFn: async () => {
+      const res = await fetch(`/api/quotes/members/${currentMemberId}/income`, {
+        credentials: 'include',
+      });
+      if (res.status === 404) {
+        return { income: null }; // No income data yet - this is OK
+      }
+      if (!res.ok) {
+        throw new Error('Failed to fetch income data');
+      }
+      return res.json();
+    },
+    enabled: !!currentMemberId && open,
+  });
+
+  // Fetch immigration data for this member (404 is OK - means no immigration data yet)
+  const { data: immigrationData } = useQuery<{ immigration: any }>({
+    queryKey: ['/api/quotes/members', currentMemberId, 'immigration'],
+    queryFn: async () => {
+      const res = await fetch(`/api/quotes/members/${currentMemberId}/immigration`, {
+        credentials: 'include',
+      });
+      if (res.status === 404) {
+        return { immigration: null }; // No immigration data yet - this is OK
+      }
+      if (!res.ok) {
+        throw new Error('Failed to fetch immigration data');
+      }
+      return res.json();
+    },
+    enabled: !!currentMemberId && open,
+  });
+
   // Use useMemo to prevent unnecessary recalculation and form resets
   const memberData = useMemo(() => {
     if (!quote || !memberType) return null;
+    
+    // Get income and immigration data from fetched data
+    const income = incomeData?.income || {};
+    const immigration = immigrationData?.immigration || {};
     
     if (memberType === 'primary') {
       return {
@@ -399,18 +461,18 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         maritalStatus: quote.clientMaritalStatus || '',
         weight: quote.clientWeight || '',
         height: quote.clientHeight || '',
-        // Income fields (placeholders for now - will be fetched from quote_member_income table)
-        employerName: '',
-        employerPhone: '',
-        position: '',
-        annualIncome: '',
-        incomeFrequency: 'annually',
-        selfEmployed: false,
-        // Immigration fields (placeholders for now - will be fetched from quote_member_immigration table)
-        immigrationStatus: '',
-        naturalizationNumber: '',
-        uscisNumber: '',
-        immigrationStatusCategory: '',
+        // Income fields from API
+        employerName: income.employerName || '',
+        employerPhone: income.employerPhone || '',
+        position: income.position || '',
+        annualIncome: income.annualIncome || '',
+        incomeFrequency: income.incomeFrequency || 'annually',
+        selfEmployed: income.selfEmployed || false,
+        // Immigration fields from API
+        immigrationStatus: immigration.immigrationStatus || '',
+        naturalizationNumber: immigration.naturalizationNumber || '',
+        uscisNumber: immigration.uscisNumber || '',
+        immigrationStatusCategory: immigration.immigrationStatusCategory || '',
       };
     } else if (memberType === 'spouse' && memberIndex !== undefined) {
       const spouse = quote.spouses?.[memberIndex];
@@ -418,18 +480,18 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         ...spouse,
         ssn: normalizeSSN(spouse.ssn),
         dateOfBirth: spouse.dateOfBirth ? format(new Date(spouse.dateOfBirth), 'yyyy-MM-dd') : '',
-        // Income fields defaults
-        employerName: '',
-        employerPhone: '',
-        position: '',
-        annualIncome: '',
-        incomeFrequency: 'annually',
-        selfEmployed: false,
-        // Immigration fields defaults
-        immigrationStatus: '',
-        naturalizationNumber: '',
-        uscisNumber: '',
-        immigrationStatusCategory: '',
+        // Income fields from API
+        employerName: income.employerName || '',
+        employerPhone: income.employerPhone || '',
+        position: income.position || '',
+        annualIncome: income.annualIncome || '',
+        incomeFrequency: income.incomeFrequency || 'annually',
+        selfEmployed: income.selfEmployed || false,
+        // Immigration fields from API
+        immigrationStatus: immigration.immigrationStatus || '',
+        naturalizationNumber: immigration.naturalizationNumber || '',
+        uscisNumber: immigration.uscisNumber || '',
+        immigrationStatusCategory: immigration.immigrationStatusCategory || '',
       } : null;
     } else if (memberType === 'dependent' && memberIndex !== undefined) {
       const dependent = quote.dependents?.[memberIndex];
@@ -437,22 +499,22 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         ...dependent,
         ssn: normalizeSSN(dependent.ssn),
         dateOfBirth: dependent.dateOfBirth ? format(new Date(dependent.dateOfBirth), 'yyyy-MM-dd') : '',
-        // Income fields defaults
-        employerName: '',
-        employerPhone: '',
-        position: '',
-        annualIncome: '',
-        incomeFrequency: 'annually',
-        selfEmployed: false,
-        // Immigration fields defaults
-        immigrationStatus: '',
-        naturalizationNumber: '',
-        uscisNumber: '',
-        immigrationStatusCategory: '',
+        // Income fields from API
+        employerName: income.employerName || '',
+        employerPhone: income.employerPhone || '',
+        position: income.position || '',
+        annualIncome: income.annualIncome || '',
+        incomeFrequency: income.incomeFrequency || 'annually',
+        selfEmployed: income.selfEmployed || false,
+        // Immigration fields from API
+        immigrationStatus: immigration.immigrationStatus || '',
+        naturalizationNumber: immigration.naturalizationNumber || '',
+        uscisNumber: immigration.uscisNumber || '',
+        immigrationStatusCategory: immigration.immigrationStatusCategory || '',
       } : null;
     }
     return null;
-  }, [quote?.id, memberType, memberIndex]); // Only depend on IDs, not complete objects
+  }, [quote?.id, memberType, memberIndex, incomeData, immigrationData]); // Include fetched data in dependencies
   
   const editForm = useForm({
     resolver: zodResolver(editMemberSchema),
@@ -636,6 +698,12 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       }
       
       console.log('[EditMemberSheet] All data saved successfully!');
+      
+      // Invalidate queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'income'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'immigration'] });
+      
       toast({
         title: "Success",
         description: "Member information saved successfully.",

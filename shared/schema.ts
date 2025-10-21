@@ -1428,6 +1428,9 @@ export const quoteMemberIncome = pgTable("quote_member_income", {
   employmentStatus: text("employment_status"), // employed, self_employed, unemployed, retired, student, disabled
   employerName: text("employer_name"),
   jobTitle: text("job_title"),
+  position: text("position"), // Job position/title (alias for jobTitle)
+  employerPhone: text("employer_phone"), // Employer contact phone
+  selfEmployed: boolean("self_employed").default(false), // Self-employed flag
   yearsEmployed: integer("years_employed"),
   
   // Income Details
@@ -1456,6 +1459,8 @@ export const quoteMemberImmigration = pgTable("quote_member_immigration", {
   
   // Citizenship Information
   citizenshipStatus: text("citizenship_status"), // us_citizen, permanent_resident, visa_holder, refugee, asylum_seeker, undocumented
+  immigrationStatus: text("immigration_status"), // asylum, citizen, humanitarian_parole, resident, temporary_protected_status, work_authorization, other
+  immigrationStatusCategory: text("immigration_status_category"), // I-94, Parole, etc.
   
   // Visa/Green Card Information
   visaType: text("visa_type"), // H1B, F1, J1, L1, O1, etc. (only if visa_holder)
@@ -1471,8 +1476,10 @@ export const quoteMemberImmigration = pgTable("quote_member_immigration", {
   workAuthorizationType: text("work_authorization_type"), // EAD, visa_based, citizen, etc.
   workAuthorizationExpiration: timestamp("work_authorization_expiration"),
   
-  // I-94 Information
+  // Document Numbers
   i94Number: text("i94_number"), // Encrypted
+  uscisNumber: text("uscis_number"), // Encrypted - USCIS/Alien Registration Number
+  naturalizationNumber: text("naturalization_number"), // Encrypted - Naturalization Certificate Number
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
