@@ -1006,7 +1006,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               </TabsContent>
 
               {/* Tab 2: Income & Employment */}
-              <TabsContent value="income" className="flex-1 overflow-y-auto space-y-6 p-4">
+              <TabsContent value="income" className="flex-1 overflow-y-auto space-y-4 p-4">
+                {/* Employment Information Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Employment Information</h3>
+                  </div>
+                  
                 <div className="grid grid-cols-2 gap-4">
                   {/* Employer Name */}
                   <FormField
@@ -1014,30 +1021,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     name="employerName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Employer name</FormLabel>
+                        <FormLabel>Company Name</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Enter employer name" data-testid="input-employer-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Employer Phone */}
-                  <FormField
-                    control={editForm.control}
-                    name="employerPhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Employer phone</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field}
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
-                            placeholder="(999) 999-9999"
-                            data-testid="input-employer-phone"
-                          />
+                          <Input {...field} placeholder="Employer or company name" data-testid="input-employer-name" className="bg-background" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1050,14 +1036,69 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     name="position"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Position / Occupation</FormLabel>
+                        <FormLabel>Position / Title</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Enter position or occupation" data-testid="input-position" />
+                          <Input {...field} placeholder="Job title or occupation" data-testid="input-position" className="bg-background" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  {/* Employer Phone */}
+                  <FormField
+                    control={editForm.control}
+                    name="employerPhone"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel>Employer Contact</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                            placeholder="(999) 999-9999"
+                            data-testid="input-employer-phone"
+                            className="bg-background"
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">HR or company contact number</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Self Employed Checkbox */}
+                  <FormField
+                    control={editForm.control}
+                    name="selfEmployed"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2 flex flex-row items-center space-x-2 space-y-0 rounded-md border p-3 bg-muted/30">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-self-employed"
+                          />
+                        </FormControl>
+                        <div className="space-y-0.5 leading-none">
+                          <FormLabel className="cursor-pointer font-medium">Self-employed or independent contractor</FormLabel>
+                          <p className="text-xs text-muted-foreground">Check if you own your own business or work as a freelancer</p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                </div>
+
+                {/* Income Details Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Income Details</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
 
                   {/* Income Frequency */}
                   <FormField
@@ -1065,17 +1106,17 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     name="incomeFrequency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pay period <span className="text-destructive">(required)</span></FormLabel>
+                        <FormLabel>Pay Period <span className="text-destructive">*</span></FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || "monthly"}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-income-frequency">
-                              <SelectValue placeholder="Select pay period" />
+                            <SelectTrigger data-testid="select-income-frequency" className="bg-background">
+                              <SelectValue placeholder="How often are you paid?" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="biweekly">Biweekly (every 2 weeks)</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="weekly">Weekly (52 times/year)</SelectItem>
+                            <SelectItem value="biweekly">Biweekly (26 times/year)</SelectItem>
+                            <SelectItem value="monthly">Monthly (12 times/year)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1091,7 +1132,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                       const frequency = editForm.watch('incomeFrequency') || 'monthly';
                       const frequencyLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Biweekly' : 'Monthly';
                       
-                      // Calculate annual income based on frequency
                       const calculateAnnualIncome = (amount: string) => {
                         const num = parseFloat(amount || '0');
                         if (isNaN(num) || num <= 0) return '0';
@@ -1112,20 +1152,26 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                       
                       return (
                         <FormItem>
-                          <FormLabel>{frequencyLabel} income <span className="text-destructive">(required)</span></FormLabel>
+                          <FormLabel>{frequencyLabel} Income <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              step="0.01"
-                              placeholder="0.00" 
-                              data-testid="input-income-amount"
-                            />
+                            <div className="relative">
+                              <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                step="0.01"
+                                placeholder="0.00" 
+                                data-testid="input-income-amount"
+                                className="pl-7 bg-background"
+                              />
+                            </div>
                           </FormControl>
                           {field.value && parseFloat(field.value) > 0 && (
-                            <p className="text-sm text-muted-foreground">
-                              Annual: ${parseFloat(annualAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
+                            <div className="rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
+                              <p className="text-xs font-medium text-primary">
+                                Annual Equivalent: ${parseFloat(annualAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
                           )}
                           <FormMessage />
                         </FormItem>
@@ -1133,51 +1179,37 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     }}
                   />
                 </div>
-
-                {/* Self Employed Checkbox */}
-                <div className="space-y-4">
-                  <FormField
-                    control={editForm.control}
-                    name="selfEmployed"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-self-employed"
-                          />
-                        </FormControl>
-                        <FormLabel className="cursor-pointer">Self employed</FormLabel>
-                      </FormItem>
-                    )}
-                  />
                 </div>
               </TabsContent>
 
               {/* Tab 3: Immigration Status */}
-              <TabsContent value="immigration" className="flex-1 overflow-y-auto space-y-6 p-4">
-                <div className="space-y-4">
-                  {/* Immigration Status - Full Width */}
+              <TabsContent value="immigration" className="flex-1 overflow-y-auto space-y-4 p-4">
+                {/* Primary Status Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <Plane className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Immigration Status</h3>
+                  </div>
+                  
                   <FormField
                     control={editForm.control}
                     name="immigrationStatus"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Immigration status <span className="text-destructive">(required)</span></FormLabel>
+                        <FormLabel>Status <span className="text-destructive">*</span></FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-immigration-status">
-                              <SelectValue placeholder="Select status" />
+                            <SelectTrigger data-testid="select-immigration-status" className="bg-background">
+                              <SelectValue placeholder="Select immigration status" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="asylum">Asylum</SelectItem>
-                            <SelectItem value="citizen">Citizen</SelectItem>
-                            <SelectItem value="humanitarian_parole">Humanitarian parole</SelectItem>
-                            <SelectItem value="resident">Resident</SelectItem>
-                            <SelectItem value="temporary_protected_status">Temporary protected status</SelectItem>
-                            <SelectItem value="work_authorization">Work authorization</SelectItem>
+                            <SelectItem value="citizen">U.S. Citizen</SelectItem>
+                            <SelectItem value="humanitarian_parole">Humanitarian Parole</SelectItem>
+                            <SelectItem value="resident">Permanent Resident</SelectItem>
+                            <SelectItem value="temporary_protected_status">Temporary Protected Status (TPS)</SelectItem>
+                            <SelectItem value="work_authorization">Work Authorization</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1186,48 +1218,58 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     )}
                   />
 
-                  {/* Naturalization # - Only for Citizen */}
                   {editForm.watch('immigrationStatus') === 'citizen' && (
                     <FormField
                       control={editForm.control}
                       name="naturalizationNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Naturalization #</FormLabel>
+                          <FormLabel className="flex items-center gap-2">
+                            <span>Naturalization Certificate #</span>
+                          </FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Insert naturalization number" data-testid="input-naturalization-number" />
+                            <Input {...field} placeholder="Enter certificate number" data-testid="input-naturalization-number" className="bg-background" />
                           </FormControl>
+                          <p className="text-xs text-muted-foreground">Found on naturalization certificate</p>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   )}
 
-                  {/* Immigration Status Category */}
                   <FormField
                     control={editForm.control}
                     name="immigrationStatusCategory"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Immigration status category</FormLabel>
+                        <FormLabel>Status Category</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Insert immigration status" data-testid="input-immigration-category" />
+                          <Input {...field} placeholder="e.g., I-94, Parole, etc." data-testid="input-immigration-category" className="bg-background" />
                         </FormControl>
+                        <p className="text-xs text-muted-foreground">Specify the document or category type</p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
 
-                  {/* USCIS # */}
+                {/* Documentation Numbers Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Official Numbers</h3>
+                  </div>
+                  
                   <FormField
                     control={editForm.control}
                     name="uscisNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>USCIS #</FormLabel>
+                        <FormLabel>USCIS Number</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Optional" data-testid="input-uscis-number" />
+                          <Input {...field} placeholder="9-digit number (optional)" data-testid="input-uscis-number" className="bg-background font-mono" />
                         </FormControl>
+                        <p className="text-xs text-muted-foreground">Alien Registration Number or USCIS #</p>
                         <FormMessage />
                       </FormItem>
                     )}
