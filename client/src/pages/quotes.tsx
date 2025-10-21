@@ -1092,7 +1092,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email {memberType === 'primary' && '*'}</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input type="email" {...field} data-testid="input-email" />
                     </FormControl>
