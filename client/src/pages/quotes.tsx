@@ -701,6 +701,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members'] });
       queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'income'] });
       queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'immigration'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'household-income'] });
       
       toast({
         title: "Success",
