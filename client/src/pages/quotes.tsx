@@ -846,13 +846,10 @@ export default function QuotesPage() {
                               data-testid="input-ssn"
                             />
                           </FormControl>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onMouseDown={(e) => e.preventDefault()}
+                          <div
                             onClick={() => setShowEditSsn(!showEditSsn)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                            onMouseDown={(e) => e.preventDefault()}
+                            className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer"
                             aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
                             data-testid="button-ssn-visibility"
                           >
@@ -861,7 +858,7 @@ export default function QuotesPage() {
                             ) : (
                               <Eye className="h-4 w-4 text-muted-foreground" />
                             )}
-                          </Button>
+                          </div>
                         </div>
                         <FormMessage />
                       </FormItem>
