@@ -483,7 +483,7 @@ export default function QuotesPage() {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
       searchQuery === "" ||
-      `${quote.clientFirstName} ${quote.clientLastName}`.toLowerCase().includes(searchLower) ||
+      `${quote.clientFirstName} ${quote.clientMiddleName || ''} ${quote.clientLastName} ${quote.clientSecondLastName || ''}`.toLowerCase().includes(searchLower) ||
       quote.clientEmail.toLowerCase().includes(searchLower) ||
       quote.clientPhone.includes(searchQuery);
     
@@ -676,7 +676,9 @@ export default function QuotesPage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Holder</span>
-                  <span className="text-xs font-medium">{viewingQuote.clientFirstName} {viewingQuote.clientLastName}</span>
+                  <span className="text-xs font-medium">
+                    {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Date of birth</span>
@@ -720,7 +722,7 @@ export default function QuotesPage() {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <h1 className="text-2xl font-bold">
-                            {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
+                            {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                           </h1>
                           <Badge variant={viewingQuote.status === 'active' ? 'default' : 'secondary'} className="text-xs">
                             {viewingQuote.status === 'active' ? 'Active Quote' : viewingQuote.status || 'Draft'}
@@ -1001,7 +1003,7 @@ export default function QuotesPage() {
                             <div className="flex items-start justify-between mb-1">
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-semibold text-sm truncate">
-                                  {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
+                                  {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                                 </h4>
                                 <div className="flex gap-1 mt-1 flex-wrap">
                                   <Badge variant="default" className="text-xs">Self</Badge>
@@ -1056,7 +1058,7 @@ export default function QuotesPage() {
                               <div className="flex items-start justify-between mb-1">
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-semibold text-sm truncate">
-                                    {spouse.firstName} {spouse.lastName}
+                                    {spouse.firstName} {spouse.middleName} {spouse.lastName} {spouse.secondLastName}
                                   </h4>
                                   <div className="flex gap-1 mt-1 flex-wrap">
                                     <Badge variant="outline" className="text-xs">Spouse</Badge>
@@ -1112,7 +1114,7 @@ export default function QuotesPage() {
                               <div className="flex items-start justify-between mb-1">
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-semibold text-sm truncate">
-                                    {dependent.firstName} {dependent.lastName}
+                                    {dependent.firstName} {dependent.middleName} {dependent.lastName} {dependent.secondLastName}
                                   </h4>
                                   <div className="flex gap-1 mt-1 flex-wrap">
                                     <Badge variant="outline" className="text-xs">{dependent.relation || 'Dependent'}</Badge>
@@ -1703,7 +1705,7 @@ export default function QuotesPage() {
                                   className="font-medium text-sm text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
                                   onClick={() => setLocation(`/quotes/${quote.id}`)}
                                 >
-                                  {quote.clientFirstName} {quote.clientLastName}
+                                  {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-0.5">
                                   {quote.clientIsApplicant ? 'Self' : 'Not Applicant'} - {quote.clientGender ? quote.clientGender.charAt(0).toUpperCase() + quote.clientGender.slice(1) : 'N/A'}
