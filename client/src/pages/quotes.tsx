@@ -2923,7 +2923,7 @@ export default function QuotesPage() {
                               {viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
                             </span>
                             <span className="text-muted-foreground">|</span>
-                            <span className="flex items-center gap-1.5">
+                            <span className="flex items-center gap-1.5 font-mono">
                               <IdCard className="h-3 w-3" />
                               {viewingQuote.clientSsn 
                                 ? (showSsn && revealedClientSsn ? formatSSN(revealedClientSsn) : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
