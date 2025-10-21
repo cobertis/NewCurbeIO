@@ -370,6 +370,7 @@ interface EditMemberSheetProps {
 }
 
 function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending, onMemberChange }: EditMemberSheetProps) {
+  const { toast } = useToast();
   const editMemberSchema = memberType === 'dependent'
     ? dependentSchema
     : familyMemberSchema;
@@ -591,7 +592,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         if (incomeResponse.ok) {
           console.log('[EditMemberSheet] Income saved successfully');
         } else {
-          console.error('[EditMemberSheet] Failed to save income:', await incomeResponse.text());
+          const errorText = await incomeResponse.text();
+          console.error('[EditMemberSheet] Failed to save income:', errorText);
+          toast({
+            variant: "destructive",
+            title: "Error Saving Income",
+            description: "Failed to save income data. Please try again.",
+          });
+          return; // Don't close the sheet, let user fix the issue
         }
       }
       
@@ -614,17 +622,32 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         if (immigrationResponse.ok) {
           console.log('[EditMemberSheet] Immigration saved successfully');
         } else {
-          console.error('[EditMemberSheet] Failed to save immigration:', await immigrationResponse.text());
+          const errorText = await immigrationResponse.text();
+          console.error('[EditMemberSheet] Failed to save immigration:', errorText);
+          toast({
+            variant: "destructive",
+            title: "Error Saving Immigration",
+            description: "Failed to save immigration data. Please try again.",
+          });
+          return; // Don't close the sheet, let user fix the issue
         }
       }
       
-      console.log('[EditMemberSheet] All data saved, closing sheet');
-      // Close the sheet after all async operations complete
+      console.log('[EditMemberSheet] All data saved successfully!');
+      toast({
+        title: "Success",
+        description: "Member information saved successfully.",
+      });
+      // Close the sheet after all async operations complete successfully
       onOpenChange(false);
     } catch (error) {
       console.error('[EditMemberSheet] Error saving member data:', error);
-      // Close sheet even if there's an error
-      onOpenChange(false);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "An unexpected error occurred while saving.",
+      });
+      // Don't close the sheet on error - let user try again
     }
   };
 

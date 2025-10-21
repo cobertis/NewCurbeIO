@@ -1,0 +1,65 @@
+client:536 WebSocket connection to 'wss://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/?token=yJg46zhXQRnc' failed: 
+setupWebSocket @ client:536Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=yJg46zhXQRnc' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)Understand this error
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 [EditMemberSheet] handleSave called with data: Object
+injected.js:27 [EditMemberSheet] Form errors: Object
+injected.js:27 [EditMemberSheet] Starting to save normalized data...
+injected.js:27 [EditMemberSheet] Member ensured, ID: 6063ec9b-9098-4340-bb3f-79ad1d806c08
+injected.js:27 [EditMemberSheet] Saving income data... Object
+731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/api/quotes/members/6063ec9b-9098-4340-bb3f-79ad1d806c08/income:1  Failed to load resource: the server responded with a status of 400 (Bad Request)Understand this error
+injected.js:27 [EditMemberSheet] Failed to save income: {"message":"Validation error","errors":[{"code":"invalid_type","expected":"string","received":"undefined","path":["companyId"],"message":"Required"}]}
+(anonymous) @ injected.js:27Understand this error
+injected.js:27 [EditMemberSheet] All data saved, closing sheet
+sp.replit.com/v1/t:1  Failed to load resource: the server responded with a status of 400 ()Understand this error
+injected.js:27 [EditMemberSheet] handleSave called with data: {firstName: 'Zoraida', middleName: '', lastName: 'Cabrera', secondLastName: 'Catala', dateOfBirth: '1964-09-18', …}
+injected.js:27 [EditMemberSheet] Form errors: {}
+injected.js:27 [EditMemberSheet] Starting to save normalized data...
+injected.js:27 [EditMemberSheet] Member ensured, ID: 6063ec9b-9098-4340-bb3f-79ad1d806c08
+injected.js:27 [EditMemberSheet] Saving income data... {annualIncome: '30000.00', employerName: ''}
+injected.js:204  PUT https://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/api/quotes/members/6063ec9b-9098-4340-bb3f-79ad1d806c08/income 400 (Bad Request)
+apply @ injected.js:204
+handleSave @ quotes.tsx:577
+await in handleSave
+(anonymous) @ chunk-4BFJKWC4.js?v=9cde1ff9:1465
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=9cde1ff9:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=9cde1ff9:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=9cde1ff9:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=9cde1ff9:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=9cde1ff9:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=9cde1ff9:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=9cde1ff9:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=9cde1ff9:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=9cde1ff9:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=9cde1ff9:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=9cde1ff9:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=9cde1ff9:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=9cde1ff9:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=9cde1ff9:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=9cde1ff9:5449Understand this error
+injected.js:27 [EditMemberSheet] Failed to save income: {"message":"Validation error","errors":[{"code":"invalid_type","expected":"string","received":"undefined","path":["companyId"],"message":"Required"}]}
+(anonymous) @ injected.js:27
+handleSave @ quotes.tsx:594
+await in handleSave
+(anonymous) @ chunk-4BFJKWC4.js?v=9cde1ff9:1465
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=9cde1ff9:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=9cde1ff9:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=9cde1ff9:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=9cde1ff9:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=9cde1ff9:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=9cde1ff9:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=9cde1ff9:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=9cde1ff9:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=9cde1ff9:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=9cde1ff9:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=9cde1ff9:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=9cde1ff9:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=9cde1ff9:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=9cde1ff9:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=9cde1ff9:5449Understand this error
+injected.js:27 [EditMemberSheet] All data saved, closing sheet

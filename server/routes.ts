@@ -8625,10 +8625,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Validate request body
+      // Validate request body (include companyId from member)
       const validatedData = insertQuoteMemberIncomeSchema.parse({
         ...req.body,
         memberId,
+        companyId: member.companyId,
       });
       
       // Encrypt sensitive fields before saving
@@ -8804,10 +8805,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Validate request body
+      // Validate request body (include companyId from member)
       const validatedData = insertQuoteMemberImmigrationSchema.parse({
         ...req.body,
         memberId,
+        companyId: member.companyId,
       });
       
       // Encrypt sensitive fields before saving
