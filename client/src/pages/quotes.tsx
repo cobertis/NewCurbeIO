@@ -2920,7 +2920,14 @@ export default function QuotesPage() {
                           <div className="flex items-center gap-4">
                             <span className="flex items-center gap-1.5">
                               <Calendar className="h-3 w-3" />
-                              {viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
+                              {viewingQuote.clientDateOfBirth ? (
+                                <>
+                                  {format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy")}
+                                  <span className="text-foreground/60">
+                                    ({Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
+                                  </span>
+                                </>
+                              ) : 'N/A'}
                             </span>
                             <span className="text-muted-foreground">|</span>
                             <span className="flex items-center gap-1.5 font-mono">
