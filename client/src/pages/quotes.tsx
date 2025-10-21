@@ -670,12 +670,15 @@ export default function QuotesPage() {
     });
 
     useEffect(() => {
-      if (memberData) {
+      if (memberData && open) {
         editForm.reset(memberData);
       }
-    }, [memberType, memberIndex, quote]);
+    }, [memberType, memberIndex, quote, open]);
 
     const handleSave = (data: any) => {
+      // Close any open popovers
+      setCountryPopoverOpen(false);
+      
       if (memberType === 'primary') {
         onSave({
           clientFirstName: data.firstName,
