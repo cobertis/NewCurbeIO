@@ -199,11 +199,18 @@ const familyMemberSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   secondLastName: z.string().optional(),
   dateOfBirth: z.string().optional(),
+  ssn: z.string().optional(),
   gender: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().optional(),
   isApplicant: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
+});
+
+const spouseSchema = familyMemberSchema;
+
+const dependentSchema = familyMemberSchema.extend({
+  relation: z.string().min(1, "Relation is required"),
 });
 
 const step2Schema = z.object({
@@ -230,8 +237,8 @@ const step2Schema = z.object({
 const step3Schema = z.object({
   annualHouseholdIncome: z.string().optional(),
   familyGroupSize: z.string().optional(),
-  spouses: z.array(familyMemberSchema).default([]),
-  dependents: z.array(familyMemberSchema).default([]),
+  spouses: z.array(spouseSchema).default([]),
+  dependents: z.array(dependentSchema).default([]),
 });
 
 const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
@@ -436,6 +443,7 @@ export default function QuotesPage() {
       lastName: "",
       secondLastName: "",
       dateOfBirth: "",
+      ssn: "",
       gender: "",
       phone: "",
       email: "",
@@ -451,11 +459,13 @@ export default function QuotesPage() {
       lastName: "",
       secondLastName: "",
       dateOfBirth: "",
+      ssn: "",
       gender: "",
       phone: "",
       email: "",
       isApplicant: true,
       tobaccoUser: false,
+      relation: "",
     });
   };
 
@@ -2069,73 +2079,91 @@ export default function QuotesPage() {
                 {/* Step 3: Family Group */}
                 {currentStep === 3 && (
                   <div className="space-y-6 px-8">
-                    {/* Income and Family Size */}
-                    <FormField
-                      control={form.control}
-                      name="annualHouseholdIncome"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base">Annual household income</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    {/* Household Information Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <DollarSign className="h-5 w-5 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold">Household Information</h3>
+                      </div>
+                      
+                      <FormField
+                        control={form.control}
+                        name="annualHouseholdIncome"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-base">Annual household income</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                                <Input 
+                                  {...field} 
+                                  className="pl-7" 
+                                  placeholder="Annual household income" 
+                                  data-testid="input-household-income"
+                                />
+                              </div>
+                            </FormControl>
+                            <p className="text-sm text-muted-foreground">
+                              Health Insurance services require you to provide your annual household income so we can provide more accurate quotes.
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="familyGroupSize"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-base">Family group size</FormLabel>
+                            <FormControl>
                               <Input 
                                 {...field} 
-                                className="pl-7" 
-                                placeholder="Annual household income" 
-                                data-testid="input-household-income"
+                                placeholder="Family group size" 
+                                data-testid="input-family-size"
                               />
-                            </div>
-                          </FormControl>
-                          <p className="text-sm text-muted-foreground">
-                            Health Insurance services require you to provide your annual household income so we can provide more accurate quotes.
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                    <FormField
-                      control={form.control}
-                      name="familyGroupSize"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base">Family group size</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder="Family group size" 
-                              data-testid="input-family-size"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Add Spouse/Dependent Buttons */}
+                    {/* Family Members Section */}
                     <div className="space-y-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={handleAddSpouse}
-                        data-testid="button-add-spouse"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add spouse
-                      </Button>
+                      <div className="flex items-center gap-2 pb-2 border-t pt-4">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold">Family Members</h3>
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground">
+                        Add your spouse and/or dependents to the quote.
+                      </p>
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={handleAddDependent}
-                        data-testid="button-add-dependent"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add dependent
-                      </Button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleAddSpouse}
+                          data-testid="button-add-spouse"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Spouse
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleAddDependent}
+                          data-testid="button-add-dependent"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Dependent
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Spouse Cards */}
@@ -2154,15 +2182,15 @@ export default function QuotesPage() {
                             Remove
                           </Button>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                            {/* Row 1 */}
+                        <CardContent className="space-y-4">
+                          {/* Row 1: First Name, Middle Name, Last Name, Second Last Name */}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
                             <FormField
                               control={form.control}
                               name={`spouses.${index}.firstName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>First name *</FormLabel>
+                                  <FormLabel>First Name *</FormLabel>
                                   <FormControl>
                                     <Input {...field} placeholder="First name" data-testid={`input-spouse-firstname-${index}`} />
                                   </FormControl>
@@ -2176,22 +2204,21 @@ export default function QuotesPage() {
                               name={`spouses.${index}.middleName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Middle name (optional)</FormLabel>
+                                  <FormLabel>Middle Name</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="Middle name" data-testid={`input-spouse-middlename-${index}`} />
+                                    <Input {...field} placeholder="Middle name (optional)" data-testid={`input-spouse-middlename-${index}`} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
 
-                            {/* Row 2 */}
                             <FormField
                               control={form.control}
                               name={`spouses.${index}.lastName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Last name *</FormLabel>
+                                  <FormLabel>Last Name *</FormLabel>
                                   <FormControl>
                                     <Input {...field} placeholder="Last name" data-testid={`input-spouse-lastname-${index}`} />
                                   </FormControl>
@@ -2205,24 +2232,50 @@ export default function QuotesPage() {
                               name={`spouses.${index}.secondLastName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Second last name (optional)</FormLabel>
+                                  <FormLabel>Second Last Name</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="Second last name" data-testid={`input-spouse-secondlastname-${index}`} />
+                                    <Input {...field} placeholder="Second last name (optional)" data-testid={`input-spouse-secondlastname-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {/* Row 2: Date of Birth, SSN, Gender, Phone */}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.dateOfBirth`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Date of Birth</FormLabel>
+                                  <FormControl>
+                                    <Input type="date" {...field} data-testid={`input-spouse-dob-${index}`} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
 
-                            {/* Row 3 */}
                             <FormField
                               control={form.control}
-                              name={`spouses.${index}.dateOfBirth`}
+                              name={`spouses.${index}.ssn`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Date of birth</FormLabel>
+                                  <FormLabel>SSN</FormLabel>
                                   <FormControl>
-                                    <Input type="date" {...field} data-testid={`input-spouse-dob-${index}`} />
+                                    <Input 
+                                      {...field}
+                                      type="text" 
+                                      data-testid={`input-spouse-ssn-${index}`} 
+                                      placeholder="XXX-XX-XXXX"
+                                      maxLength={11}
+                                      onChange={(e) => {
+                                        const formatted = formatSSN(e.target.value);
+                                        field.onChange(formatted);
+                                      }}
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -2252,7 +2305,11 @@ export default function QuotesPage() {
                               )}
                             />
 
-                            {/* Row 4 */}
+                            <div></div>
+                          </div>
+
+                          {/* Row 3: Phone, Email */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                             <FormField
                               control={form.control}
                               name={`spouses.${index}.phone`}
@@ -2377,15 +2434,15 @@ export default function QuotesPage() {
                             Remove
                           </Button>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                            {/* Row 1 */}
+                        <CardContent className="space-y-4">
+                          {/* Row 1: First Name, Middle Name, Last Name, Second Last Name */}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
                             <FormField
                               control={form.control}
                               name={`dependents.${index}.firstName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>First name *</FormLabel>
+                                  <FormLabel>First Name *</FormLabel>
                                   <FormControl>
                                     <Input {...field} placeholder="First name" data-testid={`input-dependent-firstname-${index}`} />
                                   </FormControl>
@@ -2399,22 +2456,21 @@ export default function QuotesPage() {
                               name={`dependents.${index}.middleName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Middle name (optional)</FormLabel>
+                                  <FormLabel>Middle Name</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="Middle name" data-testid={`input-dependent-middlename-${index}`} />
+                                    <Input {...field} placeholder="Middle name (optional)" data-testid={`input-dependent-middlename-${index}`} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
 
-                            {/* Row 2 */}
                             <FormField
                               control={form.control}
                               name={`dependents.${index}.lastName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Last name *</FormLabel>
+                                  <FormLabel>Last Name *</FormLabel>
                                   <FormControl>
                                     <Input {...field} placeholder="Last name" data-testid={`input-dependent-lastname-${index}`} />
                                   </FormControl>
@@ -2428,24 +2484,50 @@ export default function QuotesPage() {
                               name={`dependents.${index}.secondLastName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Second last name (optional)</FormLabel>
+                                  <FormLabel>Second Last Name</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="Second last name" data-testid={`input-dependent-secondlastname-${index}`} />
+                                    <Input {...field} placeholder="Second last name (optional)" data-testid={`input-dependent-secondlastname-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {/* Row 2: Date of Birth, SSN, Gender, Relation */}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.dateOfBirth`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Date of Birth</FormLabel>
+                                  <FormControl>
+                                    <Input type="date" {...field} data-testid={`input-dependent-dob-${index}`} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
 
-                            {/* Row 3 */}
                             <FormField
                               control={form.control}
-                              name={`dependents.${index}.dateOfBirth`}
+                              name={`dependents.${index}.ssn`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Date of birth</FormLabel>
+                                  <FormLabel>SSN</FormLabel>
                                   <FormControl>
-                                    <Input type="date" {...field} data-testid={`input-dependent-dob-${index}`} />
+                                    <Input 
+                                      {...field}
+                                      type="text" 
+                                      data-testid={`input-dependent-ssn-${index}`} 
+                                      placeholder="XXX-XX-XXXX"
+                                      maxLength={11}
+                                      onChange={(e) => {
+                                        const formatted = formatSSN(e.target.value);
+                                        field.onChange(formatted);
+                                      }}
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -2475,7 +2557,33 @@ export default function QuotesPage() {
                               )}
                             />
 
-                            {/* Row 4 */}
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.relation`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Relation *</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger data-testid={`select-dependent-relation-${index}`}>
+                                        <SelectValue placeholder="Select relation" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="child">Child</SelectItem>
+                                      <SelectItem value="parent">Parent</SelectItem>
+                                      <SelectItem value="sibling">Sibling</SelectItem>
+                                      <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {/* Row 3: Phone, Email */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                             <FormField
                               control={form.control}
                               name={`dependents.${index}.phone`}
