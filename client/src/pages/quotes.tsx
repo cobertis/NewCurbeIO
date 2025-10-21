@@ -1757,7 +1757,7 @@ export default function QuotesPage() {
                                   </span>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {quote.state} {quote.postalCode}
+                                  {quote.city}, {quote.state} {quote.postalCode}
                                 </div>
                               </div>
                             </TableCell>
