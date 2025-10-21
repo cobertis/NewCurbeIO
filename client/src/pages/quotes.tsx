@@ -801,38 +801,49 @@ export default function QuotesPage() {
                 <FormField
                   control={editForm.control}
                   name="ssn"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SSN *</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            {...field}
-                            type={showEditSsn ? "text" : "password"}
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(formatSSN(e.target.value))}
-                            data-testid="input-ssn"
-                            className="pr-10"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                            onClick={() => setShowEditSsn(!showEditSsn)}
-                            data-testid="button-toggle-edit-ssn"
-                          >
-                            {showEditSsn ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const displayValue = showEditSsn 
+                      ? field.value || ''
+                      : field.value 
+                        ? '***-**-' + field.value.slice(-4)
+                        : '';
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>SSN *</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              value={displayValue}
+                              onChange={(e) => {
+                                if (showEditSsn) {
+                                  field.onChange(formatSSN(e.target.value));
+                                }
+                              }}
+                              onFocus={() => setShowEditSsn(true)}
+                              data-testid="input-ssn"
+                              className="pr-10"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                              onClick={() => setShowEditSsn(!showEditSsn)}
+                              data-testid="button-toggle-edit-ssn"
+                            >
+                              {showEditSsn ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
 
                 {/* Phone - Email */}
