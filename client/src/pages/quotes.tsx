@@ -951,7 +951,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name *</FormLabel>
+                    <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input {...field} data-testid="input-firstname" />
                     </FormControl>
@@ -979,7 +979,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name *</FormLabel>
+                    <FormLabel>Last Name <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input {...field} data-testid="input-lastname" />
                     </FormControl>
@@ -1007,7 +1007,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="dateOfBirth"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date of Birth *</FormLabel>
+                    <FormLabel>Date of Birth <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input type="date" {...field} data-testid="input-dob" />
                     </FormControl>
@@ -1023,7 +1023,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                   const hasSSN = field.value && (normalizeSSN(field.value).length >= 4 || field.value.includes('***'));
                   return (
                     <FormItem>
-                      <FormLabel>SSN *</FormLabel>
+                      <FormLabel>SSN <span className="text-destructive">*</span></FormLabel>
                       <div className="relative">
                         <FormControl>
                           <Input
@@ -1074,7 +1074,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone {memberType === 'primary' && '*'}</FormLabel>
+                    <FormLabel>Phone {memberType === 'primary' && <span className="text-destructive">*</span>}</FormLabel>
                     <FormControl>
                       <Input 
                         {...field}
@@ -1107,7 +1107,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender *</FormLabel>
+                    <FormLabel>Gender <span className="text-destructive">*</span></FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-gender">
@@ -1261,7 +1261,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                   name="relation"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Relation *</FormLabel>
+                      <FormLabel>Relation <span className="text-destructive">*</span></FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-relation">
