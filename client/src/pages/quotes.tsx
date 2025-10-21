@@ -43,14 +43,14 @@ const formatSSN = (value: string) => {
 };
 
 // Normalize SSN to digits only (remove all non-digits)
-const normalizeSSN = (ssn: string | undefined): string => {
+const normalizeSSN = (ssn: string | null | undefined): string => {
   if (!ssn) return '';
   return ssn.replace(/\D/g, '').slice(0, 9);
 };
 
 // Display SSN: hidden shows XXX-XX-6789, visible shows 123-45-6789
 // Only allows viewing complete SSN (9 digits), incomplete SSN always shows masked
-const displaySSN = (ssn: string | undefined, isVisible: boolean): string => {
+const displaySSN = (ssn: string | null | undefined, isVisible: boolean): string => {
   if (!ssn) return '';
   const digits = normalizeSSN(ssn);
   
@@ -303,7 +303,7 @@ interface EditMemberSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   quote: Quote;
-  memberType: 'primary' | 'spouse' | 'dependent';
+  memberType?: 'primary' | 'spouse' | 'dependent';
   memberIndex?: number;
   onSave: (data: Partial<Quote>) => void;
   isPending: boolean;
@@ -371,7 +371,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     prevOpenRef.current = open;
   }, [open]); // ONLY depend on open, NOT on memberData
 
-  const handleSave = (data: any) => {
+  const handleSave = (data: z.infer<typeof editMemberSchema>) => {
     // Close any open popovers
     setCountryPopoverOpen(false);
     
@@ -908,7 +908,7 @@ export default function QuotesPage() {
     queryKey: ["/api/quotes"],
   });
 
-  const form = useForm({
+  const form = useForm<z.infer<typeof completeQuoteSchema>>({
     resolver: zodResolver(completeQuoteSchema),
     defaultValues: {
       effectiveDate: format(getFirstDayOfNextMonth(), "yyyy-MM-dd"),
@@ -1248,6 +1248,9 @@ export default function QuotesPage() {
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
           <SheetHeader>
             <SheetTitle>Edit Addresses</SheetTitle>
+            <SheetDescription>
+              Update the billing and shipping addresses for this quote
+            </SheetDescription>
           </SheetHeader>
           <Form {...addressForm}>
             <form onSubmit={addressForm.handleSubmit(onSave)} className="space-y-6 py-6">
@@ -1260,7 +1263,7 @@ export default function QuotesPage() {
                     <FormControl>
                       <GooglePlacesAddressAutocomplete
                         value={field.value}
-                        onChange={(value, addressComponents) => {
+                        onChange={(value: string, addressComponents?: any) => {
                           field.onChange(value);
                           if (addressComponents) {
                             addressForm.setValue('city', addressComponents.city || '');
@@ -1401,6 +1404,9 @@ export default function QuotesPage() {
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
           <SheetHeader>
             <SheetTitle>Edit Payment Information</SheetTitle>
+            <SheetDescription>
+              Configure payment schedule and preferences for this quote
+            </SheetDescription>
           </SheetHeader>
           <Form {...paymentForm}>
             <form onSubmit={paymentForm.handleSubmit((data) => {
@@ -1515,6 +1521,9 @@ export default function QuotesPage() {
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
           <SheetHeader>
             <SheetTitle>Edit Notes or Comments</SheetTitle>
+            <SheetDescription>
+              Add or update internal notes about this quote
+            </SheetDescription>
           </SheetHeader>
           <Form {...notesForm}>
             <form onSubmit={notesForm.handleSubmit(onSave)} className="space-y-6 py-6">
@@ -1579,6 +1588,9 @@ export default function QuotesPage() {
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
           <SheetHeader>
             <SheetTitle>Edit Primary Doctor Information</SheetTitle>
+            <SheetDescription>
+              Record primary care physician details for this applicant
+            </SheetDescription>
           </SheetHeader>
           <Form {...doctorForm}>
             <form onSubmit={doctorForm.handleSubmit((data) => {
@@ -1647,6 +1659,9 @@ export default function QuotesPage() {
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
           <SheetHeader>
             <SheetTitle>Edit Medicines Needed</SheetTitle>
+            <SheetDescription>
+              List current medications and prescriptions for this applicant
+            </SheetDescription>
           </SheetHeader>
           <Form {...medicinesForm}>
             <form onSubmit={medicinesForm.handleSubmit((data) => {
@@ -2508,7 +2523,7 @@ export default function QuotesPage() {
               quote={viewingQuote}
               memberType={editingMember?.type}
               memberIndex={editingMember?.index}
-              onSave={(data) => {
+              onSave={(data: Partial<Quote>) => {
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
@@ -2521,7 +2536,7 @@ export default function QuotesPage() {
               open={editingAddresses}
               onOpenChange={setEditingAddresses}
               quote={viewingQuote}
-              onSave={(data) => {
+              onSave={(data: Partial<Quote>) => {
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
@@ -2536,7 +2551,7 @@ export default function QuotesPage() {
               open={editingPayment}
               onOpenChange={setEditingPayment}
               quote={viewingQuote}
-              onSave={(data) => {
+              onSave={(data: Partial<Quote>) => {
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
@@ -2551,7 +2566,7 @@ export default function QuotesPage() {
               open={editingNotes}
               onOpenChange={setEditingNotes}
               quote={viewingQuote}
-              onSave={(data) => {
+              onSave={(data: Partial<Quote>) => {
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
@@ -2566,7 +2581,7 @@ export default function QuotesPage() {
               open={editingDoctor}
               onOpenChange={setEditingDoctor}
               quote={viewingQuote}
-              onSave={(data) => {
+              onSave={(data: Partial<Quote>) => {
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
@@ -2581,7 +2596,7 @@ export default function QuotesPage() {
               open={editingMedicines}
               onOpenChange={setEditingMedicines}
               quote={viewingQuote}
-              onSave={(data) => {
+              onSave={(data: Partial<Quote>) => {
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
@@ -2654,6 +2669,9 @@ export default function QuotesPage() {
                     <SheetContent className="w-full sm:max-w-md overflow-y-auto">
                       <SheetHeader>
                         <SheetTitle>Filter your quotes by</SheetTitle>
+                        <SheetDescription>
+                          Apply filters to find specific quotes quickly
+                        </SheetDescription>
                       </SheetHeader>
                       <div className="space-y-6 py-6">
                         {/* Search and Reset */}
@@ -3670,7 +3688,7 @@ export default function QuotesPage() {
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
                             <FormField
                               control={form.control}
-                              name={`spouses.${index}.firstName`}
+                              name={`spouses.${index}.firstName` as any}
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>First Name *</FormLabel>
@@ -3684,7 +3702,7 @@ export default function QuotesPage() {
 
                             <FormField
                               control={form.control}
-                              name={`spouses.${index}.middleName`}
+                              name={`spouses.${index}.middleName` as any}
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Middle Name</FormLabel>
@@ -3698,7 +3716,7 @@ export default function QuotesPage() {
 
                             <FormField
                               control={form.control}
-                              name={`spouses.${index}.lastName`}
+                              name={`spouses.${index}.lastName` as any}
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Last Name *</FormLabel>
@@ -3712,7 +3730,7 @@ export default function QuotesPage() {
 
                             <FormField
                               control={form.control}
-                              name={`spouses.${index}.secondLastName`}
+                              name={`spouses.${index}.secondLastName` as any}
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Second Last Name</FormLabel>
@@ -3729,7 +3747,7 @@ export default function QuotesPage() {
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
                             <FormField
                               control={form.control}
-                              name={`spouses.${index}.dateOfBirth`}
+                              name={`spouses.${index}.dateOfBirth` as any}
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Date of Birth *</FormLabel>
@@ -3743,7 +3761,7 @@ export default function QuotesPage() {
 
                             <FormField
                               control={form.control}
-                              name={`spouses.${index}.ssn`}
+                              name={`spouses.${index}.ssn` as any}
                               render={({ field }) => {
                                 const hasCompleteSSN = normalizeSSN(field.value).length === 9;
                                 return (
@@ -3794,7 +3812,7 @@ export default function QuotesPage() {
 
                             <FormField
                               control={form.control}
-                              name={`spouses.${index}.gender`}
+                              name={`spouses.${index}.gender` as any}
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Gender *</FormLabel>
