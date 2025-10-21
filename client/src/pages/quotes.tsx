@@ -1816,42 +1816,6 @@ export default function QuotesPage() {
                   <p className="text-sm">{format(new Date(viewingQuote.effectiveDate), "MM/dd/yyyy")}</p>
                 </div>
 
-                <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground mb-1.5 block">Household</label>
-                  <div className="bg-muted/30 rounded-md p-2">
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <div className="text-lg font-bold text-foreground">{totalApplicants}</div>
-                        <div className="text-xs text-muted-foreground">Applicants</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-foreground">{totalFamilyMembers}</div>
-                        <div className="text-xs text-muted-foreground">Members</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-foreground">{totalDependents}</div>
-                        <div className="text-xs text-muted-foreground">Dependents</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">Status</label>
-                  <div className="mt-1">
-                    <Badge variant={viewingQuote.status === 'active' ? 'default' : 'secondary'}>
-                      {viewingQuote.status === 'active' ? 'Quote' : viewingQuote.status || 'Draft'}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">Tags</label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <Badge variant="outline" className="text-xs">New sale</Badge>
-                  </div>
-                </div>
-
                 <div>
                   <label className="text-xs text-muted-foreground">Last update</label>
                   <p className="text-sm text-muted-foreground">
