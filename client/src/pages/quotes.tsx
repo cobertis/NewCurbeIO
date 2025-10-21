@@ -884,6 +884,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               disabled={isPending}
               data-testid="button-save"
               onClick={editForm.handleSubmit(handleSave)}
+              className="mr-10"
             >
               {isPending ? 'Saving...' : 'Save'}
             </Button>
