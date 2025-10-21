@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, EyeOff, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -541,8 +542,30 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           </SheetDescription>
         </SheetHeader>
         <Form {...editForm}>
-          <form onSubmit={editForm.handleSubmit(handleSave)} className="space-y-6 py-6">
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={editForm.handleSubmit(handleSave)} className="flex flex-col h-full">
+            <Tabs defaultValue="basic" className="flex-1 flex flex-col">
+              <TabsList className="grid w-full grid-cols-4 mb-4">
+                <TabsTrigger value="basic" className="text-xs">
+                  <User className="h-4 w-4 mr-1" />
+                  Basic Info
+                </TabsTrigger>
+                <TabsTrigger value="income" className="text-xs">
+                  <DollarSign className="h-4 w-4 mr-1" />
+                  Income
+                </TabsTrigger>
+                <TabsTrigger value="immigration" className="text-xs">
+                  <Plane className="h-4 w-4 mr-1" />
+                  Immigration
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="text-xs">
+                  <FileText className="h-4 w-4 mr-1" />
+                  Documents
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Tab 1: Basic Information */}
+              <TabsContent value="basic" className="flex-1 overflow-y-auto space-y-6 pr-2">
+                <div className="grid grid-cols-2 gap-4">
               {/* First Name - Middle Name */}
               <FormField
                 control={editForm.control}
@@ -878,44 +901,70 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                   )}
                 />
               )}
-            </div>
-            
-            <div className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="isApplicant"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="checkbox-isapplicant"
-                      />
-                    </FormControl>
-                    <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="tobaccoUser"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="checkbox-tobacco"
-                      />
-                    </FormControl>
-                    <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
-                  </FormItem>
-                )}
-              />
-            </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <FormField
+                    control={editForm.control}
+                    name="isApplicant"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-isapplicant"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="tobaccoUser"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-tobacco"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </TabsContent>
 
-            <div className="flex gap-2 justify-end pt-4">
+              {/* Tab 2: Income & Employment */}
+              <TabsContent value="income" className="flex-1 overflow-y-auto space-y-6 pr-2">
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Income and employment information will be managed here.</p>
+                  {/* TODO: Implement income fields */}
+                </div>
+              </TabsContent>
+
+              {/* Tab 3: Immigration Status */}
+              <TabsContent value="immigration" className="flex-1 overflow-y-auto space-y-6 pr-2">
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Immigration status information will be managed here.</p>
+                  {/* TODO: Implement immigration fields */}
+                </div>
+              </TabsContent>
+
+              {/* Tab 4: Documents */}
+              <TabsContent value="documents" className="flex-1 overflow-y-auto space-y-6 pr-2">
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Document uploads and management will be managed here.</p>
+                  {/* TODO: Implement document upload */}
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <div className="flex gap-2 justify-end pt-4 border-t mt-4">
               <Button
                 type="button"
                 variant="outline"
