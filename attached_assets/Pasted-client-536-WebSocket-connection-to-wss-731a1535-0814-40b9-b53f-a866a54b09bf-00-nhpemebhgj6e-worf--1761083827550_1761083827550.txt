@@ -1,0 +1,32 @@
+client:536 WebSocket connection to 'wss://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/?token=D0mjU5jTf-oF' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+ WebSocket connection to 'wss://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/?token=D0mjU5jTf-oF' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=D0mjU5jTf-oF' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+client:536 WebSocket connection to 'wss://731a1535-0814-40b9-b53f-a866a54b09bf-00-nhpemebhgj6e.worf.replit.dev/?token=D0mjU5jTf-oF' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=D0mjU5jTf-oF' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 [EditMemberSheet] handleSave called with data: {firstName: 'Zoraida', middleName: '', lastName: 'Cabrera', secondLastName: 'Catala', dateOfBirth: '1964-09-17', …}
+injected.js:27 [EditMemberSheet] Form errors: {}
+injected.js:27 [EditMemberSheet] Starting to save normalized data...
+injected.js:27 [EditMemberSheet] Member ensured, ID: 6063ec9b-9098-4340-bb3f-79ad1d806c08
+injected.js:27 [EditMemberSheet] Saving income data... {annualIncome: '12000.00', employerName: ''}
+injected.js:27 [EditMemberSheet] Income saved successfully
+injected.js:27 [EditMemberSheet] All data saved successfully!
