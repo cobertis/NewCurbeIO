@@ -42,6 +42,27 @@ const formatSSN = (value: string) => {
   }
 };
 
+// Normalize SSN to digits only (remove all non-digits)
+const normalizeSSN = (ssn: string | undefined): string => {
+  if (!ssn) return '';
+  return ssn.replace(/\D/g, '').slice(0, 9);
+};
+
+// Display SSN: hidden shows XXX-XX-6789, visible shows 123-45-6789
+const displaySSN = (ssn: string | undefined, isVisible: boolean): string => {
+  if (!ssn) return '';
+  const digits = normalizeSSN(ssn);
+  
+  if (isVisible) {
+    return formatSSN(digits);
+  } else {
+    if (digits.length >= 4) {
+      return `XXX-XX-${digits.slice(-4)}`;
+    }
+    return 'XXX-XX-XXXX';
+  }
+};
+
 // Format Phone Number with automatic formatting (XXX) XXX-XXXX
 const formatPhoneNumber = (value: string) => {
   // Remove all non-digits
@@ -303,7 +324,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         email: quote.clientEmail || '',
         phone: quote.clientPhone || '',
         dateOfBirth: quote.clientDateOfBirth ? format(new Date(quote.clientDateOfBirth), 'yyyy-MM-dd') : '',
-        ssn: quote.clientSsn || '',
+        ssn: normalizeSSN(quote.clientSsn),
         gender: quote.clientGender || '',
         isApplicant: quote.clientIsApplicant ?? true,
         tobaccoUser: quote.clientTobaccoUser ?? false,
@@ -317,12 +338,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       const spouse = quote.spouses?.[memberIndex];
       return spouse ? {
         ...spouse,
+        ssn: normalizeSSN(spouse.ssn),
         dateOfBirth: spouse.dateOfBirth ? format(new Date(spouse.dateOfBirth), 'yyyy-MM-dd') : '',
       } : null;
     } else if (memberType === 'dependent' && memberIndex !== undefined) {
       const dependent = quote.dependents?.[memberIndex];
       return dependent ? {
         ...dependent,
+        ssn: normalizeSSN(dependent.ssn),
         dateOfBirth: dependent.dateOfBirth ? format(new Date(dependent.dateOfBirth), 'yyyy-MM-dd') : '',
       } : null;
     }
@@ -358,7 +381,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         clientEmail: data.email,
         clientPhone: data.phone,
         clientDateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        clientSsn: data.ssn,
+        clientSsn: normalizeSSN(data.ssn),
         clientGender: data.gender,
         clientIsApplicant: data.isApplicant,
         clientTobaccoUser: data.tobaccoUser,
@@ -372,6 +395,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       const updatedSpouses = [...(quote.spouses || [])];
       updatedSpouses[memberIndex!] = {
         ...data,
+        ssn: normalizeSSN(data.ssn),
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
       };
       onSave({ spouses: updatedSpouses });
@@ -379,6 +403,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       const updatedDependents = [...(quote.dependents || [])];
       updatedDependents[memberIndex!] = {
         ...data,
+        ssn: normalizeSSN(data.ssn),
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
       };
       onSave({ dependents: updatedDependents });
@@ -506,13 +531,13 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                         <FormControl>
                           <Input
                             {...field}
-                            type={showEditSsn ? "text" : "password"}
+                            type="text"
                             onChange={(e) => {
                               // Extract only digits - save WITHOUT formatting
                               const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
                               field.onChange(digits);
                             }}
-                            value={showEditSsn ? formatSSN(field.value) : field.value}
+                            value={displaySSN(field.value, showEditSsn)}
                             className="pr-10"
                             autoComplete="off"
                             placeholder="XXX-XX-XXXX"
@@ -830,6 +855,11 @@ export default function QuotesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showSsn, setShowSsn] = useState(false);
   
+  // SSN visibility states for wizard
+  const [showClientSsn, setShowClientSsn] = useState(false);
+  const [showSpouseSsn, setShowSpouseSsn] = useState<Record<number, boolean>>({});
+  const [showDependentSsn, setShowDependentSsn] = useState<Record<number, boolean>>({});
+  
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
   const [editingAddresses, setEditingAddresses] = useState(false);
@@ -926,6 +956,15 @@ export default function QuotesPage() {
         ...data,
         effectiveDate: new Date(data.effectiveDate),
         clientDateOfBirth: data.clientDateOfBirth ? new Date(data.clientDateOfBirth) : undefined,
+        clientSsn: normalizeSSN(data.clientSsn),
+        spouses: data.spouses?.map((spouse: any) => ({
+          ...spouse,
+          ssn: normalizeSSN(spouse.ssn),
+        })),
+        dependents: data.dependents?.map((dependent: any) => ({
+          ...dependent,
+          ssn: normalizeSSN(dependent.ssn),
+        })),
         familyGroupSize: data.familyGroupSize ? parseInt(data.familyGroupSize, 10) : undefined,
       });
     },
@@ -3221,19 +3260,41 @@ export default function QuotesPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>SSN</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  {...field}
-                                  type="text" 
-                                  data-testid="input-client-ssn" 
-                                  placeholder="XXX-XX-XXXX"
-                                  maxLength={11}
-                                  onChange={(e) => {
-                                    const formatted = formatSSN(e.target.value);
-                                    field.onChange(formatted);
+                              <div className="relative">
+                                <FormControl>
+                                  <Input 
+                                    {...field}
+                                    type="text" 
+                                    data-testid="input-client-ssn" 
+                                    placeholder="XXX-XX-XXXX"
+                                    value={displaySSN(field.value, showClientSsn)}
+                                    onChange={(e) => {
+                                      const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                      field.onChange(digits);
+                                    }}
+                                    className="pr-10"
+                                    autoComplete="off"
+                                  />
+                                </FormControl>
+                                <div
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowClientSsn(prev => !prev);
                                   }}
-                                />
-                              </FormControl>
+                                  className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                                  role="button"
+                                  tabIndex={-1}
+                                  aria-label={showClientSsn ? "Hide SSN" : "Show SSN"}
+                                  data-testid="button-client-ssn-visibility"
+                                >
+                                  {showClientSsn ? (
+                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                  ) : (
+                                    <Eye className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </div>
+                              </div>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -3675,19 +3736,41 @@ export default function QuotesPage() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>SSN *</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      {...field}
-                                      type="text" 
-                                      data-testid={`input-spouse-ssn-${index}`} 
-                                      placeholder="XXX-XX-XXXX"
-                                      maxLength={11}
-                                      onChange={(e) => {
-                                        const formatted = formatSSN(e.target.value);
-                                        field.onChange(formatted);
+                                  <div className="relative">
+                                    <FormControl>
+                                      <Input 
+                                        {...field}
+                                        type="text" 
+                                        data-testid={`input-spouse-ssn-${index}`} 
+                                        placeholder="XXX-XX-XXXX"
+                                        value={displaySSN(field.value, showSpouseSsn[index] || false)}
+                                        onChange={(e) => {
+                                          const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                          field.onChange(digits);
+                                        }}
+                                        className="pr-10"
+                                        autoComplete="off"
+                                      />
+                                    </FormControl>
+                                    <div
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setShowSpouseSsn(prev => ({ ...prev, [index]: !prev[index] }));
                                       }}
-                                    />
-                                  </FormControl>
+                                      className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                                      role="button"
+                                      tabIndex={-1}
+                                      aria-label={showSpouseSsn[index] ? "Hide SSN" : "Show SSN"}
+                                      data-testid={`button-spouse-ssn-visibility-${index}`}
+                                    >
+                                      {showSpouseSsn[index] ? (
+                                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <Eye className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </div>
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -3927,19 +4010,41 @@ export default function QuotesPage() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>SSN *</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      {...field}
-                                      type="text" 
-                                      data-testid={`input-dependent-ssn-${index}`} 
-                                      placeholder="XXX-XX-XXXX"
-                                      maxLength={11}
-                                      onChange={(e) => {
-                                        const formatted = formatSSN(e.target.value);
-                                        field.onChange(formatted);
+                                  <div className="relative">
+                                    <FormControl>
+                                      <Input 
+                                        {...field}
+                                        type="text" 
+                                        data-testid={`input-dependent-ssn-${index}`} 
+                                        placeholder="XXX-XX-XXXX"
+                                        value={displaySSN(field.value, showDependentSsn[index] || false)}
+                                        onChange={(e) => {
+                                          const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                          field.onChange(digits);
+                                        }}
+                                        className="pr-10"
+                                        autoComplete="off"
+                                      />
+                                    </FormControl>
+                                    <div
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setShowDependentSsn(prev => ({ ...prev, [index]: !prev[index] }));
                                       }}
-                                    />
-                                  </FormControl>
+                                      className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                                      role="button"
+                                      tabIndex={-1}
+                                      aria-label={showDependentSsn[index] ? "Hide SSN" : "Show SSN"}
+                                      data-testid={`button-dependent-ssn-visibility-${index}`}
+                                    >
+                                      {showDependentSsn[index] ? (
+                                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <Eye className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </div>
                                   <FormMessage />
                                 </FormItem>
                               )}
