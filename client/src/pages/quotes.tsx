@@ -27,6 +27,52 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow, format, startOfMonth, addMonths } from "date-fns";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 
+// Type definitions for spouse and dependent objects (matching zod schemas in shared/schema.ts)
+type Spouse = {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  secondLastName?: string;
+  dateOfBirth: Date | string;
+  ssn: string;
+  gender: "male" | "female" | "other";
+  phone?: string;
+  email?: string;
+  isApplicant: boolean;
+  tobaccoUser: boolean;
+  preferredLanguage?: string;
+  countryOfBirth?: string;
+  maritalStatus?: string;
+  weight?: string;
+  height?: string;
+};
+
+type Dependent = {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  secondLastName?: string;
+  dateOfBirth: Date | string;
+  ssn: string;
+  gender: "male" | "female" | "other";
+  relation: "child" | "parent" | "sibling" | "other";
+  phone?: string;
+  email?: string;
+  isApplicant: boolean;
+  tobaccoUser: boolean;
+  preferredLanguage?: string;
+  countryOfBirth?: string;
+  maritalStatus?: string;
+  weight?: string;
+  height?: string;
+};
+
+// Extended Quote type with properly typed arrays
+type QuoteWithArrays = Quote & {
+  spouses?: Spouse[];
+  dependents?: Dependent[];
+};
+
 // Format SSN with automatic dashes (XXX-XX-XXXX)
 const formatSSN = (value: string) => {
   // Remove all non-digits
@@ -302,7 +348,7 @@ const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
 interface EditMemberSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  quote: Quote;
+  quote: QuoteWithArrays;
   memberType?: 'primary' | 'spouse' | 'dependent';
   memberIndex?: number;
   onSave: (data: Partial<Quote>) => void;
@@ -996,11 +1042,11 @@ export default function QuotesPage() {
         effectiveDate: new Date(data.effectiveDate),
         clientDateOfBirth: data.clientDateOfBirth ? new Date(data.clientDateOfBirth) : undefined,
         clientSsn: normalizeSSN(data.clientSsn),
-        spouses: data.spouses?.map((spouse: any) => ({
+        spouses: data.spouses?.map((spouse) => ({
           ...spouse,
           ssn: normalizeSSN(spouse.ssn),
         })),
-        dependents: data.dependents?.map((dependent: any) => ({
+        dependents: data.dependents?.map((dependent) => ({
           ...dependent,
           ssn: normalizeSSN(dependent.ssn),
         })),
@@ -1157,7 +1203,7 @@ export default function QuotesPage() {
   // Detect if we're viewing a specific quote
   const quoteId = params?.id;
   const isViewingQuote = !!quoteId && quoteId !== "new";
-  const viewingQuote = isViewingQuote ? allQuotes.find(q => q.id === quoteId) : null;
+  const viewingQuote = (isViewingQuote ? allQuotes.find(q => q.id === quoteId) : null) as QuoteWithArrays | null | undefined;
   
   // Filter quotes based on search and filters
   const filteredQuotes = allQuotes.filter((quote) => {
@@ -1296,14 +1342,15 @@ export default function QuotesPage() {
                     <FormControl>
                       <GooglePlacesAddressAutocomplete
                         value={field.value}
-                        onChange={(value: string, addressComponents?: any) => {
+                        onChange={(value: string) => {
                           field.onChange(value);
-                          if (addressComponents) {
-                            addressForm.setValue('city', addressComponents.city || '');
-                            addressForm.setValue('state', addressComponents.state || '');
-                            addressForm.setValue('postalCode', addressComponents.postalCode || '');
-                            addressForm.setValue('county', addressComponents.county || '');
-                          }
+                        }}
+                        onAddressSelect={(address) => {
+                          field.onChange(address.street);
+                          addressForm.setValue('city', address.city || '');
+                          addressForm.setValue('state', address.state || '');
+                          addressForm.setValue('postalCode', address.postalCode || '');
+                          addressForm.setValue('county', address.county || '');
                         }}
                         data-testid="input-street"
                       />
@@ -2264,7 +2311,7 @@ export default function QuotesPage() {
                     </div>
 
                     {/* Spouses */}
-                    {viewingQuote.spouses?.map((spouse: any, index: number) => (
+                    {viewingQuote.spouses?.map((spouse, index) => (
                       <div key={`spouse-${index}`} className="flex items-center gap-3 p-3 border-b hover-elevate">
                         <Avatar className="h-9 w-9 border-2 border-muted">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-sm">
@@ -2318,7 +2365,7 @@ export default function QuotesPage() {
                     ))}
 
                     {/* Dependents */}
-                    {viewingQuote.dependents?.map((dependent: any, index: number) => (
+                    {viewingQuote.dependents?.map((dependent, index) => (
                       <div key={`dependent-${index}`} className="flex items-center gap-3 p-3 border-b last:border-b-0 hover-elevate">
                         <Avatar className="h-9 w-9 border-2 border-muted">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-sm">
