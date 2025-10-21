@@ -672,24 +672,13 @@ export default function QuotesPage() {
     const prevOpenRef = useRef(false);
     
     useEffect(() => {
-      // Only reset when the Sheet opens (transition from closed to open)
+      // Only reset when the Sheet first opens (transition from closed to open)
       const isOpening = open && !prevOpenRef.current;
       if (isOpening && memberData) {
         editForm.reset(memberData);
       }
       prevOpenRef.current = open;
     }, [open]);
-    
-    // Separate effect to update form when data changes while sheet is already open
-    useEffect(() => {
-      if (open && memberData) {
-        const currentValues = editForm.getValues();
-        // Only update if values are actually different to avoid unnecessary rerenders
-        if (JSON.stringify(currentValues) !== JSON.stringify(memberData)) {
-          editForm.reset(memberData, { keepDirty: false });
-        }
-      }
-    }, [memberData]);
 
     const handleSave = (data: any) => {
       // Close any open popovers
