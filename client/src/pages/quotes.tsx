@@ -1722,14 +1722,18 @@ export default function QuotesPage() {
                                     </Avatar>
                                   </div>
                                 </TooltipTrigger>
-                                <TooltipContent side="right" sideOffset={5} align="center" className="p-2">
+                                <TooltipContent side="right" sideOffset={5} align="center" className="p-3">
                                   <div>
-                                    <div className="font-semibold text-xs mb-0.5">Agent information</div>
-                                    <div className="text-xs leading-tight">
-                                      <div>Name: {agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
-                                      <div>NPN: {agent?.nationalProducerNumber || 'N/A'}</div>
-                                      <div>Email: {agent?.email || 'No email'}</div>
-                                      <div>Role: {agent?.role || 'N/A'}</div>
+                                    <div className="font-semibold text-sm mb-2 text-center">Agent information</div>
+                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs">
+                                      <div className="text-right font-medium">Name:</div>
+                                      <div>{agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
+                                      <div className="text-right font-medium">NPN:</div>
+                                      <div>{agent?.nationalProducerNumber || 'N/A'}</div>
+                                      <div className="text-right font-medium">Email:</div>
+                                      <div>{agent?.email || 'No email'}</div>
+                                      <div className="text-right font-medium">Role:</div>
+                                      <div>{agent?.role || 'N/A'}</div>
                                     </div>
                                   </div>
                                 </TooltipContent>
