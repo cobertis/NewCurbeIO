@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { useTabsState } from "@/hooks/use-tabs-state";
 import { 
   CreditCard, 
   FileText, 
@@ -206,6 +207,7 @@ const CardBrandLogo = ({ brand }: { brand: string }) => {
 export default function Billing() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useTabsState(["subscriptions", "payments", "transactions"], "subscriptions");
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [showManageCards, setShowManageCards] = useState(false);
@@ -729,7 +731,7 @@ export default function Billing() {
   return (
     <div className="flex flex-col gap-6 p-6">
       {/* Tabs */}
-      <Tabs defaultValue="subscriptions" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="subscriptions" data-testid="tab-subscriptions">Subscriptions</TabsTrigger>
           <TabsTrigger value="payments" data-testid="tab-payments">Billing Info</TabsTrigger>
