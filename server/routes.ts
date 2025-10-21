@@ -4215,6 +4215,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get plan details
       const plan = subscription.planId ? await storage.getPlan(subscription.planId) : null;
 
+      // Special handling for demo company - skip Stripe API calls
+      if (companyId === 'demo-company-001' || subscription.stripeSubscriptionId === 'sub_demo_testing') {
+        console.log('[BILLING] Demo company detected, skipping Stripe API call');
+        res.json({ 
+          subscription: {
+            ...subscription,
+            plan,
+            stripeDetails: null
+          }
+        });
+        return;
+      }
+
       // If subscription has Stripe ID, get detailed info from Stripe
       if (subscription.stripeSubscriptionId) {
         const { getSubscriptionDetails } = await import("./stripe");
