@@ -423,6 +423,38 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     }
   }, [open]);
 
+  // Handle revealing SSN - fetch from backend if masked, otherwise toggle visibility
+  const handleRevealSSN = async () => {
+    const currentSSN = editForm.getValues('ssn');
+    const isMasked = currentSSN?.includes('***');
+    
+    if (isMasked && !showEditSsn) {
+      // Fetch the full SSN from backend with ?reveal=true
+      try {
+        const response = await fetch(`/api/quotes/${quote.id}?reveal=true`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        
+        // Update the SSN in the form with the revealed value
+        if (memberType === 'primary' && data.quote.clientSsn) {
+          editForm.setValue('ssn', normalizeSSN(data.quote.clientSsn));
+        } else if (memberType === 'spouse' && memberIndex !== undefined && data.quote.spouses?.[memberIndex]?.ssn) {
+          editForm.setValue('ssn', normalizeSSN(data.quote.spouses[memberIndex].ssn));
+        } else if (memberType === 'dependent' && memberIndex !== undefined && data.quote.dependents?.[memberIndex]?.ssn) {
+          editForm.setValue('ssn', normalizeSSN(data.quote.dependents[memberIndex].ssn));
+        }
+        
+        setShowEditSsn(true);
+      } catch (error) {
+        console.error('Failed to reveal SSN:', error);
+      }
+    } else {
+      // Normal toggle visibility
+      setShowEditSsn(prev => !prev);
+    }
+  };
+
   if (!memberData) return null;
 
   return (
@@ -527,7 +559,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 control={editForm.control}
                 name="ssn"
                 render={({ field }) => {
-                  const hasCompleteSSN = normalizeSSN(field.value).length === 9;
+                  // Detect if there's any SSN (masked or complete)
+                  const hasSSN = field.value && (normalizeSSN(field.value).length >= 4 || field.value.includes('***'));
                   return (
                     <FormItem>
                       <FormLabel>SSN *</FormLabel>
@@ -542,18 +575,18 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                               field.onChange(digits);
                             }}
                             value={displaySSN(field.value, showEditSsn)}
-                            className={hasCompleteSSN ? "pr-10" : ""}
+                            className={hasSSN ? "pr-10" : ""}
                             autoComplete="off"
                             placeholder="XXX-XX-XXXX"
                             data-testid="input-ssn"
                           />
                         </FormControl>
-                        {hasCompleteSSN && (
+                        {hasSSN && (
                           <div
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              setShowEditSsn(prev => !prev);
+                              handleRevealSSN();
                             }}
                             className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
                             role="button"

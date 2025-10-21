@@ -7925,10 +7925,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         quotes = await storage.getQuotesByCompany(currentUser.companyId);
       }
       
-      // SECURITY: Mask SSN in all quotes before returning (PII protection)
-      const maskedQuotes = quotes.map(quote => maskQuoteSSN(quote));
+      // Allow all authenticated users to reveal PII (multi-tenant security already enforced above)
+      const canRevealPII = req.query.reveal === 'true';
       
-      res.json({ quotes: maskedQuotes });
+      // SECURITY: Mask SSN in all quotes before returning (PII protection) unless reveal is authorized
+      const processedQuotes = canRevealPII 
+        ? quotes 
+        : quotes.map(quote => maskQuoteSSN(quote));
+      
+      // Audit log when PII is revealed
+      if (canRevealPII && quotes.length > 0) {
+        await logger.logAuth({
+          req,
+          action: "pii_reveal",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "quotes",
+            count: quotes.length,
+            fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
+          },
+        });
+      }
+      
+      res.json({ quotes: processedQuotes });
     } catch (error: any) {
       console.error("Error fetching quotes:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
@@ -7953,10 +7973,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // SECURITY: Mask SSN before returning (PII protection)
-      const maskedQuote = maskQuoteSSN(quote);
+      // Allow all authenticated users to reveal PII (multi-tenant security already enforced above)
+      const canRevealPII = req.query.reveal === 'true';
       
-      res.json({ quote: maskedQuote });
+      // SECURITY: Mask SSN before returning (PII protection) unless reveal is authorized
+      const processedQuote = canRevealPII ? quote : maskQuoteSSN(quote);
+      
+      // Audit log when PII is revealed
+      if (canRevealPII) {
+        await logger.logAuth({
+          req,
+          action: "pii_reveal",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "quote",
+            quoteId: id,
+            fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
+          },
+        });
+      }
+      
+      res.json({ quote: processedQuote });
     } catch (error: any) {
       console.error("Error fetching quote:", error);
       res.status(500).json({ message: "Failed to fetch quote" });
