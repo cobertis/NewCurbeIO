@@ -366,9 +366,10 @@ interface EditMemberSheetProps {
   memberIndex?: number;
   onSave: (data: Partial<Quote>) => void;
   isPending: boolean;
+  onMemberChange: (type: 'primary' | 'spouse' | 'dependent', index?: number) => void;
 }
 
-function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending }: EditMemberSheetProps) {
+function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending, onMemberChange }: EditMemberSheetProps) {
   const editMemberSchema = memberType === 'dependent'
     ? dependentSchema
     : familyMemberSchema;
@@ -564,6 +565,46 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
   if (!memberData) return null;
 
+  // Calculate all members for navigation
+  const totalSpouses = quote.spouses?.length || 0;
+  const totalDependents = quote.dependents?.length || 0;
+  const allMembers = [
+    { type: 'primary' as const, index: undefined, name: `${quote.clientFirstName} ${quote.clientLastName}` },
+    ...(quote.spouses || []).map((s, i) => ({ 
+      type: 'spouse' as const, 
+      index: i, 
+      name: `${s.firstName} ${s.lastName}` 
+    })),
+    ...(quote.dependents || []).map((d, i) => ({ 
+      type: 'dependent' as const, 
+      index: i, 
+      name: `${d.firstName} ${d.lastName}` 
+    })),
+  ];
+
+  const currentMemberIndex = allMembers.findIndex(m => 
+    m.type === memberType && m.index === memberIndex
+  );
+
+  const hasPrevious = currentMemberIndex > 0;
+  const hasNext = currentMemberIndex < allMembers.length - 1;
+
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    const newIndex = direction === 'prev' ? currentMemberIndex - 1 : currentMemberIndex + 1;
+    if (newIndex >= 0 && newIndex < allMembers.length) {
+      const newMember = allMembers[newIndex];
+      onMemberChange(newMember.type, newMember.index);
+    }
+  };
+
+  const getMemberLabel = () => {
+    if (memberType === 'primary') return 'Primary Applicant';
+    if (memberType === 'spouse') return `Spouse ${(memberIndex || 0) + 1}`;
+    return `Dependent ${(memberIndex || 0) + 1}`;
+  };
+
+  const memberName = `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim() || 'Unnamed';
+
   return (
     <Sheet 
       open={open} 
@@ -578,34 +619,74 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         className="w-full sm:max-w-2xl flex flex-col p-0" 
         side="right"
       >
-        <div className="flex items-center justify-between p-6 border-b">
-          <div>
-            <SheetTitle>
-              Edit {memberType === 'primary' ? 'Primary Applicant' : memberType === 'spouse' ? 'Spouse' : 'Dependent'}
-            </SheetTitle>
-            <SheetDescription>
-              Update the information for this family member
-            </SheetDescription>
+        <div className="flex flex-col gap-3 p-6 border-b">
+          {/* Header with title and member info */}
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <SheetTitle className="text-lg">{memberName}</SheetTitle>
+              <SheetDescription className="flex items-center gap-2 mt-1">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted text-xs font-medium">
+                  {memberType === 'primary' && <User className="h-3 w-3" />}
+                  {memberType === 'spouse' && <Users className="h-3 w-3" />}
+                  {memberType === 'dependent' && <Users className="h-3 w-3" />}
+                  {getMemberLabel()}
+                </span>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">
+                  Member {currentMemberIndex + 1} of {allMembers.length}
+                </span>
+              </SheetDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                data-testid="button-save"
+                onClick={editForm.handleSubmit(handleSave)}
+              >
+                {isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-              data-testid="button-cancel"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              data-testid="button-save"
-              onClick={editForm.handleSubmit(handleSave)}
-            >
-              {isPending ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
+
+          {/* Navigation buttons */}
+          {allMembers.length > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleNavigate('prev')}
+                disabled={!hasPrevious || isPending}
+                className="flex-1"
+                data-testid="button-prev-member"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleNavigate('next')}
+                disabled={!hasNext || isPending}
+                className="flex-1"
+                data-testid="button-next-member"
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
         </div>
         <Form {...editForm}>
           <form onSubmit={editForm.handleSubmit(handleSave)} className="flex flex-col flex-1 min-h-0">
@@ -3125,6 +3206,9 @@ export default function QuotesPage() {
                 });
               }}
               isPending={updateQuoteMutation.isPending}
+              onMemberChange={(type, index) => {
+                setEditingMember({ type, index });
+              }}
             />
 
             <EditAddressesSheet
@@ -4822,6 +4906,9 @@ export default function QuotesPage() {
           setEditingMember(null);
         }}
         isPending={updateQuoteMutation.isPending}
+        onMemberChange={(type, index) => {
+          setEditingMember({ type, index });
+        }}
       />
     </div>
   );
