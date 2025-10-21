@@ -255,6 +255,14 @@ export default function QuotesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showSsn, setShowSsn] = useState(false);
   
+  // Edit states
+  const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
+  const [editingAddresses, setEditingAddresses] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [editingDoctor, setEditingDoctor] = useState(false);
+  const [editingMedicines, setEditingMedicines] = useState(false);
+  
   // Advanced filters state
   const [filters, setFilters] = useState({
     user: "",
@@ -388,6 +396,26 @@ export default function QuotesPage() {
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to create quote",
+      });
+    },
+  });
+
+  const updateQuoteMutation = useMutation({
+    mutationFn: async ({ quoteId, data }: { quoteId: string; data: any }) => {
+      return apiRequest("PATCH", `/api/quotes/${quoteId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      toast({
+        title: "Quote updated",
+        description: "Your changes have been saved successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update quote",
       });
     },
   });
@@ -558,6 +586,816 @@ export default function QuotesPage() {
     { number: 2, title: "Personal Information & Address", icon: User },
     { number: 3, title: "Family Group", icon: Users },
   ];
+
+  // Edit Member Sheet Component
+  function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending }: any) {
+    const editMemberSchema = memberType === 'dependent'
+      ? dependentSchema
+      : familyMemberSchema;
+
+    const getMemberData = () => {
+      if (!quote || !memberType) return null;
+      
+      if (memberType === 'primary') {
+        return {
+          firstName: quote.clientFirstName || '',
+          middleName: quote.clientMiddleName || '',
+          lastName: quote.clientLastName || '',
+          secondLastName: quote.clientSecondLastName || '',
+          email: quote.clientEmail || '',
+          phone: quote.clientPhone || '',
+          dateOfBirth: quote.clientDateOfBirth ? format(new Date(quote.clientDateOfBirth), 'yyyy-MM-dd') : '',
+          ssn: quote.clientSsn || '',
+          gender: quote.clientGender || '',
+          isApplicant: quote.clientIsApplicant ?? true,
+          tobaccoUser: quote.clientTobaccoUser ?? false,
+        };
+      } else if (memberType === 'spouse' && memberIndex !== undefined) {
+        const spouse = quote.spouses?.[memberIndex];
+        return spouse ? {
+          ...spouse,
+          dateOfBirth: spouse.dateOfBirth ? format(new Date(spouse.dateOfBirth), 'yyyy-MM-dd') : '',
+        } : null;
+      } else if (memberType === 'dependent' && memberIndex !== undefined) {
+        const dependent = quote.dependents?.[memberIndex];
+        return dependent ? {
+          ...dependent,
+          dateOfBirth: dependent.dateOfBirth ? format(new Date(dependent.dateOfBirth), 'yyyy-MM-dd') : '',
+        } : null;
+      }
+      return null;
+    };
+
+    const memberData = getMemberData();
+    
+    const editForm = useForm({
+      resolver: zodResolver(editMemberSchema),
+      defaultValues: memberData || {},
+    });
+
+    useEffect(() => {
+      if (memberData) {
+        editForm.reset(memberData);
+      }
+    }, [memberType, memberIndex, quote]);
+
+    const handleSave = (data: any) => {
+      if (memberType === 'primary') {
+        onSave({
+          clientFirstName: data.firstName,
+          clientMiddleName: data.middleName,
+          clientLastName: data.lastName,
+          clientSecondLastName: data.secondLastName,
+          clientEmail: data.email,
+          clientPhone: data.phone,
+          clientDateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+          clientSsn: data.ssn,
+          clientGender: data.gender,
+          clientIsApplicant: data.isApplicant,
+          clientTobaccoUser: data.tobaccoUser,
+        });
+      } else if (memberType === 'spouse') {
+        const updatedSpouses = [...(quote.spouses || [])];
+        updatedSpouses[memberIndex!] = {
+          ...data,
+          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        };
+        onSave({ spouses: updatedSpouses });
+      } else if (memberType === 'dependent') {
+        const updatedDependents = [...(quote.dependents || [])];
+        updatedDependents[memberIndex!] = {
+          ...data,
+          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        };
+        onSave({ dependents: updatedDependents });
+      }
+    };
+
+    if (!memberData) return null;
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>
+              Edit {memberType === 'primary' ? 'Primary Applicant' : memberType === 'spouse' ? 'Spouse' : 'Dependent'}
+            </SheetTitle>
+          </SheetHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleSave)} className="space-y-6 py-6">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name *</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-firstname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="middleName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Middle Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-middlename" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name *</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-lastname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="secondLastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Second Last Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-secondlastname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email {memberType === 'primary' && '*'}</FormLabel>
+                      <FormControl>
+                        <Input type="email" {...field} data-testid="input-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone {memberType === 'primary' && '*'}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                          data-testid="input-phone"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Birth *</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} data-testid="input-dob" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-gender">
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="ssn"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SSN *</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(formatSSN(e.target.value))}
+                          data-testid="input-ssn"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {memberType === 'dependent' && (
+                  <FormField
+                    control={editForm.control}
+                    name="relation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Relation *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-relation">
+                              <SelectValue placeholder="Select relation" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="child">Child</SelectItem>
+                            <SelectItem value="parent">Parent</SelectItem>
+                            <SelectItem value="sibling">Sibling</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+              
+              <div className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="isApplicant"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-isapplicant"
+                        />
+                      </FormControl>
+                      <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="tobaccoUser"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-tobacco"
+                        />
+                      </FormControl>
+                      <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isPending}
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  data-testid="button-save"
+                >
+                  {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Edit Addresses Sheet Component
+  function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
+    const addressSchema = z.object({
+      street: z.string().min(1, "Street address is required"),
+      addressLine2: z.string().optional(),
+      city: z.string().min(1, "City is required"),
+      state: z.string().min(1, "State is required"),
+      postalCode: z.string().min(1, "Postal code is required"),
+      county: z.string().optional(),
+    });
+
+    const addressForm = useForm({
+      resolver: zodResolver(addressSchema),
+      defaultValues: {
+        street: quote?.street || '',
+        addressLine2: quote?.addressLine2 || '',
+        city: quote?.city || '',
+        state: quote?.state || '',
+        postalCode: quote?.postalCode || '',
+        county: quote?.county || '',
+      },
+    });
+
+    useEffect(() => {
+      if (quote) {
+        addressForm.reset({
+          street: quote.street || '',
+          addressLine2: quote.addressLine2 || '',
+          city: quote.city || '',
+          state: quote.state || '',
+          postalCode: quote.postalCode || '',
+          county: quote.county || '',
+        });
+      }
+    }, [quote]);
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>Edit Addresses</SheetTitle>
+          </SheetHeader>
+          <Form {...addressForm}>
+            <form onSubmit={addressForm.handleSubmit(onSave)} className="space-y-6 py-6">
+              <FormField
+                control={addressForm.control}
+                name="street"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Street Address *</FormLabel>
+                    <FormControl>
+                      <GooglePlacesAddressAutocomplete
+                        value={field.value}
+                        onChange={(value, addressComponents) => {
+                          field.onChange(value);
+                          if (addressComponents) {
+                            addressForm.setValue('city', addressComponents.city || '');
+                            addressForm.setValue('state', addressComponents.state || '');
+                            addressForm.setValue('postalCode', addressComponents.postalCode || '');
+                            addressForm.setValue('county', addressComponents.county || '');
+                          }
+                        }}
+                        data-testid="input-street"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addressForm.control}
+                name="addressLine2"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Apt, Suite, Unit, etc.</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-addressline2" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={addressForm.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City *</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-city" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addressForm.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-state">
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {US_STATES.map((state) => (
+                            <SelectItem key={state.value} value={state.value}>
+                              {state.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addressForm.control}
+                  name="postalCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Postal Code *</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-postalcode" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addressForm.control}
+                  name="county"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>County</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-county" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isPending}
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  data-testid="button-save"
+                >
+                  {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Edit Payment Sheet Component
+  function EditPaymentSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
+    const paymentSchema = z.object({
+      recurrentPayment: z.boolean().default(true),
+      firstPaymentDate: z.string().optional(),
+      preferredPaymentDay: z.string().optional(),
+    });
+
+    const paymentForm = useForm({
+      resolver: zodResolver(paymentSchema),
+      defaultValues: {
+        recurrentPayment: true,
+        firstPaymentDate: quote?.effectiveDate ? format(new Date(quote.effectiveDate), 'yyyy-MM-dd') : '',
+        preferredPaymentDay: '1',
+      },
+    });
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>Edit Payment Information</SheetTitle>
+          </SheetHeader>
+          <Form {...paymentForm}>
+            <form onSubmit={paymentForm.handleSubmit((data) => {
+              onSave({
+                effectiveDate: data.firstPaymentDate ? new Date(data.firstPaymentDate) : undefined,
+              });
+            })} className="space-y-6 py-6">
+              <FormField
+                control={paymentForm.control}
+                name="recurrentPayment"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Recurrent Payment</FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        Enable automatic recurring payments
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-recurrent"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={paymentForm.control}
+                name="firstPaymentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Payment Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-firstpaymentdate" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={paymentForm.control}
+                name="preferredPaymentDay"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preferred Payment Day (1-31)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-paymentday">
+                          <SelectValue placeholder="Select day" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                          <SelectItem key={day} value={day.toString()}>
+                            {day}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isPending}
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  data-testid="button-save"
+                >
+                  {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Edit Notes Sheet Component
+  function EditNotesSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
+    const notesSchema = z.object({
+      notes: z.string().optional(),
+    });
+
+    const notesForm = useForm({
+      resolver: zodResolver(notesSchema),
+      defaultValues: {
+        notes: quote?.notes || '',
+      },
+    });
+
+    useEffect(() => {
+      if (quote) {
+        notesForm.reset({ notes: quote.notes || '' });
+      }
+    }, [quote]);
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>Edit Notes or Comments</SheetTitle>
+          </SheetHeader>
+          <Form {...notesForm}>
+            <form onSubmit={notesForm.handleSubmit(onSave)} className="space-y-6 py-6">
+              <FormField
+                control={notesForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Add any notes or comments about this quote..."
+                        className="min-h-[200px]"
+                        data-testid="textarea-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isPending}
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  data-testid="button-save"
+                >
+                  {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Edit Doctor Sheet Component
+  function EditDoctorSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
+    const doctorSchema = z.object({
+      doctorInfo: z.string().optional(),
+    });
+
+    const doctorForm = useForm({
+      resolver: zodResolver(doctorSchema),
+      defaultValues: {
+        doctorInfo: '',
+      },
+    });
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>Edit Primary Doctor Information</SheetTitle>
+          </SheetHeader>
+          <Form {...doctorForm}>
+            <form onSubmit={doctorForm.handleSubmit((data) => {
+              const currentNotes = quote?.notes || '';
+              const doctorSection = `\n\n--- Primary Doctor Information ---\n${data.doctorInfo}`;
+              onSave({ notes: currentNotes + doctorSection });
+            })} className="space-y-6 py-6">
+              <FormField
+                control={doctorForm.control}
+                name="doctorInfo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Doctor Information</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Add primary doctor information..."
+                        className="min-h-[200px]"
+                        data-testid="textarea-doctor"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isPending}
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  data-testid="button-save"
+                >
+                  {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Edit Medicines Sheet Component
+  function EditMedicinesSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
+    const medicinesSchema = z.object({
+      medicinesInfo: z.string().optional(),
+    });
+
+    const medicinesForm = useForm({
+      resolver: zodResolver(medicinesSchema),
+      defaultValues: {
+        medicinesInfo: '',
+      },
+    });
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>Edit Medicines Needed</SheetTitle>
+          </SheetHeader>
+          <Form {...medicinesForm}>
+            <form onSubmit={medicinesForm.handleSubmit((data) => {
+              const currentNotes = quote?.notes || '';
+              const medicinesSection = `\n\n--- Medicines Needed ---\n${data.medicinesInfo}`;
+              onSave({ notes: currentNotes + medicinesSection });
+            })} className="space-y-6 py-6">
+              <FormField
+                control={medicinesForm.control}
+                name="medicinesInfo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Medicines Information</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="List any medicines needed..."
+                        className="min-h-[200px]"
+                        data-testid="textarea-medicines"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isPending}
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  data-testid="button-save"
+                >
+                  {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   // If viewing a specific quote, show modern dashboard
   if (isViewingQuote) {
@@ -1084,7 +1922,13 @@ export default function QuotesPage() {
                                   )}
                                 </div>
                               </div>
-                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid="button-view-primary">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-7 w-7 p-0" 
+                                onClick={() => setEditingMember({ type: 'primary' })}
+                                data-testid="button-view-primary"
+                              >
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -1139,7 +1983,13 @@ export default function QuotesPage() {
                                     )}
                                   </div>
                                 </div>
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid={`button-view-spouse-${index}`}>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-7 w-7 p-0" 
+                                  onClick={() => setEditingMember({ type: 'spouse', index })}
+                                  data-testid={`button-view-spouse-${index}`}
+                                >
                                   <Eye className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
@@ -1195,7 +2045,13 @@ export default function QuotesPage() {
                                     )}
                                   </div>
                                 </div>
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid={`button-view-dependent-${index}`}>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-7 w-7 p-0" 
+                                  onClick={() => setEditingMember({ type: 'dependent', index })}
+                                  data-testid={`button-view-dependent-${index}`}
+                                >
                                   <Eye className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
@@ -1235,7 +2091,12 @@ export default function QuotesPage() {
                     <MapPin className="h-5 w-5 text-primary" />
                     Addresses
                   </CardTitle>
-                  <Button size="sm" variant="outline">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setEditingAddresses(true)}
+                    data-testid="button-edit-addresses"
+                  >
                     Edit Addresses
                   </Button>
                 </CardHeader>
@@ -1294,7 +2155,12 @@ export default function QuotesPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle>Payment information</CardTitle>
-                  <Button size="sm" variant="ghost">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setEditingPayment(true)}
+                    data-testid="button-edit-payment"
+                  >
                     Edit
                   </Button>
                 </CardHeader>
@@ -1354,7 +2220,12 @@ export default function QuotesPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle>Notes or comments</CardTitle>
-                  <Button size="sm" variant="ghost">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setEditingNotes(true)}
+                    data-testid="button-edit-notes"
+                  >
                     Edit
                   </Button>
                 </CardHeader>
@@ -1371,7 +2242,12 @@ export default function QuotesPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle>Primary Doctor information</CardTitle>
-                  <Button size="sm" variant="ghost">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setEditingDoctor(true)}
+                    data-testid="button-edit-doctor"
+                  >
                     Edit
                   </Button>
                 </CardHeader>
@@ -1388,7 +2264,12 @@ export default function QuotesPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle>Medicines needed</CardTitle>
-                  <Button size="sm" variant="ghost">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setEditingMedicines(true)}
+                    data-testid="button-edit-medicines"
+                  >
                     Edit
                   </Button>
                 </CardHeader>
@@ -1426,6 +2307,99 @@ export default function QuotesPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Edit Sheets */}
+            <EditMemberSheet
+              open={!!editingMember}
+              onOpenChange={(open) => !open && setEditingMember(null)}
+              quote={viewingQuote}
+              memberType={editingMember?.type}
+              memberIndex={editingMember?.index}
+              onSave={(data) => {
+                updateQuoteMutation.mutate({
+                  quoteId: viewingQuote.id,
+                  data
+                }, {
+                  onSuccess: () => setEditingMember(null)
+                });
+              }}
+              isPending={updateQuoteMutation.isPending}
+            />
+
+            <EditAddressesSheet
+              open={editingAddresses}
+              onOpenChange={setEditingAddresses}
+              quote={viewingQuote}
+              onSave={(data) => {
+                updateQuoteMutation.mutate({
+                  quoteId: viewingQuote.id,
+                  data
+                }, {
+                  onSuccess: () => setEditingAddresses(false)
+                });
+              }}
+              isPending={updateQuoteMutation.isPending}
+            />
+
+            <EditPaymentSheet
+              open={editingPayment}
+              onOpenChange={setEditingPayment}
+              quote={viewingQuote}
+              onSave={(data) => {
+                updateQuoteMutation.mutate({
+                  quoteId: viewingQuote.id,
+                  data
+                }, {
+                  onSuccess: () => setEditingPayment(false)
+                });
+              }}
+              isPending={updateQuoteMutation.isPending}
+            />
+
+            <EditNotesSheet
+              open={editingNotes}
+              onOpenChange={setEditingNotes}
+              quote={viewingQuote}
+              onSave={(data) => {
+                updateQuoteMutation.mutate({
+                  quoteId: viewingQuote.id,
+                  data
+                }, {
+                  onSuccess: () => setEditingNotes(false)
+                });
+              }}
+              isPending={updateQuoteMutation.isPending}
+            />
+
+            <EditDoctorSheet
+              open={editingDoctor}
+              onOpenChange={setEditingDoctor}
+              quote={viewingQuote}
+              onSave={(data) => {
+                updateQuoteMutation.mutate({
+                  quoteId: viewingQuote.id,
+                  data
+                }, {
+                  onSuccess: () => setEditingDoctor(false)
+                });
+              }}
+              isPending={updateQuoteMutation.isPending}
+            />
+
+            <EditMedicinesSheet
+              open={editingMedicines}
+              onOpenChange={setEditingMedicines}
+              quote={viewingQuote}
+              onSave={(data) => {
+                updateQuoteMutation.mutate({
+                  quoteId: viewingQuote.id,
+                  data
+                }, {
+                  onSuccess: () => setEditingMedicines(false)
+                });
+              }}
+              isPending={updateQuoteMutation.isPending}
+            />
           </div>
         </div>
       </div>
