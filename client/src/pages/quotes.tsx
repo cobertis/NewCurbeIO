@@ -713,6 +713,7 @@ export default function QuotesPage() {
     };
 
     const [showEditSsn, setShowEditSsn] = useState(false);
+    const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
 
     if (!memberData) return null;
 
@@ -922,7 +923,7 @@ export default function QuotesPage() {
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Country of Birth</FormLabel>
-                      <Popover>
+                      <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -948,6 +949,7 @@ export default function QuotesPage() {
                                     value={country}
                                     onSelect={() => {
                                       field.onChange(country);
+                                      setCountryPopoverOpen(false);
                                     }}
                                   >
                                     <Check
