@@ -25,7 +25,8 @@ import {
   insertFeatureSchema,
   updateFeatureSchema,
   insertFinancialSupportTicketSchema,
-  insertQuoteSchema
+  insertQuoteSchema,
+  updateQuoteSchema
 } from "@shared/schema";
 import "./types";
 
@@ -295,6 +296,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error in sendActivationEmail:", error);
       return false;
     }
+  }
+
+  // Helper function to mask SSN in quotes
+  // WARNING: NEVER log or return full SSN values - this contains PII (Personally Identifiable Information)
+  // This function masks SSN to show only last 4 digits (e.g., "***-**-1234")
+  function maskQuoteSSN<T extends any>(quote: T): T {
+    if (!quote) return quote;
+    
+    const masked = { ...quote };
+    
+    // Mask client SSN
+    if (masked.clientSsn && typeof masked.clientSsn === 'string') {
+      const last4 = masked.clientSsn.slice(-4);
+      masked.clientSsn = `***-**-${last4}`;
+    }
+    
+    // Mask spouse SSNs
+    if (Array.isArray(masked.spouses)) {
+      masked.spouses = masked.spouses.map((spouse: any) => {
+        if (spouse.ssn && typeof spouse.ssn === 'string') {
+          const last4 = spouse.ssn.slice(-4);
+          return { ...spouse, ssn: `***-**-${last4}` };
+        }
+        return spouse;
+      });
+    }
+    
+    // Mask dependent SSNs
+    if (Array.isArray(masked.dependents)) {
+      masked.dependents = masked.dependents.map((dependent: any) => {
+        if (dependent.ssn && typeof dependent.ssn === 'string') {
+          const last4 = dependent.ssn.slice(-4);
+          return { ...dependent, ssn: `***-**-${last4}` };
+        }
+        return dependent;
+      });
+    }
+    
+    return masked;
   }
 
   // Middleware to check authentication only
@@ -7832,7 +7872,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Don't fail the quote creation if notifications fail
       }
       
-      res.status(201).json({ quote });
+      // SECURITY: Mask SSN before returning (PII protection)
+      const maskedQuote = maskQuoteSSN(quote);
+      
+      res.status(201).json({ quote: maskedQuote });
     } catch (error: any) {
       console.error("Error creating quote:", error);
       res.status(400).json({ message: error.message || "Failed to create quote" });
@@ -7840,6 +7883,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // Get all quotes for company
+  // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/quotes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     
@@ -7858,7 +7902,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         quotes = await storage.getQuotesByCompany(currentUser.companyId);
       }
       
-      res.json({ quotes });
+      // SECURITY: Mask SSN in all quotes before returning (PII protection)
+      const maskedQuotes = quotes.map(quote => maskQuoteSSN(quote));
+      
+      res.json({ quotes: maskedQuotes });
     } catch (error: any) {
       console.error("Error fetching quotes:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
@@ -7866,6 +7913,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // Get single quote by ID
+  // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id } = req.params;
@@ -7882,7 +7930,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      res.json({ quote });
+      // SECURITY: Mask SSN before returning (PII protection)
+      const maskedQuote = maskQuoteSSN(quote);
+      
+      res.json({ quote: maskedQuote });
     } catch (error: any) {
       console.error("Error fetching quote:", error);
       res.status(500).json({ message: "Failed to fetch quote" });
@@ -7890,39 +7941,65 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // Update quote
+  // WARNING: This endpoint handles PII (SSN) - never log full request body or return unmasked SSN
   app.patch("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id } = req.params;
     
     try {
-      const quote = await storage.getQuote(id);
+      // 1. Get existing quote and verify ownership (SECURITY: tenant-scoped authorization)
+      const existingQuote = await storage.getQuote(id);
       
-      if (!quote) {
+      if (!existingQuote) {
         return res.status(404).json({ message: "Quote not found" });
       }
       
-      // Check access: superadmin or same company
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden" });
+      // Check access: superadmin can edit any quote, others only their company's quotes
+      if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to edit this quote" });
       }
       
-      // Convert date strings to Date objects before validation
-      const payload = {
-        ...req.body,
-        effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : undefined,
-        clientDateOfBirth: req.body.clientDateOfBirth ? new Date(req.body.clientDateOfBirth) : undefined,
-      };
+      // 2. Convert date strings to Date objects (including nested arrays)
+      const payload = { ...req.body };
       
-      // Validate partial update data (don't allow changing companyId or createdBy)
-      const updateSchema = insertQuoteSchema.partial().omit({
-        companyId: true,
-        createdBy: true,
-      });
+      // Convert top-level dates
+      if (payload.effectiveDate && typeof payload.effectiveDate === 'string') {
+        payload.effectiveDate = new Date(payload.effectiveDate);
+      }
+      if (payload.clientDateOfBirth && typeof payload.clientDateOfBirth === 'string') {
+        payload.clientDateOfBirth = new Date(payload.clientDateOfBirth);
+      }
       
-      const validatedData = updateSchema.parse(payload);
+      // Convert spouse dateOfBirth in nested array
+      if (Array.isArray(payload.spouses)) {
+        payload.spouses = payload.spouses.map((spouse: any) => ({
+          ...spouse,
+          dateOfBirth: spouse.dateOfBirth && typeof spouse.dateOfBirth === 'string' 
+            ? new Date(spouse.dateOfBirth) 
+            : spouse.dateOfBirth
+        }));
+      }
       
+      // Convert dependent dateOfBirth in nested array
+      if (Array.isArray(payload.dependents)) {
+        payload.dependents = payload.dependents.map((dependent: any) => ({
+          ...dependent,
+          dateOfBirth: dependent.dateOfBirth && typeof dependent.dateOfBirth === 'string' 
+            ? new Date(dependent.dateOfBirth) 
+            : dependent.dateOfBirth
+        }));
+      }
+      
+      // 3. Validate with Zod (strips unknown keys, validates nested arrays)
+      const validatedData = updateQuoteSchema.parse(payload);
+      
+      // 4. Update the quote
       const updatedQuote = await storage.updateQuote(id, validatedData);
       
+      // 5. Mask SSN before returning (SECURITY: PII protection)
+      const maskedQuote = maskQuoteSSN(updatedQuote);
+      
+      // Log activity (WARNING: Do NOT log the full request body - contains SSN)
       await logger.logCrud({
         req,
         operation: "update",
@@ -7934,9 +8011,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ quote: updatedQuote });
+      res.json({ quote: maskedQuote });
     } catch (error: any) {
       console.error("Error updating quote:", error);
+      // Return validation errors with proper details
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
       res.status(400).json({ message: error.message || "Failed to update quote" });
     }
   });

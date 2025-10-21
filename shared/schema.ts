@@ -1310,10 +1310,51 @@ export const quotes = pgTable("quotes", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Spouse validation schema for quotes
+export const spouseSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1, "Last name is required"),
+  secondLastName: z.string().optional(),
+  dateOfBirth: z.union([z.string(), z.date()]), // Accept both string and Date
+  ssn: z.string().min(1, "SSN is required"),
+  gender: z.enum(["male", "female", "other"]),
+  phone: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  isApplicant: z.boolean().default(false),
+  tobaccoUser: z.boolean().default(false),
+});
+
+// Dependent validation schema for quotes
+export const dependentSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1, "Last name is required"),
+  secondLastName: z.string().optional(),
+  dateOfBirth: z.union([z.string(), z.date()]), // Accept both string and Date
+  ssn: z.string().min(1, "SSN is required"),
+  gender: z.enum(["male", "female", "other"]),
+  relation: z.enum(["child", "parent", "sibling", "other"]),
+  phone: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  isApplicant: z.boolean().default(false),
+  tobaccoUser: z.boolean().default(false),
+});
+
 export const insertQuoteSchema = createInsertSchema(quotes).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  // Override spouses and dependents to use proper validation
+  spouses: z.array(spouseSchema).optional(),
+  dependents: z.array(dependentSchema).optional(),
+});
+
+// Update schema for PATCH requests - all fields optional but validated if provided
+export const updateQuoteSchema = insertQuoteSchema.partial().omit({
+  companyId: true,
+  createdBy: true,
 });
 
 export type Quote = typeof quotes.$inferSelect;
