@@ -2837,7 +2837,7 @@ export default function QuotesPage() {
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       {product?.icon && (
@@ -2863,19 +2863,6 @@ export default function QuotesPage() {
                               {viewingQuote.status || 'Draft'}
                             </Badge>
                           )}
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Hash className="h-3 w-3" />
-                            {viewingQuote.id.slice(0, 8).toUpperCase()}
-                          </span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="font-medium text-foreground">{product?.name || viewingQuote.productType}</span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Effective {format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}
-                          </span>
                         </div>
                         
                         {/* Quick Summary */}
@@ -2910,44 +2897,62 @@ export default function QuotesPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="default" size="sm" data-testid="button-search-plans">
-                      Search plans
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" data-testid="button-options">
-                          Options
-                          <ChevronDown className="h-4 w-4 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Block Policy
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Bell className="h-4 w-4 mr-2" />
-                          New Reminder
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Print Policy
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel Policy
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Archive className="h-4 w-4 mr-2" />
-                          Archive
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <div className="flex flex-col items-end gap-3">
+                    {/* Quote Info - Moved here */}
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Hash className="h-3 w-3" />
+                        {viewingQuote.id.slice(0, 8).toUpperCase()}
+                      </span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="font-medium text-foreground">{product?.name || viewingQuote.productType}</span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Effective {format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}
+                      </span>
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Button variant="default" size="sm" data-testid="button-search-plans">
+                        Search plans
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" data-testid="button-options">
+                            Options
+                            <ChevronDown className="h-4 w-4 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Block Policy
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Bell className="h-4 w-4 mr-2" />
+                            New Reminder
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Print Policy
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel Policy
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
               </CardContent>
