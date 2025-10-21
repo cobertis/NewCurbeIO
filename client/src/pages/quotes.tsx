@@ -721,8 +721,23 @@ export default function QuotesPage() {
     if (!memberData) return null;
 
     return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
+      <Sheet open={open} onOpenChange={(isOpen) => {
+        if (!isOpen && !isPending) {
+          onOpenChange(false);
+        }
+      }}>
+        <SheetContent 
+          className="w-full sm:max-w-2xl overflow-y-auto" 
+          side="right"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => {
+            if (!isPending) {
+              onOpenChange(false);
+            } else {
+              e.preventDefault();
+            }
+          }}
+        >
           <SheetHeader>
             <SheetTitle>
               Edit {memberType === 'primary' ? 'Primary Applicant' : memberType === 'spouse' ? 'Spouse' : 'Dependent'}
