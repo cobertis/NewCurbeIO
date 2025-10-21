@@ -8482,6 +8482,60 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Ensure quote member exists (create or update) - returns memberId
+  app.post("/api/quotes/:quoteId/ensure-member", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Verify quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const { role, memberData } = req.body;
+      
+      if (!role || !memberData) {
+        return res.status(400).json({ message: "Missing required fields: role and memberData" });
+      }
+      
+      // Ensure member exists (create or update)
+      const result = await storage.ensureQuoteMember(
+        quoteId,
+        quote.companyId,
+        role,
+        memberData
+      );
+      
+      await logger.logCrud({
+        req,
+        operation: result.wasCreated ? "create" : "update",
+        entity: "quote_member",
+        entityId: result.member.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          role,
+          wasCreated: result.wasCreated,
+        },
+      });
+      
+      res.json({
+        memberId: result.member.id,
+        wasCreated: result.wasCreated,
+      });
+    } catch (error: any) {
+      console.error("Error ensuring quote member:", error);
+      res.status(500).json({ message: "Failed to ensure quote member" });
+    }
+  });
+
   // ==================== MEMBER INCOME ====================
   
   // Get member income

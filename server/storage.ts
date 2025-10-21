@@ -439,6 +439,7 @@ export interface IStorage {
   createQuoteMember(data: InsertQuoteMember): Promise<QuoteMember>;
   updateQuoteMember(memberId: string, data: UpdateQuoteMember, companyId: string): Promise<QuoteMember | null>;
   deleteQuoteMember(memberId: string, companyId: string): Promise<boolean>;
+  ensureQuoteMember(quoteId: string, companyId: string, role: string, memberData: Partial<InsertQuoteMember>): Promise<{ member: QuoteMember; wasCreated: boolean }>;
   
   // Quote Member Income
   getQuoteMemberIncome(memberId: string, companyId: string): Promise<QuoteMemberIncome | null>;
@@ -2683,6 +2684,74 @@ export class DbStorage implements IStorage {
       )
       .returning();
     return result.length > 0;
+  }
+  
+  async ensureQuoteMember(
+    quoteId: string,
+    companyId: string,
+    role: string,
+    memberData: Partial<InsertQuoteMember>
+  ): Promise<{ member: QuoteMember; wasCreated: boolean }> {
+    // Try to find existing member by quoteId + role + SSN (most reliable)
+    let existingMember: QuoteMember | undefined;
+    
+    if (memberData.ssn) {
+      const members = await db
+        .select()
+        .from(quoteMembers)
+        .where(
+          and(
+            eq(quoteMembers.quoteId, quoteId),
+            eq(quoteMembers.companyId, companyId),
+            eq(quoteMembers.role, role),
+            eq(quoteMembers.ssn, memberData.ssn)
+          )
+        );
+      existingMember = members[0];
+    }
+    
+    // Fallback: match by name and DOB if SSN not available
+    if (!existingMember && memberData.firstName && memberData.lastName && memberData.dateOfBirth) {
+      const members = await db
+        .select()
+        .from(quoteMembers)
+        .where(
+          and(
+            eq(quoteMembers.quoteId, quoteId),
+            eq(quoteMembers.companyId, companyId),
+            eq(quoteMembers.role, role),
+            eq(quoteMembers.firstName, memberData.firstName),
+            eq(quoteMembers.lastName, memberData.lastName),
+            eq(quoteMembers.dateOfBirth, memberData.dateOfBirth)
+          )
+        );
+      existingMember = members[0];
+    }
+    
+    if (existingMember) {
+      // Update existing member
+      const [updated] = await db
+        .update(quoteMembers)
+        .set({
+          ...memberData,
+          updatedAt: new Date(),
+        })
+        .where(eq(quoteMembers.id, existingMember.id))
+        .returning();
+      return { member: updated, wasCreated: false };
+    } else {
+      // Create new member
+      const [created] = await db
+        .insert(quoteMembers)
+        .values({
+          quoteId,
+          companyId,
+          role,
+          ...memberData,
+        } as InsertQuoteMember)
+        .returning();
+      return { member: created, wasCreated: true };
+    }
   }
   
   // ==================== QUOTE MEMBER INCOME ====================

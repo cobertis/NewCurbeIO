@@ -480,10 +480,11 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     }
   }, [open, memberType, memberIndex, memberData, editForm])
 
-  const handleSave = (data: z.infer<typeof editMemberSchema>) => {
+  const handleSave = async (data: z.infer<typeof editMemberSchema>) => {
     // Close any open popovers
     setCountryPopoverOpen(false);
     
+    // Step 1: Save basic data to JSON columns (legacy model)
     if (memberType === 'primary') {
       onSave({
         clientFirstName: data.firstName,
@@ -519,6 +520,80 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
       };
       onSave({ dependents: updatedDependents });
+    }
+    
+    // Step 2: Sync to normalized tables (income, immigration)
+    try {
+      // Ensure member exists in quote_members table and get memberId
+      const ensureResponse = await fetch(`/api/quotes/${quote.id}/ensure-member`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          role: memberType === 'primary' ? 'client' : memberType,
+          memberData: {
+            firstName: data.firstName,
+            middleName: data.middleName,
+            lastName: data.lastName,
+            secondLastName: data.secondLastName,
+            email: data.email,
+            phone: data.phone,
+            dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+            ssn: normalizeSSN(data.ssn),
+            gender: data.gender,
+            isApplicant: data.isApplicant,
+            tobaccoUser: data.tobaccoUser,
+            preferredLanguage: data.preferredLanguage,
+            countryOfBirth: data.countryOfBirth,
+            maritalStatus: data.maritalStatus,
+            weight: data.weight,
+            height: data.height,
+            relation: memberType === 'dependent' ? data.relation : undefined,
+          },
+        }),
+      });
+      
+      if (!ensureResponse.ok) {
+        console.error('Failed to ensure member:', await ensureResponse.text());
+        return;
+      }
+      
+      const { memberId } = await ensureResponse.json();
+      
+      // Step 3: Save income data if present
+      if (data.annualIncome || data.employerName || data.employerPhone || data.position) {
+        await fetch(`/api/quotes/members/${memberId}/income`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            employerName: data.employerName || null,
+            employerPhone: data.employerPhone || null,
+            position: data.position || null,
+            annualIncome: data.annualIncome || null,
+            incomeFrequency: data.incomeFrequency || 'annually',
+            selfEmployed: data.selfEmployed || false,
+          }),
+        });
+      }
+      
+      // Step 4: Save immigration data if present
+      if (data.immigrationStatus || data.uscisNumber || data.naturalizationNumber) {
+        await fetch(`/api/quotes/members/${memberId}/immigration`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            immigrationStatus: data.immigrationStatus || null,
+            uscisNumber: data.uscisNumber || null,
+            naturalizationNumber: data.naturalizationNumber || null,
+            immigrationStatusCategory: data.immigrationStatusCategory || null,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error('Error saving member data to normalized tables:', error);
+      // Don't fail the whole save if normalized tables fail
     }
   };
 
