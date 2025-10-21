@@ -307,6 +307,16 @@ const familyMemberSchema = z.object({
   maritalStatus: z.string().optional(),
   weight: z.string().optional(),
   height: z.string().optional(),
+  // Income fields
+  employerName: z.string().optional(),
+  employerPhone: z.string().optional(),
+  position: z.string().optional(),
+  annualIncome: z.string().optional(),
+  selfEmployed: z.boolean().default(false),
+  // Immigration fields
+  immigrationStatus: z.string().optional(),
+  uscisNumber: z.string().optional(),
+  immigrationStatusCategory: z.string().optional(),
 });
 
 const spouseSchema = familyMemberSchema;
@@ -383,6 +393,16 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         maritalStatus: quote.clientMaritalStatus || '',
         weight: quote.clientWeight || '',
         height: quote.clientHeight || '',
+        // Income fields (placeholders for now - will be fetched from quote_member_income table)
+        employerName: '',
+        employerPhone: '',
+        position: '',
+        annualIncome: '',
+        selfEmployed: false,
+        // Immigration fields (placeholders for now - will be fetched from quote_member_immigration table)
+        immigrationStatus: '',
+        uscisNumber: '',
+        immigrationStatusCategory: '',
       };
     } else if (memberType === 'spouse' && memberIndex !== undefined) {
       const spouse = quote.spouses?.[memberIndex];
@@ -390,6 +410,16 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         ...spouse,
         ssn: normalizeSSN(spouse.ssn),
         dateOfBirth: spouse.dateOfBirth ? format(new Date(spouse.dateOfBirth), 'yyyy-MM-dd') : '',
+        // Income fields defaults
+        employerName: '',
+        employerPhone: '',
+        position: '',
+        annualIncome: '',
+        selfEmployed: false,
+        // Immigration fields defaults
+        immigrationStatus: '',
+        uscisNumber: '',
+        immigrationStatusCategory: '',
       } : null;
     } else if (memberType === 'dependent' && memberIndex !== undefined) {
       const dependent = quote.dependents?.[memberIndex];
@@ -397,6 +427,16 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         ...dependent,
         ssn: normalizeSSN(dependent.ssn),
         dateOfBirth: dependent.dateOfBirth ? format(new Date(dependent.dateOfBirth), 'yyyy-MM-dd') : '',
+        // Income fields defaults
+        employerName: '',
+        employerPhone: '',
+        position: '',
+        annualIncome: '',
+        selfEmployed: false,
+        // Immigration fields defaults
+        immigrationStatus: '',
+        uscisNumber: '',
+        immigrationStatusCategory: '',
       } : null;
     }
     return null;
@@ -1102,8 +1142,171 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               {/* Tab 4: Documents */}
               <TabsContent value="documents" className="flex-1 overflow-y-auto space-y-6 pr-2">
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Document uploads and management will be managed here.</p>
-                  {/* TODO: Implement document upload */}
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Document</TableHead>
+                          <TableHead>Document #</TableHead>
+                          <TableHead>Issued date</TableHead>
+                          <TableHead>Exp date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {/* Social Security (SSN) */}
+                        <TableRow>
+                          <TableCell className="font-medium">Social Security (SSN)</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm">xxx-xx-2044</span>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" data-testid="button-doc-ssn-actions">
+                                  Edit
+                                  <ChevronDown className="h-4 w-4 ml-1" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit details</DropdownMenuItem>
+                                <DropdownMenuItem>Upload document</DropdownMenuItem>
+                                <DropdownMenuItem>View document</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Green card */}
+                        <TableRow>
+                          <TableCell className="font-medium">Green card</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" data-testid="button-doc-greencard-actions">
+                                  Edit
+                                  <ChevronDown className="h-4 w-4 ml-1" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit details</DropdownMenuItem>
+                                <DropdownMenuItem>Upload document</DropdownMenuItem>
+                                <DropdownMenuItem>View document</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Work permit */}
+                        <TableRow>
+                          <TableCell className="font-medium">Work permit</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm">IOE9094849121</span>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm">08/09/2024</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm">07/17/2026</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" data-testid="button-doc-workpermit-actions">
+                                  Edit
+                                  <ChevronDown className="h-4 w-4 ml-1" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit details</DropdownMenuItem>
+                                <DropdownMenuItem>Upload document</DropdownMenuItem>
+                                <DropdownMenuItem>View document</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Passport */}
+                        <TableRow>
+                          <TableCell className="font-medium">Passport</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm">xxxxx5920</span>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" data-testid="button-doc-passport-actions">
+                                  Edit
+                                  <ChevronDown className="h-4 w-4 ml-1" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit details</DropdownMenuItem>
+                                <DropdownMenuItem>Upload document</DropdownMenuItem>
+                                <DropdownMenuItem>View document</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Driver license */}
+                        <TableRow>
+                          <TableCell className="font-medium">Driver license</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" data-testid="button-doc-license-actions">
+                                  Edit
+                                  <ChevronDown className="h-4 w-4 ml-1" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit details</DropdownMenuItem>
+                                <DropdownMenuItem>Upload document</DropdownMenuItem>
+                                <DropdownMenuItem>View document</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
@@ -1382,6 +1585,14 @@ export default function QuotesPage() {
       email: "",
       isApplicant: true,
       tobaccoUser: false,
+      selfEmployed: false,
+      employerName: "",
+      employerPhone: "",
+      position: "",
+      annualIncome: "",
+      immigrationStatus: "",
+      uscisNumber: "",
+      immigrationStatusCategory: "",
     });
   };
 
@@ -1399,6 +1610,14 @@ export default function QuotesPage() {
       isApplicant: true,
       tobaccoUser: false,
       relation: "",
+      selfEmployed: false,
+      employerName: "",
+      employerPhone: "",
+      position: "",
+      annualIncome: "",
+      immigrationStatus: "",
+      uscisNumber: "",
+      immigrationStatusCategory: "",
     });
   };
 
