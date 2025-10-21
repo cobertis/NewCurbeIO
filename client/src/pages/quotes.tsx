@@ -2926,7 +2926,7 @@ export default function QuotesPage() {
                             <span className="flex items-center gap-1.5">
                               <IdCard className="h-3 w-3" />
                               {viewingQuote.clientSsn 
-                                ? (showSsn && revealedClientSsn ? revealedClientSsn : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
+                                ? (showSsn && revealedClientSsn ? formatSSN(revealedClientSsn) : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
                                 : 'N/A'}
                             </span>
                             {viewingQuote.clientSsn && (
@@ -3106,7 +3106,7 @@ export default function QuotesPage() {
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className="text-sm font-mono">
                               {viewingQuote.clientSsn 
-                                ? (showSsn ? viewingQuote.clientSsn : '***-**-' + viewingQuote.clientSsn.slice(-4)) 
+                                ? (showSsn ? formatSSN(viewingQuote.clientSsn) : '***-**-' + viewingQuote.clientSsn.slice(-4)) 
                                 : 'N/A'}
                             </p>
                             {viewingQuote.clientSsn && (
