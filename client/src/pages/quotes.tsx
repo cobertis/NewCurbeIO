@@ -1469,19 +1469,21 @@ export default function QuotesPage() {
                 </div>
 
                 <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground mb-2 block">Household</label>
-                  <div className="bg-muted/30 rounded-md p-3 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-foreground/60">Applicants</span>
-                      <Badge variant="secondary" className="text-xs font-semibold">{totalApplicants}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-foreground/60">Members</span>
-                      <Badge variant="secondary" className="text-xs font-semibold">{totalFamilyMembers}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-foreground/60">Dependents</span>
-                      <Badge variant="secondary" className="text-xs font-semibold">{totalDependents}</Badge>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">Household</label>
+                  <div className="bg-muted/30 rounded-md p-2">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <div className="text-lg font-bold text-foreground">{totalApplicants}</div>
+                        <div className="text-xs text-muted-foreground">Appl.</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold text-foreground">{totalFamilyMembers}</div>
+                        <div className="text-xs text-muted-foreground">Memb.</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold text-foreground">{totalDependents}</div>
+                        <div className="text-xs text-muted-foreground">Dep.</div>
+                      </div>
                     </div>
                   </div>
                 </div>
