@@ -2877,6 +2877,36 @@ export default function QuotesPage() {
                             Effective {format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}
                           </span>
                         </div>
+                        
+                        {/* Quick Summary */}
+                        <div className="mt-3 space-y-1 text-xs">
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1.5">
+                              <Phone className="h-3 w-3" />
+                              {viewingQuote.clientPhone || 'N/A'}
+                            </span>
+                            <span className="text-muted-foreground">|</span>
+                            <span className="flex items-center gap-1.5">
+                              <Mail className="h-3 w-3" />
+                              {viewingQuote.clientEmail || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="h-3 w-3" />
+                              {viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
+                            </span>
+                            <span className="text-muted-foreground">|</span>
+                            <span className="flex items-center gap-1.5">
+                              <IdCard className="h-3 w-3" />
+                              {viewingQuote.clientSsn ? `***-**-${viewingQuote.clientSsn.slice(-4)}` : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3" />
+                            {viewingQuote.street}, {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
