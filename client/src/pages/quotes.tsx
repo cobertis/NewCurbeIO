@@ -49,13 +49,16 @@ const normalizeSSN = (ssn: string | undefined): string => {
 };
 
 // Display SSN: hidden shows XXX-XX-6789, visible shows 123-45-6789
+// Only allows viewing complete SSN (9 digits), incomplete SSN always shows masked
 const displaySSN = (ssn: string | undefined, isVisible: boolean): string => {
   if (!ssn) return '';
   const digits = normalizeSSN(ssn);
   
-  if (isVisible) {
+  // Only show full SSN if it's complete (9 digits) AND visibility is enabled
+  if (isVisible && digits.length === 9) {
     return formatSSN(digits);
   } else {
+    // Always show masked format for incomplete or hidden SSN
     if (digits.length >= 4) {
       return `XXX-XX-${digits.slice(-4)}`;
     }
@@ -524,6 +527,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 control={editForm.control}
                 name="ssn"
                 render={({ field }) => {
+                  const hasCompleteSSN = normalizeSSN(field.value).length === 9;
                   return (
                     <FormItem>
                       <FormLabel>SSN *</FormLabel>
@@ -538,30 +542,32 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                               field.onChange(digits);
                             }}
                             value={displaySSN(field.value, showEditSsn)}
-                            className="pr-10"
+                            className={hasCompleteSSN ? "pr-10" : ""}
                             autoComplete="off"
                             placeholder="XXX-XX-XXXX"
                             data-testid="input-ssn"
                           />
                         </FormControl>
-                        <div
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowEditSsn(prev => !prev);
-                          }}
-                          className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
-                          role="button"
-                          tabIndex={-1}
-                          aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
-                          data-testid="button-ssn-visibility"
-                        >
-                          {showEditSsn ? (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
+                        {hasCompleteSSN && (
+                          <div
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowEditSsn(prev => !prev);
+                            }}
+                            className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                            role="button"
+                            tabIndex={-1}
+                            aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
+                            data-testid="button-ssn-visibility"
+                          >
+                            {showEditSsn ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        )}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -3257,47 +3263,52 @@ export default function QuotesPage() {
                         <FormField
                           control={form.control}
                           name="clientSsn"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>SSN</FormLabel>
-                              <div className="relative">
-                                <FormControl>
-                                  <Input 
-                                    {...field}
-                                    type="text" 
-                                    data-testid="input-client-ssn" 
-                                    placeholder="XXX-XX-XXXX"
-                                    value={displaySSN(field.value, showClientSsn)}
-                                    onChange={(e) => {
-                                      const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-                                      field.onChange(digits);
-                                    }}
-                                    className="pr-10"
-                                    autoComplete="off"
-                                  />
-                                </FormControl>
-                                <div
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setShowClientSsn(prev => !prev);
-                                  }}
-                                  className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
-                                  role="button"
-                                  tabIndex={-1}
-                                  aria-label={showClientSsn ? "Hide SSN" : "Show SSN"}
-                                  data-testid="button-client-ssn-visibility"
-                                >
-                                  {showClientSsn ? (
-                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                  ) : (
-                                    <Eye className="h-4 w-4 text-muted-foreground" />
+                          render={({ field }) => {
+                            const hasCompleteSSN = normalizeSSN(field.value).length === 9;
+                            return (
+                              <FormItem>
+                                <FormLabel>SSN</FormLabel>
+                                <div className="relative">
+                                  <FormControl>
+                                    <Input 
+                                      {...field}
+                                      type="text" 
+                                      data-testid="input-client-ssn" 
+                                      placeholder="XXX-XX-XXXX"
+                                      value={displaySSN(field.value, showClientSsn)}
+                                      onChange={(e) => {
+                                        const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                        field.onChange(digits);
+                                      }}
+                                      className={hasCompleteSSN ? "pr-10" : ""}
+                                      autoComplete="off"
+                                    />
+                                  </FormControl>
+                                  {hasCompleteSSN && (
+                                    <div
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setShowClientSsn(prev => !prev);
+                                      }}
+                                      className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                                      role="button"
+                                      tabIndex={-1}
+                                      aria-label={showClientSsn ? "Hide SSN" : "Show SSN"}
+                                      data-testid="button-client-ssn-visibility"
+                                    >
+                                      {showClientSsn ? (
+                                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <Eye className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </div>
                                   )}
                                 </div>
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                                <FormMessage />
+                              </FormItem>
+                            );
+                          }}
                         />
 
                         <FormField
@@ -3733,47 +3744,52 @@ export default function QuotesPage() {
                             <FormField
                               control={form.control}
                               name={`spouses.${index}.ssn`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>SSN *</FormLabel>
-                                  <div className="relative">
-                                    <FormControl>
-                                      <Input 
-                                        {...field}
-                                        type="text" 
-                                        data-testid={`input-spouse-ssn-${index}`} 
-                                        placeholder="XXX-XX-XXXX"
-                                        value={displaySSN(field.value, showSpouseSsn[index] || false)}
-                                        onChange={(e) => {
-                                          const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-                                          field.onChange(digits);
-                                        }}
-                                        className="pr-10"
-                                        autoComplete="off"
-                                      />
-                                    </FormControl>
-                                    <div
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setShowSpouseSsn(prev => ({ ...prev, [index]: !prev[index] }));
-                                      }}
-                                      className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
-                                      role="button"
-                                      tabIndex={-1}
-                                      aria-label={showSpouseSsn[index] ? "Hide SSN" : "Show SSN"}
-                                      data-testid={`button-spouse-ssn-visibility-${index}`}
-                                    >
-                                      {showSpouseSsn[index] ? (
-                                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                      ) : (
-                                        <Eye className="h-4 w-4 text-muted-foreground" />
+                              render={({ field }) => {
+                                const hasCompleteSSN = normalizeSSN(field.value).length === 9;
+                                return (
+                                  <FormItem>
+                                    <FormLabel>SSN *</FormLabel>
+                                    <div className="relative">
+                                      <FormControl>
+                                        <Input 
+                                          {...field}
+                                          type="text" 
+                                          data-testid={`input-spouse-ssn-${index}`} 
+                                          placeholder="XXX-XX-XXXX"
+                                          value={displaySSN(field.value, showSpouseSsn[index] || false)}
+                                          onChange={(e) => {
+                                            const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                            field.onChange(digits);
+                                          }}
+                                          className={hasCompleteSSN ? "pr-10" : ""}
+                                          autoComplete="off"
+                                        />
+                                      </FormControl>
+                                      {hasCompleteSSN && (
+                                        <div
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setShowSpouseSsn(prev => ({ ...prev, [index]: !prev[index] }));
+                                          }}
+                                          className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                                          role="button"
+                                          tabIndex={-1}
+                                          aria-label={showSpouseSsn[index] ? "Hide SSN" : "Show SSN"}
+                                          data-testid={`button-spouse-ssn-visibility-${index}`}
+                                        >
+                                          {showSpouseSsn[index] ? (
+                                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                          ) : (
+                                            <Eye className="h-4 w-4 text-muted-foreground" />
+                                          )}
+                                        </div>
                                       )}
                                     </div>
-                                  </div>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
                             />
 
                             <FormField
@@ -4007,47 +4023,52 @@ export default function QuotesPage() {
                             <FormField
                               control={form.control}
                               name={`dependents.${index}.ssn`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>SSN *</FormLabel>
-                                  <div className="relative">
-                                    <FormControl>
-                                      <Input 
-                                        {...field}
-                                        type="text" 
-                                        data-testid={`input-dependent-ssn-${index}`} 
-                                        placeholder="XXX-XX-XXXX"
-                                        value={displaySSN(field.value, showDependentSsn[index] || false)}
-                                        onChange={(e) => {
-                                          const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-                                          field.onChange(digits);
-                                        }}
-                                        className="pr-10"
-                                        autoComplete="off"
-                                      />
-                                    </FormControl>
-                                    <div
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setShowDependentSsn(prev => ({ ...prev, [index]: !prev[index] }));
-                                      }}
-                                      className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
-                                      role="button"
-                                      tabIndex={-1}
-                                      aria-label={showDependentSsn[index] ? "Hide SSN" : "Show SSN"}
-                                      data-testid={`button-dependent-ssn-visibility-${index}`}
-                                    >
-                                      {showDependentSsn[index] ? (
-                                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                      ) : (
-                                        <Eye className="h-4 w-4 text-muted-foreground" />
+                              render={({ field }) => {
+                                const hasCompleteSSN = normalizeSSN(field.value).length === 9;
+                                return (
+                                  <FormItem>
+                                    <FormLabel>SSN *</FormLabel>
+                                    <div className="relative">
+                                      <FormControl>
+                                        <Input 
+                                          {...field}
+                                          type="text" 
+                                          data-testid={`input-dependent-ssn-${index}`} 
+                                          placeholder="XXX-XX-XXXX"
+                                          value={displaySSN(field.value, showDependentSsn[index] || false)}
+                                          onChange={(e) => {
+                                            const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                            field.onChange(digits);
+                                          }}
+                                          className={hasCompleteSSN ? "pr-10" : ""}
+                                          autoComplete="off"
+                                        />
+                                      </FormControl>
+                                      {hasCompleteSSN && (
+                                        <div
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setShowDependentSsn(prev => ({ ...prev, [index]: !prev[index] }));
+                                          }}
+                                          className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                                          role="button"
+                                          tabIndex={-1}
+                                          aria-label={showDependentSsn[index] ? "Hide SSN" : "Show SSN"}
+                                          data-testid={`button-dependent-ssn-visibility-${index}`}
+                                        >
+                                          {showDependentSsn[index] ? (
+                                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                          ) : (
+                                            <Eye className="h-4 w-4 text-muted-foreground" />
+                                          )}
+                                        </div>
                                       )}
                                     </div>
-                                  </div>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
                             />
 
                             <FormField
