@@ -3172,47 +3172,83 @@ export default function QuotesPage() {
                 </CardContent>
               </Card>
 
-              {/* Pricing Cards - Subtle Skeleton Style */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Card className="bg-muted/10 border-dashed">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-muted rounded">
-                        <DollarSign className="h-3.5 w-3.5 text-foreground/60" />
-                      </div>
-                      <CardTitle className="text-xs font-medium text-foreground/70">Monthly Premium</CardTitle>
+              {/* Address Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Physical Address */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold">Physical address</CardTitle>
+                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-physical-address">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-lg font-semibold text-foreground/60">Pending</p>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-start gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <span>{viewingQuote.street}</span>
+                    </div>
+                    {viewingQuote.addressLine2 && (
+                      <div className="flex items-start gap-2 text-sm pl-6">
+                        <span className="text-muted-foreground">{viewingQuote.addressLine2}</span>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <span>{viewingQuote.city}, {viewingQuote.state},</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <span>{viewingQuote.postalCode}</span>
+                    </div>
+                    {viewingQuote.county && (
+                      <div className="flex items-start gap-2 text-sm">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <span>{viewingQuote.county}</span>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
-                <Card className="bg-muted/10 border-dashed">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-muted rounded">
-                        <PiggyBank className="h-3.5 w-3.5 text-foreground/60" />
-                      </div>
-                      <CardTitle className="text-xs font-medium text-foreground/70">Savings Total</CardTitle>
+                {/* Mailing Address */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold">Mailing address</CardTitle>
+                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-mailing-address">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-lg font-semibold text-foreground/60">Pending</p>
+                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                    <MapPin className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      No address<br />associated with this<br />policy.
+                    </p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-muted/10 border-dashed">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-muted rounded">
-                        <FileText className="h-3.5 w-3.5 text-foreground/60" />
-                      </div>
-                      <CardTitle className="text-xs font-medium text-foreground/70">Original Cost</CardTitle>
+                {/* Billing Address */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold">Billing address</CardTitle>
+                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-billing-address">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-lg font-semibold text-foreground/60">Pending</p>
+                  <CardContent className="space-y-2">
+                    <div className="text-sm text-muted-foreground">-</div>
+                    <div className="text-sm text-muted-foreground">-</div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <span>{viewingQuote.postalCode}</span>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
