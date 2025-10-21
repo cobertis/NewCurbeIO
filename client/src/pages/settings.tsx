@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus } from "lucide-react";
-import type { User, CompanySettings } from "@shared/schema";
+import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
@@ -2738,15 +2738,14 @@ function TeamMembersTable() {
   const currentUser = sessionData?.user;
   const currentUserCompanyId = currentUser?.companyId;
 
-  // User creation form schema
-  const userFormSchema = z.object({
-    email: z.string().email("Invalid email address"),
-    firstName: z.string().min(1, "First name is required"),
-    lastName: z.string().min(1, "Last name is required"),
-    phone: z.string().optional(),
-    dateOfBirth: z.string().optional(),
-    preferredLanguage: z.string().default("en"),
-    role: z.enum(["admin", "member", "viewer"]).default("member"),
+  // User creation form schema - matches superadmin form exactly
+  const userFormSchema = insertUserSchema.omit({ password: true }).extend({
+    role: z.enum(["admin", "member", "viewer"]),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    phone: z.string().optional().or(z.literal("")),
+    dateOfBirth: z.string().optional().or(z.literal("")),
+    preferredLanguage: z.string().optional(),
   });
 
   type UserForm = z.infer<typeof userFormSchema>;
@@ -2782,10 +2781,25 @@ function TeamMembersTable() {
         description: "The new team member has been added successfully.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      let errorMessage = "Failed to add team member.";
+      try {
+        if (error?.message) {
+          const colonIndex = error.message.indexOf(': ');
+          if (colonIndex !== -1) {
+            const jsonPart = error.message.substring(colonIndex + 2);
+            const errorData = JSON.parse(jsonPart);
+            errorMessage = errorData.message || error.message;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing error message:", e);
+      }
       toast({
         title: "Error",
-        description: "Failed to add team member.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
