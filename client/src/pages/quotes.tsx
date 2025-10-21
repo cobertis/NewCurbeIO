@@ -1330,17 +1330,35 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                               <Input 
-                                {...field} 
-                                type="number" 
-                                step="0.01"
+                                {...field}
+                                type="text"
                                 placeholder="0.00" 
                                 data-testid="input-income-amount"
                                 className="pl-7 bg-background"
+                                onChange={(e) => {
+                                  let value = e.target.value;
+                                  // Remove all non-numeric characters except decimal point
+                                  value = value.replace(/[^\d.]/g, '');
+                                  
+                                  // Ensure only one decimal point
+                                  const parts = value.split('.');
+                                  if (parts.length > 2) {
+                                    value = parts[0] + '.' + parts.slice(1).join('');
+                                  }
+                                  
+                                  // Limit to 2 decimal places
+                                  if (parts.length === 2 && parts[1].length > 2) {
+                                    value = parts[0] + '.' + parts[1].substring(0, 2);
+                                  }
+                                  
+                                  field.onChange(value);
+                                }}
                                 onBlur={(e) => {
-                                  const value = e.target.value;
+                                  let value = e.target.value;
                                   if (value && value !== '') {
                                     const num = parseFloat(value);
                                     if (!isNaN(num)) {
+                                      // Always format to 2 decimals on blur
                                       field.onChange(num.toFixed(2));
                                     }
                                   }
