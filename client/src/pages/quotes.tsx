@@ -6,7 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -275,7 +275,17 @@ const step3Schema = z.object({
 const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
 
 // Edit Member Sheet Component - Extracted outside to prevent recreation on each render
-function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending }: any) {
+interface EditMemberSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  quote: Quote;
+  memberType: 'primary' | 'spouse' | 'dependent';
+  memberIndex?: number;
+  onSave: (data: Partial<Quote>) => void;
+  isPending: boolean;
+}
+
+function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending }: EditMemberSheetProps) {
   const editMemberSchema = memberType === 'dependent'
     ? dependentSchema
     : familyMemberSchema;
@@ -408,6 +418,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           <SheetTitle>
             Edit {memberType === 'primary' ? 'Primary Applicant' : memberType === 'spouse' ? 'Spouse' : 'Dependent'}
           </SheetTitle>
+          <SheetDescription>
+            Update the information for this family member
+          </SheetDescription>
         </SheetHeader>
         <Form {...editForm}>
           <form onSubmit={editForm.handleSubmit(handleSave)} className="space-y-6 py-6">
