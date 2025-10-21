@@ -205,6 +205,11 @@ const familyMemberSchema = z.object({
   email: z.string().optional(),
   isApplicant: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
+  preferredLanguage: z.string().optional(),
+  countryOfBirth: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  weight: z.string().optional(),
+  height: z.string().optional(),
 });
 
 const spouseSchema = familyMemberSchema;
@@ -609,6 +614,11 @@ export default function QuotesPage() {
           gender: quote.clientGender || '',
           isApplicant: quote.clientIsApplicant ?? true,
           tobaccoUser: quote.clientTobaccoUser ?? false,
+          preferredLanguage: quote.clientPreferredLanguage || '',
+          countryOfBirth: quote.clientCountryOfBirth || '',
+          maritalStatus: quote.clientMaritalStatus || '',
+          weight: quote.clientWeight || '',
+          height: quote.clientHeight || '',
         };
       } else if (memberType === 'spouse' && memberIndex !== undefined) {
         const spouse = quote.spouses?.[memberIndex];
@@ -653,6 +663,11 @@ export default function QuotesPage() {
           clientGender: data.gender,
           clientIsApplicant: data.isApplicant,
           clientTobaccoUser: data.tobaccoUser,
+          clientPreferredLanguage: data.preferredLanguage,
+          clientCountryOfBirth: data.countryOfBirth,
+          clientMaritalStatus: data.maritalStatus,
+          clientWeight: data.weight,
+          clientHeight: data.height,
         });
       } else if (memberType === 'spouse') {
         const updatedSpouses = [...(quote.spouses || [])];
@@ -815,6 +830,92 @@ export default function QuotesPage() {
                           onChange={(e) => field.onChange(formatSSN(e.target.value))}
                           data-testid="input-ssn"
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="preferredLanguage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Language</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-preferredlanguage">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="spanish">Spanish</SelectItem>
+                          <SelectItem value="french">French</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="countryOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country of Birth</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-countryofbirth" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="maritalStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Marital Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-maritalstatus">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="single">Single</SelectItem>
+                          <SelectItem value="married">Married</SelectItem>
+                          <SelectItem value="divorced">Divorced</SelectItem>
+                          <SelectItem value="widowed">Widowed</SelectItem>
+                          <SelectItem value="separated">Separated</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="weight"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Weight (Lbs)</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" placeholder="150" data-testid="input-weight" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="height"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Height (Ft)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="5'10&quot;" data-testid="input-height" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

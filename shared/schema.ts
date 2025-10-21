@@ -1283,6 +1283,11 @@ export const quotes = pgTable("quotes", {
   clientIsApplicant: boolean("client_is_applicant").default(false),
   clientTobaccoUser: boolean("client_tobacco_user").default(false),
   clientSsn: text("client_ssn"), // Encrypted/masked SSN
+  clientPreferredLanguage: text("client_preferred_language"), // English, Spanish, etc.
+  clientCountryOfBirth: text("client_country_of_birth"), // Country of birth
+  clientMaritalStatus: text("client_marital_status"), // single, married, divorced, widowed
+  clientWeight: text("client_weight"), // Weight in lbs
+  clientHeight: text("client_height"), // Height in feet and inches (e.g., "5'10")
   
   // Step 3: Family Group
   annualHouseholdIncome: text("annual_household_income"), // Stored as text to handle currency formatting
@@ -1323,6 +1328,11 @@ export const spouseSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   isApplicant: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
+  preferredLanguage: z.string().optional(),
+  countryOfBirth: z.string().optional(),
+  maritalStatus: z.string().optional(), // single, married, divorced, widowed
+  weight: z.string().optional(), // Weight in lbs
+  height: z.string().optional(), // Height in feet (e.g., "5'10")
 });
 
 // Dependent validation schema for quotes
@@ -1339,6 +1349,11 @@ export const dependentSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   isApplicant: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
+  preferredLanguage: z.string().optional(),
+  countryOfBirth: z.string().optional(),
+  maritalStatus: z.string().optional(), // single, married, divorced, widowed
+  weight: z.string().optional(), // Weight in lbs
+  height: z.string().optional(), // Height in feet (e.g., "5'10")
 });
 
 export const insertQuoteSchema = createInsertSchema(quotes).omit({
