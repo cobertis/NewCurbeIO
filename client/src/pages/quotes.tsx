@@ -941,9 +941,98 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
               {/* Tab 2: Income & Employment */}
               <TabsContent value="income" className="flex-1 overflow-y-auto space-y-6 pr-2">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Employer Name */}
+                  <FormField
+                    control={editForm.control}
+                    name="employerName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Employer name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter employer name" data-testid="input-employer-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Employer Phone */}
+                  <FormField
+                    control={editForm.control}
+                    name="employerPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Employer phone</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                            placeholder="+1(999)999-9999"
+                            data-testid="input-employer-phone"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Position / Occupation */}
+                  <FormField
+                    control={editForm.control}
+                    name="position"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Position / Occupation</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter position or occupation" data-testid="input-position" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Annual Income */}
+                  <FormField
+                    control={editForm.control}
+                    name="annualIncome"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Annual income <span className="text-destructive">(required)</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="number" 
+                            step="0.01"
+                            placeholder="0.00" 
+                            data-testid="input-annual-income"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Self Employed Checkbox */}
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Income and employment information will be managed here.</p>
-                  {/* TODO: Implement income fields */}
+                  <FormField
+                    control={editForm.control}
+                    name="selfEmployed"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-self-employed"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Self employed</FormLabel>
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </TabsContent>
 
