@@ -319,7 +319,7 @@ const step2Schema = z.object({
   clientMiddleName: z.string().optional(),
   clientLastName: z.string().min(1, "Last name is required"),
   clientSecondLastName: z.string().optional(),
-  clientEmail: z.string().email("Valid email is required"),
+  clientEmail: z.union([z.string().email("Valid email is required"), z.literal("")]).optional(),
   clientPhone: z.string().min(1, "Phone number is required"),
   clientDateOfBirth: z.string().optional(),
   clientGender: z.string().optional(),
