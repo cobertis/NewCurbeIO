@@ -1442,13 +1442,10 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                         }
                       };
                       
-                      // Format number with commas for display
-                      const formatNumberWithCommas = (value: string) => {
-                        if (!value) return '';
-                        const num = parseFloat(value);
-                        if (isNaN(num)) return value;
-                        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                      };
+                      // Display value with commas
+                      const displayValue = field.value ? 
+                        parseFloat(field.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+                        : '';
                       
                       const annualAmount = calculateAnnualIncome(field.value || '0');
                       const showAnnualEquivalent = field.value && parseFloat(field.value) > 0 && frequency !== 'annually';
@@ -1464,7 +1461,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                                 placeholder="0.00" 
                                 data-testid="input-income-amount"
                                 className="pl-7 bg-background"
-                                value={formatNumberWithCommas(field.value)}
+                                value={displayValue}
                                 onChange={(e) => {
                                   let value = e.target.value;
                                   // Remove all non-numeric characters except decimal point
