@@ -524,6 +524,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     
     // Step 2: Sync to normalized tables (income, immigration)
     try {
+      console.log('[EditMemberSheet] Starting to save normalized data...');
+      
       // Ensure member exists in quote_members table and get memberId
       const ensureResponse = await fetch(`/api/quotes/${quote.id}/ensure-member`, {
         method: 'POST',
@@ -554,15 +556,22 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       });
       
       if (!ensureResponse.ok) {
-        console.error('Failed to ensure member:', await ensureResponse.text());
+        console.error('[EditMemberSheet] Failed to ensure member:', await ensureResponse.text());
+        onOpenChange(false); // Close sheet even if this fails
         return;
       }
       
       const { memberId } = await ensureResponse.json();
+      console.log('[EditMemberSheet] Member ensured, ID:', memberId);
       
       // Step 3: Save income data if present
       if (data.annualIncome || data.employerName || data.employerPhone || data.position) {
-        await fetch(`/api/quotes/members/${memberId}/income`, {
+        console.log('[EditMemberSheet] Saving income data...', {
+          annualIncome: data.annualIncome,
+          employerName: data.employerName,
+        });
+        
+        const incomeResponse = await fetch(`/api/quotes/members/${memberId}/income`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -575,11 +584,19 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             selfEmployed: data.selfEmployed || false,
           }),
         });
+        
+        if (incomeResponse.ok) {
+          console.log('[EditMemberSheet] Income saved successfully');
+        } else {
+          console.error('[EditMemberSheet] Failed to save income:', await incomeResponse.text());
+        }
       }
       
       // Step 4: Save immigration data if present
       if (data.immigrationStatus || data.uscisNumber || data.naturalizationNumber) {
-        await fetch(`/api/quotes/members/${memberId}/immigration`, {
+        console.log('[EditMemberSheet] Saving immigration data...');
+        
+        const immigrationResponse = await fetch(`/api/quotes/members/${memberId}/immigration`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -590,10 +607,21 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             immigrationStatusCategory: data.immigrationStatusCategory || null,
           }),
         });
+        
+        if (immigrationResponse.ok) {
+          console.log('[EditMemberSheet] Immigration saved successfully');
+        } else {
+          console.error('[EditMemberSheet] Failed to save immigration:', await immigrationResponse.text());
+        }
       }
+      
+      console.log('[EditMemberSheet] All data saved, closing sheet');
+      // Close the sheet after all async operations complete
+      onOpenChange(false);
     } catch (error) {
-      console.error('Error saving member data to normalized tables:', error);
-      // Don't fail the whole save if normalized tables fail
+      console.error('[EditMemberSheet] Error saving member data:', error);
+      // Close sheet even if there's an error
+      onOpenChange(false);
     }
   };
 
@@ -5040,7 +5068,7 @@ export default function QuotesPage() {
             quoteId: viewingQuote.id,
             data,
           });
-          setEditingMember(null);
+          // Don't close immediately - let handleSave complete async operations first
         }}
         isPending={updateQuoteMutation.isPending}
         onMemberChange={(type, index) => {
