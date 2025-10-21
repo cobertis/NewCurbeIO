@@ -285,7 +285,7 @@ function getFirstDayOfNextMonth(): Date {
 // Form schema for each step
 const step1Schema = z.object({
   effectiveDate: z.string(),
-  agentId: z.string().optional(),
+  agentId: z.string().min(1, "Please select an agent"),
   productType: z.string().min(1, "Please select a product"),
 });
 
