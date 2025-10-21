@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, Plus, Edit, Trash2, Eye, Code } from "lucide-react";
 import type { EmailTemplate } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useTabsState } from "@/hooks/use-tabs-state";
 
 export function EmailTemplatesManager() {
   const { toast } = useToast();
@@ -255,6 +256,7 @@ interface TemplateFormProps {
 }
 
 function TemplateForm({ defaultValues, onSubmit, isPending, onPreview }: TemplateFormProps) {
+  const [contentTab, setContentTab] = useTabsState(["html", "text"], "html");
   const [formData, setFormData] = useState({
     name: defaultValues?.name || "",
     slug: defaultValues?.slug || "",
@@ -309,7 +311,7 @@ function TemplateForm({ defaultValues, onSubmit, isPending, onPreview }: Templat
         />
       </div>
 
-      <Tabs defaultValue="html" className="w-full">
+      <Tabs value={contentTab} onValueChange={setContentTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="html">
             <Code className="h-4 w-4 mr-2" />
