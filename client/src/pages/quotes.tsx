@@ -2444,11 +2444,10 @@ export default function QuotesPage() {
               memberType={editingMember?.type}
               memberIndex={editingMember?.index}
               onSave={(data) => {
+                setEditingMember(null);
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
-                }, {
-                  onSuccess: () => setEditingMember(null)
                 });
               }}
               isPending={updateQuoteMutation.isPending}
