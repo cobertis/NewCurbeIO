@@ -8571,31 +8571,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Income information not found" });
       }
       
-      // Check if user is superadmin requesting unmasked PII
-      const reveal = req.query.reveal === 'true' && currentUser.role === 'superadmin';
-      
-      // Process sensitive fields - mask PII by default, decrypt only for superadmin with reveal=true
-      const processedIncome = {
+      // Decrypt income for authorized users (they own this data)
+      const decryptedIncome = {
         ...income,
-        annualIncome: reveal ? (income.annualIncome ? decrypt(income.annualIncome) : null) : maskIncome(income.annualIncome, true),
+        annualIncome: income.annualIncome ? decrypt(income.annualIncome) : null,
       };
       
-      // Audit log when superadmin reveals PII
-      if (reveal) {
-        await logger.logAuth({
-          req,
-          action: "pii_reveal",
-          userId: currentUser.id,
-          email: currentUser.email,
-          metadata: {
-            entity: "quote_member_income",
-            memberId,
-            fields: ["annualIncome"],
-          },
-        });
-      }
-      
-      res.json({ income: processedIncome });
+      res.json({ income: decryptedIncome });
     } catch (error: any) {
       console.error("Error getting member income:", error);
       res.status(500).json({ message: "Failed to get member income" });
