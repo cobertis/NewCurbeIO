@@ -1918,8 +1918,9 @@ export default function QuotesPage() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Main Content Area */}
+        {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
             {/* Enhanced Header with Card Background */}
