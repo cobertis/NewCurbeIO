@@ -1261,6 +1261,16 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                                 placeholder="0.00" 
                                 data-testid="input-income-amount"
                                 className="pl-7 bg-background"
+                                onBlur={(e) => {
+                                  const value = e.target.value;
+                                  if (value && value !== '') {
+                                    const num = parseFloat(value);
+                                    if (!isNaN(num)) {
+                                      field.onChange(num.toFixed(2));
+                                    }
+                                  }
+                                  field.onBlur();
+                                }}
                               />
                             </div>
                           </FormControl>
