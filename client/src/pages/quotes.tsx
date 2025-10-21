@@ -591,17 +591,6 @@ export default function QuotesPage() {
         {/* Sidebar Summary */}
         <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r bg-background p-6 overflow-y-auto flex-shrink-0">
           <div className="space-y-6">
-            {/* Back Button */}
-            <Button 
-              variant="ghost" 
-              onClick={() => setLocation("/quotes")} 
-              className="w-full justify-start"
-              data-testid="button-back-to-quotes"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Quotes
-            </Button>
-
             {/* Summary Card */}
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">Summary</h2>
