@@ -699,6 +699,7 @@ export default function QuotesPage() {
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(handleSave)} className="space-y-6 py-6">
               <div className="grid grid-cols-2 gap-4">
+                {/* First Name - Middle Name */}
                 <FormField
                   control={editForm.control}
                   name="firstName"
@@ -725,6 +726,8 @@ export default function QuotesPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Last Name - Second Last Name */}
                 <FormField
                   control={editForm.control}
                   name="lastName"
@@ -751,37 +754,8 @@ export default function QuotesPage() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={editForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email {memberType === 'primary' && '*'}</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} data-testid="input-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone {memberType === 'primary' && '*'}</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field}
-                          value={field.value || ''}
-                          onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
-                          data-testid="input-phone"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+                {/* DOB - SSN */}
                 <FormField
                   control={editForm.control}
                   name="dateOfBirth"
@@ -791,28 +765,6 @@ export default function QuotesPage() {
                       <FormControl>
                         <Input type="date" {...field} data-testid="input-dob" />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gender *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-gender">
-                            <SelectValue placeholder="Select gender" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -835,38 +787,59 @@ export default function QuotesPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Phone - Email */}
                 <FormField
                   control={editForm.control}
-                  name="preferredLanguage"
+                  name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preferred Language</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-preferredlanguage">
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="english">English</SelectItem>
-                          <SelectItem value="spanish">Spanish</SelectItem>
-                          <SelectItem value="french">French</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Phone {memberType === 'primary' && '*'}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                          data-testid="input-phone"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={editForm.control}
-                  name="countryOfBirth"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Country of Birth</FormLabel>
+                      <FormLabel>Email {memberType === 'primary' && '*'}</FormLabel>
                       <FormControl>
-                        <Input {...field} data-testid="input-countryofbirth" />
+                        <Input type="email" {...field} data-testid="input-email" />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Gender - Marital Status */}
+                <FormField
+                  control={editForm.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-gender">
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -895,6 +868,46 @@ export default function QuotesPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Country of Birth - Preferred Language */}
+                <FormField
+                  control={editForm.control}
+                  name="countryOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country of Birth</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-countryofbirth" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="preferredLanguage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Language</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-preferredlanguage">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="spanish">Spanish</SelectItem>
+                          <SelectItem value="french">French</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Weight - Height */}
                 <FormField
                   control={editForm.control}
                   name="weight"
@@ -921,6 +934,8 @@ export default function QuotesPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Relation (only for dependents) */}
                 {memberType === 'dependent' && (
                   <FormField
                     control={editForm.control}
