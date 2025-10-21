@@ -722,6 +722,13 @@ export default function QuotesPage() {
     const [showEditSsn, setShowEditSsn] = useState(false);
     const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
 
+    // Reset SSN visibility when Sheet closes
+    useEffect(() => {
+      if (!open) {
+        setShowEditSsn(false);
+      }
+    }, [open]);
+
     if (!memberData) return null;
 
     return (
@@ -817,32 +824,30 @@ export default function QuotesPage() {
                   control={editForm.control}
                   name="ssn"
                   render={({ field }) => {
-                    const full = field.value ?? "";
-                    const last4 = full.replace(/\D/g, "").slice(-4);
-                    const display = showEditSsn ? full : (full ? `***-**-${last4}` : "");
-                    
                     return (
                       <FormItem>
                         <FormLabel>SSN *</FormLabel>
                         <div className="relative">
                           <FormControl>
                             <Input
-                              value={display}
-                              onChange={(e) => {
-                                if (showEditSsn) {
-                                  field.onChange(formatSSN(e.target.value));
-                                }
-                              }}
-                              onFocus={() => setShowEditSsn(true)}
+                              {...field}
+                              type={showEditSsn ? "text" : "password"}
+                              onChange={(e) => field.onChange(formatSSN(e.target.value))}
                               className="pr-10"
                               autoComplete="off"
+                              placeholder="XXX-XX-XXXX"
                               data-testid="input-ssn"
                             />
                           </FormControl>
                           <div
-                            onClick={() => setShowEditSsn(!showEditSsn)}
-                            onMouseDown={(e) => e.preventDefault()}
-                            className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowEditSsn(prev => !prev);
+                            }}
+                            className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
+                            role="button"
+                            tabIndex={-1}
                             aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
                             data-testid="button-ssn-visibility"
                           >
