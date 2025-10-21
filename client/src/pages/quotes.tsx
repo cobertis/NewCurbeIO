@@ -316,6 +316,7 @@ const familyMemberSchema = z.object({
   selfEmployed: z.boolean().default(false),
   // Immigration fields
   immigrationStatus: z.string().optional(),
+  naturalizationNumber: z.string().optional(), // Only for citizens
   uscisNumber: z.string().optional(),
   immigrationStatusCategory: z.string().optional(),
 });
@@ -403,6 +404,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         selfEmployed: false,
         // Immigration fields (placeholders for now - will be fetched from quote_member_immigration table)
         immigrationStatus: '',
+        naturalizationNumber: '',
         uscisNumber: '',
         immigrationStatusCategory: '',
       };
@@ -421,6 +423,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         selfEmployed: false,
         // Immigration fields defaults
         immigrationStatus: '',
+        naturalizationNumber: '',
         uscisNumber: '',
         immigrationStatusCategory: '',
       } : null;
@@ -439,6 +442,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         selfEmployed: false,
         // Immigration fields defaults
         immigrationStatus: '',
+        naturalizationNumber: '',
         uscisNumber: '',
         immigrationStatusCategory: '',
       } : null;
@@ -1153,8 +1157,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
               {/* Tab 3: Immigration Status */}
               <TabsContent value="immigration" className="flex-1 overflow-y-auto space-y-6 p-4">
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Immigration Status */}
+                <div className="space-y-4">
+                  {/* Immigration Status - Full Width */}
                   <FormField
                     control={editForm.control}
                     name="immigrationStatus"
@@ -1182,6 +1186,38 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     )}
                   />
 
+                  {/* Naturalization # - Only for Citizen */}
+                  {editForm.watch('immigrationStatus') === 'citizen' && (
+                    <FormField
+                      control={editForm.control}
+                      name="naturalizationNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Naturalization #</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Insert naturalization number" data-testid="input-naturalization-number" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Immigration Status Category */}
+                  <FormField
+                    control={editForm.control}
+                    name="immigrationStatusCategory"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Immigration status category</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Insert immigration status" data-testid="input-immigration-category" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   {/* USCIS # */}
                   <FormField
                     control={editForm.control}
@@ -1190,22 +1226,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                       <FormItem>
                         <FormLabel>USCIS #</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="234305831" data-testid="input-uscis-number" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Immigration Status Category */}
-                  <FormField
-                    control={editForm.control}
-                    name="immigrationStatusCategory"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Immigration status category</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="I-94 069574863A4" data-testid="input-immigration-category" />
+                          <Input {...field} placeholder="Optional" data-testid="input-uscis-number" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1648,6 +1669,7 @@ export default function QuotesPage() {
       annualIncome: "",
       incomeFrequency: "monthly",
       immigrationStatus: "",
+      naturalizationNumber: "",
       uscisNumber: "",
       immigrationStatusCategory: "",
     });
@@ -1674,6 +1696,7 @@ export default function QuotesPage() {
       annualIncome: "",
       incomeFrequency: "monthly",
       immigrationStatus: "",
+      naturalizationNumber: "",
       uscisNumber: "",
       immigrationStatusCategory: "",
     });
