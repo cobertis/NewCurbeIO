@@ -609,7 +609,7 @@ export default function QuotesPage() {
               <div className="space-y-3">
                 <div className="pb-3 border-b">
                   <label className="text-xs text-muted-foreground">Quote ID</label>
-                  <p className="text-sm font-medium">{viewingQuote.id.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-xs font-mono break-all">{viewingQuote.id.toLowerCase()}</p>
                 </div>
 
                 <div className="pb-3 border-b">
@@ -628,11 +628,6 @@ export default function QuotesPage() {
                 <div className="pb-3 border-b">
                   <label className="text-xs text-muted-foreground">Assigned to</label>
                   <p className="text-sm">-</p>
-                </div>
-
-                <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">Internal code</label>
-                  <p className="text-sm font-mono">{viewingQuote.id.slice(0, 12).toUpperCase()}</p>
                 </div>
 
                 <div className="pb-3 border-b">
