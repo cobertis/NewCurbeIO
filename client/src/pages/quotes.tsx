@@ -640,8 +640,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         title: "Success",
         description: "Member information saved successfully.",
       });
-      // Close the sheet after all async operations complete successfully
-      onOpenChange(false);
+      // Don't close the sheet - allow user to continue editing or navigate to other members
     } catch (error) {
       console.error('[EditMemberSheet] Error saving member data:', error);
       toast({
