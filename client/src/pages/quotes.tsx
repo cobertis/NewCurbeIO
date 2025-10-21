@@ -1906,10 +1906,9 @@ export default function QuotesPage() {
     let isValid = false;
     
     if (currentStep === 1) {
+      isValid = await form.trigger(["effectiveDate", "agentId", "productType"]);
+    } else if (currentStep === 2) {
       isValid = await form.trigger([
-        "effectiveDate", 
-        "agentId", 
-        "productType",
         "clientFirstName", 
         "clientLastName", 
         "clientEmail", 
@@ -1926,13 +1925,13 @@ export default function QuotesPage() {
         "state",
         "postalCode"
       ]);
-    } else if (currentStep === 2) {
+    } else if (currentStep === 3) {
       isValid = true; // Family members are optional
     }
 
-    if (isValid && currentStep < 2) {
+    if (isValid && currentStep < 3) {
       setCurrentStep(currentStep + 1);
-    } else if (isValid && currentStep === 2) {
+    } else if (isValid && currentStep === 3) {
       form.handleSubmit((data) => createQuoteMutation.mutate(data))();
     }
   };
@@ -2091,8 +2090,9 @@ export default function QuotesPage() {
 
   // Step indicators
   const steps = [
-    { number: 1, title: "Policy & Personal Information", icon: FileText },
-    { number: 2, title: "Family Members", icon: Users },
+    { number: 1, title: "Policy Information", icon: FileText },
+    { number: 2, title: "Personal Information & Address", icon: User },
+    { number: 3, title: "Family Group", icon: Users },
   ];
 
   // Edit Addresses Sheet Component
@@ -4082,71 +4082,11 @@ export default function QuotesPage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+                )}
 
-                    {/* Personal Information Section */}
-                    <div className="space-y-4 mt-8">
-                      <div className="flex items-center gap-2 pb-2 border-b">
-                        <User className="h-5 w-5 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">Personal Information</h3>
-                      </div>
-                      
-                      {/* Row 1: First Name, Middle Name, Last Name, Second Last Name */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-4">
-                        <FormField
-                          control={form.control}
-                          name="clientFirstName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>First Name *</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-client-firstname" placeholder="First name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientMiddleName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Middle Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-client-middlename" placeholder="Middle name (optional)" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientLastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Last Name *</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-client-lastname" placeholder="Last name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientSecondLastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Second Last Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-client-secondlastname" placeholder="Second last name (optional)" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                {/* Step 2: Personal Information & Address */}
+                {currentStep === 2 && (
                   <div className="space-y-6 px-8">
                     {/* Personal Information Section */}
                     <div className="space-y-4">
