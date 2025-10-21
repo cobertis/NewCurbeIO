@@ -5068,7 +5068,7 @@ export default function QuotesPage() {
                   ) : (
                     <Button
                       type="button"
-                      onClick={handleSubmit}
+                      onClick={handleNext}
                       disabled={createQuoteMutation.isPending}
                       data-testid="button-submit"
                     >
