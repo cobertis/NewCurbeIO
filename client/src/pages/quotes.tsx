@@ -2886,8 +2886,25 @@ export default function QuotesPage() {
                             <span className="text-muted-foreground">|</span>
                             <span className="flex items-center gap-1.5">
                               <IdCard className="h-3 w-3" />
-                              {viewingQuote.clientSsn ? `***-**-${viewingQuote.clientSsn.slice(-4)}` : 'N/A'}
+                              {viewingQuote.clientSsn 
+                                ? (showSsn ? viewingQuote.clientSsn : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
+                                : 'N/A'}
                             </span>
+                            {viewingQuote.clientSsn && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0 -ml-2"
+                                onClick={() => setShowSsn(!showSsn)}
+                                data-testid="button-toggle-ssn-header"
+                              >
+                                {showSsn ? (
+                                  <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                ) : (
+                                  <Eye className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </Button>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5">
                             <MapPin className="h-3 w-3" />
