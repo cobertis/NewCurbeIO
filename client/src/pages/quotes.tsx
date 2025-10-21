@@ -2894,14 +2894,14 @@ export default function QuotesPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-5 w-5 p-0 -ml-2"
+                                className="h-7 w-7 p-0 -ml-1"
                                 onClick={() => setShowSsn(!showSsn)}
                                 data-testid="button-toggle-ssn-header"
                               >
                                 {showSsn ? (
-                                  <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
                                 ) : (
-                                  <Eye className="h-3 w-3 text-muted-foreground" />
+                                  <Eye className="h-4 w-4 text-muted-foreground" />
                                 )}
                               </Button>
                             )}
