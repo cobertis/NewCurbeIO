@@ -5,11 +5,30 @@ Curbe is a multi-tenant CRM system integrating iMessage/SMS/RCS to provide an en
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+Design style: Extremely professional corporate design - NO bright colors, NO emojis, space-efficient mobile-responsive UI.
+
+## Demo User for Testing
+**Credentials:**
+- Email: demo@curbe.com
+- Password: Demo123!@#
+- Company: Demo Company (active subscription)
+- Role: Admin (full access, no superadmin capabilities)
+- 2FA: Disabled for easy testing
+- Status: Active account with email verified
+
+This demo user can be used to test all admin-level features including quotes, users, billing, and settings without needing to set up 2FA.
 
 ## System Architecture
 
 ### UI/UX Decisions
 The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, featuring a custom theming system (light/dark modes). It employs a mobile-first responsive design, adapting layouts and element visibility across devices. Navigation is primarily handled by a sidebar, and the SMS chat application uses a dynamic three-column layout.
+
+**Mobile Responsive Design (2025-10-21):**
+- Dashboard uses responsive grid: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` for proper mobile stacking
+- Mobile sidebar uses Shadcn Sheet component with `modal={true}` for proper overlay behavior
+- Sidebar auto-closes on navigation for better mobile UX
+- Close button visible on mobile for explicit dismissal
+- All breakpoints tested: Mobile (<640px), Tablet (640px-1023px), Desktop (1024px+)
 
 ### Technical Implementations
 The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Query for state management. The backend is built with Express.js and TypeScript, providing a RESTful API with session-based authentication and role-based access control (RBAC).
