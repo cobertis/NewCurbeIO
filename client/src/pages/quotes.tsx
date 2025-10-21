@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, EyeOff, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -253,6 +253,7 @@ export default function QuotesPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showSsn, setShowSsn] = useState(false);
   
   // Advanced filters state
   const [filters, setFilters] = useState({
@@ -877,9 +878,28 @@ export default function QuotesPage() {
                         </div>
                         <div className="flex-1">
                           <label className="text-xs font-medium text-foreground/60">SSN</label>
-                          <p className="text-sm mt-0.5 font-mono">
-                            {viewingQuote.clientSsn ? '***-**-' + viewingQuote.clientSsn.slice(-4) : 'N/A'}
-                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-sm font-mono">
+                              {viewingQuote.clientSsn 
+                                ? (showSsn ? viewingQuote.clientSsn : '***-**-' + viewingQuote.clientSsn.slice(-4)) 
+                                : 'N/A'}
+                            </p>
+                            {viewingQuote.clientSsn && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => setShowSsn(!showSsn)}
+                                data-testid="button-toggle-ssn"
+                              >
+                                {showSsn ? (
+                                  <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
