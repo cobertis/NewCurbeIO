@@ -8032,20 +8032,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const incomeField = incomeData?.totalAnnualIncome || incomeData?.annualIncome;
         
         if (incomeField) {
-          try {
-            // Decrypt the annual income (it's stored encrypted)
-            const decryptedIncome = decrypt(incomeField);
-            
-            if (decryptedIncome) {
-              const incomeAmount = parseFloat(decryptedIncome);
-              
-              if (!isNaN(incomeAmount)) {
-                totalIncome += incomeAmount;
-              }
-            }
-          } catch (error) {
-            console.error(`Failed to decrypt income for member ${member.id}:`, error);
-            // Skip this member's income if decryption fails
+          const incomeAmount = parseFloat(incomeField);
+          
+          if (!isNaN(incomeAmount)) {
+            totalIncome += incomeAmount;
           }
         }
       }
@@ -8574,14 +8564,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Income information not found" });
       }
       
-      // Decrypt income for authorized users (they own this data)
-      const decryptedIncome = {
-        ...income,
-        annualIncome: income.annualIncome ? decrypt(income.annualIncome) : null,
-        totalAnnualIncome: income.totalAnnualIncome ? decrypt(income.totalAnnualIncome) : null,
-      };
-      
-      res.json({ income: decryptedIncome });
+      // Income is stored as plain text (not encrypted)
+      res.json({ income });
     } catch (error: any) {
       console.error("Error getting member income:", error);
       res.status(500).json({ message: "Failed to get member income" });
@@ -8618,21 +8602,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId: member.companyId,
       });
       
-      // Encrypt sensitive fields before saving
-      const dataToSave = {
-        ...validatedData,
-        annualIncome: validatedData.annualIncome ? encrypt(validatedData.annualIncome) : null,
-        totalAnnualIncome: validatedData.totalAnnualIncome ? encrypt(validatedData.totalAnnualIncome) : null,
-      };
-      
-      const income = await storage.createOrUpdateQuoteMemberIncome(dataToSave);
-      
-      // Decrypt for response
-      const decryptedIncome = {
-        ...income,
-        annualIncome: income.annualIncome ? decrypt(income.annualIncome) : null,
-        totalAnnualIncome: income.totalAnnualIncome ? decrypt(income.totalAnnualIncome) : null,
-      };
+      // Save income as plain text (no encryption)
+      const income = await storage.createOrUpdateQuoteMemberIncome(validatedData);
       
       await logger.logCrud({
         req,
@@ -8646,7 +8617,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ income: decryptedIncome });
+      res.json({ income });
     } catch (error: any) {
       console.error("Error upserting member income:", error);
       if (error.name === 'ZodError') {
