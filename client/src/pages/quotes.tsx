@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, Mail, CreditCard, Phone, Hash, IdCard, Home } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -706,307 +706,518 @@ export default function QuotesPage() {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
-            {/* Header with Actions */}
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  {product?.icon && <product.icon className="h-6 w-6 text-blue-600" />}
-                  {viewingQuote.clientFirstName} {viewingQuote.clientLastName} - {product?.name || viewingQuote.productType}
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {viewingQuote.productType.toUpperCase()}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" data-testid="button-edit-quote">
-                Edit
-              </Button>
-            </div>
+            {/* Enhanced Header with Card Background */}
+            <Card className="mb-6 bg-muted/20">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      {product?.icon && (
+                        <div className="p-3 bg-primary/10 rounded-lg">
+                          <product.icon className="h-8 w-8 text-primary" />
+                        </div>
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h1 className="text-2xl font-bold">
+                            {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
+                          </h1>
+                          <Badge variant={viewingQuote.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                            {viewingQuote.status === 'active' ? 'Active Quote' : viewingQuote.status || 'Draft'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Hash className="h-3 w-3" />
+                            {viewingQuote.id.slice(0, 8).toUpperCase()}
+                          </span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="font-medium text-foreground">{product?.name || viewingQuote.productType}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Effective {format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" data-testid="button-edit-quote">
+                    Edit Quote
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="space-y-6">
               {/* Policy Information Section */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold border-b pb-2">Policy Information</h3>
               
-              {/* Primary Info Card */}
-              <div className="bg-muted/30 p-4 rounded-lg border">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h4 className="text-xl font-semibold text-blue-600 dark:text-blue-400">
-                      {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                    </h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {viewingQuote.clientIsApplicant ? 'Self' : 'Not Applicant'} - {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {viewingQuote.state} {viewingQuote.postalCode}
-                    </p>
-                  </div>
-                  {viewingQuote.clientTobaccoUser && (
-                    <Badge variant="outline">Tobacco User</Badge>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Email Address</label>
-                    <p className="text-sm mt-1">{viewingQuote.clientEmail}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
-                    <p className="text-sm mt-1">{viewingQuote.clientPhone}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Date of Birth</label>
-                    <p className="text-sm mt-1">{viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">SSN</label>
-                    <p className="text-sm mt-1">{viewingQuote.clientSsn ? '***-**-' + viewingQuote.clientSsn.slice(-4) : 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Street Address</label>
-                    <p className="text-sm mt-1">{viewingQuote.street} {viewingQuote.addressLine2}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">City</label>
-                    <p className="text-sm mt-1">{viewingQuote.city}, {viewingQuote.state}</p>
-                  </div>
-                </div>
-              </div>
+              {/* Compact Profile Card with 2-Column Grid */}
+              <Card className="bg-muted/10">
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Contact Information Group */}
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 pb-3 border-b">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-muted-foreground">Primary Holder</label>
+                          <p className="text-sm font-semibold mt-0.5">
+                            {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                          </p>
+                          <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                            <Badge variant="secondary" className="text-xs">
+                              {viewingQuote.clientIsApplicant ? 'Self' : 'Not Applicant'}
+                            </Badge>
+                            {viewingQuote.clientTobaccoUser && (
+                              <Badge variant="outline" className="text-xs">Tobacco User</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3 pb-3 border-b">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                          <Mail className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-muted-foreground">Email</label>
+                          <p className="text-sm mt-0.5">{viewingQuote.clientEmail}</p>
+                        </div>
+                      </div>
 
-              {/* Policy Information Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">Monthly premium</CardTitle>
+                      <div className="flex items-start gap-3 pb-3 border-b">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                          <Phone className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                          <p className="text-sm mt-0.5">{viewingQuote.clientPhone}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                          <Calendar className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-muted-foreground">Date of Birth</label>
+                          <p className="text-sm mt-0.5">
+                            {viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
+                            {viewingQuote.clientDateOfBirth && (
+                              <span className="text-muted-foreground ml-2">
+                                ({Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Identification & Address Group */}
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 pb-3 border-b">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                          <IdCard className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-muted-foreground">SSN</label>
+                          <p className="text-sm mt-0.5 font-mono">
+                            {viewingQuote.clientSsn ? '***-**-' + viewingQuote.clientSsn.slice(-4) : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3 pb-3 border-b">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-muted-foreground">Gender</label>
+                          <p className="text-sm mt-0.5">
+                            {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3 pb-3 border-b">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                          <Home className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-muted-foreground">Street Address</label>
+                          <p className="text-sm mt-0.5">
+                            {viewingQuote.street}
+                            {viewingQuote.addressLine2 && <span>, {viewingQuote.addressLine2}</span>}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                          <MapPin className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-muted-foreground">Location</label>
+                          <p className="text-sm mt-0.5">
+                            {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
+                            {viewingQuote.county && (
+                              <span className="block text-xs text-muted-foreground mt-0.5">{viewingQuote.county} County</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Pricing Cards - Subtle Skeleton Style */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Card className="bg-muted/10 border-dashed">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-muted rounded">
+                        <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                      <CardTitle className="text-xs font-medium text-muted-foreground">Monthly Premium</CardTitle>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold">$0<sup className="text-sm">.00</sup></p>
+                    <p className="text-lg font-semibold text-muted-foreground">Pending</p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">Savings total</CardTitle>
+                <Card className="bg-muted/10 border-dashed">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-muted rounded">
+                        <PiggyBank className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                      <CardTitle className="text-xs font-medium text-muted-foreground">Savings Total</CardTitle>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold">$0<sup className="text-sm">.00</sup></p>
+                    <p className="text-lg font-semibold text-muted-foreground">Pending</p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">Plan was</CardTitle>
+                <Card className="bg-muted/10 border-dashed">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-muted rounded">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                      <CardTitle className="text-xs font-medium text-muted-foreground">Original Cost</CardTitle>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold">$0<sup className="text-sm">.00</sup></p>
+                    <p className="text-lg font-semibold text-muted-foreground">Pending</p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Additional Policy Details */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Member ID</p>
-                  <p className="text-sm">-</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Marketplace ID</p>
-                  <p className="text-sm">-</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Effective date</p>
-                  <p className="text-sm">{format(new Date(viewingQuote.effectiveDate), "MM/dd/yyyy")}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Cancellation date</p>
-                  <p className="text-sm">-</p>
-                </div>
-              </div>
+              {/* Additional Policy Details - More Compact */}
+              <Card className="bg-accent/5">
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Hash className="h-3 w-3" />
+                        Member ID
+                      </p>
+                      <p className="text-sm font-medium mt-1">-</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        Marketplace ID
+                      </p>
+                      <p className="text-sm font-medium mt-1">-</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Effective Date
+                      </p>
+                      <p className="text-sm font-medium mt-1">{format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Cancellation
+                      </p>
+                      <p className="text-sm font-medium mt-1">-</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               </div>
 
-              {/* Family Members Section */}
-              <Card>
+              {/* Family Members Section - 2 Column Grid */}
+              <Card className="bg-accent/5">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle>Family members</CardTitle>
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" />
+                      Family Members
+                    </CardTitle>
+                    <div className="flex gap-4 mt-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">Applicants:</span>
+                        <Badge variant="secondary" className="text-xs">{totalApplicants}</Badge>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">Members:</span>
+                        <Badge variant="secondary" className="text-xs">{totalFamilyMembers}</Badge>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">Dependents:</span>
+                        <Badge variant="secondary" className="text-xs">{totalDependents}</Badge>
+                      </div>
+                    </div>
+                  </div>
                   <Button size="sm" variant="outline" data-testid="button-add-member">
                     <Plus className="h-4 w-4 mr-1" />
-                    Add member
+                    Add Member
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex gap-6 mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Total applicants</span>
-                      <Badge variant="secondary">{totalApplicants}</Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Total family members</span>
-                      <Badge variant="secondary">{totalFamilyMembers}</Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Total dependents</span>
-                      <Badge variant="secondary">{totalDependents}</Badge>
-                    </div>
-                  </div>
-
-                  {/* Primary Applicant */}
-                  <div className="space-y-3">
-                    <div className="p-4 bg-muted/50 rounded-lg border">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-blue-600 text-white">
-                              {viewingQuote.clientFirstName?.[0] || 'C'}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Primary Applicant */}
+                    <Card className="bg-primary/5 border-primary/20">
+                      <CardContent className="p-4">
+                        <div className="flex gap-3">
+                          <Avatar className="h-14 w-14 border-2 border-primary/20">
+                            <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-lg">
+                              {viewingQuote.clientFirstName?.[0]}{viewingQuote.clientLastName?.[0]}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-semibold">
-                              {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
-                              <Badge variant="outline" className="ml-2 text-xs">Self</Badge>
-                              {viewingQuote.clientIsApplicant && <Badge variant="default" className="ml-1 text-xs">Applicant</Badge>}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'} ({viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0})
-                              <span className="ml-2">{viewingQuote.clientPhone}</span>
-                              <span className="ml-2">{viewingQuote.clientEmail}</span>
-                            </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-1">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-sm truncate">
+                                  {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
+                                </h4>
+                                <div className="flex gap-1 mt-1 flex-wrap">
+                                  <Badge variant="default" className="text-xs">Self</Badge>
+                                  {viewingQuote.clientIsApplicant && (
+                                    <Badge variant="secondary" className="text-xs">Applicant</Badge>
+                                  )}
+                                  {viewingQuote.clientTobaccoUser && (
+                                    <Badge variant="outline" className="text-xs">Tobacco</Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid="button-view-primary">
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                            <div className="space-y-1 text-xs text-muted-foreground mt-2">
+                              <div className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                <span>{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}</span>
+                                <span>•</span>
+                                <span>{viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
+                              </div>
+                              {viewingQuote.clientPhone && (
+                                <div className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  <span className="truncate">{viewingQuote.clientPhone}</span>
+                                </div>
+                              )}
+                              {viewingQuote.clientEmail && (
+                                <div className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  <span className="truncate">{viewingQuote.clientEmail}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <Button size="sm" variant="ghost" data-testid="button-view-primary">
-                          View
-                        </Button>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Citizen • SSN: xxx-xx-{viewingQuote.clientSsn?.slice(-4) || 'xxxx'} • {viewingQuote.state} • $0.00
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
 
                     {/* Spouses */}
                     {viewingQuote.spouses?.map((spouse: any, index: number) => (
-                      <div key={`spouse-${index}`} className="p-4 bg-background rounded-lg border">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback>
-                                {spouse.firstName?.[0] || 'S'}
+                      <Card key={`spouse-${index}`} className="bg-background">
+                        <CardContent className="p-4">
+                          <div className="flex gap-3">
+                            <Avatar className="h-14 w-14 border-2 border-muted">
+                              <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-lg">
+                                {spouse.firstName?.[0]}{spouse.lastName?.[0]}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <p className="font-semibold">
-                                {spouse.firstName} {spouse.lastName}
-                                <Badge variant="outline" className="ml-2 text-xs">Spouse</Badge>
-                                {spouse.isApplicant && <Badge variant="default" className="ml-1 text-xs">Applicant</Badge>}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'} ({spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0})
-                                {spouse.phone && <span className="ml-2">{spouse.phone}</span>}
-                                {spouse.email && <span className="ml-2">{spouse.email}</span>}
-                              </p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between mb-1">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-sm truncate">
+                                    {spouse.firstName} {spouse.lastName}
+                                  </h4>
+                                  <div className="flex gap-1 mt-1 flex-wrap">
+                                    <Badge variant="outline" className="text-xs">Spouse</Badge>
+                                    {spouse.isApplicant && (
+                                      <Badge variant="secondary" className="text-xs">Applicant</Badge>
+                                    )}
+                                    {spouse.tobaccoUser && (
+                                      <Badge variant="outline" className="text-xs">Tobacco</Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid={`button-view-spouse-${index}`}>
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <div className="space-y-1 text-xs text-muted-foreground mt-2">
+                                <div className="flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  <span>{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}</span>
+                                  <span>•</span>
+                                  <span>{spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
+                                </div>
+                                {spouse.phone && (
+                                  <div className="flex items-center gap-1">
+                                    <Phone className="h-3 w-3" />
+                                    <span className="truncate">{spouse.phone}</span>
+                                  </div>
+                                )}
+                                {spouse.email && (
+                                  <div className="flex items-center gap-1">
+                                    <Mail className="h-3 w-3" />
+                                    <span className="truncate">{spouse.email}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <Button size="sm" variant="ghost" data-testid={`button-view-spouse-${index}`}>
-                            View
-                          </Button>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     ))}
 
                     {/* Dependents */}
                     {viewingQuote.dependents?.map((dependent: any, index: number) => (
-                      <div key={`dependent-${index}`} className="p-4 bg-background rounded-lg border">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback>
-                                {dependent.firstName?.[0] || 'D'}
+                      <Card key={`dependent-${index}`} className="bg-background">
+                        <CardContent className="p-4">
+                          <div className="flex gap-3">
+                            <Avatar className="h-14 w-14 border-2 border-muted">
+                              <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-lg">
+                                {dependent.firstName?.[0]}{dependent.lastName?.[0]}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <p className="font-semibold">
-                                {dependent.firstName} {dependent.lastName}
-                                <Badge variant="outline" className="ml-2 text-xs">Dependent</Badge>
-                                {dependent.isApplicant && <Badge variant="default" className="ml-1 text-xs">Applicant</Badge>}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'} ({dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0})
-                                {dependent.phone && <span className="ml-2">{dependent.phone}</span>}
-                                {dependent.email && <span className="ml-2">{dependent.email}</span>}
-                              </p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between mb-1">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-sm truncate">
+                                    {dependent.firstName} {dependent.lastName}
+                                  </h4>
+                                  <div className="flex gap-1 mt-1 flex-wrap">
+                                    <Badge variant="outline" className="text-xs">{dependent.relation || 'Dependent'}</Badge>
+                                    {dependent.isApplicant && (
+                                      <Badge variant="secondary" className="text-xs">Applicant</Badge>
+                                    )}
+                                    {dependent.tobaccoUser && (
+                                      <Badge variant="outline" className="text-xs">Tobacco</Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid={`button-view-dependent-${index}`}>
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <div className="space-y-1 text-xs text-muted-foreground mt-2">
+                                <div className="flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  <span>{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}</span>
+                                  <span>•</span>
+                                  <span>{dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</span>
+                                </div>
+                                {dependent.phone && (
+                                  <div className="flex items-center gap-1">
+                                    <Phone className="h-3 w-3" />
+                                    <span className="truncate">{dependent.phone}</span>
+                                  </div>
+                                )}
+                                {dependent.email && (
+                                  <div className="flex items-center gap-1">
+                                    <Mail className="h-3 w-3" />
+                                    <span className="truncate">{dependent.email}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <Button size="sm" variant="ghost" data-testid={`button-view-dependent-${index}`}>
-                            View
-                          </Button>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Addresses Section */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Physical address
-                    </CardTitle>
-                    <Button size="sm" variant="ghost">
-                      Edit
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{viewingQuote.street}</p>
-                    {viewingQuote.addressLine2 && <p className="text-sm">{viewingQuote.addressLine2}</p>}
-                    <p className="text-sm">
-                      {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
-                    </p>
-                    {viewingQuote.county && <p className="text-sm text-muted-foreground">{viewingQuote.county} County</p>}
-                  </CardContent>
-                </Card>
+              {/* Addresses Section - Consolidated */}
+              <Card className="bg-muted/10">
+                <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    Addresses
+                  </CardTitle>
+                  <Button size="sm" variant="outline">
+                    Edit Addresses
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Physical Address */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-primary/10 rounded">
+                          <Home className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <h4 className="text-sm font-semibold">Physical Address</h4>
+                      </div>
+                      <div className="pl-7 space-y-0.5">
+                        <p className="text-sm">{viewingQuote.street}</p>
+                        {viewingQuote.addressLine2 && <p className="text-sm">{viewingQuote.addressLine2}</p>}
+                        <p className="text-sm">
+                          {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
+                        </p>
+                        {viewingQuote.county && (
+                          <p className="text-xs text-muted-foreground">{viewingQuote.county} County</p>
+                        )}
+                      </div>
+                    </div>
 
-                <Card>
-                  <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      Mailing address
-                    </CardTitle>
-                    <Button size="sm" variant="ghost">
-                      Edit
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{viewingQuote.street}</p>
-                    {viewingQuote.addressLine2 && <p className="text-sm">{viewingQuote.addressLine2}</p>}
-                    <p className="text-sm">
-                      {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
-                    </p>
-                    {viewingQuote.county && <p className="text-sm text-muted-foreground">{viewingQuote.county} County</p>}
-                  </CardContent>
-                </Card>
+                    {/* Mailing Address */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-primary/10 rounded">
+                          <Mail className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <h4 className="text-sm font-semibold">Mailing Address</h4>
+                      </div>
+                      <div className="pl-7 space-y-0.5">
+                        <p className="text-sm text-muted-foreground italic">Same as physical</p>
+                      </div>
+                    </div>
 
-                <Card>
-                  <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      Billing address
-                    </CardTitle>
-                    <Button size="sm" variant="ghost">
-                      Edit
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{viewingQuote.street}</p>
-                    {viewingQuote.addressLine2 && <p className="text-sm">{viewingQuote.addressLine2}</p>}
-                    <p className="text-sm">
-                      {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
-                    </p>
-                    {viewingQuote.county && <p className="text-sm text-muted-foreground">{viewingQuote.county} County</p>}
-                  </CardContent>
-                </Card>
-              </div>
+                    {/* Billing Address */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-primary/10 rounded">
+                          <CreditCard className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <h4 className="text-sm font-semibold">Billing Address</h4>
+                      </div>
+                      <div className="pl-7 space-y-0.5">
+                        <p className="text-sm text-muted-foreground italic">Same as physical</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Payment Information */}
               <Card>
