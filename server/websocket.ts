@@ -75,7 +75,7 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
 
       // Validate session exists in store
       sessionStore.get(sessionId, (err: any, session: SessionData) => {
-        if (err || !session || !session.passport?.user) {
+        if (err || !session || !session.userId) {
           console.log('[WebSocket] Rejecting connection with invalid/expired session');
           callback(false, 401, 'Unauthorized');
           return;
@@ -101,15 +101,24 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
       return;
     }
     
-    sessionStore.get(sessionId, (err: any, session: SessionData) => {
-      if (err || !session || !session.passport?.user) {
+    sessionStore.get(sessionId, async (err: any, session: SessionData) => {
+      if (err || !session || !session.userId) {
         console.log('[WebSocket] Invalid session in connection handler - closing');
         ws.close(1008, 'Unauthorized');
         return;
       }
       
+      // Get user from storage to get full user data
+      const { storage } = await import('./storage');
+      const user = await storage.getUser(session.userId);
+      
+      if (!user) {
+        console.log('[WebSocket] User not found for session - closing');
+        ws.close(1008, 'Unauthorized');
+        return;
+      }
+      
       // Authenticate the WebSocket
-      const user = session.passport.user;
       ws.companyId = user.companyId || null;
       ws.userId = user.id;
       ws.role = user.role;
