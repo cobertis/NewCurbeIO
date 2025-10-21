@@ -3325,7 +3325,7 @@ export default function QuotesPage() {
                           name="clientDateOfBirth"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Date of Birth</FormLabel>
+                              <FormLabel>Date of Birth *</FormLabel>
                               <FormControl>
                                 <Input type="date" {...field} data-testid="input-client-dob" />
                               </FormControl>
