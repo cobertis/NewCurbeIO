@@ -4266,5 +4266,3 @@ export default function QuotesPage() {
     </div>
   );
 }
-
-export default QuotesPage;
