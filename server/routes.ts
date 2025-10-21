@@ -8505,6 +8505,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Missing required fields: role and memberData" });
       }
       
+      // Convert dateOfBirth from string to Date if present
+      if (memberData.dateOfBirth && typeof memberData.dateOfBirth === 'string') {
+        memberData.dateOfBirth = new Date(memberData.dateOfBirth);
+      }
+      
       // Ensure member exists (create or update)
       const result = await storage.ensureQuoteMember(
         quoteId,
