@@ -673,11 +673,23 @@ export default function QuotesPage() {
     
     useEffect(() => {
       // Only reset when the Sheet opens (transition from closed to open)
-      if (open && !prevOpenRef.current && memberData) {
+      const isOpening = open && !prevOpenRef.current;
+      if (isOpening && memberData) {
         editForm.reset(memberData);
       }
       prevOpenRef.current = open;
-    }, [open, memberData]);
+    }, [open]);
+    
+    // Separate effect to update form when data changes while sheet is already open
+    useEffect(() => {
+      if (open && memberData) {
+        const currentValues = editForm.getValues();
+        // Only update if values are actually different to avoid unnecessary rerenders
+        if (JSON.stringify(currentValues) !== JSON.stringify(memberData)) {
+          editForm.reset(memberData, { keepDirty: false });
+        }
+      }
+    }, [memberData]);
 
     const handleSave = (data: any) => {
       // Close any open popovers
@@ -732,12 +744,18 @@ export default function QuotesPage() {
     if (!memberData) return null;
 
     return (
-      <Sheet open={open} modal={true}>
+      <Sheet 
+        open={open} 
+        onOpenChange={(isOpen) => {
+          // Only allow closing the sheet, never opening from here
+          if (!isOpen && !isPending) {
+            onOpenChange(false);
+          }
+        }}
+      >
         <SheetContent 
           className="w-full sm:max-w-2xl overflow-y-auto" 
           side="right"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          onCloseAutoFocus={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
