@@ -1441,7 +1441,7 @@ export default function QuotesPage() {
                         <TableHead className="w-12">
                           <Checkbox data-testid="checkbox-select-all" />
                         </TableHead>
-                        <TableHead>Agent</TableHead>
+                        <TableHead className="w-16">Agent</TableHead>
                         <TableHead>Client</TableHead>
                         <TableHead>Policy</TableHead>
                         <TableHead>Created</TableHead>
@@ -1461,10 +1461,10 @@ export default function QuotesPage() {
                             <TableCell>
                               <Checkbox data-testid={`checkbox-quote-${quote.id}`} />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-center">
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <div className="cursor-pointer">
+                                  <div className="cursor-pointer inline-block">
                                     <Avatar className="h-8 w-8">
                                       <AvatarImage src={agent?.avatar || undefined} />
                                       <AvatarFallback className="bg-primary text-primary-foreground text-xs">
