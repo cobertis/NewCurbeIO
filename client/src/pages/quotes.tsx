@@ -1725,15 +1725,15 @@ export default function QuotesPage() {
                                 <TooltipContent side="right" sideOffset={5} align="center" className="p-3">
                                   <div>
                                     <div className="font-semibold text-sm mb-2 text-center">Agent information</div>
-                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs">
-                                      <div className="text-right font-medium">Name:</div>
-                                      <div>{agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
-                                      <div className="text-right font-medium">NPN:</div>
-                                      <div>{agent?.nationalProducerNumber || 'N/A'}</div>
-                                      <div className="text-right font-medium">Email:</div>
-                                      <div>{agent?.email || 'No email'}</div>
-                                      <div className="text-right font-medium">Role:</div>
-                                      <div>{agent?.role || 'N/A'}</div>
+                                    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                                      <div className="text-left font-medium">Name:</div>
+                                      <div className="text-right">{agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
+                                      <div className="text-left font-medium">NPN:</div>
+                                      <div className="text-right">{agent?.nationalProducerNumber || 'N/A'}</div>
+                                      <div className="text-left font-medium">Email:</div>
+                                      <div className="text-right">{agent?.email || 'No email'}</div>
+                                      <div className="text-left font-medium">Role:</div>
+                                      <div className="text-right">{agent?.role || 'N/A'}</div>
                                     </div>
                                   </div>
                                 </TooltipContent>
