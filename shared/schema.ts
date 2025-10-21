@@ -1434,8 +1434,9 @@ export const quoteMemberIncome = pgTable("quote_member_income", {
   yearsEmployed: integer("years_employed"),
   
   // Income Details
-  annualIncome: text("annual_income"), // Encrypted - stored as text
-  incomeFrequency: text("income_frequency"), // annually, monthly, weekly, bi_weekly
+  annualIncome: text("annual_income"), // Encrypted - stored as text (value entered by user according to frequency)
+  incomeFrequency: text("income_frequency"), // annually, monthly, weekly, biweekly
+  totalAnnualIncome: text("total_annual_income"), // Encrypted - calculated annual total for summing
   
   // Additional Income
   hasAdditionalIncome: boolean("has_additional_income").default(false),

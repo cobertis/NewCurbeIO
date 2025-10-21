@@ -637,6 +637,30 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           employerName: data.employerName,
         });
         
+        // Calculate total annual income based on frequency
+        let totalAnnualIncome = null;
+        if (data.annualIncome) {
+          const amount = parseFloat(data.annualIncome);
+          if (!isNaN(amount) && amount > 0) {
+            const frequency = data.incomeFrequency || 'annually';
+            switch (frequency) {
+              case 'weekly':
+                totalAnnualIncome = (amount * 52).toFixed(2);
+                break;
+              case 'biweekly':
+                totalAnnualIncome = (amount * 26).toFixed(2);
+                break;
+              case 'monthly':
+                totalAnnualIncome = (amount * 12).toFixed(2);
+                break;
+              case 'annually':
+              default:
+                totalAnnualIncome = amount.toFixed(2);
+                break;
+            }
+          }
+        }
+        
         const incomeResponse = await fetch(`/api/quotes/members/${memberId}/income`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -647,6 +671,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             position: data.position || null,
             annualIncome: data.annualIncome || null,
             incomeFrequency: data.incomeFrequency || 'annually',
+            totalAnnualIncome: totalAnnualIncome,
             selfEmployed: data.selfEmployed || false,
           }),
         });

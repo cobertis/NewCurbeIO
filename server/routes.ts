@@ -8028,10 +8028,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Get income data for this member
         const incomeData = await storage.getQuoteMemberIncome(member.id, currentUser.companyId!);
         
-        if (incomeData?.annualIncome) {
+        // Use totalAnnualIncome if available (already calculated), otherwise fall back to annualIncome
+        const incomeField = incomeData?.totalAnnualIncome || incomeData?.annualIncome;
+        
+        if (incomeField) {
           try {
             // Decrypt the annual income (it's stored encrypted)
-            const decryptedIncome = decrypt(incomeData.annualIncome);
+            const decryptedIncome = decrypt(incomeField);
             
             if (decryptedIncome) {
               const incomeAmount = parseFloat(decryptedIncome);
@@ -8618,6 +8621,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const dataToSave = {
         ...validatedData,
         annualIncome: validatedData.annualIncome ? encrypt(validatedData.annualIncome) : null,
+        totalAnnualIncome: validatedData.totalAnnualIncome ? encrypt(validatedData.totalAnnualIncome) : null,
       };
       
       const income = await storage.createOrUpdateQuoteMemberIncome(dataToSave);
@@ -8626,6 +8630,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const decryptedIncome = {
         ...income,
         annualIncome: income.annualIncome ? decrypt(income.annualIncome) : null,
+        totalAnnualIncome: income.totalAnnualIncome ? decrypt(income.totalAnnualIncome) : null,
       };
       
       await logger.logCrud({
