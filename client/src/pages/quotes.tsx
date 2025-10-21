@@ -725,22 +725,15 @@ export default function QuotesPage() {
     if (!memberData) return null;
 
     return (
-      <Sheet open={open} onOpenChange={(isOpen) => {
-        if (!isOpen && !isPending) {
-          onOpenChange(false);
-        }
-      }}>
+      <Sheet open={open} modal={true}>
         <SheetContent 
           className="w-full sm:max-w-2xl overflow-y-auto" 
           side="right"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => {
-            if (!isPending) {
-              onOpenChange(false);
-            } else {
-              e.preventDefault();
-            }
-          }}
+          onEscapeKeyDown={(e) => e.preventDefault()}
         >
           <SheetHeader>
             <SheetTitle>
