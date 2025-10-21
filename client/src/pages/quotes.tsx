@@ -1843,9 +1843,10 @@ export default function QuotesPage() {
     const totalDependents = viewingQuote.dependents?.length || 0;
 
     return (
-      <div className="flex flex-col lg:flex-row h-full">
-        {/* Sidebar Summary */}
-        <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r bg-background p-6 overflow-y-auto flex-shrink-0">
+      <div className="h-full overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-full">
+          {/* Sidebar Summary */}
+          <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r bg-background p-6 overflow-y-auto flex-shrink-0">
           <div className="space-y-6">
             {/* Summary Card */}
             <div className="space-y-4">
@@ -2571,9 +2572,12 @@ export default function QuotesPage() {
                 </CardContent>
               </Card>
             </div>
+          </div>
+        </div>
+        </div>
 
-            {/* Edit Sheets */}
-            <EditMemberSheet
+        {/* Edit Sheets */}
+        <EditMemberSheet
               open={!!editingMember}
               onOpenChange={(open) => !open && setEditingMember(null)}
               quote={viewingQuote}
@@ -2662,10 +2666,7 @@ export default function QuotesPage() {
               }}
               isPending={updateQuoteMutation.isPending}
             />
-          </div>
-        </div>
       </div>
-    </div>
     );
   }
 
@@ -3187,26 +3188,49 @@ export default function QuotesPage() {
                       <FormField
                         control={form.control}
                         name="agentId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Who is the agent on record for this client? <span className="text-destructive">(required)</span></FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-agent">
-                                  <SelectValue placeholder="Select..." />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {agents.map((agent) => (
-                                  <SelectItem key={agent.id} value={agent.id}>
-                                    {agent.firstName} {agent.lastName} ({agent.email})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const selectedAgent = agents.find(a => a.id === field.value);
+                          return (
+                            <FormItem>
+                              <FormLabel>Who is the agent on record for this client? <span className="text-destructive">(required)</span></FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-agent">
+                                    {selectedAgent ? (
+                                      <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                          <AvatarImage src={selectedAgent.avatar || undefined} />
+                                          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                                            {selectedAgent.firstName?.[0] || 'A'}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span>{selectedAgent.firstName} {selectedAgent.lastName}</span>
+                                      </div>
+                                    ) : (
+                                      <SelectValue placeholder="Select..." />
+                                    )}
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {agents.map((agent) => (
+                                    <SelectItem key={agent.id} value={agent.id}>
+                                      <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                          <AvatarImage src={agent.avatar || undefined} />
+                                          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                                            {agent.firstName?.[0] || 'A'}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span>{agent.firstName} {agent.lastName}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
 
