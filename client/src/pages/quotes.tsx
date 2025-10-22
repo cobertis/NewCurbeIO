@@ -2188,10 +2188,9 @@ export default function QuotesPage() {
     // Assigned to filter (agentId)
     const matchesAssignedTo = !filters.assignedTo || quote.agentId === filters.assignedTo;
     
-    // Effective date range filter
-    const quoteEffectiveDate = new Date(quote.effectiveDate);
-    const matchesEffectiveDateFrom = !filters.effectiveDateFrom || quoteEffectiveDate >= new Date(filters.effectiveDateFrom);
-    const matchesEffectiveDateTo = !filters.effectiveDateTo || quoteEffectiveDate <= new Date(filters.effectiveDateTo);
+    // Effective date range filter (yyyy-MM-dd strings can be compared lexicographically)
+    const matchesEffectiveDateFrom = !filters.effectiveDateFrom || quote.effectiveDate >= filters.effectiveDateFrom;
+    const matchesEffectiveDateTo = !filters.effectiveDateTo || quote.effectiveDate <= filters.effectiveDateTo;
     
     // Family group size (applicants) filter
     const matchesApplicantsFrom = !filters.applicantsFrom || (quote.familyGroupSize && quote.familyGroupSize >= parseInt(filters.applicantsFrom));
@@ -2449,7 +2448,7 @@ export default function QuotesPage() {
           <Form {...paymentForm}>
             <form onSubmit={paymentForm.handleSubmit((data) => {
               onSave({
-                effectiveDate: data.firstPaymentDate ? new Date(data.firstPaymentDate) : undefined,
+                effectiveDate: data.firstPaymentDate || undefined,
               });
             })} className="space-y-6 py-6">
               <FormField
