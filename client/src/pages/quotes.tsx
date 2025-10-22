@@ -4276,7 +4276,7 @@ export default function QuotesPage() {
                 <CardContent className="p-0">
                   <div className="border-t">
                     {/* Primary Applicant */}
-                    <div className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 bg-primary/5 border-b hover-elevate items-center">
+                    <div className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 bg-primary/5 border-b hover-elevate items-center">
                       <Avatar className="h-9 w-9 border-2 border-primary/20">
                         <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-xs">
                           {viewingQuote.clientFirstName?.[0]}{viewingQuote.clientLastName?.[0]}
@@ -4339,12 +4339,13 @@ export default function QuotesPage() {
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
+                        <div className="h-7 w-7" />
                       </div>
                     </div>
 
                     {/* Spouses */}
                     {membersDetailsData?.members?.filter(m => m.role === 'spouse').map((spouse, index) => (
-                      <div key={`spouse-${spouse.id}`} className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 border-b hover-elevate items-center">
+                      <div key={`spouse-${spouse.id}`} className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b hover-elevate items-center">
                         <Avatar className="h-9 w-9 border-2 border-muted">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
                             {spouse.firstName?.[0]}{spouse.lastName?.[0]}
@@ -4426,7 +4427,7 @@ export default function QuotesPage() {
 
                     {/* Dependents */}
                     {membersDetailsData?.members?.filter(m => m.role === 'dependent').map((dependent, index) => (
-                      <div key={`dependent-${dependent.id}`} className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
+                      <div key={`dependent-${dependent.id}`} className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
                         <Avatar className="h-9 w-9 border-2 border-muted">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
                             {dependent.firstName?.[0]}{dependent.lastName?.[0]}
