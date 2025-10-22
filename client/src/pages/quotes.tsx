@@ -410,6 +410,229 @@ const step3Schema = z.object({
 
 const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
 
+// Edit Addresses Sheet Component - Extracted outside to prevent recreation on each render
+interface EditAddressesSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  quote: QuoteWithArrays;
+  addressType: 'physical' | 'mailing' | 'billing' | null;
+  onSave: (data: Partial<Quote>) => void;
+  isPending: boolean;
+}
+
+function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending, addressType }: EditAddressesSheetProps) {
+  const addressSchema = z.object({
+    street: z.string().min(1, "Street address is required"),
+    addressLine2: z.string().optional(),
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(1, "State is required"),
+    postalCode: z.string().min(1, "Postal code is required"),
+    county: z.string().optional(),
+  });
+
+  // Helper function to get address fields based on addressType
+  const getAddressFields = (type: 'physical' | 'mailing' | 'billing') => {
+    const prefix = type;
+    return {
+      street: quote?.[`${prefix}_street`] || '',
+      addressLine2: quote?.[`${prefix}_address_line_2`] || '',
+      city: quote?.[`${prefix}_city`] || '',
+      state: quote?.[`${prefix}_state`] || '',
+      postalCode: quote?.[`${prefix}_postal_code`] || '',
+      county: quote?.[`${prefix}_county`] || '',
+    };
+  };
+
+  // Helper function to transform form data to database fields
+  const transformToDbFields = (formData: any, type: 'physical' | 'mailing' | 'billing') => {
+    const prefix = type;
+    return {
+      [`${prefix}_street`]: formData.street,
+      [`${prefix}_address_line_2`]: formData.addressLine2,
+      [`${prefix}_city`]: formData.city,
+      [`${prefix}_state`]: formData.state,
+      [`${prefix}_postal_code`]: formData.postalCode,
+      [`${prefix}_county`]: formData.county,
+    };
+  };
+
+  const addressForm = useForm({
+    resolver: zodResolver(addressSchema),
+    defaultValues: getAddressFields(addressType || 'physical'),
+  });
+
+  // Track previous open state to prevent multiple resets
+  const prevOpenRef = useRef(open);
+  const prevAddressTypeRef = useRef(addressType);
+
+  useEffect(() => {
+    // Only reset when sheet opens (false → true transition) or address type changes
+    if (quote && addressType && ((open && !prevOpenRef.current) || (open && addressType !== prevAddressTypeRef.current))) {
+      addressForm.reset(getAddressFields(addressType));
+    }
+    prevOpenRef.current = open;
+    prevAddressTypeRef.current = addressType;
+  }, [open, addressType, quote?.id]); // Only depend on quote.id, not entire quote object
+
+  const getTitle = () => {
+    if (addressType === 'physical') return 'Edit Physical Address';
+    if (addressType === 'mailing') return 'Edit Mailing Address';
+    if (addressType === 'billing') return 'Edit Billing Address';
+    return 'Edit Address';
+  };
+
+  const getDescription = () => {
+    if (addressType === 'physical') return 'Update the physical address for this quote';
+    if (addressType === 'mailing') return 'Update the mailing address for this quote';
+    if (addressType === 'billing') return 'Update the billing address for this quote';
+    return 'Update the address for this quote';
+  };
+
+  if (!addressType) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
+        <SheetHeader>
+          <SheetTitle>{getTitle()}</SheetTitle>
+          <SheetDescription>
+            {getDescription()}
+          </SheetDescription>
+        </SheetHeader>
+        <Form {...addressForm}>
+          <form onSubmit={addressForm.handleSubmit((formData) => {
+            const transformedData = transformToDbFields(formData, addressType);
+            onSave(transformedData);
+          })} className="space-y-6 py-6">
+            <FormField
+              control={addressForm.control}
+              name="street"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Street Address *</FormLabel>
+                  <FormControl>
+                    <GooglePlacesAddressAutocomplete
+                      value={field.value}
+                      onChange={(value: string) => {
+                        field.onChange(value);
+                      }}
+                      onAddressSelect={(address) => {
+                        field.onChange(address.street);
+                        addressForm.setValue('city', address.city || '');
+                        addressForm.setValue('state', address.state || '');
+                        addressForm.setValue('postalCode', address.postalCode || '');
+                        addressForm.setValue('county', address.county || '');
+                      }}
+                      data-testid="input-street"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={addressForm.control}
+              name="addressLine2"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Apt, Suite, Unit, etc.</FormLabel>
+                  <FormControl>
+                    <Input {...field} data-testid="input-addressline2" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={addressForm.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City *</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-city" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addressForm.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>State *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-state">
+                          <SelectValue placeholder="Select state" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {US_STATES.map((state) => (
+                          <SelectItem key={state.value} value={state.value}>
+                            {state.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addressForm.control}
+                name="postalCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Postal Code *</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-postalcode" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addressForm.control}
+                name="county"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>County</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-county" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                data-testid="button-save"
+              >
+                {isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // Edit Member Sheet Component - Extracted outside to prevent recreation on each render
 interface EditMemberSheetProps {
   open: boolean;
@@ -2349,218 +2572,6 @@ export default function QuotesPage() {
     { number: 2, title: "Personal Information & Address", icon: User },
     { number: 3, title: "Family Members", icon: Users },
   ];
-
-  // Edit Addresses Sheet Component
-  function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending, addressType }: any) {
-    const addressSchema = z.object({
-      street: z.string().min(1, "Street address is required"),
-      addressLine2: z.string().optional(),
-      city: z.string().min(1, "City is required"),
-      state: z.string().min(1, "State is required"),
-      postalCode: z.string().min(1, "Postal code is required"),
-      county: z.string().optional(),
-    });
-
-    // Helper function to get address fields based on addressType
-    const getAddressFields = (type: 'physical' | 'mailing' | 'billing') => {
-      const prefix = type;
-      return {
-        street: quote?.[`${prefix}_street`] || '',
-        addressLine2: quote?.[`${prefix}_address_line_2`] || '',
-        city: quote?.[`${prefix}_city`] || '',
-        state: quote?.[`${prefix}_state`] || '',
-        postalCode: quote?.[`${prefix}_postal_code`] || '',
-        county: quote?.[`${prefix}_county`] || '',
-      };
-    };
-
-    // Helper function to transform form data to database fields
-    const transformToDbFields = (formData: any, type: 'physical' | 'mailing' | 'billing') => {
-      const prefix = type;
-      return {
-        [`${prefix}_street`]: formData.street,
-        [`${prefix}_address_line_2`]: formData.addressLine2,
-        [`${prefix}_city`]: formData.city,
-        [`${prefix}_state`]: formData.state,
-        [`${prefix}_postal_code`]: formData.postalCode,
-        [`${prefix}_county`]: formData.county,
-      };
-    };
-
-    const addressForm = useForm({
-      resolver: zodResolver(addressSchema),
-      defaultValues: getAddressFields(addressType),
-    });
-
-    // Track previous open state to prevent multiple resets
-    const prevOpenRef = useRef(open);
-    const prevAddressTypeRef = useRef(addressType);
-
-    useEffect(() => {
-      // Only reset when sheet opens (false → true transition) or address type changes
-      if (quote && addressType && ((open && !prevOpenRef.current) || (open && addressType !== prevAddressTypeRef.current))) {
-        addressForm.reset(getAddressFields(addressType));
-      }
-      prevOpenRef.current = open;
-      prevAddressTypeRef.current = addressType;
-    }, [open, addressType, quote?.id]); // Only depend on quote.id, not entire quote object
-
-    const getTitle = () => {
-      if (addressType === 'physical') return 'Edit Physical Address';
-      if (addressType === 'mailing') return 'Edit Mailing Address';
-      if (addressType === 'billing') return 'Edit Billing Address';
-      return 'Edit Address';
-    };
-
-    const getDescription = () => {
-      if (addressType === 'physical') return 'Update the physical address for this quote';
-      if (addressType === 'mailing') return 'Update the mailing address for this quote';
-      if (addressType === 'billing') return 'Update the billing address for this quote';
-      return 'Update the address for this quote';
-    };
-
-    return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
-          <SheetHeader>
-            <SheetTitle>{getTitle()}</SheetTitle>
-            <SheetDescription>
-              {getDescription()}
-            </SheetDescription>
-          </SheetHeader>
-          <Form {...addressForm}>
-            <form onSubmit={addressForm.handleSubmit((formData) => {
-              const transformedData = transformToDbFields(formData, addressType);
-              onSave(transformedData);
-            })} className="space-y-6 py-6">
-              <FormField
-                control={addressForm.control}
-                name="street"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Street Address *</FormLabel>
-                    <FormControl>
-                      <GooglePlacesAddressAutocomplete
-                        value={field.value}
-                        onChange={(value: string) => {
-                          field.onChange(value);
-                        }}
-                        onAddressSelect={(address) => {
-                          field.onChange(address.street);
-                          addressForm.setValue('city', address.city || '');
-                          addressForm.setValue('state', address.state || '');
-                          addressForm.setValue('postalCode', address.postalCode || '');
-                          addressForm.setValue('county', address.county || '');
-                        }}
-                        data-testid="input-street"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={addressForm.control}
-                name="addressLine2"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Apt, Suite, Unit, etc.</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-addressline2" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={addressForm.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City *</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-city" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={addressForm.control}
-                  name="state"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>State *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-state">
-                            <SelectValue placeholder="Select state" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {US_STATES.map((state) => (
-                            <SelectItem key={state.value} value={state.value}>
-                              {state.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={addressForm.control}
-                  name="postalCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Postal Code *</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-postalcode" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={addressForm.control}
-                  name="county"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>County</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-county" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="flex gap-2 justify-end pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
-                  data-testid="button-cancel"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                  data-testid="button-save"
-                >
-                  {isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </SheetContent>
-      </Sheet>
-    );
-  }
 
   // Edit Payment Sheet Component
   function EditPaymentSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
@@ -4809,8 +4820,6 @@ export default function QuotesPage() {
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
-                }, {
-                  onSuccess: () => setEditingAddresses(null)
                 });
               }}
               isPending={updateQuoteMutation.isPending}
