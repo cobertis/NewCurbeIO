@@ -1022,6 +1022,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 render={({ field }) => {
                   // Detect if there's any SSN (masked or complete)
                   const hasSSN = field.value && (normalizeSSN(field.value).length >= 4 || field.value.includes('***'));
+                  const [isEditingSSN, setIsEditingSSN] = useState(false);
+                  
                   return (
                     <FormItem>
                       <FormLabel>SSN <span className="text-destructive">*</span></FormLabel>
@@ -1030,6 +1032,20 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                           <Input
                             {...field}
                             type="text"
+                            onFocus={async () => {
+                              // When focusing on the field, reveal the SSN if it exists
+                              if (hasSSN && !showEditSsn) {
+                                setIsEditingSSN(true);
+                                await handleRevealSSN();
+                              }
+                            }}
+                            onBlur={() => {
+                              // When leaving the field, hide SSN again if it was auto-revealed
+                              if (isEditingSSN) {
+                                setShowEditSsn(false);
+                                setIsEditingSSN(false);
+                              }
+                            }}
                             onChange={(e) => {
                               // Extract only digits - save WITHOUT formatting
                               const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
