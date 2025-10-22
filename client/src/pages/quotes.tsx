@@ -794,6 +794,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       // Invalidate queries to refresh the data
       queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members-details'] });
       queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'income'] });
       queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'immigration'] });
       queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'household-income'] });
@@ -3864,8 +3865,8 @@ export default function QuotesPage() {
                             <div>
                               <span className="text-muted-foreground">Income:</span>
                               <p className="font-medium text-xs">
-                                {getMemberDetails('dependent', index)?.income?.annualIncome 
-                                  ? `$${parseFloat(getMemberDetails('dependent', index)?.income?.annualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                {getMemberDetails('dependent', index)?.income?.totalAnnualIncome 
+                                  ? `$${parseFloat(getMemberDetails('dependent', index)?.income?.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                                   : '-'}
                               </p>
                             </div>
