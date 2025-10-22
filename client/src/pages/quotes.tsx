@@ -2831,8 +2831,10 @@ export default function QuotesPage() {
   // Add Member Sheet Component
   function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
     const { toast } = useToast();
+    const [memberTab, setMemberTab] = useTabsState(["basic", "income", "immigration"], "basic");
     
     const addMemberSchema = z.object({
+      // Basic Information
       isApplicant: z.boolean().default(false),
       preferredLanguage: z.string().optional(),
       relation: z.string().min(1, "Relation is required"),
@@ -2843,18 +2845,31 @@ export default function QuotesPage() {
       countryOfBirth: z.string().optional(),
       maritalStatus: z.string().optional(),
       dateOfBirth: z.string().min(1, "Date of birth is required"),
-      gender: z.string().optional(),
+      gender: z.string().min(1, "Gender is required"),
+      ssn: z.string().min(1, "SSN is required"),
       email: z.string().email("Invalid email").optional().or(z.literal('')),
       phone: z.string().optional(),
       weight: z.string().optional(),
       height: z.string().optional(),
       tobaccoUser: z.boolean().default(false),
+      // Income fields
+      employerName: z.string().optional(),
+      employerPhone: z.string().optional(),
+      position: z.string().optional(),
+      annualIncome: z.string().optional(),
+      incomeFrequency: z.string().default('annually'),
+      selfEmployed: z.boolean().default(false),
+      // Immigration fields
+      immigrationStatus: z.string().optional(),
+      naturalizationNumber: z.string().optional(),
+      uscisNumber: z.string().optional(),
+      immigrationStatusCategory: z.string().optional(),
     });
 
     const addMemberForm = useForm({
       resolver: zodResolver(addMemberSchema),
       defaultValues: {
-        isApplicant: false,
+        isApplicant: true,
         preferredLanguage: '',
         relation: '',
         firstName: '',
@@ -2865,18 +2880,60 @@ export default function QuotesPage() {
         maritalStatus: '',
         dateOfBirth: '',
         gender: '',
+        ssn: '',
         email: '',
         phone: '',
         weight: '',
         height: '',
         tobaccoUser: false,
+        // Income defaults
+        employerName: '',
+        employerPhone: '',
+        position: '',
+        annualIncome: '',
+        incomeFrequency: 'annually',
+        selfEmployed: false,
+        // Immigration defaults
+        immigrationStatus: '',
+        naturalizationNumber: '',
+        uscisNumber: '',
+        immigrationStatusCategory: '',
       },
     });
 
     // Reset form when sheet opens
     useEffect(() => {
       if (open) {
-        addMemberForm.reset();
+        addMemberForm.reset({
+          isApplicant: true,
+          preferredLanguage: '',
+          relation: '',
+          firstName: '',
+          middleName: '',
+          lastName: '',
+          secondLastName: '',
+          countryOfBirth: '',
+          maritalStatus: '',
+          dateOfBirth: '',
+          gender: '',
+          ssn: '',
+          email: '',
+          phone: '',
+          weight: '',
+          height: '',
+          tobaccoUser: false,
+          employerName: '',
+          employerPhone: '',
+          position: '',
+          annualIncome: '',
+          incomeFrequency: 'annually',
+          selfEmployed: false,
+          immigrationStatus: '',
+          naturalizationNumber: '',
+          uscisNumber: '',
+          immigrationStatusCategory: '',
+        });
+        setMemberTab('basic');
       }
     }, [open]);
 
@@ -2884,8 +2941,8 @@ export default function QuotesPage() {
       try {
         console.log('[AddMemberSheet] Creating new member:', data);
         
-        // Call API to create member
-        const response = await fetch(`/api/quotes/${quote.id}/members`, {
+        // Step 1: Create the member using ensure-member endpoint
+        const ensureResponse = await fetch(`/api/quotes/${quote.id}/ensure-member`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -2896,33 +2953,118 @@ export default function QuotesPage() {
               middleName: data.middleName || null,
               lastName: data.lastName,
               secondLastName: data.secondLastName || null,
-              dateOfBirth: data.dateOfBirth,
-              gender: data.gender || null,
               email: data.email || null,
               phone: data.phone || null,
-              ssn: null,
-              isApplicant: data.isApplicant,
-              weight: data.weight || null,
-              height: data.height || null,
-              tobaccoUser: data.tobaccoUser,
+              dateOfBirth: data.dateOfBirth || null,
+              ssn: normalizeSSN(data.ssn) || null,
+              gender: data.gender || null,
+              isApplicant: data.isApplicant || false,
+              tobaccoUser: data.tobaccoUser || false,
               preferredLanguage: data.preferredLanguage || null,
               countryOfBirth: data.countryOfBirth || null,
               maritalStatus: data.maritalStatus || null,
-            }
+              weight: data.weight || null,
+              height: data.height || null,
+            },
           }),
         });
-
-        if (!response.ok) {
-          const error = await response.json();
+        
+        if (!ensureResponse.ok) {
+          const error = await ensureResponse.json();
           throw new Error(error.message || 'Failed to create member');
         }
-
-        const result = await response.json();
-        console.log('[AddMemberSheet] Member created:', result);
-
+        
+        const { memberId } = await ensureResponse.json();
+        console.log('[AddMemberSheet] Member created with ID:', memberId);
+        
+        // Step 2: Save income data
+        console.log('[AddMemberSheet] Saving income data...');
+        
+        // Calculate total annual income based on frequency
+        let totalAnnualIncome = null;
+        if (data.annualIncome) {
+          const amount = parseFloat(data.annualIncome);
+          if (!isNaN(amount) && amount > 0) {
+            const frequency = data.incomeFrequency || 'annually';
+            switch (frequency) {
+              case 'weekly':
+                totalAnnualIncome = (amount * 52).toFixed(2);
+                break;
+              case 'biweekly':
+                totalAnnualIncome = (amount * 26).toFixed(2);
+                break;
+              case 'monthly':
+                totalAnnualIncome = (amount * 12).toFixed(2);
+                break;
+              case 'annually':
+              default:
+                totalAnnualIncome = amount.toFixed(2);
+                break;
+            }
+          }
+        }
+        
+        const incomeResponse = await fetch(`/api/quotes/members/${memberId}/income`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            employerName: data.employerName || null,
+            employerPhone: data.employerPhone || null,
+            position: data.position || null,
+            annualIncome: data.annualIncome || null,
+            incomeFrequency: data.incomeFrequency || 'annually',
+            totalAnnualIncome: totalAnnualIncome,
+            selfEmployed: data.selfEmployed || false,
+          }),
+        });
+        
+        if (!incomeResponse.ok) {
+          const errorText = await incomeResponse.text();
+          console.error('[AddMemberSheet] Failed to save income:', errorText);
+          toast({
+            variant: "destructive",
+            title: "Warning",
+            description: "Member created but income data failed to save. You can edit it later.",
+          });
+        } else {
+          console.log('[AddMemberSheet] Income saved successfully');
+        }
+        
+        // Step 3: Save immigration data
+        console.log('[AddMemberSheet] Saving immigration data...');
+        
+        const immigrationResponse = await fetch(`/api/quotes/members/${memberId}/immigration`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            immigrationStatus: data.immigrationStatus || null,
+            uscisNumber: data.uscisNumber || null,
+            naturalizationNumber: data.naturalizationNumber || null,
+            immigrationStatusCategory: data.immigrationStatusCategory || null,
+          }),
+        });
+        
+        if (!immigrationResponse.ok) {
+          const errorText = await immigrationResponse.text();
+          console.error('[AddMemberSheet] Failed to save immigration:', errorText);
+          toast({
+            variant: "destructive",
+            title: "Warning",
+            description: "Member created but immigration data failed to save. You can edit it later.",
+          });
+        } else {
+          console.log('[AddMemberSheet] Immigration saved successfully');
+        }
+        
+        console.log('[AddMemberSheet] All data saved successfully!');
+        
         // Invalidate queries to refresh data
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id] });
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members-details'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'household-income'] });
 
         toast({
           title: "Success",
@@ -2940,379 +3082,706 @@ export default function QuotesPage() {
       }
     };
 
+    const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
+    
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
-          <SheetHeader>
-            <SheetTitle>Add family member</SheetTitle>
-          </SheetHeader>
+        <SheetContent className="w-full sm:max-w-2xl flex flex-col p-0" side="right">
+          <div className="flex flex-col gap-3 p-6 border-b">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <SheetTitle className="text-lg">Add Family Member</SheetTitle>
+                <SheetDescription className="mt-1">
+                  Fill in all required information for the new family member
+                </SheetDescription>
+              </div>
+              <Button
+                type="button"
+                disabled={isPending}
+                data-testid="button-save-member"
+                onClick={addMemberForm.handleSubmit(handleSave)}
+                className="mr-10"
+              >
+                {isPending ? 'Adding...' : 'Add Member'}
+              </Button>
+            </div>
+          </div>
           <Form {...addMemberForm}>
-            <form onSubmit={addMemberForm.handleSubmit(handleSave)} className="space-y-4 py-6">
-              {/* Is Applicant Toggle */}
-              <FormField
-                control={addMemberForm.control}
-                name="isApplicant"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between">
-                    <FormLabel>Is this member an applicant?</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">No</span>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-is-applicant"
-                        />
-                        <span className="text-xs">Yes</span>
-                      </div>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+            <form onSubmit={addMemberForm.handleSubmit(handleSave)} className="flex flex-col flex-1 min-h-0">
+              <Tabs value={memberTab} onValueChange={setMemberTab} className="flex-1 flex flex-col">
+                <TabsList className="grid w-full grid-cols-3 mb-4 mx-4 mt-4">
+                  <TabsTrigger value="basic" className="text-xs">
+                    <User className="h-4 w-4 mr-1" />
+                    Basic Info
+                  </TabsTrigger>
+                  <TabsTrigger value="income" className="text-xs">
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    Income
+                  </TabsTrigger>
+                  <TabsTrigger value="immigration" className="text-xs">
+                    <Plane className="h-4 w-4 mr-1" />
+                    Immigration
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Preferred Language */}
-              <FormField
-                control={addMemberForm.control}
-                name="preferredLanguage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Preferred language</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-preferred-language">
-                          <SelectValue placeholder="Select preferred language" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="english">English</SelectItem>
-                        <SelectItem value="spanish">Spanish</SelectItem>
-                        <SelectItem value="french">French</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Relation with Primary */}
-              <FormField
-                control={addMemberForm.control}
-                name="relation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Relation with primary <span className="text-destructive">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-relation">
-                          <SelectValue placeholder="Select relation with primary" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="spouse">Spouse</SelectItem>
-                        <SelectItem value="child">Child</SelectItem>
-                        <SelectItem value="parent">Parent</SelectItem>
-                        <SelectItem value="sibling">Sibling</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* First and Middle Name Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={addMemberForm.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First name <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Enter first name" data-testid="input-first-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={addMemberForm.control}
-                  name="middleName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Middle name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Enter middle name" data-testid="input-middle-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Last Name and Second Last Name Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={addMemberForm.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last name <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Enter last name" data-testid="input-last-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={addMemberForm.control}
-                  name="secondLastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Second last name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Enter second last name" data-testid="input-second-last-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Country of Birth and Marital Status Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={addMemberForm.control}
-                  name="countryOfBirth"
-                  render={({ field }) => {
-                    const [countryOpen, setCountryOpen] = useState(false);
-                    return (
-                      <FormItem>
-                        <FormLabel>Country of birth</FormLabel>
-                        <Popover open={countryOpen} onOpenChange={setCountryOpen}>
-                          <PopoverTrigger asChild>
+                {/* Tab 1: Basic Information */}
+                <TabsContent value="basic" className="flex-1 overflow-y-auto space-y-6 p-4">
+                  {/* Relation and Is Applicant */}
+                  <div className="space-y-4">
+                    <FormField
+                      control={addMemberForm.control}
+                      name="relation"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Relation with primary <span className="text-destructive">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                className="justify-between font-normal"
-                                data-testid="select-country-of-birth"
-                              >
-                                {field.value || "Select country"}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
+                              <SelectTrigger data-testid="select-relation">
+                                <SelectValue placeholder="Select relation with primary" />
+                              </SelectTrigger>
                             </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="Search country..." />
-                              <CommandList>
-                                <CommandEmpty>No country found.</CommandEmpty>
-                                <CommandGroup>
-                                  {COUNTRIES.map((country) => (
-                                    <CommandItem
-                                      key={country}
-                                      value={country}
-                                      onSelect={() => {
-                                        field.onChange(country);
-                                        setCountryOpen(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={`mr-2 h-4 w-4 ${
-                                          field.value === country ? "opacity-100" : "opacity-0"
-                                        }`}
-                                      />
-                                      {country}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
+                            <SelectContent>
+                              <SelectItem value="spouse">Spouse</SelectItem>
+                              <SelectItem value="child">Child</SelectItem>
+                              <SelectItem value="parent">Parent</SelectItem>
+                              <SelectItem value="sibling">Sibling</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addMemberForm.control}
+                      name="isApplicant"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-isapplicant"
+                            />
+                          </FormControl>
+                          <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* First Name - Middle Name */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>First Name <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-firstname" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addMemberForm.control}
+                      name="middleName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Middle Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-middlename" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Last Name - Second Last Name */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Last Name <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-lastname" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addMemberForm.control}
+                      name="secondLastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Second Last Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-secondlastname" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* DOB - SSN */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="dateOfBirth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date of Birth <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} data-testid="input-dob" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addMemberForm.control}
+                      name="ssn"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Social Security <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              {...field}
+                              onChange={(e) => {
+                                const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                field.onChange(digits);
+                              }}
+                              value={field.value ? formatSSN(field.value) : ''}
+                              autoComplete="off"
+                              placeholder="XXX-XX-XXXX"
+                              data-testid="input-ssn"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Phone - Email */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                              data-testid="input-phone"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addMemberForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} data-testid="input-email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Gender - Marital Status */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gender <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-gender">
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addMemberForm.control}
+                      name="maritalStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Marital Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-maritalstatus">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="single">Single</SelectItem>
+                              <SelectItem value="married">Married</SelectItem>
+                              <SelectItem value="divorced">Divorced</SelectItem>
+                              <SelectItem value="widowed">Widowed</SelectItem>
+                              <SelectItem value="separated">Separated</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Country of Birth - Preferred Language */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="countryOfBirth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Country of Birth</FormLabel>
+                          <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className="w-full justify-between font-normal"
+                                  data-testid="select-countryofbirth"
+                                >
+                                  {field.value || "Select country"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search country..." />
+                                <CommandList>
+                                  <CommandEmpty>No country found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {COUNTRIES.map((country) => (
+                                      <CommandItem
+                                        key={country}
+                                        value={country}
+                                        onSelect={() => {
+                                          field.onChange(country);
+                                          setCountryPopoverOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={`mr-2 h-4 w-4 ${
+                                            field.value === country ? "opacity-100" : "opacity-0"
+                                          }`}
+                                        />
+                                        {country}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addMemberForm.control}
+                      name="preferredLanguage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preferred Language</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-preferredlanguage">
+                                <SelectValue placeholder="Select language" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="english">English</SelectItem>
+                              <SelectItem value="spanish">Spanish</SelectItem>
+                              <SelectItem value="french">French</SelectItem>
+                              <SelectItem value="chinese">Chinese</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Weight - Height */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="weight"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Weight (Lbs)</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="150" data-testid="input-weight" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addMemberForm.control}
+                      name="height"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Height (Ft)</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="5'10&quot;" data-testid="input-height" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={addMemberForm.control}
+                    name="tobaccoUser"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-tobacco"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
                       </FormItem>
-                    );
-                  }}
-                />
-                <FormField
-                  control={addMemberForm.control}
-                  name="maritalStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Marital status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-marital-status">
-                            <SelectValue placeholder="Select an option" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="single">Single</SelectItem>
-                          <SelectItem value="married">Married</SelectItem>
-                          <SelectItem value="divorced">Divorced</SelectItem>
-                          <SelectItem value="widowed">Widowed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                    )}
+                  />
+                </TabsContent>
 
-              {/* Date of Birth and Gender Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={addMemberForm.control}
-                  name="dateOfBirth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date of birth <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="date"
-                          data-testid="input-date-of-birth"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={addMemberForm.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gender</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-gender">
-                            <SelectValue placeholder="Select an option" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                {/* Tab 2: Income & Employment */}
+                <TabsContent value="income" className="flex-1 overflow-y-auto space-y-4 p-4">
+                  {/* Employment Information Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Employment Information</h3>
+                    </div>
+                    
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Employer Name */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="employerName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Employer or company name" data-testid="input-employer-name" className="bg-background" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              {/* Email */}
-              <FormField
-                control={addMemberForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="email" placeholder="Enter an email address" data-testid="input-email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    {/* Position / Occupation */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="position"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Position / Title</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Job title or occupation" data-testid="input-position" className="bg-background" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              {/* Phone */}
-              <FormField
-                control={addMemberForm.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field}
-                        value={field.value || ''}
-                        onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
-                        placeholder="(999) 999-9999" 
-                        data-testid="input-phone" 
+                    {/* Employer Phone */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="employerPhone"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Employer Contact</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                              placeholder="(999) 999-9999"
+                              data-testid="input-employer-phone"
+                              className="bg-background"
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">HR or company contact number</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Self Employed Checkbox */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="selfEmployed"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2 flex flex-row items-center space-x-2 space-y-0 rounded-md border p-3 bg-muted/30">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-self-employed"
+                            />
+                          </FormControl>
+                          <div className="space-y-0.5 leading-none">
+                            <FormLabel className="cursor-pointer font-medium">Self-employed or independent contractor</FormLabel>
+                            <p className="text-xs text-muted-foreground">Check if you own your own business or work as a freelancer</p>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  </div>
+
+                  {/* Income Details Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Income Details</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+
+                    {/* Income Frequency */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="incomeFrequency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pay Period</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || "annually"}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-income-frequency" className="bg-background">
+                                <SelectValue placeholder="How often are you paid?" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="annually">Annually (1 time/year)</SelectItem>
+                              <SelectItem value="monthly">Monthly (12 times/year)</SelectItem>
+                              <SelectItem value="biweekly">Biweekly (26 times/year)</SelectItem>
+                              <SelectItem value="weekly">Weekly (52 times/year)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Income Amount */}
+                    <FormField
+                      control={addMemberForm.control}
+                      name="annualIncome"
+                      render={({ field }) => {
+                        const [isFocused, setIsFocused] = useState(false);
+                        const frequency = addMemberForm.watch('incomeFrequency') || 'annually';
+                        const frequencyLabel = frequency === 'annually' ? 'Annual' : frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Biweekly' : 'Monthly';
+                        
+                        const calculateAnnualIncome = (amount: string) => {
+                          const num = parseFloat(amount || '0');
+                          if (isNaN(num) || num <= 0) return '0';
+                          
+                          switch (frequency) {
+                            case 'annually':
+                              return amount;
+                            case 'weekly':
+                              return (num * 52).toFixed(2);
+                            case 'biweekly':
+                              return (num * 26).toFixed(2);
+                            case 'monthly':
+                              return (num * 12).toFixed(2);
+                            default:
+                              return amount;
+                          }
+                        };
+                        
+                        const displayValue = isFocused ? (field.value || '') : (
+                          field.value ? 
+                            parseFloat(field.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+                            : ''
+                        );
+                        
+                        const annualAmount = calculateAnnualIncome(field.value || '0');
+                        const showAnnualEquivalent = field.value && parseFloat(field.value) > 0 && frequency !== 'annually';
+                        
+                        return (
+                          <FormItem>
+                            <FormLabel>{frequencyLabel} Income</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                                <Input 
+                                  type="text"
+                                  placeholder="0.00" 
+                                  data-testid="input-income-amount"
+                                  className="pl-7 bg-background"
+                                  value={displayValue}
+                                  onFocus={() => setIsFocused(true)}
+                                  onChange={(e) => {
+                                    let value = e.target.value;
+                                    value = value.replace(/[^\d.]/g, '');
+                                    
+                                    const parts = value.split('.');
+                                    if (parts.length > 2) {
+                                      value = parts[0] + '.' + parts.slice(1).join('');
+                                    }
+                                    
+                                    if (parts.length === 2 && parts[1].length > 2) {
+                                      value = parts[0] + '.' + parts[1].substring(0, 2);
+                                    }
+                                    
+                                    field.onChange(value);
+                                  }}
+                                  onBlur={(e) => {
+                                    setIsFocused(false);
+                                    let value = e.target.value;
+                                    value = value.replace(/,/g, '');
+                                    if (value && value !== '') {
+                                      const num = parseFloat(value);
+                                      if (!isNaN(num)) {
+                                        field.onChange(num.toFixed(2));
+                                      }
+                                    }
+                                    field.onBlur();
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            {showAnnualEquivalent && (
+                              <div className="rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
+                                <p className="text-xs font-medium text-primary">
+                                  Annual Equivalent: ${parseFloat(annualAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+                  </div>
+                  </div>
+                </TabsContent>
+
+                {/* Tab 3: Immigration Status */}
+                <TabsContent value="immigration" className="flex-1 overflow-y-auto space-y-4 p-4">
+                  {/* Primary Status Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <Plane className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Immigration Status</h3>
+                    </div>
+                    
+                    <FormField
+                      control={addMemberForm.control}
+                      name="immigrationStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-immigration-status" className="bg-background">
+                                <SelectValue placeholder="Select immigration status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="asylum">Asylum</SelectItem>
+                              <SelectItem value="citizen">U.S. Citizen</SelectItem>
+                              <SelectItem value="humanitarian_parole">Humanitarian Parole</SelectItem>
+                              <SelectItem value="resident">Permanent Resident</SelectItem>
+                              <SelectItem value="temporary_protected_status">Temporary Protected Status (TPS)</SelectItem>
+                              <SelectItem value="work_authorization">Work Authorization</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {addMemberForm.watch('immigrationStatus') === 'citizen' && (
+                      <FormField
+                        control={addMemberForm.control}
+                        name="naturalizationNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              <span>Naturalization Certificate #</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter certificate number" data-testid="input-naturalization-number" className="bg-background" />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">Found on naturalization certificate</p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    )}
 
-              {/* Weight and Height Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={addMemberForm.control}
-                  name="weight"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weight (Lbs)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Enter weight" data-testid="input-weight" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={addMemberForm.control}
-                  name="height"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Height (Ft)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Enter height" data-testid="input-height" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                    <FormField
+                      control={addMemberForm.control}
+                      name="immigrationStatusCategory"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status Category</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="e.g., I-94, Parole, etc." data-testid="input-immigration-category" className="bg-background" />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">Specify the document or category type</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              {/* Tobacco User Toggle */}
-              <FormField
-                control={addMemberForm.control}
-                name="tobaccoUser"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between">
-                    <FormLabel>Tobacco user</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">No</span>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-tobacco-user"
-                        />
-                        <span className="text-xs">Yes</span>
-                      </div>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {/* Buttons */}
-              <div className="flex gap-2 justify-end pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
-                  data-testid="button-cancel"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                  data-testid="button-save"
-                >
-                  {isPending ? 'Adding...' : 'Add Member'}
-                </Button>
-              </div>
+                  {/* Documentation Numbers Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Official Numbers</h3>
+                    </div>
+                    
+                    <FormField
+                      control={addMemberForm.control}
+                      name="uscisNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>USCIS Number</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="9-digit number (optional)" data-testid="input-uscis-number" className="bg-background font-mono" />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">Alien Registration Number or USCIS #</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </form>
           </Form>
         </SheetContent>
