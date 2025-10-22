@@ -3802,10 +3802,20 @@ export default function QuotesPage() {
                             )}
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
                           <div>
-                            <span className="text-muted-foreground">Gender/Age:</span>
-                            <p className="font-medium">{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}, {calculateAge(viewingQuote.clientDateOfBirth) || 0} yrs</p>
+                            <span className="text-muted-foreground">DOB:</span>
+                            <p className="font-medium">
+                              {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Age:</span>
+                            <p className="font-medium">{calculateAge(viewingQuote.clientDateOfBirth) || 0} yrs</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Gender:</span>
+                            <p className="font-medium">{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">SSN:</span>
@@ -3858,10 +3868,20 @@ export default function QuotesPage() {
                               )}
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                          <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
                             <div>
-                              <span className="text-muted-foreground">Gender/Age:</span>
-                              <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}, {calculateAge(spouse.dateOfBirth) || 0} yrs</p>
+                              <span className="text-muted-foreground">DOB:</span>
+                              <p className="font-medium">
+                                {spouse.dateOfBirth ? formatDateForDisplay(spouse.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Age:</span>
+                              <p className="font-medium">{calculateAge(spouse.dateOfBirth) || 0} yrs</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Gender:</span>
+                              <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
@@ -3915,10 +3935,20 @@ export default function QuotesPage() {
                               )}
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                          <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
                             <div>
-                              <span className="text-muted-foreground">Gender/Age:</span>
-                              <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}, {calculateAge(dependent.dateOfBirth) || 0} yrs</p>
+                              <span className="text-muted-foreground">DOB:</span>
+                              <p className="font-medium">
+                                {dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Age:</span>
+                              <p className="font-medium">{calculateAge(dependent.dateOfBirth) || 0} yrs</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Gender:</span>
+                              <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
