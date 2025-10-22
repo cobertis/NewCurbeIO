@@ -2337,14 +2337,16 @@ export default function QuotesPage() {
 
     // Track previous open state to prevent multiple resets
     const prevOpenRef = useRef(open);
+    const prevAddressTypeRef = useRef(addressType);
 
     useEffect(() => {
-      // Only reset when sheet opens (false → true transition)
-      if (open && !prevOpenRef.current && quote && addressType) {
+      // Only reset when sheet opens (false → true transition) or address type changes
+      if (quote && addressType && ((open && !prevOpenRef.current) || (open && addressType !== prevAddressTypeRef.current))) {
         addressForm.reset(getAddressFields(addressType));
       }
       prevOpenRef.current = open;
-    }, [open, quote, addressType]);
+      prevAddressTypeRef.current = addressType;
+    }, [open, addressType, quote?.id]); // Only depend on quote.id, not entire quote object
 
     const getTitle = () => {
       if (addressType === 'physical') return 'Edit Physical Address';
