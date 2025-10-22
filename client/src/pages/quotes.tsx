@@ -719,8 +719,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     enabled: !!currentMemberId && open,
   });
   
-  // Check if we're still loading data
-  const isLoadingMemberData = isLoadingIncome || isLoadingImmigration;
+  // Check if we're still loading ANY data - must wait for ALL queries to complete
+  const isLoadingMemberData = membersQuery.isLoading || isLoadingIncome || isLoadingImmigration;
 
   // Use useMemo to prevent unnecessary recalculation and form resets
   const memberData = useMemo(() => {
