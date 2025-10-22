@@ -1020,9 +1020,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 control={editForm.control}
                 name="ssn"
                 render={({ field }) => {
-                  // Detect if there's any SSN (masked or complete)
-                  const hasSSN = field.value && (normalizeSSN(field.value).length >= 4 || field.value.includes('***'));
-                  const [isEditingSSN, setIsEditingSSN] = useState(false);
+                  const hasSSN = field.value && normalizeSSN(field.value).length >= 4;
                   
                   return (
                     <FormItem>
@@ -1032,20 +1030,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                           <Input
                             {...field}
                             type="text"
-                            onFocus={async () => {
-                              // When focusing on the field, reveal the SSN if it exists
-                              if (hasSSN && !showEditSsn) {
-                                setIsEditingSSN(true);
-                                await handleRevealSSN();
-                              }
-                            }}
-                            onBlur={() => {
-                              // When leaving the field, hide SSN again if it was auto-revealed
-                              if (isEditingSSN) {
-                                setShowEditSsn(false);
-                                setIsEditingSSN(false);
-                              }
-                            }}
                             onChange={(e) => {
                               // Extract only digits - save WITHOUT formatting
                               const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
@@ -1060,10 +1044,16 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                         </FormControl>
                         {hasSSN && (
                           <div
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              handleRevealSSN();
+                              if (!showEditSsn) {
+                                // Reveal SSN
+                                await handleRevealSSN();
+                              } else {
+                                // Hide SSN
+                                setShowEditSsn(false);
+                              }
                             }}
                             className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
                             role="button"
