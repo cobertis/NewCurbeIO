@@ -1862,17 +1862,33 @@ export default function QuotesPage() {
       });
     },
     onSuccess: (response: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      
       // Get the created quote ID
       const quoteId = response.quote?.id;
       
-      toast({
-        title: "Quote created",
-        description: "Opening quote details...",
-      });
+      console.log('[CREATE QUOTE] Success! Quote ID:', quoteId);
       
-      // Reset form state for next quote (in background)
+      // IMMEDIATELY navigate to the created quote FIRST
+      if (quoteId) {
+        setLocation(`/quotes/${quoteId}`);
+        
+        toast({
+          title: "Quote created",
+          description: "Opening quote details...",
+        });
+      } else {
+        console.error('[CREATE QUOTE] No quote ID in response:', response);
+        setLocation("/quotes");
+        
+        toast({
+          title: "Quote created",
+          description: "Quote created but could not navigate to it.",
+        });
+      }
+      
+      // Invalidate queries and reset form in background
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      
+      // Reset form state for next quote (delayed to not interfere with navigation)
       setTimeout(() => {
         form.reset({
           effectiveDate: initialEffectiveDate,
@@ -1901,14 +1917,7 @@ export default function QuotesPage() {
         });
         setCurrentStep(1);
         setSelectedProduct("");
-      }, 100);
-      
-      // IMMEDIATELY navigate to the created quote
-      if (quoteId) {
-        setLocation(`/quotes/${quoteId}`);
-      } else {
-        setLocation("/quotes");
-      }
+      }, 500);
     },
     onError: (error: any) => {
       toast({
