@@ -648,6 +648,7 @@ interface EditMemberSheetProps {
 function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, onSave, isPending, onMemberChange }: EditMemberSheetProps) {
   const { toast } = useToast();
   const [memberTab, setMemberTab] = useTabsState(["basic", "income", "immigration", "documents"], "basic");
+  const [isSaving, setIsSaving] = useState(false); // Internal loading state
   const editMemberSchema = memberType === 'dependent'
     ? dependentSchema
     : familyMemberSchema;
@@ -869,6 +870,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     // Close any open popovers
     setCountryPopoverOpen(false);
     
+    // Activate loading state
+    setIsSaving(true);
+    
     // Step 1: Save basic data to normalized table quote_members
     try {
       console.log('[EditMemberSheet] Starting to save member basic data...');
@@ -1078,6 +1082,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         description: error instanceof Error ? error.message : "An unexpected error occurred while saving.",
       });
       // Don't close the sheet on error - let user try again
+    } finally {
+      // Always deactivate loading state
+      setIsSaving(false);
     }
   };
 
@@ -1130,7 +1137,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       open={open} 
       onOpenChange={(isOpen) => {
         // Only allow closing the sheet, never opening from here
-        if (!isOpen && !isPending) {
+        if (!isOpen && !isSaving && !isPending) {
           onOpenChange(false);
         }
       }}
@@ -1159,13 +1166,13 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             </div>
             <Button
               type="button"
-              disabled={isPending}
+              disabled={isSaving || isPending}
               data-testid="button-save"
               onClick={editForm.handleSubmit(handleSave)}
               className="mr-10"
             >
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isPending ? 'Saving...' : 'Save'}
+              {(isSaving || isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {(isSaving || isPending) ? 'Saving...' : 'Save'}
             </Button>
           </div>
 
@@ -1177,7 +1184,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 variant="outline"
                 size="sm"
                 onClick={() => handleNavigate('prev')}
-                disabled={!hasPrevious || isPending}
+                disabled={!hasPrevious || isSaving || isPending}
                 className="flex-1"
                 data-testid="button-prev-member"
               >
@@ -1189,7 +1196,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 variant="outline"
                 size="sm"
                 onClick={() => handleNavigate('next')}
-                disabled={!hasNext || isPending}
+                disabled={!hasNext || isSaving || isPending}
                 className="flex-1"
                 data-testid="button-next-member"
               >
