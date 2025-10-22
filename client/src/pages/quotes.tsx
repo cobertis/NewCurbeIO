@@ -650,12 +650,12 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       const { memberId } = await ensureResponse.json();
       console.log('[EditMemberSheet] Member ensured, ID:', memberId);
       
-      // Step 3: Save income data if present
-      if (data.annualIncome || data.employerName || data.employerPhone || data.position) {
-        console.log('[EditMemberSheet] Saving income data...', {
-          annualIncome: data.annualIncome,
-          employerName: data.employerName,
-        });
+      // Step 3: Always save income data (even if empty, to ensure it's in the database)
+      console.log('[EditMemberSheet] Saving income data...', {
+        annualIncome: data.annualIncome,
+        employerName: data.employerName,
+        allData: data,
+      });
         
         // Calculate total annual income based on frequency
         let totalAnnualIncome = null;
@@ -696,48 +696,48 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           }),
         });
         
-        if (incomeResponse.ok) {
-          console.log('[EditMemberSheet] Income saved successfully');
-        } else {
-          const errorText = await incomeResponse.text();
-          console.error('[EditMemberSheet] Failed to save income:', errorText);
-          toast({
-            variant: "destructive",
-            title: "Error Saving Income",
-            description: "Failed to save income data. Please try again.",
-          });
-          return; // Don't close the sheet, let user fix the issue
-        }
+      if (incomeResponse.ok) {
+        console.log('[EditMemberSheet] Income saved successfully');
+      } else {
+        const errorText = await incomeResponse.text();
+        console.error('[EditMemberSheet] Failed to save income:', errorText);
+        toast({
+          variant: "destructive",
+          title: "Error Saving Income",
+          description: "Failed to save income data. Please try again.",
+        });
+        return; // Don't close the sheet, let user fix the issue
       }
       
-      // Step 4: Save immigration data if present
-      if (data.immigrationStatus || data.uscisNumber || data.naturalizationNumber) {
-        console.log('[EditMemberSheet] Saving immigration data...');
-        
-        const immigrationResponse = await fetch(`/api/quotes/members/${memberId}/immigration`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            immigrationStatus: data.immigrationStatus || null,
-            uscisNumber: data.uscisNumber || null,
-            naturalizationNumber: data.naturalizationNumber || null,
-            immigrationStatusCategory: data.immigrationStatusCategory || null,
-          }),
+      // Step 4: Always save immigration data (even if empty, to ensure it's in the database)
+      console.log('[EditMemberSheet] Saving immigration data...', {
+        immigrationStatus: data.immigrationStatus,
+        uscisNumber: data.uscisNumber,
+      });
+      
+      const immigrationResponse = await fetch(`/api/quotes/members/${memberId}/immigration`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          immigrationStatus: data.immigrationStatus || null,
+          uscisNumber: data.uscisNumber || null,
+          naturalizationNumber: data.naturalizationNumber || null,
+          immigrationStatusCategory: data.immigrationStatusCategory || null,
+        }),
+      });
+      
+      if (immigrationResponse.ok) {
+        console.log('[EditMemberSheet] Immigration saved successfully');
+      } else {
+        const errorText = await immigrationResponse.text();
+        console.error('[EditMemberSheet] Failed to save immigration:', errorText);
+        toast({
+          variant: "destructive",
+          title: "Error Saving Immigration",
+          description: "Failed to save immigration data. Please try again.",
         });
-        
-        if (immigrationResponse.ok) {
-          console.log('[EditMemberSheet] Immigration saved successfully');
-        } else {
-          const errorText = await immigrationResponse.text();
-          console.error('[EditMemberSheet] Failed to save immigration:', errorText);
-          toast({
-            variant: "destructive",
-            title: "Error Saving Immigration",
-            description: "Failed to save immigration data. Please try again.",
-          });
-          return; // Don't close the sheet, let user fix the issue
-        }
+        return; // Don't close the sheet, let user fix the issue
       }
       
       console.log('[EditMemberSheet] All data saved successfully!');
