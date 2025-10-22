@@ -613,6 +613,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     setCountryPopoverOpen(false);
     
     // Step 1: Save basic data to JSON columns (legacy model)
+    // Note: dateOfBirth is saved in Step 2 via normalized tables to avoid type conflicts
     if (memberType === 'primary') {
       onSave({
         clientFirstName: data.firstName,
@@ -621,7 +622,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         clientSecondLastName: data.secondLastName,
         clientEmail: data.email,
         clientPhone: data.phone,
-        clientDateOfBirth: data.dateOfBirth || undefined,
         clientSsn: normalizeSSN(data.ssn),
         clientGender: data.gender,
         clientIsApplicant: data.isApplicant,
@@ -637,16 +637,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       updatedSpouses[memberIndex!] = {
         ...data,
         ssn: normalizeSSN(data.ssn),
-        dateOfBirth: data.dateOfBirth || undefined,
-      };
+      } as any;
       onSave({ spouses: updatedSpouses });
     } else if (memberType === 'dependent') {
       const updatedDependents = [...(quote.dependents || [])];
       updatedDependents[memberIndex!] = {
         ...data,
         ssn: normalizeSSN(data.ssn),
-        dateOfBirth: data.dateOfBirth || undefined,
-      };
+      } as any;
       onSave({ dependents: updatedDependents });
     }
     
@@ -678,7 +676,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             maritalStatus: data.maritalStatus || null,
             weight: data.weight || null,
             height: data.height || null,
-            relation: memberType === 'dependent' ? (data.relation || null) : undefined,
+            relation: memberType === 'dependent' ? ((data as any).relation || null) : undefined,
           },
         }),
       });
@@ -1234,7 +1232,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               {memberType === 'dependent' && (
                 <FormField
                   control={editForm.control}
-                  name="relation"
+                  name={"relation" as any}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Relation <span className="text-destructive">*</span></FormLabel>
@@ -1888,7 +1886,8 @@ export default function QuotesPage() {
 
   const createQuoteMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/quotes", {
+      console.log('[CREATE QUOTE] Sending request with data:', data);
+      const result = await apiRequest("POST", "/api/quotes", {
         ...data,
         effectiveDate: data.effectiveDate,
         clientDateOfBirth: data.clientDateOfBirth || undefined,
@@ -1902,16 +1901,24 @@ export default function QuotesPage() {
           ssn: normalizeSSN(dependent.ssn),
         })),
       });
+      console.log('[CREATE QUOTE] Received response:', result);
+      return result;
     },
     onSuccess: (response: any) => {
-      // Get the created quote ID
-      const quoteId = response.quote?.id;
+      console.log('[CREATE QUOTE] onSuccess called with response:', response);
       
-      console.log('[CREATE QUOTE] Success! Quote ID:', quoteId);
+      // Get the created quote ID
+      const quoteId = response?.quote?.id || response?.id;
+      
+      console.log('[CREATE QUOTE] Extracted quote ID:', quoteId);
+      console.log('[CREATE QUOTE] Full response structure:', JSON.stringify(response, null, 2));
       
       // IMMEDIATELY navigate to the created quote FIRST
       if (quoteId) {
-        setLocation(`/quotes/${quoteId}`);
+        console.log('[CREATE QUOTE] Navigating to quote:', quoteId);
+        setQuoteId(quoteId);
+        setIsViewingQuote(true);
+        setShowWizard(false);
         
         toast({
           title: "Quote created",
@@ -1919,10 +1926,10 @@ export default function QuotesPage() {
         });
       } else {
         console.error('[CREATE QUOTE] No quote ID in response:', response);
-        setLocation("/quotes");
         
         toast({
-          title: "Quote created",
+          variant: "destructive",
+          title: "Error",
           description: "Quote created but could not navigate to it.",
         });
       }
@@ -3264,7 +3271,7 @@ export default function QuotesPage() {
     const totalDependents = viewingQuote.dependents?.length || 0;
 
     // Calculate formatted income
-    const totalHouseholdIncome = householdIncomeData?.totalIncome || 0;
+    const totalHouseholdIncome = (householdIncomeData as any)?.totalIncome || 0;
     const formattedIncome = totalHouseholdIncome > 0 
       ? new Intl.NumberFormat('en-US', { 
           style: 'currency', 
@@ -5765,12 +5772,12 @@ export default function QuotesPage() {
         onOpenChange={(open) => {
           if (!open) setEditingMember(null);
         }}
-        quote={viewingQuote}
+        quote={viewingQuote!}
         memberType={editingMember?.type}
         memberIndex={editingMember?.index}
         onSave={(data) => {
           updateQuoteMutation.mutate({
-            quoteId: viewingQuote.id,
+            quoteId: viewingQuote!.id,
             data,
           });
           // Don't close immediately - let handleSave complete async operations first
