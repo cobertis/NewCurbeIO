@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -978,40 +978,35 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       }
       
       const { memberId } = await ensureResponse.json();
-      console.log('[EditMemberSheet] Member ensured, ID:', memberId);
       
-      // Step 3: Always save income data (even if empty, to ensure it's in the database)
-      console.log('[EditMemberSheet] Saving income data...', {
-        annualIncome: data.annualIncome,
-        employerName: data.employerName,
-        allData: data,
-      });
-        
-        // Calculate total annual income based on frequency
-        let totalAnnualIncome = null;
-        if (data.annualIncome) {
-          const amount = parseFloat(data.annualIncome);
-          if (!isNaN(amount) && amount > 0) {
-            const frequency = data.incomeFrequency || 'annually';
-            switch (frequency) {
-              case 'weekly':
-                totalAnnualIncome = (amount * 52).toFixed(2);
-                break;
-              case 'biweekly':
-                totalAnnualIncome = (amount * 26).toFixed(2);
-                break;
-              case 'monthly':
-                totalAnnualIncome = (amount * 12).toFixed(2);
-                break;
-              case 'annually':
-              default:
-                totalAnnualIncome = amount.toFixed(2);
-                break;
-            }
+      // Step 3 & 4: Save income and immigration data in parallel for faster performance
+      // Calculate total annual income based on frequency
+      let totalAnnualIncome = null;
+      if (data.annualIncome) {
+        const amount = parseFloat(data.annualIncome);
+        if (!isNaN(amount) && amount > 0) {
+          const frequency = data.incomeFrequency || 'annually';
+          switch (frequency) {
+            case 'weekly':
+              totalAnnualIncome = (amount * 52).toFixed(2);
+              break;
+            case 'biweekly':
+              totalAnnualIncome = (amount * 26).toFixed(2);
+              break;
+            case 'monthly':
+              totalAnnualIncome = (amount * 12).toFixed(2);
+              break;
+            case 'annually':
+            default:
+              totalAnnualIncome = amount.toFixed(2);
+              break;
           }
         }
-        
-        const incomeResponse = await fetch(`/api/quotes/members/${memberId}/income`, {
+      }
+      
+      // Execute income and immigration saves in parallel
+      const [incomeResponse, immigrationResponse] = await Promise.all([
+        fetch(`/api/quotes/members/${memberId}/income`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -1024,11 +1019,22 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             totalAnnualIncome: totalAnnualIncome,
             selfEmployed: data.selfEmployed || false,
           }),
-        });
-        
-      if (incomeResponse.ok) {
-        console.log('[EditMemberSheet] Income saved successfully');
-      } else {
+        }),
+        fetch(`/api/quotes/members/${memberId}/immigration`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            immigrationStatus: data.immigrationStatus || null,
+            uscisNumber: data.uscisNumber || null,
+            naturalizationNumber: data.naturalizationNumber || null,
+            immigrationStatusCategory: data.immigrationStatusCategory || null,
+          }),
+        })
+      ]);
+      
+      // Check both responses
+      if (!incomeResponse.ok) {
         const errorText = await incomeResponse.text();
         console.error('[EditMemberSheet] Failed to save income:', errorText);
         toast({
@@ -1036,30 +1042,10 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           title: "Error Saving Income",
           description: "Failed to save income data. Please try again.",
         });
-        return; // Don't close the sheet, let user fix the issue
+        return;
       }
       
-      // Step 4: Always save immigration data (even if empty, to ensure it's in the database)
-      console.log('[EditMemberSheet] Saving immigration data...', {
-        immigrationStatus: data.immigrationStatus,
-        uscisNumber: data.uscisNumber,
-      });
-      
-      const immigrationResponse = await fetch(`/api/quotes/members/${memberId}/immigration`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          immigrationStatus: data.immigrationStatus || null,
-          uscisNumber: data.uscisNumber || null,
-          naturalizationNumber: data.naturalizationNumber || null,
-          immigrationStatusCategory: data.immigrationStatusCategory || null,
-        }),
-      });
-      
-      if (immigrationResponse.ok) {
-        console.log('[EditMemberSheet] Immigration saved successfully');
-      } else {
+      if (!immigrationResponse.ok) {
         const errorText = await immigrationResponse.text();
         console.error('[EditMemberSheet] Failed to save immigration:', errorText);
         toast({
@@ -1067,7 +1053,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           title: "Error Saving Immigration",
           description: "Failed to save immigration data. Please try again.",
         });
-        return; // Don't close the sheet, let user fix the issue
+        return;
       }
       
       console.log('[EditMemberSheet] All data saved successfully!');
@@ -1178,6 +1164,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               onClick={editForm.handleSubmit(handleSave)}
               className="mr-10"
             >
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isPending ? 'Saving...' : 'Save'}
             </Button>
           </div>
