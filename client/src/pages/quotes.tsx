@@ -3377,21 +3377,21 @@ export default function QuotesPage() {
                         </div>
                         
                         {/* Quick Summary */}
-                        <div className="mt-3 space-y-1 text-xs">
-                          <div className="flex items-center gap-4">
-                            <span className="flex items-center gap-1.5">
-                              <Phone className="h-3 w-3" />
+                        <div className="mt-3 space-y-2 text-sm">
+                          <div className="flex items-center gap-4 flex-wrap">
+                            <span className="flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
                               {viewingQuote.clientPhone || 'N/A'}
                             </span>
                             <span className="text-muted-foreground">|</span>
-                            <span className="flex items-center gap-1.5">
-                              <Mail className="h-3 w-3" />
+                            <span className="flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
                               {viewingQuote.clientEmail || 'N/A'}
                             </span>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <span className="flex items-center gap-1.5">
-                              <Calendar className="h-3 w-3" />
+                          <div className="flex items-center gap-4 flex-wrap">
+                            <span className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
                               {viewingQuote.clientDateOfBirth ? (
                                 <>
                                   {format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy")}
@@ -3402,8 +3402,8 @@ export default function QuotesPage() {
                               ) : 'N/A'}
                             </span>
                             <span className="text-muted-foreground">|</span>
-                            <span className="flex items-center gap-1.5 font-mono">
-                              <IdCard className="h-3 w-3" />
+                            <span className="flex items-center gap-2 font-mono">
+                              <IdCard className="h-4 w-4" />
                               {viewingQuote.clientSsn 
                                 ? (showSsn && revealedClientSsn ? formatSSN(revealedClientSsn) : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
                                 : 'N/A'}
@@ -3412,7 +3412,7 @@ export default function QuotesPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 -ml-1"
+                                className="h-8 w-8 p-0 -ml-1"
                                 onClick={handleToggleSsnInHeader}
                                 data-testid="button-toggle-ssn-header"
                               >
@@ -3424,8 +3424,8 @@ export default function QuotesPage() {
                               </Button>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3" />
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
                             {viewingQuote.street}, {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
                           </div>
                         </div>
