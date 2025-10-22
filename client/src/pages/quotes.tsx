@@ -849,7 +849,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       console.log('[EditMemberSheet] Resetting form with complete data:', memberData);
       editForm.reset(memberData);
     }
-  }, [open, memberData, editForm])
+  }, [open, memberData, editForm]);
+
+  // Reset tab to "basic" whenever member changes
+  useEffect(() => {
+    if (open) {
+      setMemberTab("basic");
+    }
+  }, [memberType, memberIndex, setMemberTab, open])
 
   const handleSave = async (data: z.infer<typeof editMemberSchema>) => {
     console.log('[EditMemberSheet] handleSave called with data:', data);
