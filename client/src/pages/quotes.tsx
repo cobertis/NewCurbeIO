@@ -3751,8 +3751,8 @@ export default function QuotesPage() {
                           <div>
                             <span className="text-muted-foreground">Income:</span>
                             <p className="font-medium text-xs">
-                              {getMemberDetails('client')?.income?.annualIncome 
-                                ? `$${parseFloat(getMemberDetails('client')?.income?.annualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                              {getMemberDetails('client')?.income?.totalAnnualIncome 
+                                ? `$${parseFloat(getMemberDetails('client')?.income?.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                                 : '-'}
                             </p>
                           </div>
@@ -3807,8 +3807,8 @@ export default function QuotesPage() {
                             <div>
                               <span className="text-muted-foreground">Income:</span>
                               <p className="font-medium text-xs">
-                                {getMemberDetails('spouse', index)?.income?.annualIncome 
-                                  ? `$${parseFloat(getMemberDetails('spouse', index)?.income?.annualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                {getMemberDetails('spouse', index)?.income?.totalAnnualIncome 
+                                  ? `$${parseFloat(getMemberDetails('spouse', index)?.income?.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                                   : '-'}
                               </p>
                             </div>
