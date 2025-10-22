@@ -1171,7 +1171,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 control={editForm.control}
                 name="countryOfBirth"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem>
                     <FormLabel>Country of Birth</FormLabel>
                     <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
                       <PopoverTrigger asChild>
