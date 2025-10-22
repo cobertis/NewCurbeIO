@@ -654,7 +654,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     : familyMemberSchema;
 
   // Fetch quote members to get member IDs
-  const { data: membersData } = useQuery<{ members: any[] }>({
+  const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
     queryKey: ['/api/quotes', quote?.id, 'members'],
     enabled: !!quote?.id && open,
   });
@@ -720,7 +720,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   });
   
   // Check if we're still loading ANY data - must wait for ALL queries to complete
-  const isLoadingMemberData = membersQuery.isLoading || isLoadingIncome || isLoadingImmigration;
+  const isLoadingMemberData = isLoadingMembers || isLoadingIncome || isLoadingImmigration;
 
   // Use useMemo to prevent unnecessary recalculation and form resets
   const memberData = useMemo(() => {
