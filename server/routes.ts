@@ -45,6 +45,13 @@ import "./types";
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+// Helper function to parse date strings without timezone conversion
+// Converts "2025-11-01" to a Date object preserving the exact date
+function parseDate(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize logging service
   const logger = new LoggingService(storage);
@@ -7845,8 +7852,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         ...req.body,
         companyId: currentUser.companyId,
         createdBy: currentUser.id,
-        effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : undefined,
-        clientDateOfBirth: req.body.clientDateOfBirth ? new Date(req.body.clientDateOfBirth) : undefined,
+        effectiveDate: req.body.effectiveDate ? parseDate(req.body.effectiveDate) : undefined,
+        clientDateOfBirth: req.body.clientDateOfBirth ? parseDate(req.body.clientDateOfBirth) : undefined,
       };
       
       // Validate request body using Zod schema
@@ -8112,10 +8119,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Convert top-level dates
       if (payload.effectiveDate && typeof payload.effectiveDate === 'string') {
-        payload.effectiveDate = new Date(payload.effectiveDate);
+        payload.effectiveDate = parseDate(payload.effectiveDate);
       }
       if (payload.clientDateOfBirth && typeof payload.clientDateOfBirth === 'string') {
-        payload.clientDateOfBirth = new Date(payload.clientDateOfBirth);
+        payload.clientDateOfBirth = parseDate(payload.clientDateOfBirth);
       }
       
       // Convert spouse dateOfBirth in nested array
@@ -8123,7 +8130,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         payload.spouses = payload.spouses.map((spouse: any) => ({
           ...spouse,
           dateOfBirth: spouse.dateOfBirth && typeof spouse.dateOfBirth === 'string' 
-            ? new Date(spouse.dateOfBirth) 
+            ? parseDate(spouse.dateOfBirth) 
             : spouse.dateOfBirth
         }));
       }
@@ -8133,7 +8140,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         payload.dependents = payload.dependents.map((dependent: any) => ({
           ...dependent,
           dateOfBirth: dependent.dateOfBirth && typeof dependent.dateOfBirth === 'string' 
-            ? new Date(dependent.dateOfBirth) 
+            ? parseDate(dependent.dateOfBirth) 
             : dependent.dateOfBirth
         }));
       }

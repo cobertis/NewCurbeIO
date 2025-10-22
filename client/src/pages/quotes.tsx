@@ -551,7 +551,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       const memberKey = `${memberType}-${memberIndex ?? 'primary'}`;
       if (memberKey !== prevMemberRef.current) {
         editForm.reset(memberData);
-        setShowEditSsn(false); // Reset SSN visibility when changing members
         prevMemberRef.current = memberKey;
       }
     }
@@ -580,7 +579,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         clientSecondLastName: data.secondLastName,
         clientEmail: data.email,
         clientPhone: data.phone,
-        clientDateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        clientDateOfBirth: data.dateOfBirth || undefined,
         clientSsn: normalizeSSN(data.ssn),
         clientGender: data.gender,
         clientIsApplicant: data.isApplicant,
@@ -596,7 +595,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       updatedSpouses[memberIndex!] = {
         ...data,
         ssn: normalizeSSN(data.ssn),
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        dateOfBirth: data.dateOfBirth || undefined,
       };
       onSave({ spouses: updatedSpouses });
     } else if (memberType === 'dependent') {
@@ -604,7 +603,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       updatedDependents[memberIndex!] = {
         ...data,
         ssn: normalizeSSN(data.ssn),
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        dateOfBirth: data.dateOfBirth || undefined,
       };
       onSave({ dependents: updatedDependents });
     }
@@ -1849,8 +1848,8 @@ export default function QuotesPage() {
     mutationFn: async (data: any) => {
       return apiRequest("POST", "/api/quotes", {
         ...data,
-        effectiveDate: new Date(data.effectiveDate),
-        clientDateOfBirth: data.clientDateOfBirth ? new Date(data.clientDateOfBirth) : undefined,
+        effectiveDate: data.effectiveDate,
+        clientDateOfBirth: data.clientDateOfBirth || undefined,
         clientSsn: normalizeSSN(data.clientSsn),
         spouses: data.spouses?.map((spouse) => ({
           ...spouse,
