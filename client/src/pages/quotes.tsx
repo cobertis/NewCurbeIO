@@ -2315,7 +2315,8 @@ export default function QuotesPage() {
 
   const deleteMemberMutation = useMutation({
     mutationFn: async (memberId: string) => {
-      return apiRequest("DELETE", `/api/quotes/members/${memberId}`);
+      if (!params?.id) throw new Error("Quote ID not found");
+      return apiRequest("DELETE", `/api/quotes/${params.id}/members/${memberId}`);
     },
     onSuccess: () => {
       // Invalidate all relevant queries
