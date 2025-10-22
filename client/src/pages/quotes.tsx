@@ -4329,15 +4329,17 @@ export default function QuotesPage() {
                           </div>
                         </div>
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-7 w-7 p-0" 
-                        onClick={() => setEditingMember({ type: 'primary' })}
-                        data-testid="button-view-primary"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0" 
+                          onClick={() => setEditingMember({ type: 'primary' })}
+                          data-testid="button-view-primary"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Spouses */}
