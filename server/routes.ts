@@ -35,7 +35,8 @@ import {
   updateQuoteMemberImmigrationSchema,
   insertQuoteMemberDocumentSchema
 } from "@shared/schema";
-import { encrypt, decrypt, maskSSN, maskIncome, maskDocumentNumber } from "./crypto";
+// NOTE: All encryption and masking functions removed per user requirement
+// All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
@@ -320,44 +321,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   }
 
-  // Helper function to mask SSN in quotes
-  // WARNING: NEVER log or return full SSN values - this contains PII (Personally Identifiable Information)
-  // This function masks SSN to show only last 4 digits (e.g., "***-**-1234")
-  function maskQuoteSSN<T extends Record<string, any>>(quote: T): T {
-    if (!quote) return quote;
-    
-    const masked = { ...quote } as any;
-    
-    // Mask client SSN
-    if (masked.clientSsn && typeof masked.clientSsn === 'string') {
-      const last4 = masked.clientSsn.slice(-4);
-      masked.clientSsn = `***-**-${last4}`;
-    }
-    
-    // Mask spouse SSNs
-    if (Array.isArray(masked.spouses)) {
-      masked.spouses = masked.spouses.map((spouse: any) => {
-        if (spouse.ssn && typeof spouse.ssn === 'string') {
-          const last4 = spouse.ssn.slice(-4);
-          return { ...spouse, ssn: `***-**-${last4}` };
-        }
-        return spouse;
-      });
-    }
-    
-    // Mask dependent SSNs
-    if (Array.isArray(masked.dependents)) {
-      masked.dependents = masked.dependents.map((dependent: any) => {
-        if (dependent.ssn && typeof dependent.ssn === 'string') {
-          const last4 = dependent.ssn.slice(-4);
-          return { ...dependent, ssn: `***-**-${last4}` };
-        }
-        return dependent;
-      });
-    }
-    
-    return masked as T;
-  }
+  // NOTE: SSN masking has been REMOVED per user requirement
+  // All SSN fields are returned as plain text exactly as stored in database (e.g., "984-06-5406")
 
   // Middleware to check authentication only
   const requireAuth = async (req: Request, res: Response, next: Function) => {
@@ -7902,10 +7867,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Don't fail the quote creation if notifications fail
       }
       
-      // SECURITY: Mask SSN before returning (PII protection)
-      const maskedQuote = maskQuoteSSN(quote);
-      
-      res.status(201).json({ quote: maskedQuote });
+      // Return quote with plain text SSN (as stored in database)
+      res.status(201).json({ quote });
     } catch (error: any) {
       console.error("Error creating quote:", error);
       res.status(400).json({ message: error.message || "Failed to create quote" });
@@ -7932,19 +7895,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         quotes = await storage.getQuotesByCompany(currentUser.companyId);
       }
       
-      // Allow all authenticated users to reveal PII (multi-tenant security already enforced above)
-      const canRevealPII = req.query.reveal === 'true';
-      
-      // SECURITY: Mask SSN in all quotes before returning (PII protection) unless reveal is authorized
-      const processedQuotes = canRevealPII 
-        ? quotes 
-        : quotes.map(quote => maskQuoteSSN(quote));
-      
-      // Audit log when PII is revealed
-      if (canRevealPII && quotes.length > 0) {
+      // Return quotes with plain text SSN (as stored in database)
+      if (quotes.length > 0) {
         await logger.logAuth({
           req,
-          action: "pii_reveal",
+          action: "view_quotes",
           userId: currentUser.id,
           email: currentUser.email,
           metadata: {
@@ -7955,7 +7910,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       
-      res.json({ quotes: processedQuotes });
+      res.json({ quotes });
     } catch (error: any) {
       console.error("Error fetching quotes:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
@@ -7980,28 +7935,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Allow all authenticated users to reveal PII (multi-tenant security already enforced above)
-      const canRevealPII = req.query.reveal === 'true';
+      // Return quote with plain text SSN (as stored in database)
+      await logger.logAuth({
+        req,
+        action: "view_quote",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote",
+          quoteId: id,
+          fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
+        },
+      });
       
-      // SECURITY: Mask SSN before returning (PII protection) unless reveal is authorized
-      const processedQuote = canRevealPII ? quote : maskQuoteSSN(quote);
-      
-      // Audit log when PII is revealed
-      if (canRevealPII) {
-        await logger.logAuth({
-          req,
-          action: "pii_reveal",
-          userId: currentUser.id,
-          email: currentUser.email,
-          metadata: {
-            entity: "quote",
-            quoteId: id,
-            fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
-          },
-        });
-      }
-      
-      res.json({ quote: processedQuote });
+      res.json({ quote });
     } catch (error: any) {
       console.error("Error fetching quote:", error);
       res.status(500).json({ message: "Failed to fetch quote" });
@@ -8151,9 +8098,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // 4. Update the quote
       const updatedQuote = await storage.updateQuote(id, validatedData);
       
-      // 5. Mask SSN before returning (SECURITY: PII protection)
-      const maskedQuote = maskQuoteSSN(updatedQuote);
-      
       // Log activity (WARNING: Do NOT log the full request body - contains SSN)
       await logger.logCrud({
         req,
@@ -8166,7 +8110,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ quote: maskedQuote });
+      // Return quote with plain text SSN (as stored in database)
+      res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error updating quote:", error);
       // Return validation errors with proper details
@@ -8246,31 +8191,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
       
-      // Check if user is authorized to reveal PII
-      const reveal = req.query.reveal === 'true';
+      // Return members with plain text SSN (as stored in database)
+      await logger.logAuth({
+        req,
+        action: "view_quote_members",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_members",
+          quoteId,
+          fields: ["ssn"],
+        },
+      });
       
-      // Process sensitive fields - mask PII by default, show plain text if reveal=true
-      const processedMembers = members.map(m => ({
-        ...m,
-        ssn: reveal ? m.ssn : maskSSN(m.ssn, false),
-      }));
-      
-      // Audit log when PII is revealed
-      if (reveal) {
-        await logger.logAuth({
-          req,
-          action: "pii_reveal",
-          userId: currentUser.id,
-          email: currentUser.email,
-          metadata: {
-            entity: "quote_members",
-            quoteId,
-            fields: ["ssn"],
-          },
-        });
-      }
-      
-      res.json({ members: processedMembers });
+      res.json({ members });
     } catch (error: any) {
       console.error("Error getting quote members:", error);
       res.status(500).json({ message: "Failed to get quote members" });
@@ -8304,32 +8238,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found in this quote" });
       }
       
-      // Check if user is authorized to reveal PII
-      const reveal = req.query.reveal === 'true';
+      // Return member with plain text SSN (as stored in database)
+      await logger.logAuth({
+        req,
+        action: "view_quote_member",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_member",
+          memberId,
+          quoteId,
+          fields: ["ssn"],
+        },
+      });
       
-      // Process sensitive fields - mask PII by default, show plain text if reveal=true
-      const processedMember = {
-        ...member,
-        ssn: reveal ? member.ssn : maskSSN(member.ssn, false),
-      };
-      
-      // Audit log when PII is revealed
-      if (reveal) {
-        await logger.logAuth({
-          req,
-          action: "pii_reveal",
-          userId: currentUser.id,
-          email: currentUser.email,
-          metadata: {
-            entity: "quote_member",
-            memberId,
-            quoteId,
-            fields: ["ssn"],
-          },
-        });
-      }
-      
-      res.json({ member: processedMember });
+      res.json({ member });
     } catch (error: any) {
       console.error("Error getting quote member:", error);
       res.status(500).json({ message: "Failed to get quote member" });
@@ -8734,33 +8657,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Immigration information not found" });
       }
       
-      // Check if user is authorized to reveal PII
-      const reveal = req.query.reveal === 'true';
+      // Return immigration with plain text document numbers (as stored in database)
+      await logger.logAuth({
+        req,
+        action: "view_immigration",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_member_immigration",
+          memberId,
+          fields: ["visaNumber", "greenCardNumber", "i94Number"],
+        },
+      });
       
-      // Process sensitive fields - mask PII by default, show plain text if reveal=true
-      const processedImmigration = {
-        ...immigration,
-        visaNumber: reveal ? immigration.visaNumber : maskDocumentNumber(immigration.visaNumber, false),
-        greenCardNumber: reveal ? immigration.greenCardNumber : maskDocumentNumber(immigration.greenCardNumber, false),
-        i94Number: reveal ? immigration.i94Number : maskDocumentNumber(immigration.i94Number, false),
-      };
-      
-      // Audit log when PII is revealed
-      if (reveal) {
-        await logger.logAuth({
-          req,
-          action: "pii_reveal",
-          userId: currentUser.id,
-          email: currentUser.email,
-          metadata: {
-            entity: "quote_member_immigration",
-            memberId,
-            fields: ["visaNumber", "greenCardNumber", "i94Number"],
-          },
-        });
-      }
-      
-      res.json({ immigration: processedImmigration });
+      res.json({ immigration });
     } catch (error: any) {
       console.error("Error getting member immigration:", error);
       res.status(500).json({ message: "Failed to get member immigration" });
