@@ -4848,6 +4848,51 @@ export default function QuotesPage() {
               onSave={(data) => addMemberMutation.mutate(data)}
               isPending={addMemberMutation.isPending}
             />
+
+            {/* Delete Member Confirmation Dialog */}
+            <AlertDialog open={!!deletingMember} onOpenChange={(open) => !open && setDeletingMember(null)}>
+              <AlertDialogContent data-testid="dialog-delete-member">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Family Member?</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div>
+                      {deletingMember && (
+                        <>
+                          <p>
+                            Are you sure you want to remove <strong>{deletingMember.name}</strong> ({deletingMember.role}) from this quote?
+                          </p>
+                          <p className="mt-4">This will delete:</p>
+                          <ul className="list-disc list-inside mt-2 space-y-1">
+                            <li>All personal information</li>
+                            <li>Employment and income data</li>
+                            <li>Immigration records</li>
+                            <li>All uploaded documents</li>
+                          </ul>
+                          <p className="mt-4">
+                            <strong className="text-destructive">This action cannot be undone.</strong>
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-delete-member">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (deletingMember) {
+                        deleteMemberMutation.mutate(deletingMember.id);
+                      }
+                    }}
+                    disabled={deleteMemberMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-delete-member"
+                  >
+                    {deleteMemberMutation.isPending ? 'Deleting...' : 'Delete Member'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
       </div>
     );
   }
@@ -6482,51 +6527,6 @@ export default function QuotesPage() {
               data-testid="button-confirm-delete"
             >
               {deleteQuoteMutation.isPending ? 'Deleting...' : 'Delete Permanently'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete Member Confirmation Dialog */}
-      <AlertDialog open={!!deletingMember} onOpenChange={(open) => !open && setDeletingMember(null)}>
-        <AlertDialogContent data-testid="dialog-delete-member">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Family Member?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                {deletingMember && (
-                  <>
-                    <p>
-                      Are you sure you want to remove <strong>{deletingMember.name}</strong> ({deletingMember.role}) from this quote?
-                    </p>
-                    <p className="mt-4">This will delete:</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>All personal information</li>
-                      <li>Employment and income data</li>
-                      <li>Immigration records</li>
-                      <li>All uploaded documents</li>
-                    </ul>
-                    <p className="mt-4">
-                      <strong className="text-destructive">This action cannot be undone.</strong>
-                    </p>
-                  </>
-                )}
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete-member">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deletingMember) {
-                  deleteMemberMutation.mutate(deletingMember.id);
-                }
-              }}
-              disabled={deleteMemberMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-delete-member"
-            >
-              {deleteMemberMutation.isPending ? 'Deleting...' : 'Delete Member'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
