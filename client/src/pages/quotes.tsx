@@ -497,7 +497,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
   // Use useMemo to prevent unnecessary recalculation and form resets
   const memberData = useMemo(() => {
-    if (!quote || !memberType) return null;
+    if (!quote || !memberType || !membersData?.members) return null;
     
     // Get income and immigration data from fetched data
     const income = incomeData?.income || {};
@@ -539,11 +539,26 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       console.log('[MemberData Build] Primary member data built:', data);
       return data;
     } else if (memberType === 'spouse' && memberIndex !== undefined) {
-      const spouse = quote.spouses?.[memberIndex];
+      // Get from normalized members data instead of old quote.spouses array
+      const spouses = membersData.members.filter(m => m.role === 'spouse');
+      const spouse = spouses[memberIndex];
       return spouse ? {
-        ...spouse,
+        firstName: spouse.firstName || '',
+        middleName: spouse.middleName || '',
+        lastName: spouse.lastName || '',
+        secondLastName: spouse.secondLastName || '',
+        email: spouse.email || '',
+        phone: spouse.phone || '',
+        dateOfBirth: formatDateForInput(spouse.dateOfBirth),
         ssn: normalizeSSN(spouse.ssn),
-        dateOfBirth: formatDateForInput(spouse.dateOfBirth as string),
+        gender: spouse.gender || '',
+        isApplicant: spouse.isApplicant ?? false,
+        tobaccoUser: spouse.tobaccoUser ?? false,
+        preferredLanguage: spouse.preferredLanguage || '',
+        countryOfBirth: spouse.countryOfBirth || '',
+        maritalStatus: spouse.maritalStatus || '',
+        weight: spouse.weight || '',
+        height: spouse.height || '',
         // Income fields from API
         employerName: income.employerName || '',
         employerPhone: income.employerPhone || '',
@@ -558,11 +573,27 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         immigrationStatusCategory: immigration.immigrationStatusCategory || '',
       } : null;
     } else if (memberType === 'dependent' && memberIndex !== undefined) {
-      const dependent = quote.dependents?.[memberIndex];
+      // Get from normalized members data instead of old quote.dependents array
+      const dependents = membersData.members.filter(m => m.role === 'dependent');
+      const dependent = dependents[memberIndex];
       return dependent ? {
-        ...dependent,
+        firstName: dependent.firstName || '',
+        middleName: dependent.middleName || '',
+        lastName: dependent.lastName || '',
+        secondLastName: dependent.secondLastName || '',
+        email: dependent.email || '',
+        phone: dependent.phone || '',
+        dateOfBirth: formatDateForInput(dependent.dateOfBirth),
         ssn: normalizeSSN(dependent.ssn),
-        dateOfBirth: formatDateForInput(dependent.dateOfBirth as string),
+        gender: dependent.gender || '',
+        isApplicant: dependent.isApplicant ?? false,
+        tobaccoUser: dependent.tobaccoUser ?? false,
+        preferredLanguage: dependent.preferredLanguage || '',
+        countryOfBirth: dependent.countryOfBirth || '',
+        maritalStatus: dependent.maritalStatus || '',
+        weight: dependent.weight || '',
+        height: dependent.height || '',
+        relation: dependent.relation || '',
         // Income fields from API
         employerName: income.employerName || '',
         employerPhone: income.employerPhone || '',
@@ -578,7 +609,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       } : null;
     }
     return null;
-  }, [quote?.id, memberType, memberIndex, incomeData, immigrationData]); // Include fetched data in dependencies
+  }, [quote?.id, memberType, memberIndex, membersData, incomeData, immigrationData]); // Include fetched data in dependencies
   
   const editForm = useForm({
     resolver: zodResolver(editMemberSchema),
@@ -622,45 +653,78 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     // Close any open popovers
     setCountryPopoverOpen(false);
     
-    // Step 1: Save basic data to JSON columns (legacy model)
-    // Note: dateOfBirth is saved in Step 2 via normalized tables to avoid type conflicts
-    if (memberType === 'primary') {
-      onSave({
-        clientFirstName: data.firstName,
-        clientMiddleName: data.middleName,
-        clientLastName: data.lastName,
-        clientSecondLastName: data.secondLastName,
-        clientEmail: data.email,
-        clientPhone: data.phone,
-        clientSsn: normalizeSSN(data.ssn),
-        clientGender: data.gender,
-        clientIsApplicant: data.isApplicant,
-        clientTobaccoUser: data.tobaccoUser,
-        clientPreferredLanguage: data.preferredLanguage,
-        clientCountryOfBirth: data.countryOfBirth,
-        clientMaritalStatus: data.maritalStatus,
-        clientWeight: data.weight,
-        clientHeight: data.height,
-      });
-    } else if (memberType === 'spouse') {
-      const updatedSpouses = [...(quote.spouses || [])];
-      updatedSpouses[memberIndex!] = {
-        ...data,
-        ssn: normalizeSSN(data.ssn),
-      } as any;
-      onSave({ spouses: updatedSpouses });
-    } else if (memberType === 'dependent') {
-      const updatedDependents = [...(quote.dependents || [])];
-      updatedDependents[memberIndex!] = {
-        ...data,
-        ssn: normalizeSSN(data.ssn),
-      } as any;
-      onSave({ dependents: updatedDependents });
-    }
-    
-    // Step 2: Sync to normalized tables (income, immigration)
+    // Step 1: Save basic data to normalized table quote_members
     try {
-      console.log('[EditMemberSheet] Starting to save normalized data...');
+      console.log('[EditMemberSheet] Starting to save member basic data...');
+      
+      // For primary client, also update quotes table fields
+      if (memberType === 'primary') {
+        onSave({
+          clientFirstName: data.firstName,
+          clientMiddleName: data.middleName,
+          clientLastName: data.lastName,
+          clientSecondLastName: data.secondLastName,
+          clientEmail: data.email,
+          clientPhone: data.phone,
+          clientSsn: normalizeSSN(data.ssn),
+          clientGender: data.gender,
+          clientIsApplicant: data.isApplicant,
+          clientTobaccoUser: data.tobaccoUser,
+          clientPreferredLanguage: data.preferredLanguage,
+          clientCountryOfBirth: data.countryOfBirth,
+          clientMaritalStatus: data.maritalStatus,
+          clientWeight: data.weight,
+          clientHeight: data.height,
+        });
+      }
+      
+      // Update normalized quote_members table for ALL members (including primary)
+      if (currentMemberId) {
+        const memberBasicData: any = {
+          firstName: data.firstName,
+          middleName: data.middleName,
+          lastName: data.lastName,
+          secondLastName: data.secondLastName,
+          email: data.email,
+          phone: data.phone,
+          dateOfBirth: data.dateOfBirth,
+          ssn: normalizeSSN(data.ssn),
+          gender: data.gender,
+          isApplicant: data.isApplicant,
+          tobaccoUser: data.tobaccoUser,
+          preferredLanguage: data.preferredLanguage,
+          countryOfBirth: data.countryOfBirth,
+          maritalStatus: data.maritalStatus,
+          weight: data.weight,
+          height: data.height,
+        };
+        
+        if (memberType === 'dependent') {
+          memberBasicData.relation = (data as any).relation;
+        }
+        
+        const memberResponse = await fetch(`/api/quotes/members/${currentMemberId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(memberBasicData),
+        });
+        
+        if (!memberResponse.ok) {
+          const errorText = await memberResponse.text();
+          console.error('[EditMemberSheet] Failed to update member:', errorText);
+          toast({
+            variant: "destructive",
+            title: "Error Saving Member",
+            description: "Failed to save member data. Please try again.",
+          });
+          return;
+        }
+        
+        console.log('[EditMemberSheet] Member basic data saved successfully');
+      }
+    
+    // Step 2: Sync income and immigration to normalized tables
       
       // Ensure member exists in quote_members table and get memberId
       const ensureResponse = await fetch(`/api/quotes/${quote.id}/ensure-member`, {

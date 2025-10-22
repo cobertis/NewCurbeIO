@@ -8509,6 +8509,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Update member basic data
+  app.put("/api/quotes/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate and prepare update data
+      const updateData = {
+        firstName: req.body.firstName,
+        middleName: req.body.middleName,
+        lastName: req.body.lastName,
+        secondLastName: req.body.secondLastName,
+        email: req.body.email,
+        phone: req.body.phone,
+        dateOfBirth: req.body.dateOfBirth,
+        ssn: req.body.ssn,
+        gender: req.body.gender,
+        isApplicant: req.body.isApplicant,
+        tobaccoUser: req.body.tobaccoUser,
+        preferredLanguage: req.body.preferredLanguage,
+        countryOfBirth: req.body.countryOfBirth,
+        maritalStatus: req.body.maritalStatus,
+        weight: req.body.weight,
+        height: req.body.height,
+        relation: req.body.relation,
+      };
+      
+      // Update member
+      const updatedMember = await storage.updateQuoteMember(memberId, quote.companyId, updateData);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_member",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId: member.quoteId,
+          role: member.role,
+        },
+      });
+      
+      res.json({ member: updatedMember });
+    } catch (error: any) {
+      console.error("Error updating member:", error);
+      res.status(500).json({ message: "Failed to update member" });
+    }
+  });
+
   // ==================== MEMBER INCOME ====================
   
   // Get member income
