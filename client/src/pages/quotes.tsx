@@ -2986,25 +2986,57 @@ export default function QuotesPage() {
                 <FormField
                   control={addMemberForm.control}
                   name="countryOfBirth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country of birth</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-country-of-birth">
-                            <SelectValue placeholder="Select an option" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="usa">United States</SelectItem>
-                          <SelectItem value="mexico">Mexico</SelectItem>
-                          <SelectItem value="canada">Canada</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const [countryOpen, setCountryOpen] = useState(false);
+                    return (
+                      <FormItem>
+                        <FormLabel>Country of birth</FormLabel>
+                        <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className="justify-between font-normal"
+                                data-testid="select-country-of-birth"
+                              >
+                                {field.value || "Select country"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search country..." />
+                              <CommandList>
+                                <CommandEmpty>No country found.</CommandEmpty>
+                                <CommandGroup>
+                                  {COUNTRIES.map((country) => (
+                                    <CommandItem
+                                      key={country}
+                                      value={country}
+                                      onSelect={() => {
+                                        field.onChange(country);
+                                        setCountryOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={`mr-2 h-4 w-4 ${
+                                          field.value === country ? "opacity-100" : "opacity-0"
+                                        }`}
+                                      />
+                                      {country}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 <FormField
                   control={addMemberForm.control}
