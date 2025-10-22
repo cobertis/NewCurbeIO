@@ -402,16 +402,20 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   const { data: incomeData } = useQuery<{ income: any }>({
     queryKey: ['/api/quotes/members', currentMemberId, 'income'],
     queryFn: async () => {
+      console.log('[Income Query] Fetching income for memberId:', currentMemberId);
       const res = await fetch(`/api/quotes/members/${currentMemberId}/income`, {
         credentials: 'include',
       });
       if (res.status === 404) {
+        console.log('[Income Query] No income data found (404) - this is OK');
         return { income: null }; // No income data yet - this is OK
       }
       if (!res.ok) {
         throw new Error('Failed to fetch income data');
       }
-      return res.json();
+      const data = await res.json();
+      console.log('[Income Query] Received income data:', data);
+      return data;
     },
     enabled: !!currentMemberId && open,
   });
@@ -420,16 +424,20 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   const { data: immigrationData } = useQuery<{ immigration: any }>({
     queryKey: ['/api/quotes/members', currentMemberId, 'immigration'],
     queryFn: async () => {
+      console.log('[Immigration Query] Fetching immigration for memberId:', currentMemberId);
       const res = await fetch(`/api/quotes/members/${currentMemberId}/immigration`, {
         credentials: 'include',
       });
       if (res.status === 404) {
+        console.log('[Immigration Query] No immigration data found (404) - this is OK');
         return { immigration: null }; // No immigration data yet - this is OK
       }
       if (!res.ok) {
         throw new Error('Failed to fetch immigration data');
       }
-      return res.json();
+      const data = await res.json();
+      console.log('[Immigration Query] Received immigration data:', data);
+      return data;
     },
     enabled: !!currentMemberId && open,
   });
@@ -442,8 +450,10 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     const income = incomeData?.income || {};
     const immigration = immigrationData?.immigration || {};
     
+    console.log('[MemberData Build] Building memberData for type:', memberType, 'income:', income, 'immigration:', immigration);
+    
     if (memberType === 'primary') {
-      return {
+      const data = {
         firstName: quote.clientFirstName || '',
         middleName: quote.clientMiddleName || '',
         lastName: quote.clientLastName || '',
@@ -473,6 +483,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         uscisNumber: immigration.uscisNumber || '',
         immigrationStatusCategory: immigration.immigrationStatusCategory || '',
       };
+      console.log('[MemberData Build] Primary member data built:', data);
+      return data;
     } else if (memberType === 'spouse' && memberIndex !== undefined) {
       const spouse = quote.spouses?.[memberIndex];
       return spouse ? {
