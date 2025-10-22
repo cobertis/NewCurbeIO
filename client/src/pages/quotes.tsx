@@ -1801,7 +1801,7 @@ export default function QuotesPage() {
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
   const [addingMember, setAddingMember] = useState(false);
-  const [editingAddresses, setEditingAddresses] = useState(false);
+  const [editingAddresses, setEditingAddresses] = useState<'physical' | 'mailing' | 'billing' | null>(null);
   const [editingPayment, setEditingPayment] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState(false);
@@ -2285,7 +2285,7 @@ export default function QuotesPage() {
   ];
 
   // Edit Addresses Sheet Component
-  function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending }: any) {
+  function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending, addressType }: any) {
     const addressSchema = z.object({
       street: z.string().min(1, "Street address is required"),
       addressLine2: z.string().optional(),
@@ -2320,13 +2320,27 @@ export default function QuotesPage() {
       }
     }, [quote]);
 
+    const getTitle = () => {
+      if (addressType === 'physical') return 'Edit Physical Address';
+      if (addressType === 'mailing') return 'Edit Mailing Address';
+      if (addressType === 'billing') return 'Edit Billing Address';
+      return 'Edit Address';
+    };
+
+    const getDescription = () => {
+      if (addressType === 'physical') return 'Update the physical address for this quote';
+      if (addressType === 'mailing') return 'Update the mailing address for this quote';
+      if (addressType === 'billing') return 'Update the billing address for this quote';
+      return 'Update the address for this quote';
+    };
+
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
           <SheetHeader>
-            <SheetTitle>Edit Addresses</SheetTitle>
+            <SheetTitle>{getTitle()}</SheetTitle>
             <SheetDescription>
-              Update the billing and shipping addresses for this quote
+              {getDescription()}
             </SheetDescription>
           </SheetHeader>
           <Form {...addressForm}>
@@ -3943,7 +3957,7 @@ export default function QuotesPage() {
                         variant="ghost" 
                         size="sm" 
                         className="h-8 px-3" 
-                        onClick={() => setEditingAddresses(true)}
+                        onClick={() => setEditingAddresses('physical')}
                         data-testid="button-edit-physical-address"
                       >
                         <MapPin className="h-4 w-4 mr-1" />
@@ -3972,7 +3986,7 @@ export default function QuotesPage() {
                         variant="ghost" 
                         size="sm" 
                         className="h-8 px-3" 
-                        onClick={() => setEditingAddresses(true)}
+                        onClick={() => setEditingAddresses('mailing')}
                         data-testid="button-edit-mailing-address"
                       >
                         <MapPin className="h-4 w-4 mr-1" />
@@ -3994,7 +4008,7 @@ export default function QuotesPage() {
                         variant="ghost" 
                         size="sm" 
                         className="h-8 px-3" 
-                        onClick={() => setEditingAddresses(true)}
+                        onClick={() => setEditingAddresses('billing')}
                         data-testid="button-edit-billing-address"
                       >
                         <MapPin className="h-4 w-4 mr-1" />
@@ -4170,15 +4184,16 @@ export default function QuotesPage() {
             />
 
             <EditAddressesSheet
-              open={editingAddresses}
-              onOpenChange={setEditingAddresses}
+              open={!!editingAddresses}
+              onOpenChange={(open) => !open && setEditingAddresses(null)}
               quote={viewingQuote}
+              addressType={editingAddresses}
               onSave={(data: Partial<Quote>) => {
                 updateQuoteMutation.mutate({
                   quoteId: viewingQuote.id,
                   data
                 }, {
-                  onSuccess: () => setEditingAddresses(false)
+                  onSuccess: () => setEditingAddresses(null)
                 });
               }}
               isPending={updateQuoteMutation.isPending}
