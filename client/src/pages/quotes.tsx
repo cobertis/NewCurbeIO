@@ -1571,7 +1571,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     name="immigrationStatus"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Status <span className="text-destructive">*</span></FormLabel>
+                        <FormLabel>Status <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-immigration-status" className="bg-background">
