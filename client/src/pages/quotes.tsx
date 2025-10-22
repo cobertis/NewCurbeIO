@@ -5145,17 +5145,19 @@ export default function QuotesPage() {
                           name="clientSsn"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>SSN *</FormLabel>
+                              <FormLabel>Social Security *</FormLabel>
                               <FormControl>
                                 <Input 
                                   {...field}
                                   type="text" 
                                   data-testid="input-client-ssn" 
                                   placeholder="XXX-XX-XXXX"
+                                  className="font-mono"
                                   value={formatSSN(field.value || '')}
                                   onChange={(e) => {
                                     const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-                                    field.onChange(digits);
+                                    // Store formatted SSN with dashes (e.g., 984-06-5406)
+                                    field.onChange(formatSSN(digits));
                                   }}
                                   autoComplete="off"
                                 />
@@ -5549,17 +5551,19 @@ export default function QuotesPage() {
                               name={`spouses.${index}.ssn` as any}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>SSN *</FormLabel>
+                                  <FormLabel>Social Security *</FormLabel>
                                   <FormControl>
                                     <Input 
                                       {...field}
                                       type="text" 
                                       data-testid={`input-spouse-ssn-${index}`} 
                                       placeholder="XXX-XX-XXXX"
+                                      className="font-mono"
                                       value={formatSSN(field.value || '')}
                                       onChange={(e) => {
                                         const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-                                        field.onChange(digits);
+                                        // Store formatted SSN with dashes (e.g., 984-06-5406) as plain text
+                                        field.onChange(formatSSN(digits));
                                       }}
                                       autoComplete="off"
                                     />
@@ -5802,17 +5806,19 @@ export default function QuotesPage() {
                               name={`dependents.${index}.ssn`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>SSN *</FormLabel>
+                                  <FormLabel>Social Security *</FormLabel>
                                   <FormControl>
                                     <Input 
                                       {...field}
                                       type="text" 
                                       data-testid={`input-dependent-ssn-${index}`} 
                                       placeholder="XXX-XX-XXXX"
+                                      className="font-mono"
                                       value={formatSSN(field.value || '')}
                                       onChange={(e) => {
                                         const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-                                        field.onChange(digits);
+                                        // Store formatted SSN with dashes (e.g., 984-06-5406) as plain text
+                                        field.onChange(formatSSN(digits));
                                       }}
                                       autoComplete="off"
                                     />
