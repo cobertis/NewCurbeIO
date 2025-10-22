@@ -3664,29 +3664,14 @@ export default function QuotesPage() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-start gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <span>{viewingQuote.street}</span>
-                    </div>
+                  <CardContent className="space-y-1">
+                    <p className="text-sm">{viewingQuote.street}</p>
                     {viewingQuote.addressLine2 && (
-                      <div className="flex items-start gap-2 text-sm pl-6">
-                        <span className="text-muted-foreground">{viewingQuote.addressLine2}</span>
-                      </div>
+                      <p className="text-sm">{viewingQuote.addressLine2}</p>
                     )}
-                    <div className="flex items-start gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <span>{viewingQuote.city}, {viewingQuote.state},</span>
-                    </div>
-                    <div className="flex items-start gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <span>{viewingQuote.postalCode}</span>
-                    </div>
+                    <p className="text-sm">{viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}</p>
                     {viewingQuote.county && (
-                      <div className="flex items-start gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <span>{viewingQuote.county}</span>
-                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">{viewingQuote.county} County</p>
                     )}
                   </CardContent>
                 </Card>
@@ -3721,13 +3706,11 @@ export default function QuotesPage() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="text-sm text-muted-foreground">-</div>
-                    <div className="text-sm text-muted-foreground">-</div>
-                    <div className="flex items-start gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <span>{viewingQuote.postalCode}</span>
-                    </div>
+                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                    <MapPin className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      No address<br />associated with this<br />policy.
+                    </p>
                   </CardContent>
                 </Card>
               </div>
