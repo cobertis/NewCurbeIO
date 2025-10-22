@@ -1020,7 +1020,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 control={editForm.control}
                 name="ssn"
                 render={({ field }) => {
+                  const [isSsnFocused, setIsSsnFocused] = useState(false);
                   const hasSSN = field.value && normalizeSSN(field.value).length >= 4;
+                  
+                  // When focused, show raw digits for easy editing
+                  // When not focused, show formatted (with asterisks or full SSN)
+                  const displayValue = isSsnFocused 
+                    ? normalizeSSN(field.value) 
+                    : displaySSN(field.value, showEditSsn);
                   
                   return (
                     <FormItem>
@@ -1028,14 +1035,18 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                       <div className="relative">
                         <FormControl>
                           <Input
-                            {...field}
                             type="text"
                             onChange={(e) => {
                               // Extract only digits - save WITHOUT formatting
                               const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
                               field.onChange(digits);
                             }}
-                            value={displaySSN(field.value, showEditSsn)}
+                            onFocus={() => setIsSsnFocused(true)}
+                            onBlur={(e) => {
+                              setIsSsnFocused(false);
+                              field.onBlur();
+                            }}
+                            value={displayValue}
                             className={hasSSN ? "pr-10" : ""}
                             autoComplete="off"
                             placeholder="XXX-XX-XXXX"
