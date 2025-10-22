@@ -843,30 +843,13 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     defaultValues: memberData || {},
   });
 
-  const prevOpenRef = useRef(false);
-  const prevMemberRef = useRef<string>('');
-  
-  // Simplified reset logic - only reset on opening transition (false -> true)
-  useEffect(() => {
-    const isOpening = open && !prevOpenRef.current;
-    if (isOpening && memberData) {
-      console.log('[EditMemberSheet] Opening - resetting form with data:', memberData);
-      editForm.reset(memberData);
-    }
-    prevOpenRef.current = open;
-  }, [open, memberData, editForm]); // Depend on memberData so form resets when data arrives
-
-  // Reset form when navigating between members
+  // Reset form whenever memberData changes (including when income/immigration data loads)
   useEffect(() => {
     if (open && memberData) {
-      const memberKey = `${memberType}-${memberIndex ?? 'primary'}`;
-      if (memberKey !== prevMemberRef.current) {
-        console.log('[EditMemberSheet] Navigating to member:', memberKey, 'with data:', memberData);
-        editForm.reset(memberData);
-        prevMemberRef.current = memberKey;
-      }
+      console.log('[EditMemberSheet] Resetting form with complete data:', memberData);
+      editForm.reset(memberData);
     }
-  }, [open, memberType, memberIndex, memberData, editForm])
+  }, [open, memberData, editForm])
 
   const handleSave = async (data: z.infer<typeof editMemberSchema>) => {
     console.log('[EditMemberSheet] handleSave called with data:', data);
