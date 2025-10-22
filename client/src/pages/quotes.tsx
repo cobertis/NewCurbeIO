@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -19,7 +20,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type User as UserType, type Quote } from "@shared/schema";
+import { type User as UserType, type Quote, type QuotePaymentMethod, type InsertPaymentMethod, insertPaymentMethodSchema } from "@shared/schema";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
@@ -2697,6 +2698,7 @@ export default function QuotesPage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState(false);
   const [editingMedicines, setEditingMedicines] = useState(false);
+  const [paymentMethodsSheet, setPaymentMethodsSheet] = useState<{open: boolean; paymentMethodId?: string}>({open: false});
   
   // Delete member dialog state
   const [deletingMember, setDeletingMember] = useState<{ id: string; name: string; role: string } | null>(null);
@@ -3682,6 +3684,562 @@ export default function QuotesPage() {
     );
   }
 
+  // Add/Edit Payment Method Sheet Component
+  // USER REQUIREMENT: All payment data (card numbers, CVV, account numbers, routing numbers) 
+  // must be displayed in PLAIN TEXT with NO masking or encryption
+  function AddPaymentMethodSheet({ open, onOpenChange, quote, paymentMethodId }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    quote: QuoteWithArrays;
+    paymentMethodId?: string;
+  }) {
+    const { toast } = useToast();
+    const [paymentTab, setPaymentTab] = useState<"card" | "bank_account">("card");
+    const currentYear = new Date().getFullYear();
+    
+    // Fetch existing payment method data if editing
+    const { data: paymentMethodData, isLoading: isLoadingPaymentMethod } = useQuery<{ paymentMethod: QuotePaymentMethod }>({
+      queryKey: ['/api/quotes', quote?.id, 'payment-methods', paymentMethodId],
+      enabled: !!paymentMethodId && open,
+    });
+
+    // Create Zod schemas for validation
+    const cardSchema = insertPaymentMethodSchema.extend({
+      paymentType: z.literal('card'),
+      cardNumber: z.string().min(1, "Card number is required").refine((val) => /^\d{13,19}$/.test(val.replace(/\s/g, '')), {
+        message: "Card number must be 13-19 digits"
+      }),
+      cardHolderName: z.string().min(1, "Cardholder name is required"),
+      expirationMonth: z.string().regex(/^(0[1-9]|1[0-2])$/, "Month must be 01-12"),
+      expirationYear: z.string().regex(/^\d{4}$/, "Year must be 4 digits"),
+      cvv: z.string().regex(/^\d{3,4}$/, "CVV must be 3 or 4 digits"),
+      billingZip: z.string().regex(/^\d{5}(-\d{4})?$/, "ZIP must be 5 digits or 5+4 format"),
+    }).omit({
+      bankName: true,
+      accountNumber: true,
+      routingNumber: true,
+      accountHolderName: true,
+      accountType: true,
+    });
+
+    const bankAccountSchema = insertPaymentMethodSchema.extend({
+      paymentType: z.literal('bank_account'),
+      bankName: z.string().min(1, "Bank name is required"),
+      accountNumber: z.string().regex(/^\d{4,17}$/, "Account number must be 4-17 digits"),
+      routingNumber: z.string().regex(/^\d{9}$/, "Routing number must be exactly 9 digits"),
+      accountHolderName: z.string().min(1, "Account holder name is required"),
+      accountType: z.enum(['checking', 'savings'], { required_error: "Account type is required" }),
+    }).omit({
+      cardNumber: true,
+      cardHolderName: true,
+      expirationMonth: true,
+      expirationYear: true,
+      cvv: true,
+      billingZip: true,
+    });
+
+    // Forms for both payment types
+    const cardForm = useForm<z.infer<typeof cardSchema>>({
+      resolver: zodResolver(cardSchema),
+      defaultValues: {
+        companyId: quote?.companyId || '',
+        quoteId: quote?.id || '',
+        paymentType: 'card' as const,
+        cardNumber: '',
+        cardHolderName: '',
+        expirationMonth: '',
+        expirationYear: '',
+        cvv: '',
+        billingZip: '',
+        isDefault: false,
+      },
+    });
+
+    const bankAccountForm = useForm<z.infer<typeof bankAccountSchema>>({
+      resolver: zodResolver(bankAccountSchema),
+      defaultValues: {
+        companyId: quote?.companyId || '',
+        quoteId: quote?.id || '',
+        paymentType: 'bank_account' as const,
+        bankName: '',
+        accountNumber: '',
+        routingNumber: '',
+        accountHolderName: '',
+        accountType: 'checking' as const,
+        isDefault: false,
+      },
+    });
+
+    // Reset forms when payment method data loads
+    useEffect(() => {
+      if (open && paymentMethodData?.paymentMethod) {
+        const pm = paymentMethodData.paymentMethod;
+        if (pm.paymentType === 'card') {
+          setPaymentTab('card');
+          cardForm.reset({
+            companyId: pm.companyId,
+            quoteId: pm.quoteId,
+            paymentType: 'card',
+            // USER REQUIREMENT: Display card data in PLAIN TEXT - no masking
+            cardNumber: pm.cardNumber || '',
+            cardHolderName: pm.cardHolderName || '',
+            expirationMonth: pm.expirationMonth || '',
+            expirationYear: pm.expirationYear || '',
+            cvv: pm.cvv || '',
+            billingZip: pm.billingZip || '',
+            isDefault: pm.isDefault || false,
+          });
+        } else if (pm.paymentType === 'bank_account') {
+          setPaymentTab('bank_account');
+          bankAccountForm.reset({
+            companyId: pm.companyId,
+            quoteId: pm.quoteId,
+            paymentType: 'bank_account',
+            // USER REQUIREMENT: Display bank account data in PLAIN TEXT - no masking
+            bankName: pm.bankName || '',
+            accountNumber: pm.accountNumber || '',
+            routingNumber: pm.routingNumber || '',
+            accountHolderName: pm.accountHolderName || '',
+            accountType: pm.accountType as 'checking' | 'savings',
+            isDefault: pm.isDefault || false,
+          });
+        }
+      }
+    }, [open, paymentMethodData]);
+
+    // Create mutation
+    const createMutation = useMutation({
+      mutationFn: async (data: InsertPaymentMethod) => {
+        return apiRequest(`/api/quotes/${quote.id}/payment-methods`, {
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'payment-methods'] });
+        toast({
+          title: "Payment method added",
+          description: "The payment method has been saved successfully.",
+        });
+        onOpenChange(false);
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to add payment method",
+          variant: "destructive",
+        });
+      },
+    });
+
+    // Update mutation
+    const updateMutation = useMutation({
+      mutationFn: async (data: Partial<InsertPaymentMethod>) => {
+        return apiRequest(`/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'payment-methods'] });
+        toast({
+          title: "Payment method updated",
+          description: "The payment method has been updated successfully.",
+        });
+        onOpenChange(false);
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to update payment method",
+          variant: "destructive",
+        });
+      },
+    });
+
+    const handleSaveCard = async (data: z.infer<typeof cardSchema>) => {
+      if (paymentMethodId) {
+        updateMutation.mutate(data);
+      } else {
+        createMutation.mutate(data);
+      }
+    };
+
+    const handleSaveBankAccount = async (data: z.infer<typeof bankAccountSchema>) => {
+      if (paymentMethodId) {
+        updateMutation.mutate(data);
+      } else {
+        createMutation.mutate(data);
+      }
+    };
+
+    // Show loading state if editing and data hasn't loaded yet (GOLDEN RULE pattern)
+    if (paymentMethodId && (isLoadingPaymentMethod || !paymentMethodData)) {
+      return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetContent className="w-full sm:max-w-2xl flex items-center justify-center" side="right">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg text-muted-foreground">Loading payment method...</p>
+            </div>
+          </SheetContent>
+        </Sheet>
+      );
+    }
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>{paymentMethodId ? 'Edit Payment Method' : 'Add Payment Method'}</SheetTitle>
+            <SheetDescription>
+              {paymentMethodId ? 'Update the payment method details' : 'Add a credit card or bank account for payments'}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="py-6">
+            <Tabs value={paymentTab} onValueChange={(value) => setPaymentTab(value as "card" | "bank_account")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="card">Credit/Debit Card</TabsTrigger>
+                <TabsTrigger value="bank_account">Bank Account</TabsTrigger>
+              </TabsList>
+
+              {/* Credit/Debit Card Form */}
+              <TabsContent value="card" className="space-y-4 mt-4">
+                <Form {...cardForm}>
+                  <form onSubmit={cardForm.handleSubmit(handleSaveCard)} className="space-y-4">
+                    {/* USER REQUIREMENT: Card number in PLAIN TEXT - no masking */}
+                    <FormField
+                      control={cardForm.control}
+                      name="cardNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Card Number</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="text"
+                              placeholder="1234567890123456"
+                              maxLength={19}
+                              data-testid="input-card-number"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={cardForm.control}
+                      name="cardHolderName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cardholder Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="John Doe"
+                              data-testid="input-card-holder-name"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={cardForm.control}
+                        name="expirationMonth"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Expiration Month</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-exp-month">
+                                  <SelectValue placeholder="MM" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map((month) => (
+                                  <SelectItem key={month} value={month}>{month}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={cardForm.control}
+                        name="expirationYear"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Expiration Year</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-exp-year">
+                                  <SelectValue placeholder="YYYY" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Array.from({ length: 10 }, (_, i) => currentYear + i).map((year) => (
+                                  <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* USER REQUIREMENT: CVV in PLAIN TEXT - no masking */}
+                      <FormField
+                        control={cardForm.control}
+                        name="cvv"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CVV</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="text"
+                                placeholder="123"
+                                maxLength={4}
+                                data-testid="input-cvv"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={cardForm.control}
+                        name="billingZip"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Billing ZIP Code</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder="12345"
+                                maxLength={10}
+                                data-testid="input-billing-zip"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={cardForm.control}
+                      name="isDefault"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-set-default"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Set as default payment method</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex gap-2 justify-end pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                        data-testid="button-save-payment-method"
+                      >
+                        {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Payment Method'}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </TabsContent>
+
+              {/* Bank Account Form */}
+              <TabsContent value="bank_account" className="space-y-4 mt-4">
+                <Form {...bankAccountForm}>
+                  <form onSubmit={bankAccountForm.handleSubmit(handleSaveBankAccount)} className="space-y-4">
+                    <FormField
+                      control={bankAccountForm.control}
+                      name="bankName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bank Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="Bank of America"
+                              data-testid="input-bank-name"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* USER REQUIREMENT: Account number in PLAIN TEXT - no masking */}
+                    <FormField
+                      control={bankAccountForm.control}
+                      name="accountNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Account Number</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="text"
+                              placeholder="123456789012"
+                              maxLength={17}
+                              data-testid="input-account-number"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* USER REQUIREMENT: Routing number in PLAIN TEXT - no masking */}
+                    <FormField
+                      control={bankAccountForm.control}
+                      name="routingNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Routing Number</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="text"
+                              placeholder="021000021"
+                              maxLength={9}
+                              data-testid="input-routing-number"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={bankAccountForm.control}
+                      name="accountHolderName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Account Holder Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="John Doe"
+                              data-testid="input-account-holder-name"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={bankAccountForm.control}
+                      name="accountType"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel>Account Type</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex flex-col space-y-1"
+                            >
+                              <FormItem className="flex items-center space-x-3 space-y-0">
+                                <FormControl>
+                                  <RadioGroupItem value="checking" data-testid="radio-checking" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  Checking
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-3 space-y-0">
+                                <FormControl>
+                                  <RadioGroupItem value="savings" data-testid="radio-savings" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  Savings
+                                </FormLabel>
+                              </FormItem>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={bankAccountForm.control}
+                      name="isDefault"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-set-default"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Set as default payment method</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex gap-2 justify-end pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                        data-testid="button-save-payment-method"
+                      >
+                        {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Payment Method'}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   // If viewing a specific quote, show modern dashboard
   if (isViewingQuote) {
     // Show loading state while fetching quotes
@@ -4535,16 +5093,184 @@ export default function QuotesPage() {
               {/* Payment Cards */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle>Payment cards</CardTitle>
-                  <Button size="sm" variant="outline">
+                  <CardTitle>Payment methods</CardTitle>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setPaymentMethodsSheet({open: true})}
+                    data-testid="button-add-payment-method"
+                  >
                     <Plus className="h-4 w-4 mr-1" />
                     Add
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No payment cards on file
-                  </p>
+                  {(() => {
+                    // Fetch payment methods
+                    const { data: paymentMethodsData, isLoading: isLoadingPaymentMethods } = useQuery<{ paymentMethods: QuotePaymentMethod[] }>({
+                      queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'],
+                      enabled: !!viewingQuote.id,
+                    });
+
+                    // Delete mutation
+                    const deleteMutation = useMutation({
+                      mutationFn: async (paymentMethodId: string) => {
+                        return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`, {
+                          method: 'DELETE',
+                        });
+                      },
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
+                        toast({
+                          title: "Payment method deleted",
+                          description: "The payment method has been removed successfully.",
+                        });
+                      },
+                      onError: (error: any) => {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to delete payment method",
+                          variant: "destructive",
+                        });
+                      },
+                    });
+
+                    // Set default mutation
+                    const setDefaultMutation = useMutation({
+                      mutationFn: async (paymentMethodId: string) => {
+                        return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`, {
+                          method: 'POST',
+                        });
+                      },
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
+                        toast({
+                          title: "Default payment method updated",
+                          description: "This payment method is now set as default.",
+                        });
+                      },
+                      onError: (error: any) => {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to set default payment method",
+                          variant: "destructive",
+                        });
+                      },
+                    });
+
+                    // Helper function to get card type from first digit
+                    // USER REQUIREMENT: Card numbers are stored in PLAIN TEXT
+                    const getCardType = (cardNumber: string): string => {
+                      if (!cardNumber) return 'Card';
+                      const firstDigit = cardNumber.charAt(0);
+                      switch (firstDigit) {
+                        case '4': return 'Visa';
+                        case '5': return 'Mastercard';
+                        case '3': return 'Amex';
+                        case '6': return 'Discover';
+                        default: return 'Card';
+                      }
+                    };
+
+                    if (isLoadingPaymentMethods) {
+                      return (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      );
+                    }
+
+                    const paymentMethods = paymentMethodsData?.paymentMethods || [];
+
+                    if (paymentMethods.length === 0) {
+                      return (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          No payment methods on file
+                        </p>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3">
+                        {paymentMethods.map((pm, index) => (
+                          <div 
+                            key={pm.id} 
+                            className="flex items-center justify-between p-3 border rounded-md hover-elevate"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                                <CreditCard className="h-5 w-5 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {pm.paymentType === 'card' ? (
+                                  <>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-semibold text-sm">
+                                        {getCardType(pm.cardNumber || '')} •••• {(pm.cardNumber || '').slice(-4)}
+                                      </p>
+                                      {pm.isDefault && (
+                                        <Badge variant="default" className="text-xs">Default</Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      Expires {pm.expirationMonth}/{pm.expirationYear}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-semibold text-sm">
+                                        {pm.accountType === 'checking' ? 'Checking' : 'Savings'} •••• {(pm.accountNumber || '').slice(-4)}
+                                      </p>
+                                      {pm.isDefault && (
+                                        <Badge variant="default" className="text-xs">Default</Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      {pm.bankName}
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              {!pm.isDefault && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 px-2"
+                                  onClick={() => setDefaultMutation.mutate(pm.id)}
+                                  disabled={setDefaultMutation.isPending}
+                                  data-testid={`button-set-default-${index}`}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-2"
+                                onClick={() => setPaymentMethodsSheet({open: true, paymentMethodId: pm.id})}
+                                data-testid={`button-edit-payment-${index}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-2 text-destructive hover:text-destructive"
+                                onClick={() => deleteMutation.mutate(pm.id)}
+                                disabled={deleteMutation.isPending}
+                                data-testid={`button-delete-payment-${index}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
 
@@ -4734,6 +5460,13 @@ export default function QuotesPage() {
                 });
               }}
               isPending={updateQuoteMutation.isPending}
+            />
+
+            <AddPaymentMethodSheet
+              open={paymentMethodsSheet.open}
+              onOpenChange={(open) => setPaymentMethodsSheet({open})}
+              quote={viewingQuote}
+              paymentMethodId={paymentMethodsSheet.paymentMethodId}
             />
 
             <AddMemberSheet
