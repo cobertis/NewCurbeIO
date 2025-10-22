@@ -4289,6 +4289,72 @@ export default function QuotesPage() {
         }).format(totalHouseholdIncome)
       : '-';
 
+    // Fetch payment methods - moved outside IIFE to follow Rules of Hooks
+    const { data: paymentMethodsData, isLoading: isLoadingPaymentMethods } = useQuery<{ paymentMethods: QuotePaymentMethod[] }>({
+      queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'],
+      enabled: !!viewingQuote.id,
+    });
+
+    // Delete payment method mutation
+    const deletePaymentMethodMutation = useMutation({
+      mutationFn: async (paymentMethodId: string) => {
+        return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`, {
+          method: 'DELETE',
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
+        toast({
+          title: "Payment method deleted",
+          description: "The payment method has been removed successfully.",
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to delete payment method",
+          variant: "destructive",
+        });
+      },
+    });
+
+    // Set default payment method mutation
+    const setDefaultPaymentMethodMutation = useMutation({
+      mutationFn: async (paymentMethodId: string) => {
+        return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`, {
+          method: 'POST',
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
+        toast({
+          title: "Default payment method updated",
+          description: "This payment method is now set as default.",
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to set default payment method",
+          variant: "destructive",
+        });
+      },
+    });
+
+    // Helper function to get card type from first digit
+    // USER REQUIREMENT: Card numbers are stored in PLAIN TEXT
+    const getCardType = (cardNumber: string): string => {
+      if (!cardNumber) return 'Card';
+      const firstDigit = cardNumber.charAt(0);
+      switch (firstDigit) {
+        case '4': return 'Visa';
+        case '5': return 'Mastercard';
+        case '3': return 'Amex';
+        case '6': return 'Discover';
+        default: return 'Card';
+      }
+    };
+
     return (
       <div className="h-full overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full">
@@ -5074,172 +5140,94 @@ export default function QuotesPage() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  {(() => {
-                    // Fetch payment methods
-                    const { data: paymentMethodsData, isLoading: isLoadingPaymentMethods } = useQuery<{ paymentMethods: QuotePaymentMethod[] }>({
-                      queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'],
-                      enabled: !!viewingQuote.id,
-                    });
-
-                    // Delete mutation
-                    const deleteMutation = useMutation({
-                      mutationFn: async (paymentMethodId: string) => {
-                        return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`, {
-                          method: 'DELETE',
-                        });
-                      },
-                      onSuccess: () => {
-                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
-                        toast({
-                          title: "Payment method deleted",
-                          description: "The payment method has been removed successfully.",
-                        });
-                      },
-                      onError: (error: any) => {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to delete payment method",
-                          variant: "destructive",
-                        });
-                      },
-                    });
-
-                    // Set default mutation
-                    const setDefaultMutation = useMutation({
-                      mutationFn: async (paymentMethodId: string) => {
-                        return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`, {
-                          method: 'POST',
-                        });
-                      },
-                      onSuccess: () => {
-                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
-                        toast({
-                          title: "Default payment method updated",
-                          description: "This payment method is now set as default.",
-                        });
-                      },
-                      onError: (error: any) => {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to set default payment method",
-                          variant: "destructive",
-                        });
-                      },
-                    });
-
-                    // Helper function to get card type from first digit
-                    // USER REQUIREMENT: Card numbers are stored in PLAIN TEXT
-                    const getCardType = (cardNumber: string): string => {
-                      if (!cardNumber) return 'Card';
-                      const firstDigit = cardNumber.charAt(0);
-                      switch (firstDigit) {
-                        case '4': return 'Visa';
-                        case '5': return 'Mastercard';
-                        case '3': return 'Amex';
-                        case '6': return 'Discover';
-                        default: return 'Card';
-                      }
-                    };
-
-                    if (isLoadingPaymentMethods) {
-                      return (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        </div>
-                      );
-                    }
-
-                    const paymentMethods = paymentMethodsData?.paymentMethods || [];
-
-                    if (paymentMethods.length === 0) {
-                      return (
-                        <p className="text-sm text-muted-foreground text-center py-8">
-                          No payment methods on file
-                        </p>
-                      );
-                    }
-
-                    return (
-                      <div className="space-y-3">
-                        {paymentMethods.map((pm, index) => (
-                          <div 
-                            key={pm.id} 
-                            className="flex items-center justify-between p-3 border rounded-md hover-elevate"
-                          >
-                            <div className="flex items-center gap-3 flex-1">
-                              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                                <CreditCard className="h-5 w-5 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                {pm.paymentType === 'card' ? (
-                                  <>
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-semibold text-sm">
-                                        {getCardType(pm.cardNumber || '')} •••• {(pm.cardNumber || '').slice(-4)}
-                                      </p>
-                                      {pm.isDefault && (
-                                        <Badge variant="default" className="text-xs">Default</Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      Expires {pm.expirationMonth}/{pm.expirationYear}
-                                    </p>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-semibold text-sm">
-                                        {pm.accountType === 'checking' ? 'Checking' : 'Savings'} •••• {(pm.accountNumber || '').slice(-4)}
-                                      </p>
-                                      {pm.isDefault && (
-                                        <Badge variant="default" className="text-xs">Default</Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      {pm.bankName}
-                                    </p>
-                                  </>
-                                )}
-                              </div>
+                  {isLoadingPaymentMethods ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (paymentMethodsData?.paymentMethods || []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      No payment methods on file
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {(paymentMethodsData?.paymentMethods || []).map((pm, index) => (
+                        <div 
+                          key={pm.id} 
+                          className="flex items-center justify-between p-3 border rounded-md hover-elevate"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                              <CreditCard className="h-5 w-5 text-primary" />
                             </div>
-                            <div className="flex gap-1">
-                              {!pm.isDefault && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 px-2"
-                                  onClick={() => setDefaultMutation.mutate(pm.id)}
-                                  disabled={setDefaultMutation.isPending}
-                                  data-testid={`button-set-default-${index}`}
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
+                            <div className="flex-1 min-w-0">
+                              {pm.paymentType === 'card' ? (
+                                <>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold text-sm">
+                                      {getCardType(pm.cardNumber || '')} •••• {(pm.cardNumber || '').slice(-4)}
+                                    </p>
+                                    {pm.isDefault && (
+                                      <Badge variant="default" className="text-xs">Default</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Expires {pm.expirationMonth}/{pm.expirationYear}
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold text-sm">
+                                      {pm.accountType === 'checking' ? 'Checking' : 'Savings'} •••• {(pm.accountNumber || '').slice(-4)}
+                                    </p>
+                                    {pm.isDefault && (
+                                      <Badge variant="default" className="text-xs">Default</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {pm.bankName}
+                                  </p>
+                                </>
                               )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            {!pm.isDefault && (
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 className="h-8 px-2"
-                                onClick={() => setPaymentMethodsSheet({open: true, paymentMethodId: pm.id})}
-                                data-testid={`button-edit-payment-${index}`}
+                                onClick={() => setDefaultPaymentMethodMutation.mutate(pm.id)}
+                                disabled={setDefaultPaymentMethodMutation.isPending}
+                                data-testid={`button-set-default-${index}`}
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Check className="h-4 w-4" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 px-2 text-destructive hover:text-destructive"
-                                onClick={() => deleteMutation.mutate(pm.id)}
-                                disabled={deleteMutation.isPending}
-                                data-testid={`button-delete-payment-${index}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2"
+                              onClick={() => setPaymentMethodsSheet({open: true, paymentMethodId: pm.id})}
+                              data-testid={`button-edit-payment-${index}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2 text-destructive hover:text-destructive"
+                              onClick={() => deletePaymentMethodMutation.mutate(pm.id)}
+                              disabled={deletePaymentMethodMutation.isPending}
+                              data-testid={`button-delete-payment-${index}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -5261,28 +5249,6 @@ export default function QuotesPage() {
                     placeholder="Add any notes or comments about this quote..."
                     className="min-h-[100px]"
                     data-testid="textarea-notes"
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Primary Doctor Information */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle>Primary Doctor information</CardTitle>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => setEditingDoctor(true)}
-                    data-testid="button-edit-doctor"
-                  >
-                    Edit
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    placeholder="Add primary doctor information..."
-                    className="min-h-[100px]"
-                    data-testid="textarea-doctor"
                   />
                 </CardContent>
               </Card>
