@@ -4338,8 +4338,8 @@ export default function QuotesPage() {
                     </div>
 
                     {/* Spouses */}
-                    {viewingQuote.spouses?.map((spouse, index) => (
-                      <div key={`spouse-${index}`} className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 border-b hover-elevate items-center">
+                    {membersDetailsData?.members?.filter(m => m.role === 'spouse').map((spouse, index) => (
+                      <div key={`spouse-${spouse.id}`} className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 border-b hover-elevate items-center">
                         <Avatar className="h-9 w-9 border-2 border-muted">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
                             {spouse.firstName?.[0]}{spouse.lastName?.[0]}
@@ -4361,12 +4361,12 @@ export default function QuotesPage() {
                             <div>
                               <span className="text-muted-foreground">DOB:</span>
                               <p className="font-medium">
-                                {spouse.dateOfBirth ? formatDateForDisplay(spouse.dateOfBirth as string, "MMM dd, yyyy") : 'N/A'}
+                                {spouse.dateOfBirth ? formatDateForDisplay(spouse.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
                               </p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Age:</span>
-                              <p className="font-medium">{calculateAge(spouse.dateOfBirth as string) || 0} yrs</p>
+                              <p className="font-medium">{calculateAge(spouse.dateOfBirth) || 0} yrs</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Gender:</span>
@@ -4380,13 +4380,13 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium text-xs">{getImmigrationStatusDisplay(getMemberDetails('spouse', index)?.immigration)}</p>
+                              <p className="font-medium text-xs">{getImmigrationStatusDisplay(spouse.immigration)}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Income:</span>
                               <p className="font-medium text-xs">
-                                {getMemberDetails('spouse', index)?.income?.totalAnnualIncome 
-                                  ? `$${parseFloat(getMemberDetails('spouse', index)?.income?.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                {spouse.income?.totalAnnualIncome 
+                                  ? `$${parseFloat(spouse.income.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                                   : '-'}
                               </p>
                             </div>
@@ -4405,8 +4405,8 @@ export default function QuotesPage() {
                     ))}
 
                     {/* Dependents */}
-                    {viewingQuote.dependents?.map((dependent, index) => (
-                      <div key={`dependent-${index}`} className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
+                    {membersDetailsData?.members?.filter(m => m.role === 'dependent').map((dependent, index) => (
+                      <div key={`dependent-${dependent.id}`} className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
                         <Avatar className="h-9 w-9 border-2 border-muted">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
                             {dependent.firstName?.[0]}{dependent.lastName?.[0]}
@@ -4428,12 +4428,12 @@ export default function QuotesPage() {
                             <div>
                               <span className="text-muted-foreground">DOB:</span>
                               <p className="font-medium">
-                                {dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth as string, "MMM dd, yyyy") : 'N/A'}
+                                {dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
                               </p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Age:</span>
-                              <p className="font-medium">{calculateAge(dependent.dateOfBirth as string) || 0} yrs</p>
+                              <p className="font-medium">{calculateAge(dependent.dateOfBirth) || 0} yrs</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Gender:</span>
@@ -4447,13 +4447,13 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium text-xs">{getImmigrationStatusDisplay(getMemberDetails('dependent', index)?.immigration)}</p>
+                              <p className="font-medium text-xs">{getImmigrationStatusDisplay(dependent.immigration)}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Income:</span>
                               <p className="font-medium text-xs">
-                                {getMemberDetails('dependent', index)?.income?.totalAnnualIncome 
-                                  ? `$${parseFloat(getMemberDetails('dependent', index)?.income?.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                {dependent.income?.totalAnnualIncome 
+                                  ? `$${parseFloat(dependent.income.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                                   : '-'}
                               </p>
                             </div>
