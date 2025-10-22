@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Eye, EyeOff, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -253,7 +253,7 @@ const PRODUCT_TYPES = [
     id: "vision",
     name: "Vision",
     description: "Insurance for eye exams, glasses, contact lenses, and more",
-    icon: Eye,
+    icon: Smile,
   },
   {
     id: "supplemental",
@@ -765,59 +765,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     }
   };
 
-  const [showEditSsn, setShowEditSsn] = useState(false);
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
-
-  // Reset SSN visibility when Sheet closes
-  useEffect(() => {
-    if (!open) {
-      setShowEditSsn(false);
-    }
-  }, [open]);
-
-  // Handle revealing SSN - fetch from backend if masked, otherwise toggle visibility
-  const handleRevealSSN = async () => {
-    const currentSSN = editForm.getValues('ssn');
-    const digits = normalizeSSN(currentSSN);
-    const isIncomplete = digits.length < 9; // SSN is masked/incomplete if less than 9 digits
-    
-    if (isIncomplete && !showEditSsn) {
-      // Fetch the full SSN from backend with ?reveal=true
-      try {
-        const response = await fetch(`/api/quotes/${quote.id}?reveal=true`, {
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch revealed data');
-        }
-        
-        const data = await response.json();
-        
-        // Update the SSN in the form with the revealed value (9 digits)
-        if (memberType === 'primary' && data.quote.clientSsn) {
-          const revealedSSN = normalizeSSN(data.quote.clientSsn);
-          console.log('[SSN Reveal] Primary - Setting revealed SSN:', revealedSSN.length, 'digits');
-          editForm.setValue('ssn', revealedSSN);
-        } else if (memberType === 'spouse' && memberIndex !== undefined && data.quote.spouses?.[memberIndex]?.ssn) {
-          const revealedSSN = normalizeSSN(data.quote.spouses[memberIndex].ssn);
-          console.log('[SSN Reveal] Spouse - Setting revealed SSN:', revealedSSN.length, 'digits');
-          editForm.setValue('ssn', revealedSSN);
-        } else if (memberType === 'dependent' && memberIndex !== undefined && data.quote.dependents?.[memberIndex]?.ssn) {
-          const revealedSSN = normalizeSSN(data.quote.dependents[memberIndex].ssn);
-          console.log('[SSN Reveal] Dependent - Setting revealed SSN:', revealedSSN.length, 'digits');
-          editForm.setValue('ssn', revealedSSN);
-        }
-        
-        setShowEditSsn(true);
-      } catch (error) {
-        console.error('[SSN Reveal] Failed to reveal SSN:', error);
-      }
-    } else {
-      // Normal toggle visibility (SSN is already complete)
-      setShowEditSsn(prev => !prev);
-    }
-  };
 
   if (!memberData) return null;
 
@@ -1032,78 +980,27 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               <FormField
                 control={editForm.control}
                 name="ssn"
-                render={({ field }) => {
-                  const [isSsnFocused, setIsSsnFocused] = useState(false);
-                  const hasSSN = field.value && normalizeSSN(field.value).length >= 4;
-                  
-                  // When focused, show raw digits for easy editing
-                  // When not focused, show formatted (with asterisks or full SSN)
-                  const displayValue = isSsnFocused 
-                    ? normalizeSSN(field.value) 
-                    : displaySSN(field.value, showEditSsn);
-                  
-                  return (
-                    <FormItem>
-                      <FormLabel>SSN <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input
-                            type="text"
-                            onChange={(e) => {
-                              // Extract only digits - save WITHOUT formatting
-                              const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-                              field.onChange(digits);
-                            }}
-                            onFocus={async () => {
-                              setIsSsnFocused(true);
-                              // Auto-reveal SSN when focusing on field if it's incomplete
-                              const currentDigits = normalizeSSN(field.value);
-                              if (currentDigits.length < 9 && !showEditSsn) {
-                                await handleRevealSSN();
-                              }
-                            }}
-                            onBlur={(e) => {
-                              setIsSsnFocused(false);
-                              field.onBlur();
-                            }}
-                            value={displayValue}
-                            className={hasSSN ? "pr-10" : ""}
-                            autoComplete="off"
-                            placeholder="XXX-XX-XXXX"
-                            data-testid="input-ssn"
-                          />
-                        </FormControl>
-                        {hasSSN && (
-                          <div
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (!showEditSsn) {
-                                // Reveal SSN
-                                await handleRevealSSN();
-                              } else {
-                                // Hide SSN
-                                setShowEditSsn(false);
-                              }
-                            }}
-                            className="absolute right-0 top-0 h-full flex items-center px-3 cursor-pointer hover:bg-accent/50 rounded-r-md transition-colors"
-                            role="button"
-                            tabIndex={-1}
-                            aria-label={showEditSsn ? "Hide SSN" : "Show SSN"}
-                            data-testid="button-ssn-visibility"
-                          >
-                            {showEditSsn ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Social Security <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        {...field}
+                        onChange={(e) => {
+                          // Extract only digits - save WITHOUT formatting
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                          field.onChange(digits);
+                        }}
+                        value={field.value ? formatSSN(field.value) : ''}
+                        autoComplete="off"
+                        placeholder="XXX-XX-XXXX"
+                        data-testid="input-ssn"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               {/* Phone - Email */}
@@ -1691,12 +1588,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                         <TableRow>
                           <TableCell className="font-medium">Social Security (SSN)</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm">xxx-xx-2044</span>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                              </Button>
-                            </div>
+                            <span className="font-mono text-sm">123-45-2044</span>
                           </TableCell>
                           <TableCell className="text-muted-foreground">-</TableCell>
                           <TableCell className="text-muted-foreground">-</TableCell>
@@ -1787,12 +1679,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                         <TableRow>
                           <TableCell className="font-medium">Passport</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm">xxxxx5920</span>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                              </Button>
-                            </div>
+                            <span className="font-mono text-sm">AB1235920</span>
                           </TableCell>
                           <TableCell className="text-muted-foreground">-</TableCell>
                           <TableCell className="text-muted-foreground">-</TableCell>
@@ -1860,17 +1747,6 @@ export default function QuotesPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showSsn, setShowSsn] = useState(false);
-  const [revealedClientSsn, setRevealedClientSsn] = useState<string | null>(null);
-  
-  // SSN visibility states for wizard
-  const [showClientSsn, setShowClientSsn] = useState(false);
-  const [showSpouseSsn, setShowSpouseSsn] = useState<Record<number, boolean>>({});
-  const [showDependentSsn, setShowDependentSsn] = useState<Record<number, boolean>>({});
-  
-  // SSN visibility states for Family Members list view
-  const [showListSsn, setShowListSsn] = useState<{ primary?: boolean; spouse?: Record<number, boolean>; dependent?: Record<number, boolean> }>({});
-  const [revealedListSsn, setRevealedListSsn] = useState<{ primary?: string; spouse?: Record<number, string>; dependent?: Record<number, string> }>({});
   
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
@@ -1958,12 +1834,6 @@ export default function QuotesPage() {
       form.setValue("agentId", userData.user.id);
     }
   }, [userData?.user?.id, form]);
-
-  // Reset SSN reveal state when changing quotes
-  useEffect(() => {
-    setShowSsn(false);
-    setRevealedClientSsn(null);
-  }, [params?.id]);
 
   const { fields: spouseFields, append: appendSpouse, remove: removeSpouse } = useFieldArray({
     control: form.control,
@@ -3354,125 +3224,6 @@ export default function QuotesPage() {
         }).format(totalHouseholdIncome)
       : '-';
 
-    // Handle revealing SSN in header
-    const handleToggleSsnInHeader = async () => {
-      if (!showSsn && !revealedClientSsn && viewingQuote.clientSsn) {
-        // Need to fetch full SSN from backend
-        try {
-          const response = await fetch(`/api/quotes/${viewingQuote.id}?reveal=true`, {
-            credentials: 'include'
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to fetch revealed SSN');
-          }
-          
-          const data = await response.json();
-          if (data.quote.clientSsn) {
-            setRevealedClientSsn(data.quote.clientSsn);
-            setShowSsn(true);
-          }
-        } catch (error) {
-          console.error('[SSN Header] Failed to reveal SSN:', error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to reveal SSN. Please try again.",
-          });
-        }
-      } else {
-        // Toggle visibility
-        setShowSsn(prev => !prev);
-      }
-    };
-
-    // Handle revealing SSN in Family Members list
-    const handleToggleListSsn = async (memberType: 'primary' | 'spouse' | 'dependent', index?: number) => {
-      const key = memberType === 'primary' ? 'primary' : index !== undefined ? index : 0;
-      
-      // Check if already visible
-      const isCurrentlyVisible = memberType === 'primary' 
-        ? showListSsn.primary 
-        : (memberType === 'spouse' ? showListSsn.spouse?.[key as number] : showListSsn.dependent?.[key as number]);
-      
-      if (isCurrentlyVisible) {
-        // Just toggle off
-        setShowListSsn(prev => {
-          if (memberType === 'primary') {
-            return { ...prev, primary: false };
-          } else if (memberType === 'spouse') {
-            return { ...prev, spouse: { ...prev.spouse, [key]: false } };
-          } else {
-            return { ...prev, dependent: { ...prev.dependent, [key]: false } };
-          }
-        });
-        return;
-      }
-      
-      // Check if we already have the revealed SSN
-      const hasRevealed = memberType === 'primary' 
-        ? revealedListSsn.primary 
-        : (memberType === 'spouse' ? revealedListSsn.spouse?.[key as number] : revealedListSsn.dependent?.[key as number]);
-      
-      if (hasRevealed) {
-        // Just show it
-        setShowListSsn(prev => {
-          if (memberType === 'primary') {
-            return { ...prev, primary: true };
-          } else if (memberType === 'spouse') {
-            return { ...prev, spouse: { ...prev.spouse, [key]: true } };
-          } else {
-            return { ...prev, dependent: { ...prev.dependent, [key]: true } };
-          }
-        });
-        return;
-      }
-      
-      // Need to fetch from backend
-      try {
-        const response = await fetch(`/api/quotes/${viewingQuote.id}?reveal=true`, {
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch revealed SSN');
-        }
-        
-        const data = await response.json();
-        
-        // Store the revealed SSN
-        if (memberType === 'primary' && data.quote.clientSsn) {
-          setRevealedListSsn(prev => ({ ...prev, primary: data.quote.clientSsn }));
-          setShowListSsn(prev => ({ ...prev, primary: true }));
-        } else if (memberType === 'spouse' && data.quote.spouses?.[key as number]?.ssn) {
-          setRevealedListSsn(prev => ({ 
-            ...prev, 
-            spouse: { ...prev.spouse, [key]: data.quote.spouses[key as number].ssn } 
-          }));
-          setShowListSsn(prev => ({ 
-            ...prev, 
-            spouse: { ...prev.spouse, [key]: true } 
-          }));
-        } else if (memberType === 'dependent' && data.quote.dependents?.[key as number]?.ssn) {
-          setRevealedListSsn(prev => ({ 
-            ...prev, 
-            dependent: { ...prev.dependent, [key]: data.quote.dependents[key as number].ssn } 
-          }));
-          setShowListSsn(prev => ({ 
-            ...prev, 
-            dependent: { ...prev.dependent, [key]: true } 
-          }));
-        }
-      } catch (error) {
-        console.error('[SSN List] Failed to reveal SSN:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to reveal SSN. Please try again.",
-        });
-      }
-    };
-
     return (
       <div className="h-full overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full">
@@ -3614,25 +3365,8 @@ export default function QuotesPage() {
                             <span className="text-muted-foreground">|</span>
                             <span className="flex items-center gap-2 font-mono">
                               <IdCard className="h-4 w-4" />
-                              {viewingQuote.clientSsn 
-                                ? (showSsn && revealedClientSsn ? formatSSN(revealedClientSsn) : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
-                                : 'N/A'}
+                              {viewingQuote.clientSsn || 'N/A'}
                             </span>
-                            {viewingQuote.clientSsn && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 -ml-1"
-                                onClick={handleToggleSsnInHeader}
-                                data-testid="button-toggle-ssn-header"
-                              >
-                                {showSsn ? (
-                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <Eye className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </Button>
-                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
@@ -3792,28 +3526,9 @@ export default function QuotesPage() {
                         </div>
                         <div className="flex-1">
                           <label className="text-xs font-medium text-foreground/60">SSN</label>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-sm font-mono">
-                              {viewingQuote.clientSsn 
-                                ? (showSsn ? formatSSN(viewingQuote.clientSsn) : '***-**-' + viewingQuote.clientSsn.slice(-4)) 
-                                : 'N/A'}
-                            </p>
-                            {viewingQuote.clientSsn && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => setShowSsn(!showSsn)}
-                                data-testid="button-toggle-ssn"
-                              >
-                                {showSsn ? (
-                                  <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                                ) : (
-                                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                                )}
-                              </Button>
-                            )}
-                          </div>
+                          <p className="text-sm font-mono mt-0.5">
+                            {viewingQuote.clientSsn || 'N/A'}
+                          </p>
                         </div>
                       </div>
 
@@ -3959,30 +3674,9 @@ export default function QuotesPage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground">SSN:</span>
-                            <div className="flex items-center gap-1">
-                              <p className="font-mono font-medium">
-                                {viewingQuote.clientSsn 
-                                  ? (showListSsn.primary && revealedListSsn.primary 
-                                      ? formatSSN(revealedListSsn.primary) 
-                                      : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
-                                  : 'N/A'}
-                              </p>
-                              {viewingQuote.clientSsn && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-4 w-4 p-0"
-                                  onClick={() => handleToggleListSsn('primary')}
-                                  data-testid="button-toggle-ssn-primary"
-                                >
-                                  {showListSsn.primary ? (
-                                    <EyeOff className="h-3 w-3 text-muted-foreground" />
-                                  ) : (
-                                    <Eye className="h-3 w-3 text-muted-foreground" />
-                                  )}
-                                </Button>
-                              )}
-                            </div>
+                            <p className="font-mono font-medium">
+                              {viewingQuote.clientSsn || 'N/A'}
+                            </p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Immigration:</span>
@@ -4005,7 +3699,7 @@ export default function QuotesPage() {
                         onClick={() => setEditingMember({ type: 'primary' })}
                         data-testid="button-view-primary"
                       >
-                        <Eye className="h-3.5 w-3.5" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
                     </div>
 
@@ -4036,30 +3730,9 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
-                              <div className="flex items-center gap-1">
-                                <p className="font-mono font-medium">
-                                  {spouse.ssn 
-                                    ? (showListSsn.spouse?.[index] && revealedListSsn.spouse?.[index]
-                                        ? formatSSN(revealedListSsn.spouse[index]) 
-                                        : `***-**-${spouse.ssn.slice(-4)}`)
-                                    : 'N/A'}
-                                </p>
-                                {spouse.ssn && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-4 w-4 p-0"
-                                    onClick={() => handleToggleListSsn('spouse', index)}
-                                    data-testid={`button-toggle-ssn-spouse-${index}`}
-                                  >
-                                    {showListSsn.spouse?.[index] ? (
-                                      <EyeOff className="h-3 w-3 text-muted-foreground" />
-                                    ) : (
-                                      <Eye className="h-3 w-3 text-muted-foreground" />
-                                    )}
-                                  </Button>
-                                )}
-                              </div>
+                              <p className="font-mono font-medium">
+                                {spouse.ssn || 'N/A'}
+                              </p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
@@ -4082,7 +3755,7 @@ export default function QuotesPage() {
                           onClick={() => setEditingMember({ type: 'spouse', index })}
                           data-testid={`button-view-spouse-${index}`}
                         >
-                          <Eye className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     ))}
@@ -4114,30 +3787,9 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
-                              <div className="flex items-center gap-1">
-                                <p className="font-mono font-medium">
-                                  {dependent.ssn 
-                                    ? (showListSsn.dependent?.[index] && revealedListSsn.dependent?.[index]
-                                        ? formatSSN(revealedListSsn.dependent[index]) 
-                                        : `***-**-${dependent.ssn.slice(-4)}`)
-                                    : 'N/A'}
-                                </p>
-                                {dependent.ssn && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-4 w-4 p-0"
-                                    onClick={() => handleToggleListSsn('dependent', index)}
-                                    data-testid={`button-toggle-ssn-dependent-${index}`}
-                                  >
-                                    {showListSsn.dependent?.[index] ? (
-                                      <EyeOff className="h-3 w-3 text-muted-foreground" />
-                                    ) : (
-                                      <Eye className="h-3 w-3 text-muted-foreground" />
-                                    )}
-                                  </Button>
-                                )}
-                              </div>
+                              <p className="font-mono font-medium">
+                                {dependent.ssn || 'N/A'}
+                              </p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
@@ -4160,7 +3812,7 @@ export default function QuotesPage() {
                           onClick={() => setEditingMember({ type: 'dependent', index })}
                           data-testid={`button-view-dependent-${index}`}
                         >
-                          <Eye className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     ))}
