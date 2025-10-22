@@ -3776,12 +3776,12 @@ export default function QuotesPage() {
                             <p className="font-medium">{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}, {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Immigration:</span>
-                            <p className="font-medium">-</p>
-                          </div>
-                          <div>
                             <span className="text-muted-foreground">SSN:</span>
                             <p className="font-mono font-medium">{viewingQuote.clientSsn ? `***-**-${viewingQuote.clientSsn.slice(-4)}` : 'N/A'}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Immigration:</span>
+                            <p className="font-medium">-</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Income:</span>
@@ -3826,12 +3826,12 @@ export default function QuotesPage() {
                               <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}, {spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
                             </div>
                             <div>
-                              <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium">-</p>
-                            </div>
-                            <div>
                               <span className="text-muted-foreground">SSN:</span>
                               <p className="font-mono font-medium">{spouse.ssn ? `***-**-${spouse.ssn.slice(-4)}` : 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Immigration:</span>
+                              <p className="font-medium">-</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Income:</span>
@@ -3877,12 +3877,12 @@ export default function QuotesPage() {
                               <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}, {dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
                             </div>
                             <div>
-                              <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium">-</p>
-                            </div>
-                            <div>
                               <span className="text-muted-foreground">SSN:</span>
                               <p className="font-mono font-medium">{dependent.ssn ? `***-**-${dependent.ssn.slice(-4)}` : 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Immigration:</span>
+                              <p className="font-medium">-</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Income:</span>
