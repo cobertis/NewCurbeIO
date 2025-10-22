@@ -1041,7 +1041,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                               const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
                               field.onChange(digits);
                             }}
-                            onFocus={() => setIsSsnFocused(true)}
+                            onFocus={async () => {
+                              setIsSsnFocused(true);
+                              // Auto-reveal SSN when focusing on field if it's incomplete
+                              const currentDigits = normalizeSSN(field.value);
+                              if (currentDigits.length < 9 && !showEditSsn) {
+                                await handleRevealSSN();
+                              }
+                            }}
                             onBlur={(e) => {
                               setIsSsnFocused(false);
                               field.onBlur();
