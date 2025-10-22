@@ -17,39 +17,41 @@ export interface CardTypeInfo {
 /**
  * Card type definitions with BIN patterns, valid lengths, and formatting
  */
+// USA-specific card configurations (2025)
+// All major cards in USA follow these exact specifications
 const CARD_TYPES: Record<CardType, CardTypeInfo> = {
   visa: {
     type: 'visa',
     name: 'Visa',
-    lengths: [13, 16, 19],
+    lengths: [16], // USA: All Visa cards are 16 digits
     cvvLength: 3,
     gaps: [4, 8, 12], // Standard 4-4-4-4 format
   },
   mastercard: {
     type: 'mastercard',
     name: 'Mastercard',
-    lengths: [16],
+    lengths: [16], // USA: All Mastercard cards are 16 digits
     cvvLength: 3,
     gaps: [4, 8, 12], // Standard 4-4-4-4 format
   },
   amex: {
     type: 'amex',
     name: 'American Express',
-    lengths: [15],
-    cvvLength: 4, // Amex uses 4-digit CVV
+    lengths: [15], // USA: All Amex cards are 15 digits
+    cvvLength: 4, // Amex uses 4-digit CVV on front
     gaps: [4, 10], // Amex format: 4-6-5
   },
   discover: {
     type: 'discover',
     name: 'Discover',
-    lengths: [16],
+    lengths: [16], // USA: All Discover cards are 16 digits
     cvvLength: 3,
     gaps: [4, 8, 12], // Standard 4-4-4-4 format
   },
   unknown: {
     type: 'unknown',
     name: 'Unknown',
-    lengths: [13, 14, 15, 16, 17, 18, 19],
+    lengths: [15, 16], // Accept common USA card lengths
     cvvLength: 3,
     gaps: [4, 8, 12],
   },

@@ -4023,8 +4023,8 @@ export default function QuotesPage() {
                             </FormControl>
                             <p className="text-xs text-muted-foreground">
                               {currentCardType === 'amex' ? 
-                                'American Express cards are 15 digits' :
-                                'Most cards are 16 digits'
+                                'American Express: 15 digits' :
+                                'Visa, Mastercard, Discover: 16 digits'
                               }
                             </p>
                             <FormMessage />
