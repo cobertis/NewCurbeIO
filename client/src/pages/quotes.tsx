@@ -2158,6 +2158,46 @@ export default function QuotesPage() {
     return null;
   };
 
+  // Helper function to format immigration status for display
+  const getImmigrationStatusDisplay = (immigration: any) => {
+    if (!immigration) return '-';
+    
+    // If immigration status is "citizen"
+    if (immigration.immigrationStatus === 'citizen') {
+      if (immigration.naturalizationNumber) {
+        return 'U.S. Citizen (Naturalized)';
+      }
+      return 'U.S. Citizen';
+    }
+    
+    // If has green card
+    if (immigration.greenCardNumber) {
+      return 'Permanent Resident';
+    }
+    
+    // If has visa
+    if (immigration.visaType) {
+      return `${immigration.visaType.toUpperCase()} Visa`;
+    }
+    
+    // If has work authorization
+    if (immigration.hasWorkAuthorization && immigration.workAuthorizationType) {
+      return immigration.workAuthorizationType;
+    }
+    
+    // If has immigration status category
+    if (immigration.immigrationStatusCategory) {
+      return immigration.immigrationStatusCategory;
+    }
+    
+    // If has immigration status
+    if (immigration.immigrationStatus) {
+      return immigration.immigrationStatus.charAt(0).toUpperCase() + immigration.immigrationStatus.slice(1);
+    }
+    
+    return '-';
+  };
+
   // Fetch total household income from all family members
   const { data: householdIncomeData } = useQuery({
     queryKey: ['/api/quotes', quoteId, 'household-income'],
@@ -3747,7 +3787,7 @@ export default function QuotesPage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground">Immigration:</span>
-                            <p className="font-medium text-xs">{getMemberDetails('client')?.immigration?.documentType || '-'}</p>
+                            <p className="font-medium text-xs">{getImmigrationStatusDisplay(getMemberDetails('client')?.immigration)}</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Income:</span>
@@ -3803,7 +3843,7 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium text-xs">{getMemberDetails('spouse', index)?.immigration?.documentType || '-'}</p>
+                              <p className="font-medium text-xs">{getImmigrationStatusDisplay(getMemberDetails('spouse', index)?.immigration)}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Income:</span>
@@ -3860,7 +3900,7 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium text-xs">{getMemberDetails('dependent', index)?.immigration?.documentType || '-'}</p>
+                              <p className="font-medium text-xs">{getImmigrationStatusDisplay(getMemberDetails('dependent', index)?.immigration)}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Income:</span>
