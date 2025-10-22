@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { validateCardNumber, validateCVV, validateExpirationDate } from './creditCardUtils';
 
 // =====================================================
 // COMPANIES (Multi-tenant organizations)
@@ -1646,8 +1647,8 @@ export type UpdateQuoteMemberImmigration = z.infer<typeof updateQuoteMemberImmig
 export type QuoteMemberDocument = typeof quoteMemberDocuments.$inferSelect;
 export type InsertQuoteMemberDocument = z.infer<typeof insertQuoteMemberDocumentSchema>;
 
-// Payment Method Schemas with validation
-export const insertPaymentMethodSchema = createInsertSchema(quotePaymentMethods).omit({
+// Payment Method Schemas with comprehensive validation
+const basePaymentMethodSchema = createInsertSchema(quotePaymentMethods).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -1655,38 +1656,79 @@ export const insertPaymentMethodSchema = createInsertSchema(quotePaymentMethods)
   paymentType: z.enum(['card', 'bank_account'], { required_error: "Payment type is required" }),
   
   // Card validation (only when paymentType is 'card')
-  cardNumber: z.string().optional().refine((val) => !val || /^\d{13,19}$/.test(val.replace(/\s/g, '')), {
-    message: "Card number must be 13-19 digits"
-  }),
+  cardNumber: z.string().optional().refine(
+    (val) => {
+      if (!val) return true;
+      const cleaned = val.replace(/\s/g, '');
+      const result = validateCardNumber(cleaned);
+      return result.isValid;
+    },
+    (val) => {
+      if (!val) return { message: "Card number is required" };
+      const cleaned = val.replace(/\s/g, '');
+      const result = validateCardNumber(cleaned);
+      return { message: result.error || "Invalid card number" };
+    }
+  ),
   cardHolderName: z.string().optional(),
-  expirationMonth: z.string().optional().refine((val) => !val || /^(0[1-9]|1[0-2])$/.test(val), {
-    message: "Month must be 01-12"
-  }),
-  expirationYear: z.string().optional().refine((val) => !val || /^\d{4}$/.test(val), {
-    message: "Year must be 4 digits (YYYY)"
-  }),
-  cvv: z.string().optional().refine((val) => !val || /^\d{3,4}$/.test(val), {
-    message: "CVV must be 3 or 4 digits"
-  }),
-  billingZip: z.string().optional().refine((val) => !val || /^\d{5}(-\d{4})?$/.test(val), {
-    message: "ZIP code must be 5 digits or 5+4 format"
-  }),
+  expirationMonth: z.string().optional().refine(
+    (val) => !val || /^(0[1-9]|1[0-2])$/.test(val),
+    { message: "Month must be 01-12" }
+  ),
+  expirationYear: z.string().optional().refine(
+    (val) => !val || /^\d{4}$/.test(val),
+    { message: "Year must be 4 digits (YYYY)" }
+  ),
+  cvv: z.string().optional(),
+  billingZip: z.string().optional().refine(
+    (val) => !val || /^\d{5}(-\d{4})?$/.test(val),
+    { message: "ZIP code must be 5 digits or 5+4 format" }
+  ),
   
   // Bank account validation (only when paymentType is 'bank_account')
   bankName: z.string().optional(),
-  accountNumber: z.string().optional().refine((val) => !val || /^\d{4,17}$/.test(val), {
-    message: "Account number must be 4-17 digits"
-  }),
-  routingNumber: z.string().optional().refine((val) => !val || /^\d{9}$/.test(val), {
-    message: "Routing number must be exactly 9 digits"
-  }),
+  accountNumber: z.string().optional().refine(
+    (val) => !val || /^\d{4,17}$/.test(val),
+    { message: "Account number must be 4-17 digits" }
+  ),
+  routingNumber: z.string().optional().refine(
+    (val) => !val || /^\d{9}$/.test(val),
+    { message: "Routing number must be exactly 9 digits" }
+  ),
   accountHolderName: z.string().optional(),
   accountType: z.enum(['checking', 'savings']).optional(),
   
   isDefault: z.boolean().default(false),
 });
 
-export const updatePaymentMethodSchema = insertPaymentMethodSchema.partial().omit({
+export const insertPaymentMethodSchema = basePaymentMethodSchema.superRefine((data, ctx) => {
+  // Validate expiration date if both month and year are provided
+  if (data.expirationMonth && data.expirationYear) {
+    const expiration = data.expirationMonth + data.expirationYear.slice(2);
+    const result = validateExpirationDate(expiration);
+    if (!result.isValid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: result.error || "Invalid expiration date",
+        path: ['expirationMonth'],
+      });
+    }
+  }
+  
+  // Validate CVV against card number if both are provided
+  if (data.cvv && data.cardNumber) {
+    const result = validateCVV(data.cvv, data.cardNumber);
+    if (!result.isValid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: result.error || "Invalid CVV",
+        path: ['cvv'],
+      });
+    }
+  }
+});
+
+export const updatePaymentMethodSchema = basePaymentMethodSchema.partial().omit({
   companyId: true,
   quoteId: true,
 });
