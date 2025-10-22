@@ -3651,70 +3651,6 @@ export default function QuotesPage() {
                 </CardContent>
               </Card>
 
-              {/* Address Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Physical Address */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-semibold">Physical address</CardTitle>
-                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-physical-address">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1">
-                    <p className="text-sm">{viewingQuote.street}</p>
-                    {viewingQuote.addressLine2 && (
-                      <p className="text-sm">{viewingQuote.addressLine2}</p>
-                    )}
-                    <p className="text-sm">{viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}</p>
-                    {viewingQuote.county && (
-                      <p className="text-xs text-muted-foreground mt-2">{viewingQuote.county} County</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Mailing Address */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-semibold">Mailing address</CardTitle>
-                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-mailing-address">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                    <MapPin className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      No address<br />associated with this<br />policy.
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Billing Address */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-semibold">Billing address</CardTitle>
-                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-billing-address">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                    <MapPin className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      No address<br />associated with this<br />policy.
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
               {/* Additional Policy Details - More Compact */}
               <Card className="bg-accent/5">
                 <CardContent className="p-4">
@@ -3940,6 +3876,70 @@ export default function QuotesPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Address Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Physical Address */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold">Physical address</CardTitle>
+                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-physical-address">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <p className="text-sm">{viewingQuote.street}</p>
+                    {viewingQuote.addressLine2 && (
+                      <p className="text-sm">{viewingQuote.addressLine2}</p>
+                    )}
+                    <p className="text-sm">{viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}</p>
+                    {viewingQuote.county && (
+                      <p className="text-xs text-muted-foreground mt-2">{viewingQuote.county} County</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Mailing Address */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold">Mailing address</CardTitle>
+                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-mailing-address">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                    <MapPin className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      No address<br />associated with this<br />policy.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Billing Address */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold">Billing address</CardTitle>
+                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-billing-address">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                    <MapPin className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      No address<br />associated with this<br />policy.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Payment Information */}
               <Card>
