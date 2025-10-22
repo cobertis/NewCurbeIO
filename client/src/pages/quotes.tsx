@@ -31,6 +31,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow, format, startOfMonth, addMonths, parseISO } from "date-fns";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { useTabsState } from "@/hooks/use-tabs-state";
+import {
+  detectCardType,
+  getCardTypeInfo,
+  formatCardNumber,
+  cleanCardNumber,
+  type CardType
+} from "@shared/creditCardUtils";
 
 // Type definitions for spouse and dependent objects (matching zod schemas in shared/schema.ts)
 type Spouse = {
@@ -3766,6 +3773,7 @@ export default function QuotesPage() {
   }) {
     const { toast } = useToast();
     const [paymentTab, setPaymentTab] = useState<"card" | "bank_account">("card");
+    const [cardType, setCardType] = useState<CardType>('unknown');
     const currentYear = new Date().getFullYear();
     
     // Fetch existing payment method data if editing
@@ -3774,39 +3782,30 @@ export default function QuotesPage() {
       enabled: !!paymentMethodId && open,
     });
 
-    // Create Zod schemas for validation
-    const cardSchema = insertPaymentMethodSchema.extend({
+    // Create Zod schemas for validation (use insertPaymentMethodSchema directly for comprehensive validation)
+    const cardSchema = z.object({
+      companyId: z.string(),
+      quoteId: z.string(),
       paymentType: z.literal('card'),
-      cardNumber: z.string().min(1, "Card number is required").refine((val) => /^\d{13,19}$/.test(val.replace(/\s/g, '')), {
-        message: "Card number must be 13-19 digits"
-      }),
+      cardNumber: z.string().min(1, "Card number is required"),
       cardHolderName: z.string().min(1, "Cardholder name is required"),
       expirationMonth: z.string().regex(/^(0[1-9]|1[0-2])$/, "Month must be 01-12"),
       expirationYear: z.string().regex(/^\d{4}$/, "Year must be 4 digits"),
-      cvv: z.string().regex(/^\d{3,4}$/, "CVV must be 3 or 4 digits"),
+      cvv: z.string().min(1, "CVV is required"),
       billingZip: z.string().regex(/^\d{5}(-\d{4})?$/, "ZIP must be 5 digits or 5+4 format"),
-    }).omit({
-      bankName: true,
-      accountNumber: true,
-      routingNumber: true,
-      accountHolderName: true,
-      accountType: true,
+      isDefault: z.boolean().default(false),
     });
 
-    const bankAccountSchema = insertPaymentMethodSchema.extend({
+    const bankAccountSchema = z.object({
+      companyId: z.string(),
+      quoteId: z.string(),
       paymentType: z.literal('bank_account'),
       bankName: z.string().min(1, "Bank name is required"),
       accountNumber: z.string().regex(/^\d{4,17}$/, "Account number must be 4-17 digits"),
       routingNumber: z.string().regex(/^\d{9}$/, "Routing number must be exactly 9 digits"),
       accountHolderName: z.string().min(1, "Account holder name is required"),
       accountType: z.enum(['checking', 'savings'], { required_error: "Account type is required" }),
-    }).omit({
-      cardNumber: true,
-      cardHolderName: true,
-      expirationMonth: true,
-      expirationYear: true,
-      cvv: true,
-      billingZip: true,
+      isDefault: z.boolean().default(false),
     });
 
     // Forms for both payment types
@@ -3983,21 +3982,55 @@ export default function QuotesPage() {
                     <FormField
                       control={cardForm.control}
                       name="cardNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Card Number</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="text"
-                              placeholder="1234567890123456"
-                              maxLength={19}
-                              data-testid="input-card-number"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      render={({ field }) => {
+                        // Detect card type on every change
+                        const currentCardType = detectCardType(field.value || '');
+                        const cardInfo = getCardTypeInfo(field.value || '');
+                        
+                        return (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              Card Number
+                              {currentCardType !== 'unknown' && (
+                                <Badge variant="outline" className="text-xs">
+                                  {cardInfo.name}
+                                </Badge>
+                              )}
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field}
+                                type="text"
+                                placeholder="1234 5678 9012 3456"
+                                maxLength={23} // Account for spaces in formatted number
+                                data-testid="input-card-number"
+                                onChange={(e) => {
+                                  const cleaned = cleanCardNumber(e.target.value, field.value);
+                                  const formatted = formatCardNumber(cleaned);
+                                  const detectedType = detectCardType(cleaned);
+                                  setCardType(detectedType);
+                                  field.onChange(cleaned); // Store unformatted for validation
+                                  e.target.value = formatted; // Display formatted
+                                }}
+                                onBlur={(e) => {
+                                  const cleaned = cleanCardNumber(e.target.value);
+                                  const formatted = formatCardNumber(cleaned);
+                                  e.target.value = formatted;
+                                  field.onBlur();
+                                }}
+                                value={formatCardNumber(field.value || '')}
+                              />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">
+                              {currentCardType === 'amex' ? 
+                                'American Express cards are 15 digits' :
+                                'Most cards are 16 digits'
+                              }
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
 
                     <FormField
@@ -4071,21 +4104,35 @@ export default function QuotesPage() {
                       <FormField
                         control={cardForm.control}
                         name="cvv"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>CVV</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                type="text"
-                                placeholder="123"
-                                maxLength={4}
-                                data-testid="input-cvv"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const cardNumber = cardForm.watch('cardNumber') || '';
+                          const detectedCardType = detectCardType(cardNumber);
+                          const cardInfo = getCardTypeInfo(cardNumber);
+                          const cvvLength = cardInfo.cvvLength;
+                          
+                          return (
+                            <FormItem>
+                              <FormLabel>CVV</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field}
+                                  type="text"
+                                  placeholder={cvvLength === 4 ? '1234' : '123'}
+                                  maxLength={cvvLength}
+                                  data-testid="input-cvv"
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    field.onChange(value.slice(0, cvvLength));
+                                  }}
+                                />
+                              </FormControl>
+                              <p className="text-xs text-muted-foreground">
+                                {detectedCardType === 'amex' ? '4-digit code on front' : '3-digit code on back'}
+                              </p>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
 
                       <FormField
