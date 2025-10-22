@@ -2087,6 +2087,9 @@ export default function QuotesPage() {
   const [editingDoctor, setEditingDoctor] = useState(false);
   const [editingMedicines, setEditingMedicines] = useState(false);
   
+  // Delete member dialog state
+  const [deletingMember, setDeletingMember] = useState<{ id: string; name: string; role: string } | null>(null);
+  
   // Advanced filters state
   const [filters, setFilters] = useState({
     user: "",
@@ -2306,6 +2309,31 @@ export default function QuotesPage() {
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to delete quote",
+      });
+    },
+  });
+
+  const deleteMemberMutation = useMutation({
+    mutationFn: async (memberId: string) => {
+      return apiRequest("DELETE", `/api/quotes/members/${memberId}`);
+    },
+    onSuccess: () => {
+      // Invalidate all relevant queries
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "members-details"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "household-income"] });
+      }
+      setDeletingMember(null);
+      toast({
+        title: "Member deleted",
+        description: "The family member has been removed from this quote.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete member",
       });
     },
   });
@@ -4462,15 +4490,30 @@ export default function QuotesPage() {
                             </div>
                           </div>
                         </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-7 w-7 p-0" 
-                          onClick={() => setEditingMember({ type: 'spouse', index })}
-                          data-testid={`button-view-spouse-${index}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 w-7 p-0" 
+                            onClick={() => setEditingMember({ type: 'spouse', index })}
+                            data-testid={`button-view-spouse-${index}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
+                            onClick={() => setDeletingMember({ 
+                              id: spouse.id, 
+                              name: `${spouse.firstName} ${spouse.lastName}`,
+                              role: 'Spouse'
+                            })}
+                            data-testid={`button-delete-spouse-${index}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
 
@@ -4529,15 +4572,30 @@ export default function QuotesPage() {
                             </div>
                           </div>
                         </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-7 w-7 p-0" 
-                          onClick={() => setEditingMember({ type: 'dependent', index })}
-                          data-testid={`button-view-dependent-${index}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 w-7 p-0" 
+                            onClick={() => setEditingMember({ type: 'dependent', index })}
+                            data-testid={`button-view-dependent-${index}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
+                            onClick={() => setDeletingMember({ 
+                              id: dependent.id, 
+                              name: `${dependent.firstName} ${dependent.lastName}`,
+                              role: dependent.relation || 'Dependent'
+                            })}
+                            data-testid={`button-delete-dependent-${index}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -6525,6 +6583,51 @@ export default function QuotesPage() {
               data-testid="button-confirm-delete"
             >
               {deleteQuoteMutation.isPending ? 'Deleting...' : 'Delete Permanently'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Member Confirmation Dialog */}
+      <AlertDialog open={!!deletingMember} onOpenChange={(open) => !open && setDeletingMember(null)}>
+        <AlertDialogContent data-testid="dialog-delete-member">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Family Member?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {deletingMember && (
+                  <>
+                    <p>
+                      Are you sure you want to remove <strong>{deletingMember.name}</strong> ({deletingMember.role}) from this quote?
+                    </p>
+                    <p className="mt-4">This will delete:</p>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>All personal information</li>
+                      <li>Employment and income data</li>
+                      <li>Immigration records</li>
+                      <li>All uploaded documents</li>
+                    </ul>
+                    <p className="mt-4">
+                      <strong className="text-destructive">This action cannot be undone.</strong>
+                    </p>
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-member">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingMember) {
+                  deleteMemberMutation.mutate(deletingMember.id);
+                }
+              }}
+              disabled={deleteMemberMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-member"
+            >
+              {deleteMemberMutation.isPending ? 'Deleting...' : 'Delete Member'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
