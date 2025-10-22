@@ -1540,6 +1540,40 @@ export const quoteMemberDocuments = pgTable("quote_member_documents", {
 });
 
 // =====================================================
+// QUOTE PAYMENT METHODS (Credit cards and bank accounts)
+// =====================================================
+
+export const quotePaymentMethods = pgTable("quote_payment_methods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }),
+  
+  // Payment Method Type
+  paymentType: text("payment_type").notNull(), // 'card' or 'bank_account'
+  
+  // Credit/Debit Card Fields (PLAIN TEXT - no encryption per user requirement)
+  cardNumber: text("card_number"), // Full card number in plain text
+  cardHolderName: text("card_holder_name"),
+  expirationMonth: text("expiration_month"), // MM
+  expirationYear: text("expiration_year"), // YYYY
+  cvv: text("cvv"), // CVV in plain text
+  billingZip: text("billing_zip"),
+  
+  // Bank Account Fields (PLAIN TEXT - no encryption per user requirement)
+  bankName: text("bank_name"),
+  accountNumber: text("account_number"), // Account number in plain text
+  routingNumber: text("routing_number"), // Routing number in plain text
+  accountHolderName: text("account_holder_name"),
+  accountType: text("account_type"), // 'checking' or 'savings'
+  
+  // Metadata
+  isDefault: boolean("is_default").default(false), // Mark one as default payment method
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
 // ZOD SCHEMAS FOR NORMALIZED TABLES
 // =====================================================
 
@@ -1611,3 +1645,52 @@ export type UpdateQuoteMemberImmigration = z.infer<typeof updateQuoteMemberImmig
 
 export type QuoteMemberDocument = typeof quoteMemberDocuments.$inferSelect;
 export type InsertQuoteMemberDocument = z.infer<typeof insertQuoteMemberDocumentSchema>;
+
+// Payment Method Schemas with validation
+export const insertPaymentMethodSchema = createInsertSchema(quotePaymentMethods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  paymentType: z.enum(['card', 'bank_account'], { required_error: "Payment type is required" }),
+  
+  // Card validation (only when paymentType is 'card')
+  cardNumber: z.string().optional().refine((val) => !val || /^\d{13,19}$/.test(val.replace(/\s/g, '')), {
+    message: "Card number must be 13-19 digits"
+  }),
+  cardHolderName: z.string().optional(),
+  expirationMonth: z.string().optional().refine((val) => !val || /^(0[1-9]|1[0-2])$/.test(val), {
+    message: "Month must be 01-12"
+  }),
+  expirationYear: z.string().optional().refine((val) => !val || /^\d{4}$/.test(val), {
+    message: "Year must be 4 digits (YYYY)"
+  }),
+  cvv: z.string().optional().refine((val) => !val || /^\d{3,4}$/.test(val), {
+    message: "CVV must be 3 or 4 digits"
+  }),
+  billingZip: z.string().optional().refine((val) => !val || /^\d{5}(-\d{4})?$/.test(val), {
+    message: "ZIP code must be 5 digits or 5+4 format"
+  }),
+  
+  // Bank account validation (only when paymentType is 'bank_account')
+  bankName: z.string().optional(),
+  accountNumber: z.string().optional().refine((val) => !val || /^\d{4,17}$/.test(val), {
+    message: "Account number must be 4-17 digits"
+  }),
+  routingNumber: z.string().optional().refine((val) => !val || /^\d{9}$/.test(val), {
+    message: "Routing number must be exactly 9 digits"
+  }),
+  accountHolderName: z.string().optional(),
+  accountType: z.enum(['checking', 'savings']).optional(),
+  
+  isDefault: z.boolean().default(false),
+});
+
+export const updatePaymentMethodSchema = insertPaymentMethodSchema.partial().omit({
+  companyId: true,
+  quoteId: true,
+});
+
+export type QuotePaymentMethod = typeof quotePaymentMethods.$inferSelect;
+export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;
+export type UpdatePaymentMethod = z.infer<typeof updatePaymentMethodSchema>;
