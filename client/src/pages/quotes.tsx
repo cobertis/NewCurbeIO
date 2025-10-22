@@ -3129,7 +3129,13 @@ export default function QuotesPage() {
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="+1(999)999-9999" data-testid="input-phone" />
+                      <Input 
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                        placeholder="(999) 999-9999" 
+                        data-testid="input-phone" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
