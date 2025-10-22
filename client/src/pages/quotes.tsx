@@ -4158,11 +4158,8 @@ export default function QuotesPage() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                    <MapPin className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      No address<br />associated with this<br />policy.
-                    </p>
+                  <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                    <MapPin className="h-10 w-10 text-muted-foreground/40" />
                   </CardContent>
                 </Card>
 
@@ -4183,11 +4180,8 @@ export default function QuotesPage() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                    <MapPin className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      No address<br />associated with this<br />policy.
-                    </p>
+                  <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                    <MapPin className="h-10 w-10 text-muted-foreground/40" />
                   </CardContent>
                 </Card>
               </div>
