@@ -5287,28 +5287,6 @@ export default function QuotesPage() {
                 </CardContent>
               </Card>
 
-              {/* Medicines Needed */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle>Medicines needed</CardTitle>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => setEditingMedicines(true)}
-                    data-testid="button-edit-medicines"
-                  >
-                    Edit
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    placeholder="List any medicines needed..."
-                    className="min-h-[100px]"
-                    data-testid="textarea-medicines"
-                  />
-                </CardContent>
-              </Card>
-
               {/* Other Policies */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
