@@ -3459,6 +3459,11 @@ export default function QuotesPage() {
                           </div>
                           <div className="flex items-center gap-4 flex-wrap">
                             <span className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
+                            </span>
+                            <span className="text-muted-foreground">|</span>
+                            <span className="flex items-center gap-2">
                               <Calendar className="h-4 w-4" />
                               {viewingQuote.clientDateOfBirth ? (
                                 <>
