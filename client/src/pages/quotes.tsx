@@ -543,7 +543,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       return spouse ? {
         ...spouse,
         ssn: normalizeSSN(spouse.ssn),
-        dateOfBirth: formatDateForInput(spouse.dateOfBirth),
+        dateOfBirth: formatDateForInput(spouse.dateOfBirth as string),
         // Income fields from API
         employerName: income.employerName || '',
         employerPhone: income.employerPhone || '',
@@ -562,7 +562,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       return dependent ? {
         ...dependent,
         ssn: normalizeSSN(dependent.ssn),
-        dateOfBirth: formatDateForInput(dependent.dateOfBirth),
+        dateOfBirth: formatDateForInput(dependent.dateOfBirth as string),
         // Income fields from API
         employerName: income.employerName || '',
         employerPhone: income.employerPhone || '',
@@ -2230,10 +2230,10 @@ export default function QuotesPage() {
     const matchesProduct = filters.productType === "all" || quote.productType === filters.productType;
     
     // State filter
-    const matchesState = !filters.state || quote.state === filters.state;
+    const matchesState = !filters.state || quote.physical_state === filters.state;
     
     // Zip code filter
-    const matchesZipCode = !filters.zipCode || quote.postalCode.includes(filters.zipCode);
+    const matchesZipCode = !filters.zipCode || quote.physical_postal_code.includes(filters.zipCode);
     
     // Assigned to filter (agentId)
     const matchesAssignedTo = !filters.assignedTo || quote.agentId === filters.assignedTo;
@@ -3433,7 +3433,7 @@ export default function QuotesPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Location</span>
-                  <span className="text-xs">{viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}</span>
+                  <span className="text-xs">{viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Total annual income</span>
@@ -3520,7 +3520,7 @@ export default function QuotesPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
-                            {viewingQuote.street}, {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
+                            {viewingQuote.physical_street}, {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
                           </div>
                         </div>
                       </div>
@@ -3701,8 +3701,8 @@ export default function QuotesPage() {
                         <div className="flex-1">
                           <label className="text-xs font-medium text-foreground/60">Street Address</label>
                           <p className="text-sm mt-0.5">
-                            {viewingQuote.street}
-                            {viewingQuote.addressLine2 && <span>, {viewingQuote.addressLine2}</span>}
+                            {viewingQuote.physical_street}
+                            {viewingQuote.physical_address_line_2 && <span>, {viewingQuote.physical_address_line_2}</span>}
                           </p>
                         </div>
                       </div>
@@ -3714,9 +3714,9 @@ export default function QuotesPage() {
                         <div className="flex-1">
                           <label className="text-xs font-medium text-foreground/60">Location</label>
                           <p className="text-sm mt-0.5">
-                            {viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}
-                            {viewingQuote.county && (
-                              <span className="block text-xs text-foreground/60 mt-0.5">{viewingQuote.county} County</span>
+                            {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                            {viewingQuote.physical_county && (
+                              <span className="block text-xs text-foreground/60 mt-0.5">{viewingQuote.physical_county} County</span>
                             )}
                           </p>
                         </div>
@@ -3887,12 +3887,12 @@ export default function QuotesPage() {
                             <div>
                               <span className="text-muted-foreground">DOB:</span>
                               <p className="font-medium">
-                                {spouse.dateOfBirth ? formatDateForDisplay(spouse.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                                {spouse.dateOfBirth ? formatDateForDisplay(spouse.dateOfBirth as string, "MMM dd, yyyy") : 'N/A'}
                               </p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Age:</span>
-                              <p className="font-medium">{calculateAge(spouse.dateOfBirth) || 0} yrs</p>
+                              <p className="font-medium">{calculateAge(spouse.dateOfBirth as string) || 0} yrs</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Gender:</span>
@@ -3954,12 +3954,12 @@ export default function QuotesPage() {
                             <div>
                               <span className="text-muted-foreground">DOB:</span>
                               <p className="font-medium">
-                                {dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                                {dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth as string, "MMM dd, yyyy") : 'N/A'}
                               </p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Age:</span>
-                              <p className="font-medium">{calculateAge(dependent.dateOfBirth) || 0} yrs</p>
+                              <p className="font-medium">{calculateAge(dependent.dateOfBirth as string) || 0} yrs</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Gender:</span>
@@ -4020,13 +4020,13 @@ export default function QuotesPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-1">
-                    <p className="text-sm">{viewingQuote.street}</p>
-                    {viewingQuote.addressLine2 && (
-                      <p className="text-sm">{viewingQuote.addressLine2}</p>
+                    <p className="text-sm">{viewingQuote.physical_street}</p>
+                    {viewingQuote.physical_address_line_2 && (
+                      <p className="text-sm">{viewingQuote.physical_address_line_2}</p>
                     )}
-                    <p className="text-sm">{viewingQuote.city}, {viewingQuote.state} {viewingQuote.postalCode}</p>
-                    {viewingQuote.county && (
-                      <p className="text-xs text-muted-foreground mt-2">{viewingQuote.county} County</p>
+                    <p className="text-sm">{viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}</p>
+                    {viewingQuote.physical_county && (
+                      <p className="text-xs text-muted-foreground mt-2">{viewingQuote.physical_county} County</p>
                     )}
                   </CardContent>
                 </Card>
@@ -4048,8 +4048,23 @@ export default function QuotesPage() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                    <MapPin className="h-10 w-10 text-muted-foreground/40" />
+                  <CardContent>
+                    {viewingQuote.mailing_street ? (
+                      <div className="space-y-1">
+                        <p className="text-sm">{viewingQuote.mailing_street}</p>
+                        {viewingQuote.mailing_address_line_2 && (
+                          <p className="text-sm">{viewingQuote.mailing_address_line_2}</p>
+                        )}
+                        <p className="text-sm">{viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}</p>
+                        {viewingQuote.mailing_county && (
+                          <p className="text-xs text-muted-foreground mt-2">{viewingQuote.mailing_county} County</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <MapPin className="h-10 w-10 text-muted-foreground/40" />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -4070,8 +4085,23 @@ export default function QuotesPage() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                    <MapPin className="h-10 w-10 text-muted-foreground/40" />
+                  <CardContent>
+                    {viewingQuote.billing_street ? (
+                      <div className="space-y-1">
+                        <p className="text-sm">{viewingQuote.billing_street}</p>
+                        {viewingQuote.billing_address_line_2 && (
+                          <p className="text-sm">{viewingQuote.billing_address_line_2}</p>
+                        )}
+                        <p className="text-sm">{viewingQuote.billing_city}, {viewingQuote.billing_state} {viewingQuote.billing_postal_code}</p>
+                        {viewingQuote.billing_county && (
+                          <p className="text-xs text-muted-foreground mt-2">{viewingQuote.billing_county} County</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <MapPin className="h-10 w-10 text-muted-foreground/40" />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -4239,7 +4269,7 @@ export default function QuotesPage() {
 
             <EditAddressesSheet
               open={!!editingAddresses}
-              onOpenChange={(open) => !open && setEditingAddresses(null)}
+              onOpenChange={(open: boolean) => !open && setEditingAddresses(null)}
               quote={viewingQuote}
               addressType={editingAddresses}
               onSave={(data: Partial<Quote>) => {
@@ -4683,7 +4713,7 @@ export default function QuotesPage() {
                                   </span>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {quote.city}, {quote.state} {quote.postalCode}
+                                  {quote.physical_city}, {quote.physical_state} {quote.physical_postal_code}
                                 </div>
                               </div>
                             </TableCell>
