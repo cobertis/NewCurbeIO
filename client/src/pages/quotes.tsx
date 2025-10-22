@@ -5059,37 +5059,6 @@ export default function QuotesPage() {
                 </Card>
               </div>
 
-              {/* Payment Information */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle>Payment information</CardTitle>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => setEditingPayment(true)}
-                    data-testid="button-edit-payment"
-                  >
-                    Edit
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-6">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Recurrent payment</p>
-                      <p className="text-sm font-medium">Yes</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">First payment date</p>
-                      <p className="text-sm">{formatDateForDisplay(viewingQuote.effectiveDate, "MMM dd, yyyy")}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Preferred payment day</p>
-                      <p className="text-sm">1</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Payment Cards */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
