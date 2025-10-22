@@ -3752,7 +3752,7 @@ export default function QuotesPage() {
               </Card>
               </div>
 
-              {/* Family Members Section - Compact Table */}
+              {/* Family Members Section - Horizontal Layout */}
               <Card className="bg-accent/5">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <div>
@@ -3788,193 +3788,153 @@ export default function QuotesPage() {
                 <CardContent className="p-0">
                   <div className="border-t">
                     {/* Primary Applicant */}
-                    <div className="flex items-start gap-3 p-4 bg-primary/5 border-b hover-elevate">
-                      <Avatar className="h-10 w-10 border-2 border-primary/20 mt-1">
-                        <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
+                    <div className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 bg-primary/5 border-b hover-elevate items-center">
+                      <Avatar className="h-9 w-9 border-2 border-primary/20">
+                        <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-xs">
                           {viewingQuote.clientFirstName?.[0]}{viewingQuote.clientLastName?.[0]}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-semibold text-sm">
-                              {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
-                            </p>
-                            <div className="flex gap-1 mt-1">
-                              <Badge variant="default" className="text-xs h-4 px-1.5">Self</Badge>
-                              {viewingQuote.clientIsApplicant && (
-                                <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
-                              )}
-                            </div>
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-7 w-7 p-0" 
-                            onClick={() => setEditingMember({ type: 'primary' })}
-                            data-testid="button-view-primary"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        
-                        <div className="mt-3 space-y-1.5 text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground w-24">Gender/Age:</span>
-                            <span>{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}, {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} years</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground w-24">Immigration:</span>
-                            <span>-</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground w-24">SSN:</span>
-                            <span className="font-mono">{viewingQuote.clientSsn ? `***-**-${viewingQuote.clientSsn.slice(-4)}` : 'N/A'}</span>
-                            {viewingQuote.clientSsn && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-5 w-5 p-0"
-                                onClick={() => setShowSsn(!showSsn)}
-                                data-testid="button-toggle-ssn-primary"
-                              >
-                                {showSsn ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                              </Button>
+                      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
+                        <div>
+                          <p className="font-semibold text-sm truncate">
+                            {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
+                          </p>
+                          <div className="flex gap-1 mt-0.5 flex-wrap">
+                            <Badge variant="default" className="text-xs h-4 px-1.5">Self</Badge>
+                            {viewingQuote.clientIsApplicant && (
+                              <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground w-24">Income:</span>
-                            <span>-</span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                          <div>
+                            <span className="text-muted-foreground">Gender/Age:</span>
+                            <p className="font-medium">{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}, {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Immigration:</span>
+                            <p className="font-medium">-</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">SSN:</span>
+                            <p className="font-mono font-medium">{viewingQuote.clientSsn ? `***-**-${viewingQuote.clientSsn.slice(-4)}` : 'N/A'}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Income:</span>
+                            <p className="font-medium">-</p>
                           </div>
                         </div>
                       </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-7 w-7 p-0" 
+                        onClick={() => setEditingMember({ type: 'primary' })}
+                        data-testid="button-view-primary"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
 
                     {/* Spouses */}
                     {viewingQuote.spouses?.map((spouse, index) => (
-                      <div key={`spouse-${index}`} className="flex items-start gap-3 p-4 border-b hover-elevate">
-                        <Avatar className="h-10 w-10 border-2 border-muted mt-1">
-                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-sm">
+                      <div key={`spouse-${index}`} className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 border-b hover-elevate items-center">
+                        <Avatar className="h-9 w-9 border-2 border-muted">
+                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
                             {spouse.firstName?.[0]}{spouse.lastName?.[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="font-semibold text-sm">
-                                {spouse.firstName} {spouse.lastName}
-                              </p>
-                              <div className="flex gap-1 mt-1">
-                                <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
-                                {spouse.isApplicant && (
-                                  <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
-                                )}
-                              </div>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-7 w-7 p-0" 
-                              onClick={() => setEditingMember({ type: 'spouse', index })}
-                              data-testid={`button-view-spouse-${index}`}
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                          
-                          <div className="mt-3 space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground w-24">Gender/Age:</span>
-                              <span>{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}, {spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} years</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground w-24">Immigration:</span>
-                              <span>-</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground w-24">SSN:</span>
-                              <span className="font-mono">{spouse.ssn ? `***-**-${spouse.ssn.slice(-4)}` : 'N/A'}</span>
-                              {spouse.ssn && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-5 w-5 p-0"
-                                  data-testid={`button-toggle-ssn-spouse-${index}`}
-                                >
-                                  <Eye className="h-3 w-3" />
-                                </Button>
+                        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
+                          <div>
+                            <p className="font-semibold text-sm truncate">
+                              {spouse.firstName} {spouse.lastName}
+                            </p>
+                            <div className="flex gap-1 mt-0.5 flex-wrap">
+                              <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
+                              {spouse.isApplicant && (
+                                <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground w-24">Income:</span>
-                              <span>-</span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Gender/Age:</span>
+                              <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}, {spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Immigration:</span>
+                              <p className="font-medium">-</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">SSN:</span>
+                              <p className="font-mono font-medium">{spouse.ssn ? `***-**-${spouse.ssn.slice(-4)}` : 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Income:</span>
+                              <p className="font-medium">-</p>
                             </div>
                           </div>
                         </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0" 
+                          onClick={() => setEditingMember({ type: 'spouse', index })}
+                          data-testid={`button-view-spouse-${index}`}
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     ))}
 
                     {/* Dependents */}
                     {viewingQuote.dependents?.map((dependent, index) => (
-                      <div key={`dependent-${index}`} className="flex items-start gap-3 p-4 border-b last:border-b-0 hover-elevate">
-                        <Avatar className="h-10 w-10 border-2 border-muted mt-1">
-                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-sm">
+                      <div key={`dependent-${index}`} className="grid grid-cols-[auto_1fr_auto] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
+                        <Avatar className="h-9 w-9 border-2 border-muted">
+                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
                             {dependent.firstName?.[0]}{dependent.lastName?.[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="font-semibold text-sm">
-                                {dependent.firstName} {dependent.lastName}
-                              </p>
-                              <div className="flex gap-1 mt-1">
-                                <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
-                                {dependent.isApplicant && (
-                                  <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
-                                )}
-                              </div>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-7 w-7 p-0" 
-                              onClick={() => setEditingMember({ type: 'dependent', index })}
-                              data-testid={`button-view-dependent-${index}`}
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                          
-                          <div className="mt-3 space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground w-24">Gender/Age:</span>
-                              <span>{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}, {dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} years</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground w-24">Immigration:</span>
-                              <span>-</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground w-24">SSN:</span>
-                              <span className="font-mono">{dependent.ssn ? `***-**-${dependent.ssn.slice(-4)}` : 'N/A'}</span>
-                              {dependent.ssn && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-5 w-5 p-0"
-                                  data-testid={`button-toggle-ssn-dependent-${index}`}
-                                >
-                                  <Eye className="h-3 w-3" />
-                                </Button>
+                        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
+                          <div>
+                            <p className="font-semibold text-sm truncate">
+                              {dependent.firstName} {dependent.lastName}
+                            </p>
+                            <div className="flex gap-1 mt-0.5 flex-wrap">
+                              <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
+                              {dependent.isApplicant && (
+                                <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground w-24">Income:</span>
-                              <span>-</span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Gender/Age:</span>
+                              <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}, {dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Immigration:</span>
+                              <p className="font-medium">-</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">SSN:</span>
+                              <p className="font-mono font-medium">{dependent.ssn ? `***-**-${dependent.ssn.slice(-4)}` : 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Income:</span>
+                              <p className="font-medium">-</p>
                             </div>
                           </div>
                         </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0" 
+                          onClick={() => setEditingMember({ type: 'dependent', index })}
+                          data-testid={`button-view-dependent-${index}`}
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     ))}
                   </div>
