@@ -81,7 +81,10 @@ import {
   type InsertQuoteMemberImmigration,
   type UpdateQuoteMemberImmigration,
   type QuoteMemberDocument,
-  type InsertQuoteMemberDocument
+  type InsertQuoteMemberDocument,
+  type QuotePaymentMethod,
+  type InsertPaymentMethod,
+  type UpdatePaymentMethod
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -124,7 +127,8 @@ import {
   quoteMembers,
   quoteMemberIncome,
   quoteMemberImmigration,
-  quoteMemberDocuments
+  quoteMemberDocuments,
+  quotePaymentMethods
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -456,6 +460,14 @@ export interface IStorage {
   getQuoteMemberDocumentById(documentId: string, companyId: string): Promise<QuoteMemberDocument | null>;
   createQuoteMemberDocument(data: InsertQuoteMemberDocument): Promise<QuoteMemberDocument>;
   deleteQuoteMemberDocument(documentId: string, companyId: string): Promise<boolean>;
+  
+  // Quote Payment Methods
+  getQuotePaymentMethods(quoteId: string, companyId: string): Promise<QuotePaymentMethod[]>;
+  getQuotePaymentMethodById(paymentMethodId: string, companyId: string): Promise<QuotePaymentMethod | null>;
+  createQuotePaymentMethod(data: InsertPaymentMethod): Promise<QuotePaymentMethod>;
+  updateQuotePaymentMethod(paymentMethodId: string, data: UpdatePaymentMethod, companyId: string): Promise<QuotePaymentMethod | null>;
+  deleteQuotePaymentMethod(paymentMethodId: string, companyId: string): Promise<boolean>;
+  setDefaultPaymentMethod(paymentMethodId: string, quoteId: string, companyId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -2897,6 +2909,93 @@ export class DbStorage implements IStorage {
       )
       .returning();
     return result.length > 0;
+  }
+  
+  // ==================== QUOTE PAYMENT METHODS ====================
+  
+  async getQuotePaymentMethods(quoteId: string, companyId: string): Promise<QuotePaymentMethod[]> {
+    return db
+      .select()
+      .from(quotePaymentMethods)
+      .where(
+        and(
+          eq(quotePaymentMethods.quoteId, quoteId),
+          eq(quotePaymentMethods.companyId, companyId)
+        )
+      )
+      .orderBy(desc(quotePaymentMethods.isDefault), quotePaymentMethods.createdAt);
+  }
+  
+  async getQuotePaymentMethodById(paymentMethodId: string, companyId: string): Promise<QuotePaymentMethod | null> {
+    const [paymentMethod] = await db
+      .select()
+      .from(quotePaymentMethods)
+      .where(
+        and(
+          eq(quotePaymentMethods.id, paymentMethodId),
+          eq(quotePaymentMethods.companyId, companyId)
+        )
+      );
+    return paymentMethod || null;
+  }
+  
+  async createQuotePaymentMethod(data: InsertPaymentMethod): Promise<QuotePaymentMethod> {
+    const [paymentMethod] = await db
+      .insert(quotePaymentMethods)
+      .values(data)
+      .returning();
+    return paymentMethod;
+  }
+  
+  async updateQuotePaymentMethod(paymentMethodId: string, data: UpdatePaymentMethod, companyId: string): Promise<QuotePaymentMethod | null> {
+    const [updated] = await db
+      .update(quotePaymentMethods)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(quotePaymentMethods.id, paymentMethodId),
+          eq(quotePaymentMethods.companyId, companyId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+  
+  async deleteQuotePaymentMethod(paymentMethodId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(quotePaymentMethods)
+      .where(
+        and(
+          eq(quotePaymentMethods.id, paymentMethodId),
+          eq(quotePaymentMethods.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  async setDefaultPaymentMethod(paymentMethodId: string, quoteId: string, companyId: string): Promise<void> {
+    // First, unset all payment methods for this quote as non-default
+    await db
+      .update(quotePaymentMethods)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(quotePaymentMethods.quoteId, quoteId),
+          eq(quotePaymentMethods.companyId, companyId)
+        )
+      );
+    
+    // Then set the specified payment method as default
+    await db
+      .update(quotePaymentMethods)
+      .set({ isDefault: true, updatedAt: new Date() })
+      .where(
+        and(
+          eq(quotePaymentMethods.id, paymentMethodId),
+          eq(quotePaymentMethods.companyId, companyId)
+        )
+      );
   }
 }
 
