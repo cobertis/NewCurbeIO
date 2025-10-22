@@ -2304,30 +2304,42 @@ export default function QuotesPage() {
       county: z.string().optional(),
     });
 
+    // Helper function to get address fields based on addressType
+    const getAddressFields = (type: 'physical' | 'mailing' | 'billing') => {
+      const prefix = type;
+      return {
+        street: quote?.[`${prefix}_street`] || '',
+        addressLine2: quote?.[`${prefix}_address_line_2`] || '',
+        city: quote?.[`${prefix}_city`] || '',
+        state: quote?.[`${prefix}_state`] || '',
+        postalCode: quote?.[`${prefix}_postal_code`] || '',
+        county: quote?.[`${prefix}_county`] || '',
+      };
+    };
+
+    // Helper function to transform form data to database fields
+    const transformToDbFields = (formData: any, type: 'physical' | 'mailing' | 'billing') => {
+      const prefix = type;
+      return {
+        [`${prefix}_street`]: formData.street,
+        [`${prefix}_address_line_2`]: formData.addressLine2,
+        [`${prefix}_city`]: formData.city,
+        [`${prefix}_state`]: formData.state,
+        [`${prefix}_postal_code`]: formData.postalCode,
+        [`${prefix}_county`]: formData.county,
+      };
+    };
+
     const addressForm = useForm({
       resolver: zodResolver(addressSchema),
-      defaultValues: {
-        street: quote?.street || '',
-        addressLine2: quote?.addressLine2 || '',
-        city: quote?.city || '',
-        state: quote?.state || '',
-        postalCode: quote?.postalCode || '',
-        county: quote?.county || '',
-      },
+      defaultValues: getAddressFields(addressType),
     });
 
     useEffect(() => {
       if (quote) {
-        addressForm.reset({
-          street: quote.street || '',
-          addressLine2: quote.addressLine2 || '',
-          city: quote.city || '',
-          state: quote.state || '',
-          postalCode: quote.postalCode || '',
-          county: quote.county || '',
-        });
+        addressForm.reset(getAddressFields(addressType));
       }
-    }, [quote]);
+    }, [quote, addressType]);
 
     const getTitle = () => {
       if (addressType === 'physical') return 'Edit Physical Address';
@@ -2353,7 +2365,10 @@ export default function QuotesPage() {
             </SheetDescription>
           </SheetHeader>
           <Form {...addressForm}>
-            <form onSubmit={addressForm.handleSubmit(onSave)} className="space-y-6 py-6">
+            <form onSubmit={addressForm.handleSubmit((formData) => {
+              const transformedData = transformToDbFields(formData, addressType);
+              onSave(transformedData);
+            })} className="space-y-6 py-6">
               <FormField
                 control={addressForm.control}
                 name="street"
