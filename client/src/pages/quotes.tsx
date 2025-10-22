@@ -952,7 +952,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>First Name <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                     <FormControl>
                       <Input {...field} data-testid="input-firstname" />
                     </FormControl>
@@ -980,7 +980,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>Last Name <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                     <FormControl>
                       <Input {...field} data-testid="input-lastname" />
                     </FormControl>
@@ -1008,7 +1008,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="dateOfBirth"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date of Birth <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>Date of Birth <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                     <FormControl>
                       <Input type="date" {...field} data-testid="input-dob" />
                     </FormControl>
@@ -1026,7 +1026,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                   
                   return (
                     <FormItem>
-                      <FormLabel>SSN <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>SSN <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                       <div className="relative">
                         <FormControl>
                           <Input
@@ -1091,7 +1091,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone {memberType === 'primary' && <span className="text-destructive">*</span>}</FormLabel>
+                    <FormLabel>Phone {memberType === 'primary' && <span className="text-destructive inline-block align-baseline">*</span>}</FormLabel>
                     <FormControl>
                       <Input 
                         {...field}
@@ -1124,7 +1124,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>Gender <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-gender">
@@ -2928,7 +2928,7 @@ export default function QuotesPage() {
                   name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>First name <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>First name <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="Enter first name" data-testid="input-first-name" />
                       </FormControl>
@@ -2958,7 +2958,7 @@ export default function QuotesPage() {
                   name="lastName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Last name <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>Last name <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="Enter last name" data-testid="input-last-name" />
                       </FormControl>
@@ -3038,7 +3038,7 @@ export default function QuotesPage() {
                   name="dateOfBirth"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Date of birth <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>Date of birth <span className="text-destructive inline-block align-baseline">*</span></FormLabel>
                       <FormControl>
                         <Input
                           {...field}
