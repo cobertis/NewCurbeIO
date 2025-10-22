@@ -92,31 +92,41 @@ const formatSSN = (value: string) => {
   }
 };
 
-// Helper to format date for input fields (handles both Date objects and strings)
-const formatDateForInput = (date: string | Date | null | undefined): string => {
+// Helper to format date for input fields - just returns the yyyy-MM-dd string as-is
+const formatDateForInput = (date: string | null | undefined): string => {
   if (!date) return '';
-  if (typeof date === 'string') {
-    return format(parseISO(date), 'yyyy-MM-dd');
-  }
-  return format(date, 'yyyy-MM-dd');
-};
-
-// Helper to format date for display (handles both Date objects and strings)
-const formatDateForDisplay = (date: string | Date | null | undefined, formatStr: string = "MM/dd/yyyy"): string => {
-  if (!date) return '';
-  if (typeof date === 'string') {
-    return format(parseISO(date), formatStr);
-  }
-  return format(date, formatStr);
-};
-
-// Helper to parse date (handles both Date objects and strings)
-const parseDateSafe = (date: string | Date | null | undefined): Date | null => {
-  if (!date) return null;
-  if (typeof date === 'string') {
-    return parseISO(date);
-  }
+  // Date is already in yyyy-MM-dd format - return as-is
   return date;
+};
+
+// Helper to format date for display (converts yyyy-MM-dd to display format like MM/dd/yyyy)
+const formatDateForDisplay = (date: string | null | undefined, formatStr: string = "MM/dd/yyyy"): string => {
+  if (!date) return '';
+  // Append time to avoid timezone issues, then format
+  // This ensures the date is treated as-is without timezone conversion
+  try {
+    return format(parseISO(date + 'T00:00:00'), formatStr);
+  } catch (e) {
+    return date; // Fallback to original string if parsing fails
+  }
+};
+
+// Helper to calculate age from yyyy-MM-dd date string
+const calculateAge = (dateOfBirth: string | null | undefined): number | null => {
+  if (!dateOfBirth) return null;
+  try {
+    const today = new Date();
+    const [year, month, day] = dateOfBirth.split('-').map(Number);
+    const birthDate = new Date(year, month - 1, day);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  } catch (e) {
+    return null;
+  }
 };
 
 // Normalize SSN to formatted string with hyphens (XXX-XX-XXXX)
@@ -3414,7 +3424,7 @@ export default function QuotesPage() {
                                 <>
                                   {formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy")}
                                   <span className="text-foreground/60">
-                                    ({Math.floor((new Date().getTime() - (parseDateSafe(viewingQuote.clientDateOfBirth)?.getTime() || 0)) / (1000 * 60 * 60 * 24 * 365))} years)
+                                    ({calculateAge(viewingQuote.clientDateOfBirth) || 0} years)
                                   </span>
                                 </>
                               ) : 'N/A'}
@@ -3556,7 +3566,7 @@ export default function QuotesPage() {
                               {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy") : 'N/A'}
                               {viewingQuote.clientDateOfBirth && (
                                 <span className="text-foreground/60 ml-2">
-                                  ({Math.floor((new Date().getTime() - (parseDateSafe(viewingQuote.clientDateOfBirth)?.getTime() || 0)) / (1000 * 60 * 60 * 24 * 365))} years)
+                                  ({calculateAge(viewingQuote.clientDateOfBirth) || 0} years)
                                 </span>
                               )}
                             </span>
@@ -3727,7 +3737,7 @@ export default function QuotesPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                           <div>
                             <span className="text-muted-foreground">Gender/Age:</span>
-                            <p className="font-medium">{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}, {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - (parseDateSafe(viewingQuote.clientDateOfBirth)?.getTime() || 0)) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                            <p className="font-medium">{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}, {calculateAge(viewingQuote.clientDateOfBirth) || 0} yrs</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">SSN:</span>
@@ -3783,7 +3793,7 @@ export default function QuotesPage() {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                             <div>
                               <span className="text-muted-foreground">Gender/Age:</span>
-                              <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}, {spouse.dateOfBirth ? Math.floor((new Date().getTime() - (parseDateSafe(spouse.dateOfBirth)?.getTime() || 0)) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                              <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}, {calculateAge(spouse.dateOfBirth) || 0} yrs</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
@@ -3840,7 +3850,7 @@ export default function QuotesPage() {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                             <div>
                               <span className="text-muted-foreground">Gender/Age:</span>
-                              <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}, {dependent.dateOfBirth ? Math.floor((new Date().getTime() - (parseDateSafe(dependent.dateOfBirth)?.getTime() || 0)) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                              <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}, {calculateAge(dependent.dateOfBirth) || 0} yrs</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
