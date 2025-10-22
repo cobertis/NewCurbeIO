@@ -1146,7 +1146,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                           <Button
                             variant="outline"
                             role="combobox"
-                            className="justify-between font-normal"
+                            className="w-full justify-between font-normal"
                             data-testid="select-countryofbirth"
                           >
                             {field.value || "Select country"}
@@ -1923,12 +1923,12 @@ export default function QuotesPage() {
       console.log('[CREATE QUOTE] Extracted quote ID:', quoteId);
       console.log('[CREATE QUOTE] Full response structure:', JSON.stringify(response, null, 2));
       
-      // IMMEDIATELY navigate to the created quote FIRST
+      // IMMEDIATELY navigate to the created quote using router
       if (quoteId) {
         console.log('[CREATE QUOTE] Navigating to quote:', quoteId);
-        setQuoteId(quoteId);
-        setIsViewingQuote(true);
-        setShowWizard(false);
+        
+        // Navigate using wouter router
+        setLocation(`/quotes/${quoteId}`);
         
         toast({
           title: "Quote created",
