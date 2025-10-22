@@ -2140,6 +2140,28 @@ export default function QuotesPage() {
   const isViewingQuote = !!quoteId && quoteId !== "new";
   const viewingQuote = (isViewingQuote ? allQuotes.find(q => q.id === quoteId) : null) as QuoteWithArrays | null | undefined;
   
+  // Fetch members with income and immigration details
+  const { data: membersDetailsData } = useQuery<{ members: Array<any> }>({
+    queryKey: ['/api/quotes', quoteId, 'members-details'],
+    enabled: isViewingQuote && !!viewingQuote?.id,
+  });
+
+  // Helper function to get member details by role and index
+  const getMemberDetails = (role: 'client' | 'spouse' | 'dependent', index?: number) => {
+    if (!membersDetailsData?.members) return null;
+    
+    if (role === 'client') {
+      return membersDetailsData.members.find(m => m.role === 'client');
+    } else if (role === 'spouse' && index !== undefined) {
+      const spouses = membersDetailsData.members.filter(m => m.role === 'spouse');
+      return spouses[index];
+    } else if (role === 'dependent' && index !== undefined) {
+      const dependents = membersDetailsData.members.filter(m => m.role === 'dependent');
+      return dependents[index];
+    }
+    return null;
+  };
+
   // Fetch total household income from all family members
   const { data: householdIncomeData } = useQuery({
     queryKey: ['/api/quotes', quoteId, 'household-income'],
@@ -3906,11 +3928,15 @@ export default function QuotesPage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground">Immigration:</span>
-                            <p className="font-medium">-</p>
+                            <p className="font-medium text-xs">{getMemberDetails('client')?.immigration?.documentType || '-'}</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Income:</span>
-                            <p className="font-medium">-</p>
+                            <p className="font-medium text-xs">
+                              {getMemberDetails('client')?.income?.totalAnnualIncome 
+                                ? `$${parseFloat(getMemberDetails('client')?.income?.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                : '-'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -3979,11 +4005,15 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium">-</p>
+                              <p className="font-medium text-xs">{getMemberDetails('spouse', index)?.immigration?.documentType || '-'}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Income:</span>
-                              <p className="font-medium">-</p>
+                              <p className="font-medium text-xs">
+                                {getMemberDetails('spouse', index)?.income?.totalAnnualIncome 
+                                  ? `$${parseFloat(getMemberDetails('spouse', index)?.income?.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                  : '-'}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -4053,11 +4083,15 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium">-</p>
+                              <p className="font-medium text-xs">{getMemberDetails('dependent', index)?.immigration?.documentType || '-'}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Income:</span>
-                              <p className="font-medium">-</p>
+                              <p className="font-medium text-xs">
+                                {getMemberDetails('dependent', index)?.income?.totalAnnualIncome 
+                                  ? `$${parseFloat(getMemberDetails('dependent', index)?.income?.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                  : '-'}
+                              </p>
                             </div>
                           </div>
                         </div>

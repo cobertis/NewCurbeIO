@@ -8001,6 +8001,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Get all members with income and immigration data for a quote
+  app.get("/api/quotes/:id/members-details", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Get all quote members for this quote
+      const members = await storage.getQuoteMembersByQuoteId(id, currentUser.companyId!);
+      
+      // Fetch income and immigration data for each member
+      const membersWithDetails = await Promise.all(
+        members.map(async (member) => {
+          const income = await storage.getQuoteMemberIncome(member.id, currentUser.companyId!).catch(() => null);
+          const immigration = await storage.getQuoteMemberImmigration(member.id, currentUser.companyId!).catch(() => null);
+          
+          return {
+            ...member,
+            income,
+            immigration
+          };
+        })
+      );
+      
+      res.json({ members: membersWithDetails });
+    } catch (error: any) {
+      console.error("Error fetching members details:", error);
+      res.status(500).json({ message: "Failed to fetch members details" });
+    }
+  });
+
   // Get total household income for a quote (sum of all family members)
   app.get("/api/quotes/:id/household-income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
