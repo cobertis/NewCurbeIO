@@ -2770,13 +2770,18 @@ export class DbStorage implements IStorage {
   }
   
   async createOrUpdateQuoteMemberIncome(data: InsertQuoteMemberIncome): Promise<QuoteMemberIncome> {
+    // Filter out null/undefined values to prevent overwriting existing data with nulls
+    const updateData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== null && value !== undefined)
+    );
+    
     const [result] = await db
       .insert(quoteMemberIncome)
       .values(data)
       .onConflictDoUpdate({
         target: quoteMemberIncome.memberId,
         set: {
-          ...data,
+          ...updateData,  // Only update non-null fields
           updatedAt: new Date(),
         },
       })
@@ -2813,13 +2818,18 @@ export class DbStorage implements IStorage {
   }
   
   async createOrUpdateQuoteMemberImmigration(data: InsertQuoteMemberImmigration): Promise<QuoteMemberImmigration> {
+    // Filter out null/undefined values to prevent overwriting existing data with nulls
+    const updateData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== null && value !== undefined)
+    );
+    
     const [result] = await db
       .insert(quoteMemberImmigration)
       .values(data)
       .onConflictDoUpdate({
         target: quoteMemberImmigration.memberId,
         set: {
-          ...data,
+          ...updateData,  // Only update non-null fields
           updatedAt: new Date(),
         },
       })
