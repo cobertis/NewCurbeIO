@@ -1209,7 +1209,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         <Form {...editForm}>
           <form onSubmit={editForm.handleSubmit(handleSave)} className="flex flex-col flex-1 min-h-0">
             <Tabs value={memberTab} onValueChange={setMemberTab} className="flex-1 flex flex-col">
-              <TabsList className="grid w-full grid-cols-4 mb-4 mx-4 mt-4">
+              <TabsList className="grid w-full grid-cols-3 mb-4 mx-4 mt-4">
                 <TabsTrigger value="basic" className="text-xs">
                   <User className="h-4 w-4 mr-1" />
                   Basic Info
@@ -1221,10 +1221,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                 <TabsTrigger value="immigration" className="text-xs">
                   <Plane className="h-4 w-4 mr-1" />
                   Immigration
-                </TabsTrigger>
-                <TabsTrigger value="documents" className="text-xs">
-                  <FileText className="h-4 w-4 mr-1" />
-                  Documents
                 </TabsTrigger>
               </TabsList>
 
@@ -1890,167 +1886,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                       </FormItem>
                     )}
                   />
-                </div>
-              </TabsContent>
-
-              {/* Tab 4: Documents */}
-              <TabsContent value="documents" className="flex-1 overflow-y-auto space-y-6 p-4">
-                <div className="space-y-4">
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Document</TableHead>
-                          <TableHead>Document #</TableHead>
-                          <TableHead>Issued date</TableHead>
-                          <TableHead>Exp date</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {/* Social Security (SSN) */}
-                        <TableRow>
-                          <TableCell className="font-medium">Social Security (SSN)</TableCell>
-                          <TableCell>
-                            <span className="font-mono text-sm">123-45-2044</span>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" data-testid="button-doc-ssn-actions">
-                                  Edit
-                                  <ChevronDown className="h-4 w-4 ml-1" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit details</DropdownMenuItem>
-                                <DropdownMenuItem>Upload document</DropdownMenuItem>
-                                <DropdownMenuItem>View document</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Green card */}
-                        <TableRow>
-                          <TableCell className="font-medium">Green card</TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" data-testid="button-doc-greencard-actions">
-                                  Edit
-                                  <ChevronDown className="h-4 w-4 ml-1" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit details</DropdownMenuItem>
-                                <DropdownMenuItem>Upload document</DropdownMenuItem>
-                                <DropdownMenuItem>View document</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Work permit */}
-                        <TableRow>
-                          <TableCell className="font-medium">Work permit</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm">IOE9094849121</span>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-sm">08/09/2024</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-sm">07/17/2026</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" data-testid="button-doc-workpermit-actions">
-                                  Edit
-                                  <ChevronDown className="h-4 w-4 ml-1" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit details</DropdownMenuItem>
-                                <DropdownMenuItem>Upload document</DropdownMenuItem>
-                                <DropdownMenuItem>View document</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Passport */}
-                        <TableRow>
-                          <TableCell className="font-medium">Passport</TableCell>
-                          <TableCell>
-                            <span className="font-mono text-sm">AB1235920</span>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" data-testid="button-doc-passport-actions">
-                                  Edit
-                                  <ChevronDown className="h-4 w-4 ml-1" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit details</DropdownMenuItem>
-                                <DropdownMenuItem>Upload document</DropdownMenuItem>
-                                <DropdownMenuItem>View document</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Driver license */}
-                        <TableRow>
-                          <TableCell className="font-medium">Driver license</TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-muted-foreground">-</TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" data-testid="button-doc-license-actions">
-                                  Edit
-                                  <ChevronDown className="h-4 w-4 ml-1" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit details</DropdownMenuItem>
-                                <DropdownMenuItem>Upload document</DropdownMenuItem>
-                                <DropdownMenuItem>View document</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
                 </div>
               </TabsContent>
             </Tabs>
