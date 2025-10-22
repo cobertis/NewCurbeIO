@@ -4117,7 +4117,13 @@ export default function QuotesPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base font-semibold">Physical address</CardTitle>
-                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-physical-address">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-3" 
+                        onClick={() => setEditingAddresses(true)}
+                        data-testid="button-edit-physical-address"
+                      >
                         <MapPin className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
@@ -4140,7 +4146,13 @@ export default function QuotesPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base font-semibold">Mailing address</CardTitle>
-                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-mailing-address">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-3" 
+                        onClick={() => setEditingAddresses(true)}
+                        data-testid="button-edit-mailing-address"
+                      >
                         <MapPin className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
@@ -4159,7 +4171,13 @@ export default function QuotesPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base font-semibold">Billing address</CardTitle>
-                      <Button variant="ghost" size="sm" className="h-8 px-3" data-testid="button-edit-billing-address">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-3" 
+                        onClick={() => setEditingAddresses(true)}
+                        data-testid="button-edit-billing-address"
+                      >
                         <MapPin className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
