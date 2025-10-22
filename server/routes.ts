@@ -8391,6 +8391,65 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Create new quote member (for AddMemberSheet)
+  app.post("/api/quotes/:quoteId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Verify quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const { role, memberData } = req.body;
+      
+      if (!role || !memberData) {
+        return res.status(400).json({ message: "Missing required fields: role and memberData" });
+      }
+      
+      // Ensure member exists (this will create a new member)
+      const result = await storage.ensureQuoteMember(
+        quoteId,
+        quote.companyId,
+        role,
+        memberData
+      );
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_member",
+        entityId: result.member.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          role,
+        },
+      });
+      
+      res.status(201).json({
+        member: result.member,
+        message: "Member created successfully"
+      });
+    } catch (error: any) {
+      console.error("Error creating quote member:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: error.message || "Failed to create quote member" });
+    }
+  });
+
   // Ensure quote member exists (create or update) - returns memberId
   app.post("/api/quotes/:quoteId/ensure-member", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
