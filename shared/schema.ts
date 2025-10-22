@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -146,7 +146,7 @@ export const users = pgTable("users", {
   lastName: text("last_name"),
   avatar: text("avatar"),
   phone: text("phone"),
-  dateOfBirth: timestamp("date_of_birth"), // Date of birth
+  dateOfBirth: date("date_of_birth"), // Date of birth (yyyy-MM-dd)
   preferredLanguage: text("preferred_language").default("en"), // Preferred language (en, es, etc.)
   timezone: text("timezone").default("America/New_York"), // User's timezone preference
   address: text("address"), // Office address
@@ -1268,7 +1268,7 @@ export const quotes = pgTable("quotes", {
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // User who created the quote
   
   // Step 1: Policy Information
-  effectiveDate: timestamp("effective_date").notNull(), // Policy effective date
+  effectiveDate: date("effective_date").notNull(), // Policy effective date (yyyy-MM-dd)
   agentId: varchar("agent_id").references(() => users.id, { onDelete: "set null" }), // Agent on record for this client
   productType: text("product_type").notNull(), // medicare, medicaid, aca, life, private, dental, vision, supplemental, annuities, final_expense, travel
   
@@ -1279,7 +1279,7 @@ export const quotes = pgTable("quotes", {
   clientSecondLastName: text("client_second_last_name"),
   clientEmail: text("client_email").notNull(),
   clientPhone: text("client_phone").notNull(),
-  clientDateOfBirth: timestamp("client_date_of_birth"),
+  clientDateOfBirth: date("client_date_of_birth"), // Date of birth (yyyy-MM-dd)
   clientGender: text("client_gender"), // male, female, other
   clientIsApplicant: boolean("client_is_applicant").default(false),
   clientTobaccoUser: boolean("client_tobacco_user").default(false),
@@ -1322,7 +1322,7 @@ export const spouseSchema = z.object({
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
   secondLastName: z.string().optional(),
-  dateOfBirth: z.union([z.string(), z.date()]), // Accept both string and Date
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"), // Date as string (yyyy-MM-dd)
   ssn: z.string().min(1, "SSN is required"),
   gender: z.enum(["male", "female", "other"]),
   phone: z.string().optional(),
@@ -1342,7 +1342,7 @@ export const dependentSchema = z.object({
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
   secondLastName: z.string().optional(),
-  dateOfBirth: z.union([z.string(), z.date()]), // Accept both string and Date
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"), // Date as string (yyyy-MM-dd)
   ssn: z.string().min(1, "SSN is required"),
   gender: z.enum(["male", "female", "other"]),
   relation: z.enum(["child", "parent", "sibling", "other"]),
@@ -1362,6 +1362,9 @@ export const insertQuoteSchema = createInsertSchema(quotes).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
+  // Override date fields to accept yyyy-MM-dd strings instead of Date objects
+  effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  clientDateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format").optional(),
   // Override spouses and dependents to use proper validation
   spouses: z.array(spouseSchema).optional(),
   dependents: z.array(dependentSchema).optional(),
@@ -1393,7 +1396,7 @@ export const quoteMembers = pgTable("quote_members", {
   middleName: text("middle_name"),
   lastName: text("last_name").notNull(),
   secondLastName: text("second_last_name"),
-  dateOfBirth: timestamp("date_of_birth"),
+  dateOfBirth: date("date_of_birth"), // Date of birth (yyyy-MM-dd)
   ssn: text("ssn"), // Encrypted SSN
   gender: text("gender"), // male, female, other
   phone: text("phone"),
@@ -1522,6 +1525,9 @@ export const insertQuoteMemberSchema = createInsertSchema(quoteMembers).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  // Override date field to accept yyyy-MM-dd string instead of Date object
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format").optional(),
 });
 
 export const updateQuoteMemberSchema = insertQuoteMemberSchema.partial().omit({
