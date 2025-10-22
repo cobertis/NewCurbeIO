@@ -2158,6 +2158,15 @@ export default function QuotesPage() {
     return null;
   };
 
+  // Helper function to convert snake_case to Title Case
+  const formatLabel = (text: string) => {
+    if (!text) return '';
+    return text
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   // Helper function to format immigration status for display
   const getImmigrationStatusDisplay = (immigration: any) => {
     if (!immigration) return '-';
@@ -2180,19 +2189,19 @@ export default function QuotesPage() {
       return `${immigration.visaType.toUpperCase()} Visa`;
     }
     
-    // If has work authorization
+    // If has work authorization type
     if (immigration.hasWorkAuthorization && immigration.workAuthorizationType) {
-      return immigration.workAuthorizationType;
+      return formatLabel(immigration.workAuthorizationType);
     }
     
     // If has immigration status category
     if (immigration.immigrationStatusCategory) {
-      return immigration.immigrationStatusCategory;
+      return formatLabel(immigration.immigrationStatusCategory);
     }
     
     // If has immigration status
     if (immigration.immigrationStatus) {
-      return immigration.immigrationStatus.charAt(0).toUpperCase() + immigration.immigrationStatus.slice(1);
+      return formatLabel(immigration.immigrationStatus);
     }
     
     return '-';
