@@ -2339,6 +2339,144 @@ export default function QuotesPage() {
     },
   });
 
+  const addMemberMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      
+      const warnings: string[] = [];
+      
+      // Step 1: Create member
+      const ensureResponse = await fetch(`/api/quotes/${params.id}/ensure-member`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          role: data.relation,
+          memberData: {
+            firstName: data.firstName,
+            middleName: data.middleName || null,
+            lastName: data.lastName,
+            secondLastName: data.secondLastName || null,
+            email: data.email || null,
+            phone: data.phone || null,
+            dateOfBirth: data.dateOfBirth || null,
+            ssn: normalizeSSN(data.ssn) || null,
+            gender: data.gender || null,
+            isApplicant: data.isApplicant || false,
+            tobaccoUser: data.tobaccoUser || false,
+            preferredLanguage: data.preferredLanguage || null,
+            countryOfBirth: data.countryOfBirth || null,
+            maritalStatus: data.maritalStatus || null,
+            weight: data.weight || null,
+            height: data.height || null,
+          },
+        }),
+      });
+      
+      if (!ensureResponse.ok) {
+        const error = await ensureResponse.json();
+        throw new Error(error.message || 'Failed to create member');
+      }
+      
+      const { memberId } = await ensureResponse.json();
+      
+      // Step 2: Save income data
+      let totalAnnualIncome = null;
+      if (data.annualIncome) {
+        const amount = parseFloat(data.annualIncome);
+        if (!isNaN(amount) && amount > 0) {
+          const frequency = data.incomeFrequency || 'annually';
+          switch (frequency) {
+            case 'weekly':
+              totalAnnualIncome = (amount * 52).toFixed(2);
+              break;
+            case 'biweekly':
+              totalAnnualIncome = (amount * 26).toFixed(2);
+              break;
+            case 'monthly':
+              totalAnnualIncome = (amount * 12).toFixed(2);
+              break;
+            case 'annually':
+            default:
+              totalAnnualIncome = amount.toFixed(2);
+              break;
+          }
+        }
+      }
+      
+      const incomeResponse = await fetch(`/api/quotes/members/${memberId}/income`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          employerName: data.employerName || null,
+          employerPhone: data.employerPhone || null,
+          position: data.position || null,
+          annualIncome: data.annualIncome || null,
+          incomeFrequency: data.incomeFrequency || 'annually',
+          totalAnnualIncome: totalAnnualIncome,
+          selfEmployed: data.selfEmployed || false,
+        }),
+      });
+      
+      if (!incomeResponse.ok) {
+        warnings.push('income');
+      }
+      
+      // Step 3: Save immigration data
+      const immigrationResponse = await fetch(`/api/quotes/members/${memberId}/immigration`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          immigrationStatus: data.immigrationStatus || null,
+          uscisNumber: data.uscisNumber || null,
+          naturalizationNumber: data.naturalizationNumber || null,
+          immigrationStatusCategory: data.immigrationStatusCategory || null,
+        }),
+      });
+      
+      if (!immigrationResponse.ok) {
+        warnings.push('immigration');
+      }
+      
+      return { memberId, warnings };
+    },
+    onSuccess: (result) => {
+      // Invalidate queries to refresh data
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id] });
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "members"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "members-details"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "household-income"] });
+      }
+      
+      // Show appropriate toast based on warnings
+      if (result.warnings && result.warnings.length > 0) {
+        const failedSections = result.warnings.join(' and ');
+        toast({
+          variant: "destructive",
+          title: "Partial Success",
+          description: `Member created but ${failedSections} data failed to save. You can edit it later.`,
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Family member added successfully",
+        });
+      }
+      
+      setAddingMember(false);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to add family member",
+      });
+    },
+  });
+
   const handleNext = async () => {
     let isValid = false;
     
@@ -3041,151 +3179,6 @@ export default function QuotesPage() {
       }
     }, [open]);
 
-    const handleSave = async (data: any) => {
-      try {
-        console.log('[AddMemberSheet] Creating new member:', data);
-        
-        // Step 1: Create the member using ensure-member endpoint
-        const ensureResponse = await fetch(`/api/quotes/${quote.id}/ensure-member`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            role: data.relation,
-            memberData: {
-              firstName: data.firstName,
-              middleName: data.middleName || null,
-              lastName: data.lastName,
-              secondLastName: data.secondLastName || null,
-              email: data.email || null,
-              phone: data.phone || null,
-              dateOfBirth: data.dateOfBirth || null,
-              ssn: normalizeSSN(data.ssn) || null,
-              gender: data.gender || null,
-              isApplicant: data.isApplicant || false,
-              tobaccoUser: data.tobaccoUser || false,
-              preferredLanguage: data.preferredLanguage || null,
-              countryOfBirth: data.countryOfBirth || null,
-              maritalStatus: data.maritalStatus || null,
-              weight: data.weight || null,
-              height: data.height || null,
-            },
-          }),
-        });
-        
-        if (!ensureResponse.ok) {
-          const error = await ensureResponse.json();
-          throw new Error(error.message || 'Failed to create member');
-        }
-        
-        const { memberId } = await ensureResponse.json();
-        console.log('[AddMemberSheet] Member created with ID:', memberId);
-        
-        // Step 2: Save income data
-        console.log('[AddMemberSheet] Saving income data...');
-        
-        // Calculate total annual income based on frequency
-        let totalAnnualIncome = null;
-        if (data.annualIncome) {
-          const amount = parseFloat(data.annualIncome);
-          if (!isNaN(amount) && amount > 0) {
-            const frequency = data.incomeFrequency || 'annually';
-            switch (frequency) {
-              case 'weekly':
-                totalAnnualIncome = (amount * 52).toFixed(2);
-                break;
-              case 'biweekly':
-                totalAnnualIncome = (amount * 26).toFixed(2);
-                break;
-              case 'monthly':
-                totalAnnualIncome = (amount * 12).toFixed(2);
-                break;
-              case 'annually':
-              default:
-                totalAnnualIncome = amount.toFixed(2);
-                break;
-            }
-          }
-        }
-        
-        const incomeResponse = await fetch(`/api/quotes/members/${memberId}/income`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            employerName: data.employerName || null,
-            employerPhone: data.employerPhone || null,
-            position: data.position || null,
-            annualIncome: data.annualIncome || null,
-            incomeFrequency: data.incomeFrequency || 'annually',
-            totalAnnualIncome: totalAnnualIncome,
-            selfEmployed: data.selfEmployed || false,
-          }),
-        });
-        
-        if (!incomeResponse.ok) {
-          const errorText = await incomeResponse.text();
-          console.error('[AddMemberSheet] Failed to save income:', errorText);
-          toast({
-            variant: "destructive",
-            title: "Warning",
-            description: "Member created but income data failed to save. You can edit it later.",
-          });
-        } else {
-          console.log('[AddMemberSheet] Income saved successfully');
-        }
-        
-        // Step 3: Save immigration data
-        console.log('[AddMemberSheet] Saving immigration data...');
-        
-        const immigrationResponse = await fetch(`/api/quotes/members/${memberId}/immigration`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            immigrationStatus: data.immigrationStatus || null,
-            uscisNumber: data.uscisNumber || null,
-            naturalizationNumber: data.naturalizationNumber || null,
-            immigrationStatusCategory: data.immigrationStatusCategory || null,
-          }),
-        });
-        
-        if (!immigrationResponse.ok) {
-          const errorText = await immigrationResponse.text();
-          console.error('[AddMemberSheet] Failed to save immigration:', errorText);
-          toast({
-            variant: "destructive",
-            title: "Warning",
-            description: "Member created but immigration data failed to save. You can edit it later.",
-          });
-        } else {
-          console.log('[AddMemberSheet] Immigration saved successfully');
-        }
-        
-        console.log('[AddMemberSheet] All data saved successfully!');
-        
-        // Invalidate queries to refresh data
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members-details'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'household-income'] });
-
-        toast({
-          title: "Success",
-          description: "Family member added successfully",
-        });
-
-        onOpenChange(false);
-      } catch (error: any) {
-        console.error('[AddMemberSheet] Error creating member:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message || "Failed to add family member",
-        });
-      }
-    };
-
     const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
     
     return (
@@ -3203,7 +3196,7 @@ export default function QuotesPage() {
                 type="button"
                 disabled={isPending}
                 data-testid="button-save-member"
-                onClick={addMemberForm.handleSubmit(handleSave)}
+                onClick={addMemberForm.handleSubmit(onSave)}
                 className="mr-10"
               >
                 {isPending ? 'Adding...' : 'Add Member'}
@@ -3211,7 +3204,7 @@ export default function QuotesPage() {
             </div>
           </div>
           <Form {...addMemberForm}>
-            <form onSubmit={addMemberForm.handleSubmit(handleSave)} className="flex flex-col flex-1 min-h-0">
+            <form onSubmit={addMemberForm.handleSubmit(onSave)} className="flex flex-col flex-1 min-h-0">
               <Tabs value={memberTab} onValueChange={setMemberTab} className="flex-1 flex flex-col">
                 <TabsList className="grid w-full grid-cols-3 mb-4 mx-4 mt-4">
                   <TabsTrigger value="basic" className="text-xs">
@@ -4948,7 +4941,8 @@ export default function QuotesPage() {
               open={addingMember}
               onOpenChange={setAddingMember}
               quote={viewingQuote}
-              isPending={false}
+              onSave={(data) => addMemberMutation.mutate(data)}
+              isPending={addMemberMutation.isPending}
             />
       </div>
     );
