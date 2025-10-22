@@ -1901,6 +1901,10 @@ export default function QuotesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<{ id: string; clientName: string } | null>(null);
   
+  // Calculate initial effective date ONCE (first day of next month)
+  // This date will NOT change unless the user manually changes it
+  const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
+  
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/quotes/new";
 
@@ -1922,7 +1926,7 @@ export default function QuotesPage() {
   const form = useForm<z.infer<typeof completeQuoteSchema>>({
     resolver: zodResolver(completeQuoteSchema),
     defaultValues: {
-      effectiveDate: format(getFirstDayOfNextMonth(), "yyyy-MM-dd"),
+      effectiveDate: initialEffectiveDate,
       agentId: userData?.user?.id || "",
       productType: "",
       clientFirstName: "",
@@ -1990,44 +1994,52 @@ export default function QuotesPage() {
     },
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      
+      // Get the created quote ID
+      const quoteId = response.quote?.id;
+      
       toast({
         title: "Quote created",
-        description: "Your quote has been created successfully.",
+        description: "Opening quote details...",
       });
-      // Redirect to the newly created quote
-      const quoteId = response.quote?.id;
+      
+      // Reset form state for next quote (in background)
+      setTimeout(() => {
+        form.reset({
+          effectiveDate: initialEffectiveDate,
+          agentId: userData?.user?.id || "",
+          productType: "",
+          clientFirstName: "",
+          clientMiddleName: "",
+          clientLastName: "",
+          clientSecondLastName: "",
+          clientEmail: "",
+          clientPhone: "",
+          clientDateOfBirth: "",
+          clientGender: "",
+          clientIsApplicant: true,
+          clientTobaccoUser: false,
+          clientSsn: "",
+          spouses: [],
+          dependents: [],
+          street: "",
+          addressLine2: "",
+          city: "",
+          state: "",
+          postalCode: "",
+          county: "",
+          country: "United States",
+        });
+        setCurrentStep(1);
+        setSelectedProduct("");
+      }, 100);
+      
+      // IMMEDIATELY navigate to the created quote
       if (quoteId) {
         setLocation(`/quotes/${quoteId}`);
       } else {
         setLocation("/quotes");
       }
-      form.reset({
-        effectiveDate: format(getFirstDayOfNextMonth(), "yyyy-MM-dd"),
-        agentId: userData?.user?.id || "",
-        productType: "",
-        clientFirstName: "",
-        clientMiddleName: "",
-        clientLastName: "",
-        clientSecondLastName: "",
-        clientEmail: "",
-        clientPhone: "",
-        clientDateOfBirth: "",
-        clientGender: "",
-        clientIsApplicant: true,
-        clientTobaccoUser: false,
-        clientSsn: "",
-        spouses: [],
-        dependents: [],
-        street: "",
-        addressLine2: "",
-        city: "",
-        state: "",
-        postalCode: "",
-        county: "",
-        country: "United States",
-      });
-      setCurrentStep(1);
-      setSelectedProduct("");
     },
     onError: (error: any) => {
       toast({
@@ -6072,23 +6084,27 @@ export default function QuotesPage() {
         <AlertDialogContent data-testid="dialog-delete-quote">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Quote?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {quoteToDelete && (
-                <>
-                  Are you sure you want to permanently delete the quote for <strong>{quoteToDelete.clientName}</strong>?
-                  <br /><br />
-                  This will delete:
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>The quote and all client information</li>
-                    <li>All family members (spouse, dependents)</li>
-                    <li>All income data</li>
-                    <li>All immigration documents and records</li>
-                    <li>All uploaded files</li>
-                  </ul>
-                  <br />
-                  <strong className="text-destructive">This action cannot be undone.</strong>
-                </>
-              )}
+            <AlertDialogDescription asChild>
+              <div>
+                {quoteToDelete && (
+                  <>
+                    <p>
+                      Are you sure you want to permanently delete the quote for <strong>{quoteToDelete.clientName}</strong>?
+                    </p>
+                    <p className="mt-4">This will delete:</p>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>The quote and all client information</li>
+                      <li>All family members (spouse, dependents)</li>
+                      <li>All income data</li>
+                      <li>All immigration documents and records</li>
+                      <li>All uploaded files</li>
+                    </ul>
+                    <p className="mt-4">
+                      <strong className="text-destructive">This action cannot be undone.</strong>
+                    </p>
+                  </>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
