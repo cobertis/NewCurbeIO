@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1896,6 +1897,10 @@ export default function QuotesPage() {
     applicantsTo: "",
   });
   
+  // Delete quote dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [quoteToDelete, setQuoteToDelete] = useState<{ id: string; clientName: string } | null>(null);
+  
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/quotes/new";
 
@@ -2049,6 +2054,28 @@ export default function QuotesPage() {
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to update quote",
+      });
+    },
+  });
+
+  const deleteQuoteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      return apiRequest("DELETE", `/api/quotes/${quoteId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      setDeleteDialogOpen(false);
+      setQuoteToDelete(null);
+      toast({
+        title: "Quote deleted",
+        description: "The quote and all associated data have been permanently deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete quote",
       });
     },
   });
@@ -4864,7 +4891,19 @@ export default function QuotesPage() {
                                     View Details
                                   </DropdownMenuItem>
                                   <DropdownMenuItem>Edit Quote</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      setQuoteToDelete({
+                                        id: quote.id,
+                                        clientName: `${quote.clientFirstName} ${quote.clientLastName}`,
+                                      });
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                    data-testid={`button-delete-quote-${quote.id}`}
+                                  >
+                                    Delete
+                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -6027,6 +6066,48 @@ export default function QuotesPage() {
           setEditingMember({ type, index });
         }}
       />
+
+      {/* Delete Quote Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-delete-quote">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {quoteToDelete && (
+                <>
+                  Are you sure you want to permanently delete the quote for <strong>{quoteToDelete.clientName}</strong>?
+                  <br /><br />
+                  This will delete:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>The quote and all client information</li>
+                    <li>All family members (spouse, dependents)</li>
+                    <li>All income data</li>
+                    <li>All immigration documents and records</li>
+                    <li>All uploaded files</li>
+                  </ul>
+                  <br />
+                  <strong className="text-destructive">This action cannot be undone.</strong>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (quoteToDelete) {
+                  deleteQuoteMutation.mutate(quoteToDelete.id);
+                }
+              }}
+              disabled={deleteQuoteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteQuoteMutation.isPending ? 'Deleting...' : 'Delete Permanently'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
