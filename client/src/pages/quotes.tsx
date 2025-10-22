@@ -1837,6 +1837,10 @@ export default function QuotesPage() {
   const [showSpouseSsn, setShowSpouseSsn] = useState<Record<number, boolean>>({});
   const [showDependentSsn, setShowDependentSsn] = useState<Record<number, boolean>>({});
   
+  // SSN visibility states for Family Members list view
+  const [showListSsn, setShowListSsn] = useState<{ primary?: boolean; spouse?: Record<number, boolean>; dependent?: Record<number, boolean> }>({});
+  const [revealedListSsn, setRevealedListSsn] = useState<{ primary?: string; spouse?: Record<number, string>; dependent?: Record<number, string> }>({});
+  
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
   const [addingMember, setAddingMember] = useState(false);
@@ -3291,6 +3295,93 @@ export default function QuotesPage() {
       }
     };
 
+    // Handle revealing SSN in Family Members list
+    const handleToggleListSsn = async (memberType: 'primary' | 'spouse' | 'dependent', index?: number) => {
+      const key = memberType === 'primary' ? 'primary' : index !== undefined ? index : 0;
+      
+      // Check if already visible
+      const isCurrentlyVisible = memberType === 'primary' 
+        ? showListSsn.primary 
+        : (memberType === 'spouse' ? showListSsn.spouse?.[key as number] : showListSsn.dependent?.[key as number]);
+      
+      if (isCurrentlyVisible) {
+        // Just toggle off
+        setShowListSsn(prev => {
+          if (memberType === 'primary') {
+            return { ...prev, primary: false };
+          } else if (memberType === 'spouse') {
+            return { ...prev, spouse: { ...prev.spouse, [key]: false } };
+          } else {
+            return { ...prev, dependent: { ...prev.dependent, [key]: false } };
+          }
+        });
+        return;
+      }
+      
+      // Check if we already have the revealed SSN
+      const hasRevealed = memberType === 'primary' 
+        ? revealedListSsn.primary 
+        : (memberType === 'spouse' ? revealedListSsn.spouse?.[key as number] : revealedListSsn.dependent?.[key as number]);
+      
+      if (hasRevealed) {
+        // Just show it
+        setShowListSsn(prev => {
+          if (memberType === 'primary') {
+            return { ...prev, primary: true };
+          } else if (memberType === 'spouse') {
+            return { ...prev, spouse: { ...prev.spouse, [key]: true } };
+          } else {
+            return { ...prev, dependent: { ...prev.dependent, [key]: true } };
+          }
+        });
+        return;
+      }
+      
+      // Need to fetch from backend
+      try {
+        const response = await fetch(`/api/quotes/${viewingQuote.id}?reveal=true`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch revealed SSN');
+        }
+        
+        const data = await response.json();
+        
+        // Store the revealed SSN
+        if (memberType === 'primary' && data.quote.clientSsn) {
+          setRevealedListSsn(prev => ({ ...prev, primary: data.quote.clientSsn }));
+          setShowListSsn(prev => ({ ...prev, primary: true }));
+        } else if (memberType === 'spouse' && data.quote.spouses?.[key as number]?.ssn) {
+          setRevealedListSsn(prev => ({ 
+            ...prev, 
+            spouse: { ...prev.spouse, [key]: data.quote.spouses[key as number].ssn } 
+          }));
+          setShowListSsn(prev => ({ 
+            ...prev, 
+            spouse: { ...prev.spouse, [key]: true } 
+          }));
+        } else if (memberType === 'dependent' && data.quote.dependents?.[key as number]?.ssn) {
+          setRevealedListSsn(prev => ({ 
+            ...prev, 
+            dependent: { ...prev.dependent, [key]: data.quote.dependents[key as number].ssn } 
+          }));
+          setShowListSsn(prev => ({ 
+            ...prev, 
+            dependent: { ...prev.dependent, [key]: true } 
+          }));
+        }
+      } catch (error) {
+        console.error('[SSN List] Failed to reveal SSN:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to reveal SSN. Please try again.",
+        });
+      }
+    };
+
     return (
       <div className="h-full overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full">
@@ -3777,7 +3868,30 @@ export default function QuotesPage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground">SSN:</span>
-                            <p className="font-mono font-medium">{viewingQuote.clientSsn ? `***-**-${viewingQuote.clientSsn.slice(-4)}` : 'N/A'}</p>
+                            <div className="flex items-center gap-1">
+                              <p className="font-mono font-medium">
+                                {viewingQuote.clientSsn 
+                                  ? (showListSsn.primary && revealedListSsn.primary 
+                                      ? formatSSN(revealedListSsn.primary) 
+                                      : `***-**-${viewingQuote.clientSsn.slice(-4)}`)
+                                  : 'N/A'}
+                              </p>
+                              {viewingQuote.clientSsn && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0"
+                                  onClick={() => handleToggleListSsn('primary')}
+                                  data-testid="button-toggle-ssn-primary"
+                                >
+                                  {showListSsn.primary ? (
+                                    <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                  ) : (
+                                    <Eye className="h-3 w-3 text-muted-foreground" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Immigration:</span>
@@ -3827,7 +3941,30 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
-                              <p className="font-mono font-medium">{spouse.ssn ? `***-**-${spouse.ssn.slice(-4)}` : 'N/A'}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="font-mono font-medium">
+                                  {spouse.ssn 
+                                    ? (showListSsn.spouse?.[index] && revealedListSsn.spouse?.[index]
+                                        ? formatSSN(revealedListSsn.spouse[index]) 
+                                        : `***-**-${spouse.ssn.slice(-4)}`)
+                                    : 'N/A'}
+                                </p>
+                                {spouse.ssn && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-4 w-4 p-0"
+                                    onClick={() => handleToggleListSsn('spouse', index)}
+                                    data-testid={`button-toggle-ssn-spouse-${index}`}
+                                  >
+                                    {showListSsn.spouse?.[index] ? (
+                                      <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                    ) : (
+                                      <Eye className="h-3 w-3 text-muted-foreground" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
@@ -3878,7 +4015,30 @@ export default function QuotesPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
-                              <p className="font-mono font-medium">{dependent.ssn ? `***-**-${dependent.ssn.slice(-4)}` : 'N/A'}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="font-mono font-medium">
+                                  {dependent.ssn 
+                                    ? (showListSsn.dependent?.[index] && revealedListSsn.dependent?.[index]
+                                        ? formatSSN(revealedListSsn.dependent[index]) 
+                                        : `***-**-${dependent.ssn.slice(-4)}`)
+                                    : 'N/A'}
+                                </p>
+                                {dependent.ssn && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-4 w-4 p-0"
+                                    onClick={() => handleToggleListSsn('dependent', index)}
+                                    data-testid={`button-toggle-ssn-dependent-${index}`}
+                                  >
+                                    {showListSsn.dependent?.[index] ? (
+                                      <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                    ) : (
+                                      <Eye className="h-3 w-3 text-muted-foreground" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Immigration:</span>
