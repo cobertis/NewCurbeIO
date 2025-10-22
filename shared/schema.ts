@@ -1296,13 +1296,32 @@ export const quotes = pgTable("quotes", {
   spouses: jsonb("spouses").default([]), // Array of spouse objects
   dependents: jsonb("dependents").default([]), // Array of dependent objects
   
-  // Step 4: Address
-  street: text("street").notNull(),
-  addressLine2: text("address_line_2"), // Apt, Suite, Unit, etc.
-  city: text("city").notNull(),
-  state: text("state").notNull(),
-  postalCode: text("postal_code").notNull(),
-  county: text("county"),
+  // Step 4: Addresses
+  // Physical Address (Required)
+  physical_street: text("physical_street").notNull(),
+  physical_address_line_2: text("physical_address_line_2"), // Apt, Suite, Unit, etc.
+  physical_city: text("physical_city").notNull(),
+  physical_state: text("physical_state").notNull(),
+  physical_postal_code: text("physical_postal_code").notNull(),
+  physical_county: text("physical_county"),
+  
+  // Mailing Address (Optional)
+  mailing_street: text("mailing_street"),
+  mailing_address_line_2: text("mailing_address_line_2"),
+  mailing_city: text("mailing_city"),
+  mailing_state: text("mailing_state"),
+  mailing_postal_code: text("mailing_postal_code"),
+  mailing_county: text("mailing_county"),
+  
+  // Billing Address (Optional)
+  billing_street: text("billing_street"),
+  billing_address_line_2: text("billing_address_line_2"),
+  billing_city: text("billing_city"),
+  billing_state: text("billing_state"),
+  billing_postal_code: text("billing_postal_code"),
+  billing_county: text("billing_county"),
+  
+  // Shared field for all addresses
   country: text("country").notNull().default("United States"),
   
   // Quote Status
