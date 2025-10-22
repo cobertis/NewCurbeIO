@@ -65,6 +65,18 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM for data management and enforces strict multi-tenancy. Security features include robust password management, account activation, and 2FA. The modular feature system ensures flexibility and extensibility.
 
+**Date Handling System (2025-10-22):** Completely refactored to eliminate timezone conversion issues and ensure consistent date handling across the entire stack. ALL dates (birth dates, effective dates, visa expiration dates, etc.) are now handled as yyyy-MM-dd strings throughout the system:
+-   **Database Layer:** All date columns use PostgreSQL `date` type (not `timestamp`), storing pure dates without time components. Affected tables: `quotes`, `quote_members`, `quote_member_immigration`, `users`.
+-   **Schema & Validation:** All Zod schemas validate yyyy-MM-dd string format using regex `/^\d{4}-\d{2}-\d{2}$/`. NO Date object conversions in schemas.
+-   **Backend (server/routes.ts):** Eliminated all `parseDate()` calls and Date object conversions. Dates are passed through as strings from API requests directly to database.
+-   **Frontend Helpers:** Simplified date utilities in `client/src/pages/quotes.tsx`:
+    -   `formatDateForInput(date)`: Returns yyyy-MM-dd string as-is (no conversion)
+    -   `formatDateForDisplay(date, format)`: Formats string for display (e.g., "Nov 25, 1988") by appending 'T00:00:00' to prevent timezone shifts during parsing
+    -   `calculateAge(dateOfBirth)`: Computes age from yyyy-MM-dd string using local Date construction
+    -   Removed `parseDateSafe()` helper (no longer needed)
+-   **Form Handling:** HTML date inputs (`type="date"`) naturally return yyyy-MM-dd strings; forms submit these values unchanged to backend.
+-   **Benefits:** Eliminates date shifting bugs (no more +1/-1 day errors), cleaner API responses (no "00:00:00" timestamps in UI), simpler debugging, and consistent behavior across timezones.
+
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL, Drizzle ORM.
