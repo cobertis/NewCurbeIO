@@ -26,7 +26,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDistanceToNow, format, startOfMonth, addMonths } from "date-fns";
+import { formatDistanceToNow, format, startOfMonth, addMonths, parseISO } from "date-fns";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { useTabsState } from "@/hooks/use-tabs-state";
 
@@ -450,7 +450,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         secondLastName: quote.clientSecondLastName || '',
         email: quote.clientEmail || '',
         phone: quote.clientPhone || '',
-        dateOfBirth: quote.clientDateOfBirth ? format(new Date(quote.clientDateOfBirth), 'yyyy-MM-dd') : '',
+        dateOfBirth: quote.clientDateOfBirth ? format(parseISO(quote.clientDateOfBirth), 'yyyy-MM-dd') : '',
         ssn: normalizeSSN(quote.clientSsn),
         gender: quote.clientGender || '',
         isApplicant: quote.clientIsApplicant ?? true,
@@ -478,7 +478,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       return spouse ? {
         ...spouse,
         ssn: normalizeSSN(spouse.ssn),
-        dateOfBirth: spouse.dateOfBirth ? format(new Date(spouse.dateOfBirth), 'yyyy-MM-dd') : '',
+        dateOfBirth: spouse.dateOfBirth ? format(parseISO(spouse.dateOfBirth), 'yyyy-MM-dd') : '',
         // Income fields from API
         employerName: income.employerName || '',
         employerPhone: income.employerPhone || '',
@@ -497,7 +497,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       return dependent ? {
         ...dependent,
         ssn: normalizeSSN(dependent.ssn),
-        dateOfBirth: dependent.dateOfBirth ? format(new Date(dependent.dateOfBirth), 'yyyy-MM-dd') : '',
+        dateOfBirth: dependent.dateOfBirth ? format(parseISO(dependent.dateOfBirth), 'yyyy-MM-dd') : '',
         // Income fields from API
         employerName: income.employerName || '',
         employerPhone: income.employerPhone || '',
@@ -2437,7 +2437,7 @@ export default function QuotesPage() {
       resolver: zodResolver(paymentSchema),
       defaultValues: {
         recurrentPayment: true,
-        firstPaymentDate: quote?.effectiveDate ? format(new Date(quote.effectiveDate), 'yyyy-MM-dd') : '',
+        firstPaymentDate: quote?.effectiveDate ? format(parseISO(quote.effectiveDate), 'yyyy-MM-dd') : '',
         preferredPaymentDay: '1',
       },
     });
@@ -3446,7 +3446,7 @@ export default function QuotesPage() {
 
                 <div className="pb-3 border-b">
                   <label className="text-xs text-muted-foreground">Effective date</label>
-                  <p className="text-sm">{format(new Date(viewingQuote.effectiveDate), "MM/dd/yyyy")}</p>
+                  <p className="text-sm">{format(parseISO(viewingQuote.effectiveDate), "MM/dd/yyyy")}</p>
                 </div>
 
                 <div>
@@ -3471,7 +3471,7 @@ export default function QuotesPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Date of birth</span>
-                  <span className="text-xs">{viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MM/dd/yyyy") : '-'}</span>
+                  <span className="text-xs">{viewingQuote.clientDateOfBirth ? format(parseISO(viewingQuote.clientDateOfBirth), "MM/dd/yyyy") : '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Phone</span>
@@ -3546,9 +3546,9 @@ export default function QuotesPage() {
                               <Calendar className="h-4 w-4" />
                               {viewingQuote.clientDateOfBirth ? (
                                 <>
-                                  {format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy")}
+                                  {format(parseISO(viewingQuote.clientDateOfBirth), "MMM dd, yyyy")}
                                   <span className="text-foreground/60">
-                                    ({Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
+                                    ({Math.floor((new Date().getTime() - parseISO(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
                                   </span>
                                 </>
                               ) : 'N/A'}
@@ -3596,7 +3596,7 @@ export default function QuotesPage() {
                       <span className="text-muted-foreground">•</span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        Effective {format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}
+                        Effective {format(parseISO(viewingQuote.effectiveDate), "MMM dd, yyyy")}
                       </span>
                     </div>
                     
@@ -3704,10 +3704,10 @@ export default function QuotesPage() {
                           <label className="text-xs font-medium text-foreground/60">Date of Birth</label>
                           <p className="text-sm mt-0.5 flex items-center gap-1.5">
                             <span>
-                              {viewingQuote.clientDateOfBirth ? format(new Date(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
+                              {viewingQuote.clientDateOfBirth ? format(parseISO(viewingQuote.clientDateOfBirth), "MMM dd, yyyy") : 'N/A'}
                               {viewingQuote.clientDateOfBirth && (
                                 <span className="text-foreground/60 ml-2">
-                                  ({Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
+                                  ({Math.floor((new Date().getTime() - parseISO(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years)
                                 </span>
                               )}
                             </span>
@@ -3717,7 +3717,7 @@ export default function QuotesPage() {
                                   <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>{format(new Date(viewingQuote.clientDateOfBirth), "MMMM dd, yyyy")}</p>
+                                  <p>{format(parseISO(viewingQuote.clientDateOfBirth), "MMMM dd, yyyy")}</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -3826,7 +3826,7 @@ export default function QuotesPage() {
                         <Calendar className="h-3 w-3" />
                         Effective Date
                       </p>
-                      <p className="text-sm font-medium mt-1">{format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}</p>
+                      <p className="text-sm font-medium mt-1">{format(parseISO(viewingQuote.effectiveDate), "MMM dd, yyyy")}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -3897,7 +3897,7 @@ export default function QuotesPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                           <div>
                             <span className="text-muted-foreground">Gender/Age:</span>
-                            <p className="font-medium">{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}, {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - new Date(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                            <p className="font-medium">{viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}, {viewingQuote.clientDateOfBirth ? Math.floor((new Date().getTime() - parseISO(viewingQuote.clientDateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">SSN:</span>
@@ -3974,7 +3974,7 @@ export default function QuotesPage() {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                             <div>
                               <span className="text-muted-foreground">Gender/Age:</span>
-                              <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}, {spouse.dateOfBirth ? Math.floor((new Date().getTime() - new Date(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                              <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}, {spouse.dateOfBirth ? Math.floor((new Date().getTime() - parseISO(spouse.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
@@ -4052,7 +4052,7 @@ export default function QuotesPage() {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                             <div>
                               <span className="text-muted-foreground">Gender/Age:</span>
-                              <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}, {dependent.dateOfBirth ? Math.floor((new Date().getTime() - new Date(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
+                              <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}, {dependent.dateOfBirth ? Math.floor((new Date().getTime() - parseISO(dependent.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365)) : 0} yrs</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">SSN:</span>
@@ -4195,7 +4195,7 @@ export default function QuotesPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">First payment date</p>
-                      <p className="text-sm">{format(new Date(viewingQuote.effectiveDate), "MMM dd, yyyy")}</p>
+                      <p className="text-sm">{format(parseISO(viewingQuote.effectiveDate), "MMM dd, yyyy")}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Preferred payment day</p>
@@ -4790,7 +4790,7 @@ export default function QuotesPage() {
                                   {product?.name || quote.productType}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Effective {format(new Date(quote.effectiveDate), "MMM dd, yyyy")}
+                                  Effective {format(parseISO(quote.effectiveDate), "MMM dd, yyyy")}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   ID: {quote.id.slice(0, 8)}...
