@@ -2745,6 +2745,82 @@ export default function QuotesPage() {
     queryKey: ["/api/quotes"],
   });
 
+  // Determine if we're viewing a specific quote
+  const isViewingQuote = params?.id && params.id !== 'new';
+  const viewingQuote = quotesData?.quotes?.find(q => q.id === params?.id);
+
+  // Fetch payment methods - MUST be at component level to follow Rules of Hooks
+  const { data: paymentMethodsData, isLoading: isLoadingPaymentMethods } = useQuery<{ paymentMethods: QuotePaymentMethod[] }>({
+    queryKey: ['/api/quotes', viewingQuote?.id, 'payment-methods'],
+    enabled: !!viewingQuote?.id,
+  });
+
+  // Delete payment method mutation
+  const deletePaymentMethodMutation = useMutation({
+    mutationFn: async (paymentMethodId: string) => {
+      if (!viewingQuote?.id) return;
+      return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      if (viewingQuote?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
+      }
+      toast({
+        title: "Payment method deleted",
+        description: "The payment method has been removed successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete payment method",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Set default payment method mutation
+  const setDefaultPaymentMethodMutation = useMutation({
+    mutationFn: async (paymentMethodId: string) => {
+      if (!viewingQuote?.id) return;
+      return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`, {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      if (viewingQuote?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
+      }
+      toast({
+        title: "Default payment method updated",
+        description: "This payment method is now set as default.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set default payment method",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Helper function to get card type from first digit
+  // USER REQUIREMENT: Card numbers are stored in PLAIN TEXT
+  const getCardType = (cardNumber: string): string => {
+    if (!cardNumber) return 'Card';
+    const firstDigit = cardNumber.charAt(0);
+    switch (firstDigit) {
+      case '4': return 'Visa';
+      case '5': return 'Mastercard';
+      case '3': return 'Amex';
+      case '6': return 'Discover';
+      default: return 'Card';
+    }
+  };
+
   const form = useForm<z.infer<typeof completeQuoteSchema>>({
     resolver: zodResolver(completeQuoteSchema),
     defaultValues: {
@@ -3192,14 +3268,9 @@ export default function QuotesPage() {
   const agents = agentsData?.users || [];
   const allQuotes = quotesData?.quotes || [];
   
-  // Detect if we're viewing a specific quote
-  const quoteId = params?.id;
-  const isViewingQuote = !!quoteId && quoteId !== "new";
-  const viewingQuote = (isViewingQuote ? allQuotes.find(q => q.id === quoteId) : null) as QuoteWithArrays | null | undefined;
-  
   // Fetch members with income and immigration details
   const { data: membersDetailsData } = useQuery<{ members: Array<any> }>({
-    queryKey: ['/api/quotes', quoteId, 'members-details'],
+    queryKey: ['/api/quotes', params?.id, 'members-details'],
     enabled: isViewingQuote && !!viewingQuote?.id,
   });
 
@@ -3270,7 +3341,7 @@ export default function QuotesPage() {
 
   // Fetch total household income from all family members
   const { data: householdIncomeData } = useQuery({
-    queryKey: ['/api/quotes', quoteId, 'household-income'],
+    queryKey: ['/api/quotes', params?.id, 'household-income'],
     enabled: isViewingQuote && !!viewingQuote?.id,
   });
   
@@ -4288,72 +4359,6 @@ export default function QuotesPage() {
           maximumFractionDigits: 0
         }).format(totalHouseholdIncome)
       : '-';
-
-    // Fetch payment methods - moved outside IIFE to follow Rules of Hooks
-    const { data: paymentMethodsData, isLoading: isLoadingPaymentMethods } = useQuery<{ paymentMethods: QuotePaymentMethod[] }>({
-      queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'],
-      enabled: !!viewingQuote.id,
-    });
-
-    // Delete payment method mutation
-    const deletePaymentMethodMutation = useMutation({
-      mutationFn: async (paymentMethodId: string) => {
-        return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`, {
-          method: 'DELETE',
-        });
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
-        toast({
-          title: "Payment method deleted",
-          description: "The payment method has been removed successfully.",
-        });
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to delete payment method",
-          variant: "destructive",
-        });
-      },
-    });
-
-    // Set default payment method mutation
-    const setDefaultPaymentMethodMutation = useMutation({
-      mutationFn: async (paymentMethodId: string) => {
-        return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`, {
-          method: 'POST',
-        });
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
-        toast({
-          title: "Default payment method updated",
-          description: "This payment method is now set as default.",
-        });
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to set default payment method",
-          variant: "destructive",
-        });
-      },
-    });
-
-    // Helper function to get card type from first digit
-    // USER REQUIREMENT: Card numbers are stored in PLAIN TEXT
-    const getCardType = (cardNumber: string): string => {
-      if (!cardNumber) return 'Card';
-      const firstDigit = cardNumber.charAt(0);
-      switch (firstDigit) {
-        case '4': return 'Visa';
-        case '5': return 'Mastercard';
-        case '3': return 'Amex';
-        case '6': return 'Discover';
-        default: return 'Card';
-      }
-    };
 
     return (
       <div className="h-full overflow-hidden">
