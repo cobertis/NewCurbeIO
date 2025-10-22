@@ -44,6 +44,7 @@ type Spouse = {
   email?: string;
   isApplicant: boolean;
   tobaccoUser: boolean;
+  pregnant: boolean;
   preferredLanguage?: string;
   countryOfBirth?: string;
   maritalStatus?: string;
@@ -64,6 +65,7 @@ type Dependent = {
   email?: string;
   isApplicant: boolean;
   tobaccoUser: boolean;
+  pregnant: boolean;
   preferredLanguage?: string;
   countryOfBirth?: string;
   maritalStatus?: string;
@@ -357,6 +359,7 @@ const familyMemberSchema = z.object({
   email: z.string().optional(),
   isApplicant: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
+  pregnant: z.boolean().default(false),
   preferredLanguage: z.string().optional(),
   countryOfBirth: z.string().optional(),
   maritalStatus: z.string().optional(),
@@ -393,6 +396,7 @@ const step2Schema = z.object({
   clientGender: z.string().optional(),
   clientIsApplicant: z.boolean().default(false),
   clientTobaccoUser: z.boolean().default(false),
+  clientPregnant: z.boolean().default(false),
   clientSsn: z.string().min(9, "SSN is required (9 digits)"),
   street: z.string().min(1, "Street address is required"),
   addressLine2: z.string().optional(),
@@ -745,6 +749,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         gender: quote.clientGender || '',
         isApplicant: quote.clientIsApplicant ?? true,
         tobaccoUser: quote.clientTobaccoUser ?? false,
+        pregnant: quote.clientPregnant ?? false,
         preferredLanguage: quote.clientPreferredLanguage || '',
         countryOfBirth: quote.clientCountryOfBirth || '',
         maritalStatus: quote.clientMaritalStatus || '',
@@ -781,6 +786,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         gender: spouse.gender || '',
         isApplicant: spouse.isApplicant ?? false,
         tobaccoUser: spouse.tobaccoUser ?? false,
+        pregnant: spouse.pregnant ?? false,
         preferredLanguage: spouse.preferredLanguage || '',
         countryOfBirth: spouse.countryOfBirth || '',
         maritalStatus: spouse.maritalStatus || '',
@@ -815,6 +821,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         gender: dependent.gender || '',
         isApplicant: dependent.isApplicant ?? false,
         tobaccoUser: dependent.tobaccoUser ?? false,
+        pregnant: dependent.pregnant ?? false,
         preferredLanguage: dependent.preferredLanguage || '',
         countryOfBirth: dependent.countryOfBirth || '',
         maritalStatus: dependent.maritalStatus || '',
@@ -885,6 +892,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           clientGender: data.gender,
           clientIsApplicant: data.isApplicant,
           clientTobaccoUser: data.tobaccoUser,
+          clientPregnant: data.pregnant,
           clientPreferredLanguage: data.preferredLanguage,
           clientCountryOfBirth: data.countryOfBirth,
           clientMaritalStatus: data.maritalStatus,
@@ -907,6 +915,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           gender: data.gender,
           isApplicant: data.isApplicant,
           tobaccoUser: data.tobaccoUser,
+          pregnant: data.pregnant,
           preferredLanguage: data.preferredLanguage,
           countryOfBirth: data.countryOfBirth,
           maritalStatus: data.maritalStatus,
@@ -960,6 +969,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             gender: data.gender || null,
             isApplicant: data.isApplicant || false,
             tobaccoUser: data.tobaccoUser || false,
+            pregnant: data.pregnant || false,
             preferredLanguage: data.preferredLanguage || null,
             countryOfBirth: data.countryOfBirth || null,
             maritalStatus: data.maritalStatus || null,
@@ -1574,6 +1584,22 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                           />
                         </FormControl>
                         <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="pregnant"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-pregnant"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Pregnant</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -2394,6 +2420,22 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={addMemberForm.control}
+                  name="pregnant"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-pregnant"
+                        />
+                      </FormControl>
+                      <FormLabel className="cursor-pointer">Pregnant</FormLabel>
+                    </FormItem>
+                  )}
+                />
               </TabsContent>
 
               {/* Tab 2: Income & Employment */}
@@ -2933,6 +2975,7 @@ export default function QuotesPage() {
             gender: data.gender || null,
             isApplicant: data.isApplicant || false,
             tobaccoUser: data.tobaccoUser || false,
+            pregnant: data.pregnant || false,
             preferredLanguage: data.preferredLanguage || null,
             countryOfBirth: data.countryOfBirth || null,
             maritalStatus: data.maritalStatus || null,
@@ -5721,6 +5764,35 @@ export default function QuotesPage() {
                           </FormItem>
                         )}
                       />
+
+                      <FormField
+                        control={form.control}
+                        name="clientPregnant"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                data-testid="checkbox-client-pregnant"
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel className="flex items-center gap-2 cursor-pointer">
+                                Pregnant
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">If you are pregnant, you can't be denied coverage. You'll also see <strong>free</strong> pregnancy-related services on every plan. And you may qualify for additional financial assistance. This is all thanks to laws created by the Affordable Care Act.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </FormLabel>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 )}
@@ -6014,6 +6086,35 @@ export default function QuotesPage() {
                                 </FormItem>
                               )}
                             />
+
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.pregnant`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid={`checkbox-spouse-pregnant-${index}`}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
+                                      Pregnant
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">If you are pregnant, you can't be denied coverage. You'll also see <strong>free</strong> pregnancy-related services on every plan. And you may qualify for additional financial assistance. This is all thanks to laws created by the Affordable Care Act.</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
                           </div>
                         </CardContent>
                       </Card>
@@ -6264,6 +6365,25 @@ export default function QuotesPage() {
                                   </FormControl>
                                   <div className="space-y-1 leading-none">
                                     <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.pregnant`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid={`checkbox-dependent-pregnant-${index}`}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="cursor-pointer">Pregnant</FormLabel>
                                   </div>
                                 </FormItem>
                               )}

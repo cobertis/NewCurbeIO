@@ -1283,6 +1283,7 @@ export const quotes = pgTable("quotes", {
   clientGender: text("client_gender"), // male, female, other
   clientIsApplicant: boolean("client_is_applicant").default(false),
   clientTobaccoUser: boolean("client_tobacco_user").default(false),
+  clientPregnant: boolean("client_pregnant").default(false),
   clientSsn: text("client_ssn"), // Encrypted/masked SSN
   clientPreferredLanguage: text("client_preferred_language"), // English, Spanish, etc.
   clientCountryOfBirth: text("client_country_of_birth"), // Country of birth
@@ -1348,6 +1349,7 @@ export const spouseSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   isApplicant: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
+  pregnant: z.boolean().default(false),
   preferredLanguage: z.string().optional(),
   countryOfBirth: z.string().optional(),
   maritalStatus: z.string().optional(), // single, married, divorced, widowed
@@ -1369,6 +1371,7 @@ export const dependentSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   isApplicant: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
+  pregnant: z.boolean().default(false),
   preferredLanguage: z.string().optional(),
   countryOfBirth: z.string().optional(),
   maritalStatus: z.string().optional(), // single, married, divorced, widowed
@@ -1424,6 +1427,7 @@ export const quoteMembers = pgTable("quote_members", {
   // Additional Information
   isApplicant: boolean("is_applicant").default(false),
   tobaccoUser: boolean("tobacco_user").default(false),
+  pregnant: boolean("pregnant").default(false),
   preferredLanguage: text("preferred_language"),
   countryOfBirth: text("country_of_birth"),
   maritalStatus: text("marital_status"), // single, married, divorced, widowed
