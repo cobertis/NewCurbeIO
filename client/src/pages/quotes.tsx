@@ -850,16 +850,18 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   useEffect(() => {
     const isOpening = open && !prevOpenRef.current;
     if (isOpening && memberData) {
+      console.log('[EditMemberSheet] Opening - resetting form with data:', memberData);
       editForm.reset(memberData);
     }
     prevOpenRef.current = open;
-  }, [open]); // ONLY depend on open, NOT on memberData
+  }, [open, memberData, editForm]); // Depend on memberData so form resets when data arrives
 
   // Reset form when navigating between members
   useEffect(() => {
     if (open && memberData) {
       const memberKey = `${memberType}-${memberIndex ?? 'primary'}`;
       if (memberKey !== prevMemberRef.current) {
+        console.log('[EditMemberSheet] Navigating to member:', memberKey, 'with data:', memberData);
         editForm.reset(memberData);
         prevMemberRef.current = memberKey;
       }
