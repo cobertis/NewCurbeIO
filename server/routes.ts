@@ -8575,6 +8575,61 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Delete member (and cascading related data)
+  app.delete("/api/quotes/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getQuoteMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get quote to check company ownership
+      const quote = await storage.getQuote(member.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Prevent deletion of primary client
+      if (member.role === 'client') {
+        return res.status(400).json({ message: "Cannot delete primary client" });
+      }
+      
+      // Delete member (cascades to income, immigration, documents)
+      const success = await storage.deleteQuoteMember(memberId, quote.companyId);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete member" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId: member.quoteId,
+          role: member.role,
+          memberName: `${member.firstName} ${member.lastName}`,
+        },
+      });
+      
+      res.json({ success: true, message: "Member deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting member:", error);
+      res.status(500).json({ message: "Failed to delete member" });
+    }
+  });
+
   // ==================== MEMBER INCOME ====================
   
   // Get member income
