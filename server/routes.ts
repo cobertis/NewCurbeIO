@@ -8554,7 +8554,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       };
       
       // Update member
-      const updatedMember = await storage.updateQuoteMember(memberId, quote.companyId, updateData);
+      const updatedMember = await storage.updateQuoteMember(memberId, quote.companyId, updateData as any);
       
       await logger.logCrud({
         req,
