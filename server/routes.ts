@@ -33,7 +33,9 @@ import {
   updateQuoteMemberIncomeSchema,
   insertQuoteMemberImmigrationSchema,
   updateQuoteMemberImmigrationSchema,
-  insertQuoteMemberDocumentSchema
+  insertQuoteMemberDocumentSchema,
+  insertPaymentMethodSchema,
+  updatePaymentMethodSchema
 } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -9247,6 +9249,315 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // ==================== QUOTE PAYMENT METHODS ====================
+  
+  // Get all payment methods for a quote (PLAIN TEXT - NO ENCRYPTION)
+  app.get("/api/quotes/:quoteId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const paymentMethods = await storage.getQuotePaymentMethods(quoteId, quote.companyId);
+      
+      // Return payment methods with plain text card/bank info
+      await logger.logAuth({
+        req,
+        action: "view_payment_methods",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_payment_methods",
+          quoteId,
+          fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
+        },
+      });
+      
+      res.json({ paymentMethods });
+    } catch (error: any) {
+      console.error("Error getting payment methods:", error);
+      res.status(500).json({ message: "Failed to get payment methods" });
+    }
+  });
+  
+  // Get single payment method by ID (PLAIN TEXT - NO ENCRYPTION)
+  app.get("/api/quotes/:quoteId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, paymentMethodId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const paymentMethod = await storage.getQuotePaymentMethodById(paymentMethodId, quote.companyId);
+      if (!paymentMethod) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+      
+      // Verify payment method belongs to this quote
+      if (paymentMethod.quoteId !== quoteId) {
+        return res.status(404).json({ message: "Payment method not found in this quote" });
+      }
+      
+      // Return payment method with plain text data
+      await logger.logAuth({
+        req,
+        action: "view_payment_method",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_payment_method",
+          paymentMethodId,
+          paymentType: paymentMethod.paymentType,
+          fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
+        },
+      });
+      
+      res.json({ paymentMethod });
+    } catch (error: any) {
+      console.error("Error getting payment method:", error);
+      res.status(500).json({ message: "Failed to get payment method" });
+    }
+  });
+  
+  // Create new payment method (PLAIN TEXT - NO ENCRYPTION)
+  app.post("/api/quotes/:quoteId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body (include companyId and quoteId)
+      const validatedData = insertPaymentMethodSchema.parse({
+        ...req.body,
+        quoteId,
+        companyId: quote.companyId,
+      });
+      
+      // Save payment method as plain text (no encryption per user requirement)
+      const paymentMethod = await storage.createQuotePaymentMethod(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_payment_method",
+        entityId: paymentMethod.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          paymentType: paymentMethod.paymentType,
+          createdBy: currentUser.email,
+        },
+      });
+      
+      res.status(201).json({ paymentMethod });
+    } catch (error: any) {
+      console.error("Error creating payment method:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to create payment method" });
+    }
+  });
+  
+  // Update payment method (PLAIN TEXT - NO ENCRYPTION)
+  app.patch("/api/quotes/:quoteId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, paymentMethodId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Verify payment method exists and belongs to this quote
+      const existingPaymentMethod = await storage.getQuotePaymentMethodById(paymentMethodId, quote.companyId);
+      if (!existingPaymentMethod) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+      
+      if (existingPaymentMethod.quoteId !== quoteId) {
+        return res.status(404).json({ message: "Payment method not found in this quote" });
+      }
+      
+      // Validate request body
+      const validatedData = updatePaymentMethodSchema.parse(req.body);
+      
+      // Update payment method as plain text (no encryption)
+      const updated = await storage.updateQuotePaymentMethod(paymentMethodId, validatedData, quote.companyId);
+      
+      if (!updated) {
+        return res.status(500).json({ message: "Failed to update payment method" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_payment_method",
+        entityId: paymentMethodId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          paymentType: updated.paymentType,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ paymentMethod: updated });
+    } catch (error: any) {
+      console.error("Error updating payment method:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to update payment method" });
+    }
+  });
+  
+  // Delete payment method
+  app.delete("/api/quotes/:quoteId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, paymentMethodId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Verify payment method exists and belongs to this quote
+      const paymentMethod = await storage.getQuotePaymentMethodById(paymentMethodId, quote.companyId);
+      if (!paymentMethod) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+      
+      if (paymentMethod.quoteId !== quoteId) {
+        return res.status(404).json({ message: "Payment method not found in this quote" });
+      }
+      
+      // Delete payment method
+      const deleted = await storage.deleteQuotePaymentMethod(paymentMethodId, quote.companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete payment method" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_payment_method",
+        entityId: paymentMethodId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          paymentType: paymentMethod.paymentType,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Payment method deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting payment method:", error);
+      res.status(500).json({ message: "Failed to delete payment method" });
+    }
+  });
+  
+  // Set default payment method
+  app.post("/api/quotes/:quoteId/payment-methods/:paymentMethodId/set-default", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, paymentMethodId } = req.params;
+    
+    try {
+      // Validate quote exists and user has access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Verify payment method exists and belongs to this quote
+      const paymentMethod = await storage.getQuotePaymentMethodById(paymentMethodId, quote.companyId);
+      if (!paymentMethod) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+      
+      if (paymentMethod.quoteId !== quoteId) {
+        return res.status(404).json({ message: "Payment method not found in this quote" });
+      }
+      
+      // Set as default payment method
+      await storage.setDefaultPaymentMethod(paymentMethodId, quoteId, quote.companyId);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_payment_method",
+        entityId: paymentMethodId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          action: "set_default",
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Payment method set as default successfully" });
+    } catch (error: any) {
+      console.error("Error setting default payment method:", error);
+      res.status(500).json({ message: "Failed to set default payment method" });
     }
   });
 
