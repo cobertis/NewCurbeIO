@@ -46,13 +46,6 @@ import "./types";
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-// Helper function to parse date strings without timezone conversion
-// Converts "2025-11-01" to a Date object preserving the exact date
-function parseDate(dateString: string): Date {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
-}
-
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize logging service
   const logger = new LoggingService(storage);
@@ -7812,13 +7805,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const currentUser = req.user!;
     
     try {
-      // Convert date strings to Date objects before validation
+      // NO date conversions - keep dates as yyyy-MM-dd strings
       const payload = {
         ...req.body,
         companyId: currentUser.companyId,
         createdBy: currentUser.id,
-        effectiveDate: req.body.effectiveDate ? parseDate(req.body.effectiveDate) : undefined,
-        clientDateOfBirth: req.body.clientDateOfBirth ? parseDate(req.body.clientDateOfBirth) : undefined,
+        // effectiveDate and clientDateOfBirth remain as strings (yyyy-MM-dd)
       };
       
       // Validate request body using Zod schema
@@ -8061,36 +8053,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to edit this quote" });
       }
       
-      // 2. Convert date strings to Date objects (including nested arrays)
+      // 2. NO date conversions - keep dates as yyyy-MM-dd strings
       const payload = { ...req.body };
       
-      // Convert top-level dates
-      if (payload.effectiveDate && typeof payload.effectiveDate === 'string') {
-        payload.effectiveDate = parseDate(payload.effectiveDate);
-      }
-      if (payload.clientDateOfBirth && typeof payload.clientDateOfBirth === 'string') {
-        payload.clientDateOfBirth = parseDate(payload.clientDateOfBirth);
-      }
-      
-      // Convert spouse dateOfBirth in nested array
-      if (Array.isArray(payload.spouses)) {
-        payload.spouses = payload.spouses.map((spouse: any) => ({
-          ...spouse,
-          dateOfBirth: spouse.dateOfBirth && typeof spouse.dateOfBirth === 'string' 
-            ? parseDate(spouse.dateOfBirth) 
-            : spouse.dateOfBirth
-        }));
-      }
-      
-      // Convert dependent dateOfBirth in nested array
-      if (Array.isArray(payload.dependents)) {
-        payload.dependents = payload.dependents.map((dependent: any) => ({
-          ...dependent,
-          dateOfBirth: dependent.dateOfBirth && typeof dependent.dateOfBirth === 'string' 
-            ? parseDate(dependent.dateOfBirth) 
-            : dependent.dateOfBirth
-        }));
-      }
+      // Dates remain as strings (yyyy-MM-dd) - no conversion needed
+      // effectiveDate, clientDateOfBirth, spouse.dateOfBirth, dependent.dateOfBirth all stay as strings
       
       // 3. Validate with Zod (strips unknown keys, validates nested arrays)
       const validatedData = updateQuoteSchema.parse(payload);
