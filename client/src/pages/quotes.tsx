@@ -676,7 +676,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   }, [membersData, memberType, memberIndex]);
 
   // Fetch income data for this member (404 is OK - means no income data yet)
-  const { data: incomeData } = useQuery<{ income: any }>({
+  const { data: incomeData, isLoading: isLoadingIncome } = useQuery<{ income: any }>({
     queryKey: ['/api/quotes/members', currentMemberId, 'income'],
     queryFn: async () => {
       console.log('[Income Query] Fetching income for memberId:', currentMemberId);
@@ -698,7 +698,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   });
 
   // Fetch immigration data for this member (404 is OK - means no immigration data yet)
-  const { data: immigrationData } = useQuery<{ immigration: any }>({
+  const { data: immigrationData, isLoading: isLoadingImmigration } = useQuery<{ immigration: any }>({
     queryKey: ['/api/quotes/members', currentMemberId, 'immigration'],
     queryFn: async () => {
       console.log('[Immigration Query] Fetching immigration for memberId:', currentMemberId);
@@ -718,6 +718,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     },
     enabled: !!currentMemberId && open,
   });
+  
+  // Check if we're still loading data
+  const isLoadingMemberData = isLoadingIncome || isLoadingImmigration;
 
   // Use useMemo to prevent unnecessary recalculation and form resets
   const memberData = useMemo(() => {
@@ -1090,12 +1093,10 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
 
-  if (!memberData) return null;
-
-  // Calculate all members for navigation
-  const totalSpouses = quote.spouses?.length || 0;
-  const totalDependents = quote.dependents?.length || 0;
-  const allMembers = [
+  // Calculate all members for navigation (do this even if loading to avoid hook rule violations)
+  const totalSpouses = quote?.spouses?.length || 0;
+  const totalDependents = quote?.dependents?.length || 0;
+  const allMembers = quote ? [
     { type: 'primary' as const, index: undefined, name: `${quote.clientFirstName} ${quote.clientLastName}` },
     ...(quote.spouses || []).map((s, i) => ({ 
       type: 'spouse' as const, 
@@ -1107,7 +1108,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       index: i, 
       name: `${d.firstName} ${d.lastName}` 
     })),
-  ];
+  ] : [];
 
   const currentMemberIndex = allMembers.findIndex(m => 
     m.type === memberType && m.index === memberIndex
@@ -1130,7 +1131,21 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     return `Dependent ${(memberIndex || 0) + 1}`;
   };
 
-  const memberName = `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim() || 'Unnamed';
+  const memberName = memberData ? `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim() || 'Unnamed' : 'Loading...';
+
+  // Show loading screen if data is still being fetched
+  if (isLoadingMemberData || !memberData) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-2xl flex items-center justify-center" side="right">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-lg text-muted-foreground">Loading member details...</p>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet 
@@ -2642,7 +2657,6 @@ export default function QuotesPage() {
   
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
-  const [isPrefetchingMember, setIsPrefetchingMember] = useState(false);
   const [addingMember, setAddingMember] = useState(false);
   const [editingAddresses, setEditingAddresses] = useState<'physical' | 'mailing' | 'billing' | null>(null);
   const [editingPayment, setEditingPayment] = useState(false);
@@ -3215,85 +3229,6 @@ export default function QuotesPage() {
     }
     
     return '-';
-  };
-
-  // Handle edit member - prefetch ALL data before opening sheet
-  const handleEditMember = async (type: 'primary' | 'spouse' | 'dependent', index?: number) => {
-    if (!viewingQuote || !membersDetailsData?.members) return;
-    
-    setIsPrefetchingMember(true);
-    
-    try {
-      // Get the member ID based on type and index
-      let memberId: string | null = null;
-      
-      if (type === 'primary') {
-        const primaryMember = membersDetailsData.members.find(m => m.role === 'client');
-        memberId = primaryMember?.id;
-      } else if (type === 'spouse' && index !== undefined) {
-        const spouses = membersDetailsData.members.filter(m => m.role === 'spouse');
-        memberId = spouses[index]?.id;
-      } else if (type === 'dependent' && index !== undefined) {
-        const dependents = membersDetailsData.members.filter(m => m.role === 'dependent');
-        memberId = dependents[index]?.id;
-      }
-      
-      if (!memberId) {
-        console.error('[handleEditMember] Could not find memberId for type:', type, 'index:', index);
-        setIsPrefetchingMember(false);
-        return;
-      }
-      
-      console.log('[handleEditMember] Prefetching data for memberId:', memberId);
-      
-      // Prefetch income and immigration data in parallel
-      await Promise.all([
-        queryClient.prefetchQuery({
-          queryKey: ['/api/quotes/members', memberId, 'income'],
-          queryFn: async () => {
-            const res = await fetch(`/api/quotes/members/${memberId}/income`, {
-              credentials: 'include',
-            });
-            if (res.status === 404) {
-              return { income: null };
-            }
-            if (!res.ok) {
-              throw new Error('Failed to fetch income data');
-            }
-            return res.json();
-          },
-        }),
-        queryClient.prefetchQuery({
-          queryKey: ['/api/quotes/members', memberId, 'immigration'],
-          queryFn: async () => {
-            const res = await fetch(`/api/quotes/members/${memberId}/immigration`, {
-              credentials: 'include',
-            });
-            if (res.status === 404) {
-              return { immigration: null };
-            }
-            if (!res.ok) {
-              throw new Error('Failed to fetch immigration data');
-            }
-            return res.json();
-          },
-        }),
-      ]);
-      
-      console.log('[handleEditMember] All data prefetched successfully');
-      
-      // Now open the sheet with all data ready
-      setEditingMember({ type, index });
-    } catch (error) {
-      console.error('[handleEditMember] Error prefetching data:', error);
-      toast({
-        variant: "destructive",
-        title: "Error loading member data",
-        description: "Could not load all member information. Please try again.",
-      });
-    } finally {
-      setIsPrefetchingMember(false);
-    }
   };
 
   // Fetch total household income from all family members
@@ -4249,11 +4184,10 @@ export default function QuotesPage() {
                           size="sm" 
                           variant="ghost" 
                           className="h-7 w-7 p-0" 
-                          onClick={() => handleEditMember('primary')}
-                          disabled={isPrefetchingMember}
+                          onClick={() => setEditingMember({ type: 'primary' })}
                           data-testid="button-view-primary"
                         >
-                          {isPrefetchingMember ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <div className="h-7 w-7" />
                       </div>
@@ -4319,11 +4253,10 @@ export default function QuotesPage() {
                             size="sm" 
                             variant="ghost" 
                             className="h-7 w-7 p-0" 
-                            onClick={() => handleEditMember('spouse', index)}
-                            disabled={isPrefetchingMember}
+                            onClick={() => setEditingMember({ type: 'spouse', index })}
                             data-testid={`button-view-spouse-${index}`}
                           >
-                            {isPrefetchingMember ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button 
                             size="sm" 
@@ -4334,7 +4267,6 @@ export default function QuotesPage() {
                               name: `${spouse.firstName} ${spouse.lastName}`,
                               role: 'Spouse'
                             })}
-                            disabled={isPrefetchingMember}
                             data-testid={`button-delete-spouse-${index}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -4403,11 +4335,10 @@ export default function QuotesPage() {
                             size="sm" 
                             variant="ghost" 
                             className="h-7 w-7 p-0" 
-                            onClick={() => handleEditMember('dependent', index)}
-                            disabled={isPrefetchingMember}
+                            onClick={() => setEditingMember({ type: 'dependent', index })}
                             data-testid={`button-view-dependent-${index}`}
                           >
-                            {isPrefetchingMember ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button 
                             size="sm" 
@@ -4418,7 +4349,6 @@ export default function QuotesPage() {
                               name: `${dependent.firstName} ${dependent.lastName}`,
                               role: dependent.relation || 'Dependent'
                             })}
-                            disabled={isPrefetchingMember}
                             data-testid={`button-delete-dependent-${index}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
