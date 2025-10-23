@@ -3774,6 +3774,7 @@ export default function QuotesPage() {
     const { toast } = useToast();
     const [paymentTab, setPaymentTab] = useState<"card" | "bank_account">("card");
     const [cardType, setCardType] = useState<CardType>('unknown');
+    const [isSaving, setIsSaving] = useState(false); // Internal loading state
     const currentYear = new Date().getFullYear();
     
     // Fetch existing payment method data if editing
@@ -3877,63 +3878,56 @@ export default function QuotesPage() {
       }
     }, [open, paymentMethodData]);
 
-    // Create mutation
-    const createMutation = useMutation({
-      mutationFn: async (data: InsertPaymentMethod) => {
-        return apiRequest("POST", `/api/quotes/${quote.id}/payment-methods`, data);
-      },
-      onSuccess: () => {
+    // Unified save handler that detects which form to submit based on active tab
+    const handleSave = async () => {
+      setIsSaving(true);
+      
+      try {
+        if (paymentTab === 'card') {
+          const isValid = await cardForm.trigger();
+          if (!isValid) {
+            setIsSaving(false);
+            return;
+          }
+          const data = cardForm.getValues();
+          
+          if (paymentMethodId) {
+            await apiRequest("PATCH", `/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, data);
+          } else {
+            await apiRequest("POST", `/api/quotes/${quote.id}/payment-methods`, data);
+          }
+        } else {
+          const isValid = await bankAccountForm.trigger();
+          if (!isValid) {
+            setIsSaving(false);
+            return;
+          }
+          const data = bankAccountForm.getValues();
+          
+          if (paymentMethodId) {
+            await apiRequest("PATCH", `/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, data);
+          } else {
+            await apiRequest("POST", `/api/quotes/${quote.id}/payment-methods`, data);
+          }
+        }
+        
+        // Refresh the payment methods list
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'payment-methods'] });
+        
         toast({
-          title: "Payment method added",
+          title: paymentMethodId ? "Payment method updated" : "Payment method added",
           description: "The payment method has been saved successfully.",
         });
-        onOpenChange(false);
-      },
-      onError: (error: any) => {
+        
+        // Don't close the sheet - allow user to continue editing or add another
+      } catch (error: any) {
         toast({
           title: "Error",
-          description: error.message || "Failed to add payment method",
+          description: error.message || "Failed to save payment method",
           variant: "destructive",
         });
-      },
-    });
-
-    // Update mutation
-    const updateMutation = useMutation({
-      mutationFn: async (data: Partial<InsertPaymentMethod>) => {
-        return apiRequest("PATCH", `/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, data);
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'payment-methods'] });
-        toast({
-          title: "Payment method updated",
-          description: "The payment method has been updated successfully.",
-        });
-        onOpenChange(false);
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to update payment method",
-          variant: "destructive",
-        });
-      },
-    });
-
-    const handleSaveCard = async (data: z.infer<typeof cardSchema>) => {
-      if (paymentMethodId) {
-        updateMutation.mutate(data);
-      } else {
-        createMutation.mutate(data);
-      }
-    };
-
-    const handleSaveBankAccount = async (data: z.infer<typeof bankAccountSchema>) => {
-      if (paymentMethodId) {
-        updateMutation.mutate(data);
-      } else {
-        createMutation.mutate(data);
+      } finally {
+        setIsSaving(false);
       }
     };
 
@@ -3952,16 +3946,39 @@ export default function QuotesPage() {
     }
 
     return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
-          <SheetHeader>
-            <SheetTitle>{paymentMethodId ? 'Edit Payment Method' : 'Add Payment Method'}</SheetTitle>
-            <SheetDescription>
-              {paymentMethodId ? 'Update the payment method details' : 'Add a credit card or bank account for payments'}
-            </SheetDescription>
-          </SheetHeader>
+      <Sheet 
+        open={open} 
+        onOpenChange={(isOpen) => {
+          // Only allow closing when not saving
+          if (!isOpen && !isSaving) {
+            onOpenChange(false);
+          }
+        }}
+      >
+        <SheetContent className="w-full sm:max-w-2xl flex flex-col p-0" side="right">
+          {/* Header with save button */}
+          <div className="flex flex-col gap-3 p-6 border-b">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <SheetTitle className="text-lg">{paymentMethodId ? 'Edit Payment Method' : 'Add Payment Method'}</SheetTitle>
+                <SheetDescription className="mt-1">
+                  {paymentMethodId ? 'Update the payment method details' : 'Add a credit card or bank account for payments'}
+                </SheetDescription>
+              </div>
+              <Button
+                type="button"
+                disabled={isSaving}
+                data-testid="button-save-payment"
+                onClick={handleSave}
+                className="mr-10"
+              >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
 
-          <div className="py-6">
+          <div className="flex-1 overflow-y-auto p-6">
             <Tabs value={paymentTab} onValueChange={(value) => setPaymentTab(value as "card" | "bank_account")}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="card">Credit/Debit Card</TabsTrigger>
@@ -3971,7 +3988,7 @@ export default function QuotesPage() {
               {/* Credit/Debit Card Form */}
               <TabsContent value="card" className="space-y-4 mt-4">
                 <Form {...cardForm}>
-                  <form onSubmit={cardForm.handleSubmit(handleSaveCard)} className="space-y-4">
+                  <div className="space-y-4">
                     {/* USER REQUIREMENT: Card number in PLAIN TEXT - no masking */}
                     <FormField
                       control={cardForm.control}
@@ -4167,32 +4184,14 @@ export default function QuotesPage() {
                         </FormItem>
                       )}
                     />
-
-                    <div className="flex gap-2 justify-end pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                        disabled={createMutation.isPending || updateMutation.isPending}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={createMutation.isPending || updateMutation.isPending}
-                        data-testid="button-save-payment-method"
-                      >
-                        {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Payment Method'}
-                      </Button>
-                    </div>
-                  </form>
+                  </div>
                 </Form>
               </TabsContent>
 
               {/* Bank Account Form */}
               <TabsContent value="bank_account" className="space-y-4 mt-4">
                 <Form {...bankAccountForm}>
-                  <form onSubmit={bankAccountForm.handleSubmit(handleSaveBankAccount)} className="space-y-4">
+                  <div className="space-y-4">
                     <FormField
                       control={bankAccountForm.control}
                       name="bankName"
@@ -4324,25 +4323,7 @@ export default function QuotesPage() {
                         </FormItem>
                       )}
                     />
-
-                    <div className="flex gap-2 justify-end pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                        disabled={createMutation.isPending || updateMutation.isPending}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={createMutation.isPending || updateMutation.isPending}
-                        data-testid="button-save-payment-method"
-                      >
-                        {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Payment Method'}
-                      </Button>
-                    </div>
-                  </form>
+                  </div>
                 </Form>
               </TabsContent>
             </Tabs>
