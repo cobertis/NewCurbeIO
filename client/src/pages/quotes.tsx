@@ -4391,7 +4391,12 @@ export default function QuotesPage() {
     const totalFamilyMembers = 1 + 
       (viewingQuoteWithMembers.spouses?.length || 0) + 
       (viewingQuoteWithMembers.dependents?.length || 0);
-    const totalDependents = viewingQuoteWithMembers.dependents?.length || 0;
+    // Count only members marked as primary dependents
+    const totalDependents = [
+      viewingQuoteWithMembers,
+      ...(viewingQuoteWithMembers.spouses || []),
+      ...(viewingQuoteWithMembers.dependents || [])
+    ].filter((m: any) => m.isPrimaryDependent === true).length;
 
     // Calculate formatted income
     const totalHouseholdIncome = (householdIncomeData as any)?.totalIncome || 0;
