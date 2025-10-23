@@ -9691,17 +9691,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Fetch plans from CMS Marketplace
       const marketplaceData = await fetchMarketplacePlans(quoteData);
       
-      await logger.logAction({
-        req,
-        action: 'marketplace_plans_fetched' as any,
-        companyId: currentUser.companyId || undefined,
-        metadata: {
-          quoteId,
-          plansCount: marketplaceData.plans?.length || 0,
-          householdSize: 1 + spouses.length + dependents.length,
-          totalIncome,
-        },
-      });
+      // TODO: Add audit logging when logger service is available
+      // Log successful fetch for tracking
+      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}`);
       
       res.json(marketplaceData);
     } catch (error: any) {
