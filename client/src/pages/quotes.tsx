@@ -925,6 +925,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           ssn: normalizeSSN(data.ssn),
           gender: data.gender,
           isApplicant: data.isApplicant,
+          isPrimaryDependent: data.isPrimaryDependent,
           tobaccoUser: data.tobaccoUser,
           pregnant: data.pregnant,
           preferredLanguage: data.preferredLanguage,
@@ -979,6 +980,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             ssn: normalizeSSN(data.ssn) || null,
             gender: data.gender || null,
             isApplicant: data.isApplicant || false,
+            isPrimaryDependent: data.isPrimaryDependent || false,
             tobaccoUser: data.tobaccoUser || false,
             pregnant: data.pregnant || false,
             preferredLanguage: data.preferredLanguage || null,
@@ -1594,7 +1596,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                             data-testid="checkbox-primary-dependent"
                           />
                         </FormControl>
-                        <FormLabel className="cursor-pointer">Primary Dependent</FormLabel>
+                        <FormLabel className="cursor-pointer">Dependent</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -2159,7 +2161,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
                             data-testid="checkbox-primary-dependent"
                           />
                         </FormControl>
-                        <FormLabel className="cursor-pointer">Primary Dependent</FormLabel>
+                        <FormLabel className="cursor-pointer">Dependent</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -3099,6 +3101,7 @@ export default function QuotesPage() {
             ssn: normalizeSSN(data.ssn) || null,
             gender: data.gender || null,
             isApplicant: data.isApplicant || false,
+            isPrimaryDependent: data.isPrimaryDependent || false,
             tobaccoUser: data.tobaccoUser || false,
             pregnant: data.pregnant || false,
             preferredLanguage: data.preferredLanguage || null,
