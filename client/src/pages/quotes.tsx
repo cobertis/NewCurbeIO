@@ -4979,15 +4979,7 @@ export default function QuotesPage() {
                         variant="default" 
                         size="sm" 
                         data-testid="button-search-plans"
-                        onClick={() => {
-                          // Scroll to marketplace section
-                          const marketplaceSection = document.getElementById('marketplace-plans-section');
-                          if (marketplaceSection) {
-                            marketplaceSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }
-                          // Trigger auto-load
-                          setAutoLoadMarketplacePlans(true);
-                        }}
+                        onClick={() => setLocation(`/quotes/${quoteId}/marketplace-plans`)}
                       >
                         Search plans
                       </Button>
