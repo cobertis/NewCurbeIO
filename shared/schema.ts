@@ -1701,7 +1701,11 @@ const basePaymentMethodSchema = createInsertSchema(quotePaymentMethods).omit({
 export const insertPaymentMethodSchema = basePaymentMethodSchema.superRefine((data, ctx) => {
   // Validate expiration date if both month and year are provided
   if (data.expirationMonth && data.expirationYear) {
-    const expiration = data.expirationMonth + data.expirationYear.slice(2);
+    // Handle both 2-digit (YY) and 4-digit (YYYY) year formats
+    const year = data.expirationYear.length === 4 
+      ? data.expirationYear.slice(2) 
+      : data.expirationYear;
+    const expiration = data.expirationMonth + year;
     const result = validateExpirationDate(expiration);
     if (!result.isValid) {
       ctx.addIssue({
