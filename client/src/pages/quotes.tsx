@@ -3863,7 +3863,7 @@ export default function QuotesPage() {
       cardNumber: z.string().min(1, "Card number is required"),
       cardHolderName: z.string().min(1, "Cardholder name is required"),
       expirationMonth: z.string().regex(/^(0[1-9]|1[0-2])$/, "Month must be 01-12"),
-      expirationYear: z.string().min(1, "Year is required"),
+      expirationYear: z.string().regex(/^\d{4}$/, "Year must be 4 digits (YYYY)"),
       cvv: z.string().min(1, "CVV is required"),
       isDefault: z.boolean().default(false),
     });
@@ -3914,71 +3914,43 @@ export default function QuotesPage() {
     // Track previous open state to prevent multiple resets
     const prevOpenRef = useRef(false);
 
-    // Reset forms when opening or when payment method data loads
+    // Reset forms when opening
     useEffect(() => {
       const isOpening = open && !prevOpenRef.current;
       
       if (isOpening) {
-        if (paymentMethodId && paymentMethodData?.paymentMethod) {
-          // Editing existing payment method
-          const pm = paymentMethodData.paymentMethod;
-          if (pm.paymentType === 'card') {
-            setPaymentTab('card');
-            cardForm.reset({
-              companyId: pm.companyId,
-              quoteId: pm.quoteId,
-              paymentType: 'card',
-              // USER REQUIREMENT: Display card data in PLAIN TEXT - no masking
-              cardNumber: pm.cardNumber || '',
-              cardHolderName: pm.cardHolderName || '',
-              expirationMonth: pm.expirationMonth || '',
-              expirationYear: pm.expirationYear || '',
-              cvv: pm.cvv || '',
-              isDefault: pm.isDefault || false,
-            });
-          } else if (pm.paymentType === 'bank_account') {
-            setPaymentTab('bank_account');
-            bankAccountForm.reset({
-              companyId: pm.companyId,
-              quoteId: pm.quoteId,
-              paymentType: 'bank_account',
-              // USER REQUIREMENT: Display bank account data in PLAIN TEXT - no masking
-              bankName: pm.bankName || '',
-              accountNumber: pm.accountNumber || '',
-              routingNumber: pm.routingNumber || '',
-              accountHolderName: pm.accountHolderName || '',
-              accountType: pm.accountType as 'checking' | 'savings',
-              isDefault: pm.isDefault || false,
-            });
-          }
-        } else if (!paymentMethodId) {
-          // Adding new payment method - reset to clean state
-          setPaymentTab('card');
-          cardForm.reset({
-            companyId: quote?.companyId || '',
-            quoteId: quote?.id || '',
-            paymentType: 'card' as const,
-            cardNumber: '',
-            cardHolderName: '',
-            expirationMonth: '',
-            expirationYear: '',
-            cvv: '',
-            isDefault: false,
-          });
-          bankAccountForm.reset({
-            companyId: quote?.companyId || '',
-            quoteId: quote?.id || '',
-            paymentType: 'bank_account' as const,
-            bankName: '',
-            accountNumber: '',
-            routingNumber: '',
-            accountHolderName: '',
-            accountType: 'checking' as const,
-            isDefault: false,
-          });
-        }
-      } else if (open && paymentMethodId && paymentMethodData?.paymentMethod && !prevOpenRef.current) {
-        // Handle case where data loads after sheet is already open
+        // Reset to clean state when opening
+        setPaymentTab('card');
+        cardForm.reset({
+          companyId: quote?.companyId || '',
+          quoteId: quote?.id || '',
+          paymentType: 'card' as const,
+          cardNumber: '',
+          cardHolderName: '',
+          expirationMonth: '',
+          expirationYear: '',
+          cvv: '',
+          isDefault: false,
+        });
+        bankAccountForm.reset({
+          companyId: quote?.companyId || '',
+          quoteId: quote?.id || '',
+          paymentType: 'bank_account' as const,
+          bankName: '',
+          accountNumber: '',
+          routingNumber: '',
+          accountHolderName: '',
+          accountType: 'checking' as const,
+          isDefault: false,
+        });
+      }
+      
+      prevOpenRef.current = open;
+    }, [open, quote?.companyId, quote?.id]);
+
+    // Populate form with existing data when editing
+    useEffect(() => {
+      if (open && paymentMethodId && paymentMethodData?.paymentMethod) {
         const pm = paymentMethodData.paymentMethod;
         if (pm.paymentType === 'card') {
           setPaymentTab('card');
@@ -4008,9 +3980,7 @@ export default function QuotesPage() {
           });
         }
       }
-      
-      prevOpenRef.current = open;
-    }, [open, paymentMethodData, paymentMethodId]);
+    }, [paymentMethodData, paymentMethodId, open]);
 
     // Unified save handler that detects which form to submit based on active tab
     const handleSave = async () => {
@@ -4020,7 +3990,6 @@ export default function QuotesPage() {
         if (paymentTab === 'card') {
           const isValid = await cardForm.trigger();
           if (!isValid) {
-            setIsSaving(false);
             return;
           }
           const data = cardForm.getValues();
@@ -4033,7 +4002,6 @@ export default function QuotesPage() {
         } else {
           const isValid = await bankAccountForm.trigger();
           if (!isValid) {
-            setIsSaving(false);
             return;
           }
           const data = bankAccountForm.getValues();
@@ -4046,40 +4014,15 @@ export default function QuotesPage() {
         }
         
         // Refresh unified quote detail data
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
         
         toast({
           title: paymentMethodId ? "Payment method updated" : "Payment method added",
           description: "The payment method has been saved successfully.",
         });
         
-        // Reset forms after successful save (but keep sheet open)
-        if (!paymentMethodId) { // Only reset if adding new (not editing)
-          cardForm.reset({
-            companyId: quote.companyId,
-            quoteId: quote.id,
-            paymentType: 'card',
-            cardNumber: '',
-            cardHolderName: '',
-            expirationMonth: '',
-            expirationYear: '',
-            cvv: '',
-            isDefault: false,
-          });
-          bankAccountForm.reset({
-            companyId: quote.companyId,
-            quoteId: quote.id,
-            paymentType: 'bank_account',
-            bankName: '',
-            accountNumber: '',
-            routingNumber: '',
-            accountHolderName: '',
-            accountType: 'checking',
-            isDefault: false,
-          });
-        }
-        
-        // Don't close the sheet - allow user to continue editing or add another
+        // Close the modal after successful save
+        onOpenChange(false);
       } catch (error: any) {
         toast({
           title: "Error",
@@ -4233,12 +4176,12 @@ export default function QuotesPage() {
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger data-testid="select-exp-year">
-                                    <SelectValue placeholder="YY" />
+                                    <SelectValue placeholder="YYYY" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
                                   {Array.from({ length: 10 }, (_, i) => currentYear + i).map((year) => (
-                                    <SelectItem key={year} value={year.toString().slice(-2)}>{year.toString().slice(-2)}</SelectItem>
+                                    <SelectItem key={year} value={year.toString()}>{year.toString()}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
