@@ -2710,6 +2710,9 @@ export default function QuotesPage() {
   // Delete member dialog state
   const [deletingMember, setDeletingMember] = useState<{ id: string; name: string; role: string } | null>(null);
   
+  // Delete address dialog state
+  const [deletingAddress, setDeletingAddress] = useState<'mailing' | 'billing' | null>(null);
+  
   // Advanced filters state
   const [filters, setFilters] = useState({
     user: "",
@@ -5052,16 +5055,29 @@ export default function QuotesPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base font-semibold">Mailing address</CardTitle>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 px-3" 
-                        onClick={() => setEditingAddresses('mailing')}
-                        data-testid="button-edit-mailing-address"
-                      >
-                        <MapPin className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 px-3" 
+                          onClick={() => setEditingAddresses('mailing')}
+                          data-testid="button-edit-mailing-address"
+                        >
+                          <MapPin className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        {viewingQuote.mailing_street && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-destructive hover:text-destructive"
+                            onClick={() => setDeletingAddress('mailing')}
+                            data-testid="button-delete-mailing-address"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -5089,16 +5105,29 @@ export default function QuotesPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base font-semibold">Billing address</CardTitle>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 px-3" 
-                        onClick={() => setEditingAddresses('billing')}
-                        data-testid="button-edit-billing-address"
-                      >
-                        <MapPin className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 px-3" 
+                          onClick={() => setEditingAddresses('billing')}
+                          data-testid="button-edit-billing-address"
+                        >
+                          <MapPin className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        {viewingQuote.billing_street && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-destructive hover:text-destructive"
+                            onClick={() => setDeletingAddress('billing')}
+                            data-testid="button-delete-billing-address"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -5427,6 +5456,59 @@ export default function QuotesPage() {
                     data-testid="button-confirm-delete-member"
                   >
                     {deleteMemberMutation.isPending ? 'Deleting...' : 'Delete Member'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Address Confirmation Dialog */}
+            <AlertDialog open={!!deletingAddress} onOpenChange={(open) => !open && setDeletingAddress(null)}>
+              <AlertDialogContent data-testid="dialog-delete-address">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {deletingAddress === 'mailing' ? 'Mailing' : 'Billing'} Address?</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div>
+                      <p>
+                        Are you sure you want to remove the {deletingAddress === 'mailing' ? 'mailing' : 'billing'} address from this quote?
+                      </p>
+                      <p className="mt-4">
+                        This will clear all address fields. You can add a new address later if needed.
+                      </p>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-delete-address">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (deletingAddress) {
+                        const prefix = deletingAddress === 'mailing' ? 'mailing_' : 'billing_';
+                        updateQuoteMutation.mutate({
+                          quoteId: viewingQuote.id,
+                          data: {
+                            [`${prefix}street`]: null,
+                            [`${prefix}address_line_2`]: null,
+                            [`${prefix}city`]: null,
+                            [`${prefix}state`]: null,
+                            [`${prefix}postal_code`]: null,
+                            [`${prefix}county`]: null,
+                          }
+                        }, {
+                          onSuccess: () => {
+                            setDeletingAddress(null);
+                            toast({
+                              title: "Address deleted",
+                              description: `${deletingAddress === 'mailing' ? 'Mailing' : 'Billing'} address has been removed.`
+                            });
+                          }
+                        });
+                      }
+                    }}
+                    disabled={updateQuoteMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-delete-address"
+                  >
+                    {updateQuoteMutation.isPending ? 'Deleting...' : 'Delete Address'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
