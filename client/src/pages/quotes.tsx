@@ -2812,10 +2812,8 @@ export default function QuotesPage() {
   // Delete payment method mutation
   const deletePaymentMethodMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
-      if (!viewingQuote?.id) return;
-      return apiRequest(`/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`, {
-        method: 'DELETE',
-      });
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`);
     },
     onSuccess: () => {
       if (viewingQuote?.id) {
