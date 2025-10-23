@@ -4334,15 +4334,24 @@ export default function QuotesPage() {
       );
     }
 
+    // Combine viewingQuote with full member details for EditMemberSheet
+    const spousesFromMembers = membersDetailsData?.members?.filter(m => m.role === 'spouse') || [];
+    const dependentsFromMembers = membersDetailsData?.members?.filter(m => m.role === 'dependent') || [];
+    const viewingQuoteWithMembers = {
+      ...viewingQuote,
+      spouses: spousesFromMembers.length > 0 ? spousesFromMembers : (viewingQuote.spouses || []),
+      dependents: dependentsFromMembers.length > 0 ? dependentsFromMembers : (viewingQuote.dependents || []),
+    };
+    
     const product = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType);
     const agent = agents.find(a => a.id === viewingQuote.agentId);
     const totalApplicants = 1 + 
-      (viewingQuote.spouses?.filter((s: any) => s.isApplicant).length || 0) + 
-      (viewingQuote.dependents?.filter((d: any) => d.isApplicant).length || 0);
+      (viewingQuoteWithMembers.spouses?.filter((s: any) => s.isApplicant).length || 0) + 
+      (viewingQuoteWithMembers.dependents?.filter((d: any) => d.isApplicant).length || 0);
     const totalFamilyMembers = 1 + 
-      (viewingQuote.spouses?.length || 0) + 
-      (viewingQuote.dependents?.length || 0);
-    const totalDependents = viewingQuote.dependents?.length || 0;
+      (viewingQuoteWithMembers.spouses?.length || 0) + 
+      (viewingQuoteWithMembers.dependents?.length || 0);
+    const totalDependents = viewingQuoteWithMembers.dependents?.length || 0;
 
     // Calculate formatted income
     const totalHouseholdIncome = (householdIncomeData as any)?.totalIncome || 0;
@@ -5312,7 +5321,7 @@ export default function QuotesPage() {
         <EditMemberSheet
               open={!!editingMember}
               onOpenChange={(open) => !open && setEditingMember(null)}
-              quote={viewingQuote}
+              quote={viewingQuoteWithMembers}
               memberType={editingMember?.type}
               memberIndex={editingMember?.index}
               onSave={(data: Partial<Quote>) => {
