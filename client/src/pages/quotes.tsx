@@ -4118,7 +4118,7 @@ export default function QuotesPage() {
                                 </FormControl>
                                 <SelectContent>
                                   {Array.from({ length: 10 }, (_, i) => currentYear + i).map((year) => (
-                                    <SelectItem key={year} value={year.toString()}>{year.toString().slice(-2)}</SelectItem>
+                                    <SelectItem key={year} value={year.toString().slice(-2)}>{year.toString().slice(-2)}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
