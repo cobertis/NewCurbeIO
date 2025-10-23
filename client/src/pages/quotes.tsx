@@ -3880,10 +3880,7 @@ export default function QuotesPage() {
     // Create mutation
     const createMutation = useMutation({
       mutationFn: async (data: InsertPaymentMethod) => {
-        return apiRequest(`/api/quotes/${quote.id}/payment-methods`, {
-          method: 'POST',
-          body: JSON.stringify(data),
-        });
+        return apiRequest("POST", `/api/quotes/${quote.id}/payment-methods`, data);
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'payment-methods'] });
@@ -3905,10 +3902,7 @@ export default function QuotesPage() {
     // Update mutation
     const updateMutation = useMutation({
       mutationFn: async (data: Partial<InsertPaymentMethod>) => {
-        return apiRequest(`/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(data),
-        });
+        return apiRequest("PATCH", `/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, data);
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'payment-methods'] });
