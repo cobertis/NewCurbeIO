@@ -4979,7 +4979,7 @@ export default function QuotesPage() {
                         variant="default" 
                         size="sm" 
                         data-testid="button-search-plans"
-                        onClick={() => setLocation(`/quotes/${quoteId}/marketplace-plans`)}
+                        onClick={() => setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`)}
                       >
                         Search plans
                       </Button>

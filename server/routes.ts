@@ -9631,8 +9631,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
       
       // Get household income
-      const incomeRecords = await storage.getQuoteMemberIncomesByQuote(quoteId);
-      const totalIncome = incomeRecords.reduce((sum, income) => sum + Number(income.totalAnnualIncome || 0), 0);
+      const incomePromises = members.map(member => 
+        storage.getQuoteMemberIncome(member.id, quote.companyId)
+      );
+      const incomeRecords = await Promise.all(incomePromises);
+      const totalIncome = incomeRecords.reduce((sum, income) => {
+        if (income?.totalAnnualIncome) {
+          return sum + Number(income.totalAnnualIncome);
+        }
+        return sum;
+      }, 0);
       
       // Prepare data for CMS API
       const client = members.find(m => m.role === 'client');
