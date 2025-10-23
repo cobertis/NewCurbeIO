@@ -3783,7 +3783,7 @@ export default function QuotesPage() {
       enabled: !!paymentMethodId && open,
     });
 
-    // Create Zod schemas for validation (use insertPaymentMethodSchema directly for comprehensive validation)
+    // Create Zod schemas for validation
     const cardSchema = z.object({
       companyId: z.string(),
       quoteId: z.string(),
@@ -3791,9 +3791,8 @@ export default function QuotesPage() {
       cardNumber: z.string().min(1, "Card number is required"),
       cardHolderName: z.string().min(1, "Cardholder name is required"),
       expirationMonth: z.string().regex(/^(0[1-9]|1[0-2])$/, "Month must be 01-12"),
-      expirationYear: z.string().regex(/^\d{4}$/, "Year must be 4 digits"),
+      expirationYear: z.string().min(1, "Year is required"),
       cvv: z.string().min(1, "CVV is required"),
-      billingZip: z.string().regex(/^\d{5}(-\d{4})?$/, "ZIP must be 5 digits or 5+4 format"),
       isDefault: z.boolean().default(false),
     });
 
@@ -3821,7 +3820,6 @@ export default function QuotesPage() {
         expirationMonth: '',
         expirationYear: '',
         cvv: '',
-        billingZip: '',
         isDefault: false,
       },
     });
@@ -3857,7 +3855,6 @@ export default function QuotesPage() {
             expirationMonth: pm.expirationMonth || '',
             expirationYear: pm.expirationYear || '',
             cvv: pm.cvv || '',
-            billingZip: pm.billingZip || '',
             isDefault: pm.isDefault || false,
           });
         } else if (pm.paymentType === 'bank_account') {
@@ -4013,15 +4010,15 @@ export default function QuotesPage() {
                                 {...field}
                                 type="text"
                                 placeholder="1234 5678 9012 3456"
-                                maxLength={23} // Account for spaces in formatted number
+                                maxLength={23}
                                 data-testid="input-card-number"
                                 onChange={(e) => {
                                   const cleaned = cleanCardNumber(e.target.value, field.value);
                                   const formatted = formatCardNumber(cleaned);
                                   const detectedType = detectCardType(cleaned);
                                   setCardType(detectedType);
-                                  field.onChange(cleaned); // Store unformatted for validation
-                                  e.target.value = formatted; // Display formatted
+                                  field.onChange(cleaned);
+                                  e.target.value = formatted;
                                 }}
                                 onBlur={(e) => {
                                   const cleaned = cleanCardNumber(e.target.value);
@@ -4032,85 +4029,62 @@ export default function QuotesPage() {
                                 value={formatCardNumber(field.value || '')}
                               />
                             </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              {currentCardType === 'amex' ? 
-                                'American Express: 15 digits' :
-                                'Visa, Mastercard, Discover: 16 digits'
-                              }
-                            </p>
                             <FormMessage />
                           </FormItem>
                         );
                       }}
                     />
 
-                    <FormField
-                      control={cardForm.control}
-                      name="cardHolderName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cardholder Name</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder="John Doe"
-                              data-testid="input-card-holder-name"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
+                    {/* Expiration (MM / YY) and CVV on the same line */}
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={cardForm.control}
-                        name="expirationMonth"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Expiration Month</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-exp-month">
-                                  <SelectValue placeholder="MM" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map((month) => (
-                                  <SelectItem key={month} value={month}>{month}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <FormField
+                          control={cardForm.control}
+                          name="expirationMonth"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Expiration</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-exp-month">
+                                    <SelectValue placeholder="MM" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map((month) => (
+                                    <SelectItem key={month} value={month}>{month}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      <FormField
-                        control={cardForm.control}
-                        name="expirationYear"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Expiration Year</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-exp-year">
-                                  <SelectValue placeholder="YYYY" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {Array.from({ length: 10 }, (_, i) => currentYear + i).map((year) => (
-                                  <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                        <FormField
+                          control={cardForm.control}
+                          name="expirationYear"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="opacity-0">Year</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-exp-year">
+                                    <SelectValue placeholder="YY" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {Array.from({ length: 10 }, (_, i) => currentYear + i).map((year) => (
+                                    <SelectItem key={year} value={year.toString()}>{year.toString().slice(-2)}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
-                    <div className="grid grid-cols-2 gap-4">
                       {/* USER REQUIREMENT: CVV in PLAIN TEXT - no masking */}
                       <FormField
                         control={cardForm.control}
@@ -4137,34 +4111,30 @@ export default function QuotesPage() {
                                   }}
                                 />
                               </FormControl>
-                              <p className="text-xs text-muted-foreground">
-                                {detectedCardType === 'amex' ? '4-digit code on front' : '3-digit code on back'}
-                              </p>
                               <FormMessage />
                             </FormItem>
                           );
                         }}
                       />
-
-                      <FormField
-                        control={cardForm.control}
-                        name="billingZip"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Billing ZIP Code</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                placeholder="12345"
-                                maxLength={10}
-                                data-testid="input-billing-zip"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
+
+                    <FormField
+                      control={cardForm.control}
+                      name="cardHolderName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cardholder Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="John Doe"
+                              data-testid="input-card-holder-name"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <FormField
                       control={cardForm.control}
