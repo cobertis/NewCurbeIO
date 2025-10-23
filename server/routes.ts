@@ -9628,47 +9628,55 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Get quote members
-      const members = await storage.getQuoteMembers(quoteId);
+      const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
       
       // Get household income
       const incomeRecords = await storage.getQuoteMemberIncomesByQuote(quoteId);
-      const totalIncome = incomeRecords.reduce((sum, income) => sum + Number(income.annualIncome || 0), 0);
+      const totalIncome = incomeRecords.reduce((sum, income) => sum + Number(income.totalAnnualIncome || 0), 0);
       
       // Prepare data for CMS API
-      const client = members.find(m => m.relation === 'self');
-      const spouses = members.filter(m => m.relation === 'spouse');
-      const dependents = members.filter(m => m.relation === 'child' || m.relation === 'dependent');
+      const client = members.find(m => m.role === 'client');
+      const spouses = members.filter(m => m.role === 'spouse');
+      const dependents = members.filter(m => m.role === 'dependent');
       
-      if (!client || !client.dateOfBirth) {
+      // If no client in members, check the quote's client fields
+      const clientData = client || {
+        dateOfBirth: quote.clientDateOfBirth,
+        gender: quote.clientGender,
+        tobaccoUser: quote.clientTobaccoUser,
+        pregnant: false, // No pregnant field in quotes table for client
+      };
+      
+      if (!clientData || !clientData.dateOfBirth) {
         return res.status(400).json({ message: "Client information incomplete - date of birth required" });
       }
       
-      if (!quote.postalCode || !quote.county || !quote.state) {
+      if (!quote.physical_postal_code || !quote.physical_county || !quote.physical_state) {
         return res.status(400).json({ message: "Quote address information incomplete" });
       }
       
       const quoteData = {
-        zipCode: quote.postalCode,
-        county: quote.county,
-        state: quote.state,
+        zipCode: quote.physical_postal_code,
+        county: quote.physical_county,
+        state: quote.physical_state,
         householdIncome: totalIncome,
         client: {
-          dateOfBirth: client.dateOfBirth,
-          gender: client.gender || undefined,
-          pregnant: client.pregnant || false,
-          usesTobacco: client.usesTobacco || false,
+          dateOfBirth: clientData.dateOfBirth,
+          gender: clientData.gender || undefined,
+          pregnant: clientData.pregnant || false,
+          usesTobacco: clientData.tobaccoUser || false,
         },
         spouses: spouses.map(s => ({
           dateOfBirth: s.dateOfBirth!,
           gender: s.gender || undefined,
           pregnant: s.pregnant || false,
-          usesTobacco: s.usesTobacco || false,
+          usesTobacco: s.tobaccoUser || false,
         })),
         dependents: dependents.map(d => ({
           dateOfBirth: d.dateOfBirth!,
           gender: d.gender || undefined,
           pregnant: d.pregnant || false,
-          usesTobacco: d.usesTobacco || false,
+          usesTobacco: d.tobaccoUser || false,
         })),
       };
       

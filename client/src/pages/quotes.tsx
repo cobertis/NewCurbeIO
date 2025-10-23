@@ -2742,11 +2742,18 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
 }
 
 // Marketplace Plans Section Component
-function MarketplacePlansSection({ quoteId }: { quoteId: string }) {
+function MarketplacePlansSection({ quoteId, autoLoad = false }: { quoteId: string; autoLoad?: boolean }) {
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+
+  // Auto-load plans if requested
+  useEffect(() => {
+    if (autoLoad && !marketplacePlans && !isLoadingPlans) {
+      fetchMarketplacePlans();
+    }
+  }, [autoLoad]);
 
   const fetchMarketplacePlans = async () => {
     setIsLoadingPlans(true);
@@ -2803,7 +2810,7 @@ function MarketplacePlansSection({ quoteId }: { quoteId: string }) {
   };
 
   return (
-    <Card>
+    <Card id="marketplace-plans-section">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <div className="flex-1">
           <CardTitle className="flex items-center gap-2">
@@ -3006,6 +3013,9 @@ export default function QuotesPage() {
   
   // Delete address dialog state
   const [deletingAddress, setDeletingAddress] = useState<'mailing' | 'billing' | null>(null);
+  
+  // Marketplace plans auto-load state
+  const [autoLoadMarketplacePlans, setAutoLoadMarketplacePlans] = useState(false);
   
   // Advanced filters state
   const [filters, setFilters] = useState({
@@ -4965,7 +4975,20 @@ export default function QuotesPage() {
                     
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <Button variant="default" size="sm" data-testid="button-search-plans">
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        data-testid="button-search-plans"
+                        onClick={() => {
+                          // Scroll to marketplace section
+                          const marketplaceSection = document.getElementById('marketplace-plans-section');
+                          if (marketplaceSection) {
+                            marketplaceSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                          // Trigger auto-load
+                          setAutoLoadMarketplacePlans(true);
+                        }}
+                      >
                         Search plans
                       </Button>
                       <DropdownMenu>
@@ -5693,7 +5716,7 @@ export default function QuotesPage() {
               </Card>
 
               {/* CMS Marketplace Plans */}
-              <MarketplacePlansSection quoteId={viewingQuote.id} />
+              <MarketplacePlansSection quoteId={viewingQuote.id} autoLoad={autoLoadMarketplacePlans} />
 
               {/* Notes or Comments */}
               <Card>
