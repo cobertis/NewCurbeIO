@@ -9599,6 +9599,128 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== CMS MARKETPLACE API ====================
+  
+  // Import CMS Marketplace service
+  const cmsMarketplace = await import('./cms-marketplace.js');
+  const { fetchMarketplacePlans, getCountyFips } = cmsMarketplace;
+  
+  // Get health insurance plans from CMS Marketplace API
+  app.post("/api/cms-marketplace/plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const { quoteId } = req.body;
+      
+      if (!quoteId) {
+        return res.status(400).json({ message: "Quote ID is required" });
+      }
+      
+      // Get quote details
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get quote members
+      const members = await storage.getQuoteMembers(quoteId);
+      
+      // Get household income
+      const incomeRecords = await storage.getQuoteMemberIncomesByQuote(quoteId);
+      const totalIncome = incomeRecords.reduce((sum, income) => sum + Number(income.annualIncome || 0), 0);
+      
+      // Prepare data for CMS API
+      const client = members.find(m => m.relation === 'self');
+      const spouses = members.filter(m => m.relation === 'spouse');
+      const dependents = members.filter(m => m.relation === 'child' || m.relation === 'dependent');
+      
+      if (!client || !client.dateOfBirth) {
+        return res.status(400).json({ message: "Client information incomplete - date of birth required" });
+      }
+      
+      if (!quote.postalCode || !quote.county || !quote.state) {
+        return res.status(400).json({ message: "Quote address information incomplete" });
+      }
+      
+      const quoteData = {
+        zipCode: quote.postalCode,
+        county: quote.county,
+        state: quote.state,
+        householdIncome: totalIncome,
+        client: {
+          dateOfBirth: client.dateOfBirth,
+          gender: client.gender || undefined,
+          pregnant: client.pregnant || false,
+          usesTobacco: client.usesTobacco || false,
+        },
+        spouses: spouses.map(s => ({
+          dateOfBirth: s.dateOfBirth!,
+          gender: s.gender || undefined,
+          pregnant: s.pregnant || false,
+          usesTobacco: s.usesTobacco || false,
+        })),
+        dependents: dependents.map(d => ({
+          dateOfBirth: d.dateOfBirth!,
+          gender: d.gender || undefined,
+          pregnant: d.pregnant || false,
+          usesTobacco: d.usesTobacco || false,
+        })),
+      };
+      
+      // Fetch plans from CMS Marketplace
+      const marketplaceData = await fetchMarketplacePlans(quoteData);
+      
+      await logger.logAction({
+        req,
+        action: 'marketplace_plans_fetched' as any,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          plansCount: marketplaceData.plans?.length || 0,
+          householdSize: 1 + spouses.length + dependents.length,
+          totalIncome,
+        },
+      });
+      
+      res.json(marketplaceData);
+    } catch (error: any) {
+      console.error("Error fetching marketplace plans:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch marketplace plans",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+  
+  // Get county FIPS code
+  app.get("/api/cms-marketplace/county-fips", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { zipCode, county, state } = req.query;
+      
+      if (!zipCode || !county || !state) {
+        return res.status(400).json({ message: "zipCode, county, and state are required" });
+      }
+      
+      const fips = await getCountyFips(
+        zipCode as string, 
+        county as string, 
+        state as string
+      );
+      
+      res.json({ fips });
+    } catch (error: any) {
+      console.error("Error fetching county FIPS:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch county FIPS code" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup WebSocket for real-time chat updates with session validation

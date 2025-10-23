@@ -2741,6 +2741,245 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
   );
 }
 
+// Marketplace Plans Section Component
+function MarketplacePlansSection({ quoteId }: { quoteId: string }) {
+  const { toast } = useToast();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+
+  const fetchMarketplacePlans = async () => {
+    setIsLoadingPlans(true);
+    try {
+      const response = await fetch('/api/cms-marketplace/plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ quoteId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch plans');
+      }
+
+      const data = await response.json();
+      setMarketplacePlans(data);
+      setIsExpanded(true);
+      
+      toast({
+        title: "Plans loaded",
+        description: `Found ${data.plans?.length || 0} available plans`,
+      });
+    } catch (error: any) {
+      console.error('Error fetching marketplace plans:', error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching plans",
+        description: error.message || "Failed to fetch marketplace plans",
+      });
+    } finally {
+      setIsLoadingPlans(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const getMetalLevelColor = (metalLevel: string) => {
+    const level = metalLevel?.toLowerCase();
+    if (level?.includes('bronze')) return 'bg-amber-700';
+    if (level?.includes('silver')) return 'bg-gray-400';
+    if (level?.includes('gold')) return 'bg-yellow-500';
+    if (level?.includes('platinum')) return 'bg-purple-500';
+    return 'bg-blue-500';
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div className="flex-1">
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            Available Health Insurance Plans
+          </CardTitle>
+          <CardDescription className="mt-1">
+            View available plans from healthcare.gov marketplace
+          </CardDescription>
+        </div>
+        <Button
+          size="sm"
+          variant="default"
+          onClick={fetchMarketplacePlans}
+          disabled={isLoadingPlans}
+          data-testid="button-fetch-marketplace-plans"
+        >
+          {isLoadingPlans ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Loading...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Load Plans
+            </>
+          )}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {!marketplacePlans && !isLoadingPlans && (
+          <div className="text-center py-8">
+            <Shield className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              Click "Load Plans" to view available health insurance options from the marketplace
+            </p>
+          </div>
+        )}
+
+        {isLoadingPlans && (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Fetching plans from healthcare.gov marketplace...
+              </p>
+            </div>
+          </div>
+        )}
+
+        {marketplacePlans && !isLoadingPlans && (
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
+              <div>
+                <p className="text-sm font-medium">
+                  Found {marketplacePlans.plans?.length || 0} plans
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {marketplacePlans.year} coverage year
+                </p>
+              </div>
+              {marketplacePlans.household_aptc && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Monthly Tax Credit</p>
+                  <p className="text-sm font-semibold text-green-600">
+                    {formatCurrency(marketplacePlans.household_aptc)}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Plans List */}
+            <div className="space-y-3">
+              {marketplacePlans.plans?.slice(0, isExpanded ? undefined : 5).map((plan: any, index: number) => (
+                <Card key={plan.id || index} className="bg-accent/5">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      {/* Plan Info */}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-sm">{plan.name}</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {plan.issuer?.name}
+                            </p>
+                          </div>
+                          <Badge className={`${getMetalLevelColor(plan.metal_level)} text-white`}>
+                            {plan.metal_level}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Plan Type</p>
+                            <p className="text-sm font-medium">{plan.plan_type || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Monthly Premium</p>
+                            <p className="text-sm font-semibold">{formatCurrency(plan.premium)}</p>
+                          </div>
+                          {plan.premium_w_credit && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">After Tax Credit</p>
+                              <p className="text-sm font-semibold text-green-600">
+                                {formatCurrency(plan.premium_w_credit)}
+                              </p>
+                            </div>
+                          )}
+                          {plan.deductibles?.[0] && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Deductible</p>
+                              <p className="text-sm font-medium">
+                                {formatCurrency(plan.deductibles[0].amount)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {plan.quality_rating?.available && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Quality Rating:</span>
+                            <div className="flex gap-0.5">
+                              {[...Array(5)].map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={`h-3 w-3 rounded-sm ${
+                                    i < (plan.quality_rating.global_rating || 0)
+                                      ? 'bg-yellow-500'
+                                      : 'bg-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-xs font-medium">
+                              {plan.quality_rating.global_rating}/5
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Show More Button */}
+            {marketplacePlans.plans?.length > 5 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full"
+                data-testid="button-toggle-plans"
+              >
+                {isExpanded ? (
+                  <>
+                    Show Less
+                    <ChevronDown className="h-4 w-4 ml-2 rotate-180" />
+                  </>
+                ) : (
+                  <>
+                    Show All {marketplacePlans.plans.length} Plans
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function QuotesPage() {
   const [location, setLocation] = useLocation();
   const [, params] = useRoute("/quotes/:id");
@@ -5452,6 +5691,9 @@ export default function QuotesPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* CMS Marketplace Plans */}
+              <MarketplacePlansSection quoteId={viewingQuote.id} />
 
               {/* Notes or Comments */}
               <Card>
