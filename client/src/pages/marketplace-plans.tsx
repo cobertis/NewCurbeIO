@@ -165,50 +165,54 @@ export default function MarketplacePlansPage() {
   const totalApplicants = (quote?.members || []).filter((m: any) => m.isApplicant).length + (quote?.clientIsApplicant ? 1 : 0);
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Header */}
-      <div className="mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocation(`/quotes/${quoteId}`)}
-          className="mb-4"
-          data-testid="button-back-to-quote"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Quote
-        </Button>
-
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Shield className="h-8 w-8 text-primary" />
-              Available Health Insurance Plans
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Healthcare.gov Marketplace plans for {quote?.clientFirstName} {quote?.clientLastName}
-            </p>
-            {quote && (
-              <div className="flex gap-4 mt-3">
-                <Badge variant="secondary">
-                  Quote #{quoteId}
-                </Badge>
-                <Badge variant="outline">
-                  <Users className="h-3 w-3 mr-1" />
-                  {totalApplicants} Applicants
-                </Badge>
-                <Badge variant="outline">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  Effective: {new Date(quote.effectiveDate).toLocaleDateString()}
-                </Badge>
-              </div>
-            )}
+    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+      {/* Header Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation(`/quotes/${quoteId}`)}
+                data-testid="button-back-to-quote"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Back to Quote
+              </Button>
+            </div>
           </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
+                <Shield className="h-6 w-6 text-primary" />
+                Available Health Insurance Plans
+              </h1>
+              <p className="text-muted-foreground mb-4">
+                Healthcare.gov Marketplace plans for {quote?.clientFirstName} {quote?.clientLastName}
+              </p>
+              {quote && (
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary">
+                    Quote #{quoteId}
+                  </Badge>
+                  <Badge variant="outline">
+                    <Users className="h-3 w-3 mr-1" />
+                    {totalApplicants} Applicants
+                  </Badge>
+                  <Badge variant="outline">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    Effective: {new Date(quote.effectiveDate).toLocaleDateString()}
+                  </Badge>
+                </div>
+              )}
+            </div>
 
-          {marketplacePlans && (
-            <Card className="min-w-[250px]">
-              <CardContent className="p-4">
-                <div className="space-y-2">
+            {marketplacePlans && (
+              <div className="bg-muted/10 rounded-lg p-4 min-w-[250px]">
+                <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Total Plans</span>
                     <span className="font-semibold">{marketplacePlans.plans?.length || 0}</span>
@@ -229,14 +233,14 @@ export default function MarketplacePlansPage() {
                     </>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
-      <Card className="mb-6">
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Filter className="h-5 w-5" />
