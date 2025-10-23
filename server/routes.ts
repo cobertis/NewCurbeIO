@@ -8036,6 +8036,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // UNIFIED QUOTE DETAIL - Gets ALL related data in one call to prevent stale cache issues
+  app.get("/api/quotes/:id/detail", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Use the new unified getQuoteDetail function that fetches all data atomically
+      const quoteDetail = await storage.getQuoteDetail(id, currentUser.companyId!);
+      
+      // Log access to sensitive data
+      await logger.logAuth({
+        req,
+        action: "view_quote_detail",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote",
+          quoteId: id,
+          fields: ["clientSsn", "members", "income", "immigration", "paymentMethods"],
+        },
+      });
+      
+      // Return the complete quote detail with all related data
+      res.json(quoteDetail);
+    } catch (error: any) {
+      console.error("Error fetching unified quote detail:", error);
+      
+      // If quote not found, return 404
+      if (error.message === 'Quote not found') {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      res.status(500).json({ message: "Failed to fetch quote details" });
+    }
+  });
+
   // Update quote
   // WARNING: This endpoint handles PII (SSN) - never log full request body or return unmasked SSN
   app.patch("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {

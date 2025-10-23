@@ -20,7 +20,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type User as UserType, type Quote, type QuotePaymentMethod, type InsertPaymentMethod, insertPaymentMethodSchema } from "@shared/schema";
+import { type User as UserType, type Quote, type QuotePaymentMethod, type InsertPaymentMethod, insertPaymentMethodSchema, type QuoteMember, type QuoteMemberIncome, type QuoteMemberImmigration, type QuoteMemberDocument } from "@shared/schema";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
@@ -1080,12 +1080,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       console.log('[EditMemberSheet] All data saved successfully!');
       
-      // Invalidate queries to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'members-details'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'income'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'immigration'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'household-income'] });
+      // Invalidate UNIFIED query to refresh ALL data
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
       
       toast({
         title: "Success",
@@ -2801,13 +2797,30 @@ export default function QuotesPage() {
 
   // Determine if we're viewing a specific quote
   const isViewingQuote = params?.id && params.id !== 'new';
-  const viewingQuote = quotesData?.quotes?.find(q => q.id === params?.id);
-
-  // Fetch payment methods - MUST be at component level to follow Rules of Hooks
-  const { data: paymentMethodsData, isLoading: isLoadingPaymentMethods } = useQuery<{ paymentMethods: QuotePaymentMethod[] }>({
-    queryKey: ['/api/quotes', viewingQuote?.id, 'payment-methods'],
-    enabled: !!viewingQuote?.id,
+  
+  // UNIFIED QUOTE DETAIL QUERY - Fetches ALL related data in one request
+  const { data: quoteDetail, isLoading: isLoadingQuoteDetail } = useQuery<{
+    quote: Quote & {
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    };
+    members: Array<{
+      member: QuoteMember;
+      income?: QuoteMemberIncome;
+      immigration?: QuoteMemberImmigration;
+      documents: QuoteMemberDocument[];
+    }>;
+    paymentMethods: QuotePaymentMethod[];
+    totalHouseholdIncome: number;
+  }>({
+    queryKey: ['/api/quotes', params?.id, 'detail'],
+    enabled: !!params?.id && params?.id !== 'new',
   });
+
+  // Use the quote from unified detail if available, otherwise fallback to list (for backward compatibility)
+  const viewingQuote = quoteDetail?.quote || quotesData?.quotes?.find(q => q.id === params?.id);
+  const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods } : undefined;
+  const isLoadingPaymentMethods = isLoadingQuoteDetail;
 
   // Delete payment method mutation
   const deletePaymentMethodMutation = useMutation({
@@ -2816,8 +2829,8 @@ export default function QuotesPage() {
       return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`);
     },
     onSuccess: () => {
-      if (viewingQuote?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'detail'] });
       }
       toast({
         title: "Payment method deleted",
@@ -2842,8 +2855,8 @@ export default function QuotesPage() {
       });
     },
     onSuccess: () => {
-      if (viewingQuote?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'payment-methods'] });
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'detail'] });
       }
       toast({
         title: "Default payment method updated",
@@ -3016,7 +3029,9 @@ export default function QuotesPage() {
     mutationFn: async ({ quoteId, data }: { quoteId: string; data: any }) => {
       return apiRequest("PATCH", `/api/quotes/${quoteId}`, data);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Invalidate UNIFIED query to refresh ALL related data
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', variables.quoteId, 'detail'] });
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       toast({
         title: "Quote updated",
@@ -3060,10 +3075,9 @@ export default function QuotesPage() {
       return apiRequest("DELETE", `/api/quotes/${params.id}/members/${memberId}`);
     },
     onSuccess: () => {
-      // Invalidate all relevant queries
+      // Invalidate UNIFIED query to refresh ALL data
       if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "members-details"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "household-income"] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'detail'] });
       }
       setDeletingMember(null);
       toast({
@@ -3186,13 +3200,10 @@ export default function QuotesPage() {
       return { memberId, warnings };
     },
     onSuccess: (result) => {
-      // Invalidate queries to refresh data
+      // Invalidate UNIFIED query to refresh ALL data immediately
       if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id] });
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "members"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "members-details"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "household-income"] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'detail'] });
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes"] }); // Also refresh the list
       }
       
       // Show appropriate toast based on warnings
@@ -3324,10 +3335,12 @@ export default function QuotesPage() {
   const allQuotes = quotesData?.quotes || [];
   
   // Fetch members with income and immigration details
-  const { data: membersDetailsData } = useQuery<{ members: Array<any> }>({
-    queryKey: ['/api/quotes', params?.id, 'members-details'],
-    enabled: isViewingQuote && !!viewingQuote?.id,
-  });
+  // REPLACED WITH UNIFIED QUERY - membersDetailsData now comes from quoteDetail
+  // const { data: membersDetailsData } = useQuery<{ members: Array<any> }>({
+  //   queryKey: ['/api/quotes', params?.id, 'members-details'],
+  //   enabled: isViewingQuote && !!viewingQuote?.id,
+  // });
+  const membersDetailsData = quoteDetail ? { members: quoteDetail.members.map(m => ({ ...m.member, income: m.income, immigration: m.immigration })) } : undefined;
 
   // Helper function to get member details by role and index
   const getMemberDetails = (role: 'client' | 'spouse' | 'dependent', index?: number) => {
@@ -3395,10 +3408,12 @@ export default function QuotesPage() {
   };
 
   // Fetch total household income from all family members
-  const { data: householdIncomeData } = useQuery({
-    queryKey: ['/api/quotes', params?.id, 'household-income'],
-    enabled: isViewingQuote && !!viewingQuote?.id,
-  });
+  // REPLACED WITH UNIFIED QUERY - householdIncomeData now comes from quoteDetail
+  // const { data: householdIncomeData } = useQuery({
+  //   queryKey: ['/api/quotes', params?.id, 'household-income'],
+  //   enabled: isViewingQuote && !!viewingQuote?.id,
+  // });
+  const householdIncomeData = quoteDetail ? { totalIncome: quoteDetail.totalHouseholdIncome } : undefined;
   
   // Filter quotes based on search and filters
   const filteredQuotes = allQuotes.filter((quote) => {
@@ -4030,8 +4045,8 @@ export default function QuotesPage() {
           }
         }
         
-        // Refresh the payment methods list
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'payment-methods'] });
+        // Refresh unified quote detail data
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
         
         toast({
           title: paymentMethodId ? "Payment method updated" : "Payment method added",
@@ -4453,13 +4468,13 @@ export default function QuotesPage() {
 
   // If viewing a specific quote, show modern dashboard
   if (isViewingQuote) {
-    // Show loading state while fetching quotes
-    if (isLoading) {
+    // Show loading state until ALL data is ready
+    if (isLoadingQuoteDetail || !quoteDetail) {
       return (
-        <div className="h-full p-6 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading quote details...</p>
+        <div className="flex items-center justify-center h-screen">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-lg text-muted-foreground">Loading quote details...</p>
           </div>
         </div>
       );

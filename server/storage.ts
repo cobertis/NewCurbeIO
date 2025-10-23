@@ -468,6 +468,22 @@ export interface IStorage {
   updateQuotePaymentMethod(paymentMethodId: string, data: UpdatePaymentMethod, companyId: string): Promise<QuotePaymentMethod | null>;
   deleteQuotePaymentMethod(paymentMethodId: string, companyId: string): Promise<boolean>;
   setDefaultPaymentMethod(paymentMethodId: string, quoteId: string, companyId: string): Promise<void>;
+  
+  // Unified Quote Detail - Gets all related data in one call
+  getQuoteDetail(quoteId: string, companyId: string): Promise<{
+    quote: Quote & {
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    };
+    members: Array<{
+      member: QuoteMember;
+      income?: QuoteMemberIncome;
+      immigration?: QuoteMemberImmigration;
+      documents: QuoteMemberDocument[];
+    }>;
+    paymentMethods: QuotePaymentMethod[];
+    totalHouseholdIncome: number;
+  }>;
 }
 
 export class DbStorage implements IStorage {
@@ -2996,6 +3012,102 @@ export class DbStorage implements IStorage {
           eq(quotePaymentMethods.companyId, companyId)
         )
       );
+  }
+  
+  // ==================== UNIFIED QUOTE DETAIL ====================
+  
+  async getQuoteDetail(quoteId: string, companyId: string): Promise<{
+    quote: Quote & {
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    };
+    members: Array<{
+      member: QuoteMember;
+      income?: QuoteMemberIncome;
+      immigration?: QuoteMemberImmigration;
+      documents: QuoteMemberDocument[];
+    }>;
+    paymentMethods: QuotePaymentMethod[];
+    totalHouseholdIncome: number;
+  }> {
+    // 1. Get the quote with creator and agent details
+    const quote = await this.getQuote(quoteId);
+    if (!quote) {
+      throw new Error('Quote not found');
+    }
+    
+    // Verify the quote belongs to the company
+    if (quote.companyId !== companyId) {
+      throw new Error('Quote not found');
+    }
+    
+    // 2. Get all members
+    const members = await this.getQuoteMembersByQuoteId(quoteId, companyId);
+    
+    // 3. Get income, immigration, and documents for each member in parallel
+    const membersWithDetails = await Promise.all(
+      members.map(async (member) => {
+        const [income, immigration, documents] = await Promise.all([
+          this.getQuoteMemberIncome(member.id, companyId),
+          this.getQuoteMemberImmigration(member.id, companyId),
+          this.getQuoteMemberDocuments(member.id, companyId)
+        ]);
+        
+        return {
+          member,
+          income: income || undefined,
+          immigration: immigration || undefined,
+          documents
+        };
+      })
+    );
+    
+    // 4. Get payment methods
+    const paymentMethods = await this.getQuotePaymentMethods(quoteId, companyId);
+    
+    // 5. Calculate total household income
+    let totalHouseholdIncome = 0;
+    for (const memberDetail of membersWithDetails) {
+      if (memberDetail.income) {
+        const income = memberDetail.income;
+        // Calculate annual income based on frequency
+        let annualAmount = 0;
+        const amount = Number(income.incomeAmount) || 0;
+        
+        switch (income.incomeFrequency) {
+          case 'weekly':
+            annualAmount = amount * 52;
+            break;
+          case 'bi-weekly':
+            annualAmount = amount * 26;
+            break;
+          case 'semi-monthly':
+            annualAmount = amount * 24;
+            break;
+          case 'monthly':
+            annualAmount = amount * 12;
+            break;
+          case 'quarterly':
+            annualAmount = amount * 4;
+            break;
+          case 'semi-annually':
+            annualAmount = amount * 2;
+            break;
+          case 'annually':
+            annualAmount = amount;
+            break;
+        }
+        
+        totalHouseholdIncome += annualAmount;
+      }
+    }
+    
+    return {
+      quote,
+      members: membersWithDetails,
+      paymentMethods,
+      totalHouseholdIncome
+    };
   }
 }
 
