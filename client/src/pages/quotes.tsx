@@ -2073,7 +2073,12 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
               type="button"
               disabled={isPending}
               data-testid="button-save-member"
-              onClick={addMemberForm.handleSubmit(onSave)}
+              onClick={addMemberForm.handleSubmit((data) => {
+                onSave(data);
+                // Reset form after save for next entry
+                addMemberForm.reset(defaultValues);
+                setMemberTab('basic');
+              })}
               className="mr-10"
             >
               {isPending ? (
@@ -3185,6 +3190,7 @@ export default function QuotesPage() {
     onSuccess: (result) => {
       // Invalidate queries to refresh data
       if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
         queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id] });
         queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "members"] });
         queryClient.invalidateQueries({ queryKey: ["/api/quotes", params.id, "members-details"] });
@@ -3206,7 +3212,8 @@ export default function QuotesPage() {
         });
       }
       
-      setAddingMember(false);
+      // Don't close the sheet automatically - let user decide
+      // setAddingMember(false);
     },
     onError: (error: any) => {
       toast({
@@ -3958,6 +3965,32 @@ export default function QuotesPage() {
           title: paymentMethodId ? "Payment method updated" : "Payment method added",
           description: "The payment method has been saved successfully.",
         });
+        
+        // Reset forms after successful save (but keep sheet open)
+        if (!paymentMethodId) { // Only reset if adding new (not editing)
+          cardForm.reset({
+            companyId: quote.companyId,
+            quoteId: quote.id,
+            paymentType: 'card',
+            cardNumber: '',
+            cardHolderName: '',
+            expirationMonth: '',
+            expirationYear: '',
+            cvv: '',
+            isDefault: false,
+          });
+          bankAccountForm.reset({
+            companyId: quote.companyId,
+            quoteId: quote.id,
+            paymentType: 'bank_account',
+            bankName: '',
+            accountNumber: '',
+            routingNumber: '',
+            accountHolderName: '',
+            accountType: 'checking',
+            isDefault: false,
+          });
+        }
         
         // Don't close the sheet - allow user to continue editing or add another
       } catch (error: any) {
