@@ -407,6 +407,13 @@ const step2Schema = z.object({
   clientTobaccoUser: z.boolean().default(false),
   clientPregnant: z.boolean().default(false),
   clientSsn: z.string().min(9, "SSN is required (9 digits)"),
+  // Additional client fields
+  clientPreferredLanguage: z.string().optional(),
+  clientCountryOfBirth: z.string().optional(),
+  clientMaritalStatus: z.string().optional(),
+  clientWeight: z.string().optional(),
+  clientHeight: z.string().optional(),
+  // Mailing address
   street: z.string().min(1, "Street address is required"),
   addressLine2: z.string().optional(),
   city: z.string().min(1, "City is required"),
@@ -414,6 +421,14 @@ const step2Schema = z.object({
   postalCode: z.string().min(1, "Postal code is required"),
   county: z.string().optional(),
   country: z.string().default("United States"),
+  // Physical address (optional, may be same as mailing)
+  physical_address: z.string().optional(),
+  physical_addressLine2: z.string().optional(),
+  physical_city: z.string().optional(),
+  physical_state: z.string().optional(),
+  physical_postalCode: z.string().optional(),
+  physical_county: z.string().optional(),
+  physical_country: z.string().optional(),
 });
 
 const step3Schema = z.object({
@@ -2902,7 +2917,14 @@ export default function QuotesPage() {
       clientGender: "",
       clientIsApplicant: true,
       clientTobaccoUser: false,
+      clientPregnant: false,
       clientSsn: "",
+      // Additional client fields that were missing
+      clientPreferredLanguage: "",
+      clientCountryOfBirth: "",
+      clientMaritalStatus: "",
+      clientWeight: "",
+      clientHeight: "",
       spouses: [],
       dependents: [],
       street: "",
@@ -2912,6 +2934,14 @@ export default function QuotesPage() {
       postalCode: "",
       county: "",
       country: "United States",
+      // Physical address fields (may be same as mailing)
+      physical_address: "",
+      physical_addressLine2: "",
+      physical_city: "",
+      physical_state: "",
+      physical_postalCode: "",
+      physical_county: "",
+      physical_country: "United States",
     },
   });
 
@@ -2935,20 +2965,41 @@ export default function QuotesPage() {
   const createQuoteMutation = useMutation({
     mutationFn: async (data: any) => {
       console.log('[CREATE QUOTE] Sending request with data:', data);
-      const result = await apiRequest("POST", "/api/quotes", {
+      
+      // Clean up data to avoid sending undefined or empty string fields
+      const cleanedData = {
         ...data,
         effectiveDate: data.effectiveDate,
         clientDateOfBirth: data.clientDateOfBirth || undefined,
         clientSsn: normalizeSSN(data.clientSsn),
+        // Ensure all client fields have proper defaults
+        clientPreferredLanguage: data.clientPreferredLanguage || "",
+        clientCountryOfBirth: data.clientCountryOfBirth || "",
+        clientMaritalStatus: data.clientMaritalStatus || "",
+        clientWeight: data.clientWeight || "",
+        clientHeight: data.clientHeight || "",
+        clientPregnant: data.clientPregnant || false,
+        // Ensure physical address fields have defaults
+        physical_address: data.physical_address || data.street || "",
+        physical_addressLine2: data.physical_addressLine2 || data.addressLine2 || "",
+        physical_city: data.physical_city || data.city || "",
+        physical_state: data.physical_state || data.state || "",
+        physical_postalCode: data.physical_postalCode || data.postalCode || "",
+        physical_county: data.physical_county || data.county || "",
+        physical_country: data.physical_country || data.country || "United States",
         spouses: data.spouses?.map((spouse: any) => ({
           ...spouse,
           ssn: normalizeSSN(spouse.ssn),
-        })),
+          countryOfBirth: spouse.countryOfBirth || "",
+        })) || [],
         dependents: data.dependents?.map((dependent: any) => ({
           ...dependent,
           ssn: normalizeSSN(dependent.ssn),
-        })),
-      });
+          countryOfBirth: dependent.countryOfBirth || "",
+        })) || [],
+      };
+      
+      const result = await apiRequest("POST", "/api/quotes", cleanedData);
       console.log('[CREATE QUOTE] Received response:', result);
       return result;
     },
@@ -3001,7 +3052,14 @@ export default function QuotesPage() {
           clientGender: "",
           clientIsApplicant: true,
           clientTobaccoUser: false,
+          clientPregnant: false,
           clientSsn: "",
+          // Additional client fields
+          clientPreferredLanguage: "",
+          clientCountryOfBirth: "",
+          clientMaritalStatus: "",
+          clientWeight: "",
+          clientHeight: "",
           spouses: [],
           dependents: [],
           street: "",
@@ -3011,16 +3069,37 @@ export default function QuotesPage() {
           postalCode: "",
           county: "",
           country: "United States",
+          // Physical address fields
+          physical_address: "",
+          physical_addressLine2: "",
+          physical_city: "",
+          physical_state: "",
+          physical_postalCode: "",
+          physical_county: "",
+          physical_country: "United States",
         });
         setCurrentStep(1);
         setSelectedProduct("");
       }, 500);
     },
     onError: (error: any) => {
+      console.error('[CREATE QUOTE] Error:', error);
+      
+      // Parse validation errors if they exist
+      let errorMessage = "Failed to create quote";
+      
+      if (error.message && error.message.includes("Validation error")) {
+        // Extract the first few validation errors for the user
+        const errors = error.message.split("\\n").slice(0, 3);
+        errorMessage = errors.join(", ");
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to create quote",
+        variant: "destructive", 
+        title: "Error creating quote",
+        description: errorMessage,
       });
     },
   });
