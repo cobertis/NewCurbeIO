@@ -53,6 +53,7 @@ import PlanSelection from "@/pages/plan-selection";
 import Tickets from "@/pages/tickets";
 import EmailConfiguration from "@/pages/email-configuration";
 import Quotes from "@/pages/quotes";
+import MarketplacePlans from "@/pages/marketplace-plans";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -943,6 +944,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Quotes />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/quotes/:id/marketplace-plans">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <MarketplacePlans />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
