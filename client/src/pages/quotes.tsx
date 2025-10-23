@@ -366,6 +366,7 @@ const familyMemberSchema = z.object({
   phone: z.string().optional(),
   email: z.string().optional(),
   isApplicant: z.boolean().default(false),
+  isPrimaryDependent: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
   pregnant: z.boolean().default(false),
   preferredLanguage: z.string().optional(),
@@ -793,6 +794,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         ssn: normalizeSSN(spouse.ssn),
         gender: spouse.gender || '',
         isApplicant: spouse.isApplicant ?? false,
+        isPrimaryDependent: spouse.isPrimaryDependent ?? false,
         tobaccoUser: spouse.tobaccoUser ?? false,
         pregnant: spouse.pregnant ?? false,
         preferredLanguage: spouse.preferredLanguage || '',
@@ -828,6 +830,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         ssn: normalizeSSN(dependent.ssn),
         gender: dependent.gender || '',
         isApplicant: dependent.isApplicant ?? false,
+        isPrimaryDependent: dependent.isPrimaryDependent ?? false,
         tobaccoUser: dependent.tobaccoUser ?? false,
         pregnant: dependent.pregnant ?? false,
         preferredLanguage: dependent.preferredLanguage || '',
@@ -1581,6 +1584,22 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                   />
                   <FormField
                     control={editForm.control}
+                    name="isPrimaryDependent"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-primary-dependent"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Primary Dependent</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
                     name="tobaccoUser"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center space-x-2 space-y-0">
@@ -1953,6 +1972,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
   const addMemberSchema = z.object({
     // Basic Information
     isApplicant: z.boolean().default(false),
+    isPrimaryDependent: z.boolean().default(false),
     preferredLanguage: z.string().optional(),
     relation: z.string().min(1, "Relation is required"),
     firstName: z.string().min(1, "First name is required"),
@@ -1985,6 +2005,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
 
   const defaultValues = {
     isApplicant: true,
+    isPrimaryDependent: false,
     preferredLanguage: '',
     relation: '',
     firstName: '',
@@ -2123,6 +2144,22 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
                           />
                         </FormControl>
                         <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={addMemberForm.control}
+                    name="isPrimaryDependent"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-primary-dependent"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Primary Dependent</FormLabel>
                       </FormItem>
                     )}
                   />

@@ -1349,6 +1349,7 @@ export const spouseSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   isApplicant: z.boolean().default(false),
+  isPrimaryDependent: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
   pregnant: z.boolean().default(false),
   preferredLanguage: z.string().optional(),
@@ -1371,6 +1372,7 @@ export const dependentSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   isApplicant: z.boolean().default(false),
+  isPrimaryDependent: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
   pregnant: z.boolean().default(false),
   preferredLanguage: z.string().optional(),
@@ -1427,6 +1429,7 @@ export const quoteMembers = pgTable("quote_members", {
   
   // Additional Information
   isApplicant: boolean("is_applicant").default(false),
+  isPrimaryDependent: boolean("is_primary_dependent").default(false), // Dependent of primary policyholder
   tobaccoUser: boolean("tobacco_user").default(false),
   pregnant: boolean("pregnant").default(false),
   preferredLanguage: text("preferred_language"),
