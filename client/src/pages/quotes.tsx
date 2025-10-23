@@ -3828,7 +3828,16 @@ export default function QuotesPage() {
     // Fetch existing payment method data if editing
     const { data: paymentMethodData, isLoading: isLoadingPaymentMethod } = useQuery<{ paymentMethod: QuotePaymentMethod }>({
       queryKey: ['/api/quotes', quote?.id, 'payment-methods', paymentMethodId],
-      enabled: !!paymentMethodId && open,
+      queryFn: async () => {
+        const res = await fetch(`/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, {
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          throw new Error('Failed to fetch payment method');
+        }
+        return res.json();
+      },
+      enabled: !!paymentMethodId && !!quote?.id && open,
     });
 
     // Create Zod schemas for validation
@@ -3887,9 +3896,74 @@ export default function QuotesPage() {
       },
     });
 
-    // Reset forms when payment method data loads
+    // Track previous open state to prevent multiple resets
+    const prevOpenRef = useRef(false);
+
+    // Reset forms when opening or when payment method data loads
     useEffect(() => {
-      if (open && paymentMethodData?.paymentMethod) {
+      const isOpening = open && !prevOpenRef.current;
+      
+      if (isOpening) {
+        if (paymentMethodId && paymentMethodData?.paymentMethod) {
+          // Editing existing payment method
+          const pm = paymentMethodData.paymentMethod;
+          if (pm.paymentType === 'card') {
+            setPaymentTab('card');
+            cardForm.reset({
+              companyId: pm.companyId,
+              quoteId: pm.quoteId,
+              paymentType: 'card',
+              // USER REQUIREMENT: Display card data in PLAIN TEXT - no masking
+              cardNumber: pm.cardNumber || '',
+              cardHolderName: pm.cardHolderName || '',
+              expirationMonth: pm.expirationMonth || '',
+              expirationYear: pm.expirationYear || '',
+              cvv: pm.cvv || '',
+              isDefault: pm.isDefault || false,
+            });
+          } else if (pm.paymentType === 'bank_account') {
+            setPaymentTab('bank_account');
+            bankAccountForm.reset({
+              companyId: pm.companyId,
+              quoteId: pm.quoteId,
+              paymentType: 'bank_account',
+              // USER REQUIREMENT: Display bank account data in PLAIN TEXT - no masking
+              bankName: pm.bankName || '',
+              accountNumber: pm.accountNumber || '',
+              routingNumber: pm.routingNumber || '',
+              accountHolderName: pm.accountHolderName || '',
+              accountType: pm.accountType as 'checking' | 'savings',
+              isDefault: pm.isDefault || false,
+            });
+          }
+        } else if (!paymentMethodId) {
+          // Adding new payment method - reset to clean state
+          setPaymentTab('card');
+          cardForm.reset({
+            companyId: quote?.companyId || '',
+            quoteId: quote?.id || '',
+            paymentType: 'card' as const,
+            cardNumber: '',
+            cardHolderName: '',
+            expirationMonth: '',
+            expirationYear: '',
+            cvv: '',
+            isDefault: false,
+          });
+          bankAccountForm.reset({
+            companyId: quote?.companyId || '',
+            quoteId: quote?.id || '',
+            paymentType: 'bank_account' as const,
+            bankName: '',
+            accountNumber: '',
+            routingNumber: '',
+            accountHolderName: '',
+            accountType: 'checking' as const,
+            isDefault: false,
+          });
+        }
+      } else if (open && paymentMethodId && paymentMethodData?.paymentMethod && !prevOpenRef.current) {
+        // Handle case where data loads after sheet is already open
         const pm = paymentMethodData.paymentMethod;
         if (pm.paymentType === 'card') {
           setPaymentTab('card');
@@ -3897,7 +3971,6 @@ export default function QuotesPage() {
             companyId: pm.companyId,
             quoteId: pm.quoteId,
             paymentType: 'card',
-            // USER REQUIREMENT: Display card data in PLAIN TEXT - no masking
             cardNumber: pm.cardNumber || '',
             cardHolderName: pm.cardHolderName || '',
             expirationMonth: pm.expirationMonth || '',
@@ -3911,7 +3984,6 @@ export default function QuotesPage() {
             companyId: pm.companyId,
             quoteId: pm.quoteId,
             paymentType: 'bank_account',
-            // USER REQUIREMENT: Display bank account data in PLAIN TEXT - no masking
             bankName: pm.bankName || '',
             accountNumber: pm.accountNumber || '',
             routingNumber: pm.routingNumber || '',
@@ -3921,7 +3993,9 @@ export default function QuotesPage() {
           });
         }
       }
-    }, [open, paymentMethodData]);
+      
+      prevOpenRef.current = open;
+    }, [open, paymentMethodData, paymentMethodId]);
 
     // Unified save handler that detects which form to submit based on active tab
     const handleSave = async () => {
