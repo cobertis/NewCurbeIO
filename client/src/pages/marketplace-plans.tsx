@@ -441,9 +441,9 @@ export default function MarketplacePlansPage() {
                   {/* Benefits */}
                   {plan.benefits && plan.benefits.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {plan.benefits.slice(0, 5).map((benefit: string, i: number) => (
+                      {plan.benefits.slice(0, 5).map((benefit: any, i: number) => (
                         <Badge key={i} variant="secondary" className="text-xs">
-                          {benefit}
+                          {benefit.name || benefit}
                         </Badge>
                       ))}
                       {plan.benefits.length > 5 && (
