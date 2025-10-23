@@ -1656,19 +1656,16 @@ const basePaymentMethodSchema = createInsertSchema(quotePaymentMethods).omit({
   paymentType: z.enum(['card', 'bank_account'], { required_error: "Payment type is required" }),
   
   // Card validation (only when paymentType is 'card')
+  // NOTE: We only validate format (numeric, length) NOT Luhn algorithm
+  // This is a storage system, not a payment processor - any number can be stored
   cardNumber: z.string().optional().refine(
     (val) => {
       if (!val) return true;
       const cleaned = val.replace(/\s/g, '');
-      const result = validateCardNumber(cleaned);
-      return result.isValid;
+      // Just validate it's numeric and has reasonable length (13-19 digits)
+      return /^\d{13,19}$/.test(cleaned);
     },
-    (val) => {
-      if (!val) return { message: "Card number is required" };
-      const cleaned = val.replace(/\s/g, '');
-      const result = validateCardNumber(cleaned);
-      return { message: result.error || "Invalid card number" };
-    }
+    { message: "Card number must be 13-19 digits" }
   ),
   cardHolderName: z.string().optional(),
   expirationMonth: z.string().optional().refine(
