@@ -1,0 +1,1402 @@
+Guía Técnica Completa: Integración API CMS Healthcare.gov
+Tabla de Contenidos
+Configuración Inicial
+Endpoints y Autenticación
+Obtención de Planes con Paginación
+Manejo de APTC y CSR
+Estructura de Payloads
+Procesamiento de Respuestas
+Filtros y Búsquedas
+Manejo de Errores
+Optimización y Cache
+Ejemplos Completos
+1. Configuración Inicial
+Información Crítica
+API Base URL: https://marketplace.api.healthcare.gov/api/v1
+Autenticación: NO REQUIERE API KEY (es pública)
+Rate Limits: 100 requests por minuto
+Formato: JSON
+Método: POST para búsquedas
+Headers Requeridos
+const headers = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json'
+};
+2. Endpoints y Autenticación
+Endpoints Principales
+const ENDPOINTS = {
+  PLANS_SEARCH: 'https://marketplace.api.healthcare.gov/api/v1/plans/search',
+  COUNTIES: 'https://marketplace.api.healthcare.gov/api/v1/counties/search',
+  ISSUERS: 'https://marketplace.api.healthcare.gov/api/v1/issuers',
+  COVERAGE_YEARS: 'https://marketplace.api.healthcare.gov/api/v1/coverage-years'
+};
+3. Obtención de Planes con Paginación
+Función Completa para Obtener TODOS los Planes
+async function fetchAllCMSPlans(zipcode, state, countyfips, year = 2025) {
+  const url = 'https://marketplace.api.healthcare.gov/api/v1/plans/search';
+  let allPlans = [];
+  let offset = 0;
+  const limit = 100; // Máximo permitido por la API
+  let totalPlansCount = 0;
+  
+  console.log(`🔍 Iniciando búsqueda de planes para ZIP: ${zipcode}, Estado: ${state}, County: ${countyfips}`);
+  
+  while (true) {
+    const payload = {
+      household: {
+        income: 50000, // Ingreso anual del hogar
+        people: [
+          {
+            age: 30,
+            aptc_eligible: true, // Elegible para APTC
+            gender: "Male",
+            uses_tobacco: false
+          }
+        ]
+      },
+      market: "Individual", // Mercado individual
+      place: {
+        countyfips: countyfips, // CRÍTICO: Código FIPS del condado
+        state: state,            // Estado de 2 letras
+        zipcode: zipcode         // ZIP de 5 dígitos
+      },
+      year: year,
+      offset: offset,
+      limit: limit
+    };
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      
+      // Primera iteración: guardar el total
+      if (offset === 0) {
+        totalPlansCount = data.total || 0;
+        console.log(`📊 Total de planes disponibles: ${totalPlansCount}`);
+      }
+      
+      if (data.plans && data.plans.length > 0) {
+        allPlans = allPlans.concat(data.plans);
+        console.log(`✅ Página ${Math.floor(offset/limit) + 1}: ${data.plans.length} planes obtenidos (Total acumulado: ${allPlans.length})`);
+        
+        // Si recibimos menos planes que el límite, hemos terminado
+        if (data.plans.length < limit) {
+          break;
+        }
+        
+        // Incrementar offset para la siguiente página
+        offset += limit;
+        
+        // Verificación adicional por si acaso
+        if (allPlans.length >= totalPlansCount && totalPlansCount > 0) {
+          break;
+        }
+      } else {
+        // No hay más planes
+        break;
+      }
+      
+      // Pequeña pausa para no sobrecargar la API
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+    } catch (error) {
+      console.error(`❌ Error en offset ${offset}:`, error);
+      throw error;
+    }
+  }
+  
+  console.log(`✅ Búsqueda completa: ${allPlans.length} planes obtenidos`);
+  return allPlans;
+}
+4. Manejo de APTC y CSR
+APTC (Advance Premium Tax Credit)
+// Payload para obtener planes con APTC
+const payloadWithAPTC = {
+  household: {
+    income: 35000, // Ingreso anual CRÍTICO para calcular APTC
+    people: [
+      {
+        age: 30,
+        aptc_eligible: true, // DEBE ser true para recibir créditos
+        gender: "Male",
+        uses_tobacco: false
+      }
+    ],
+    has_married_couple: false
+  },
+  market: "Individual",
+  place: {
+    countyfips: "48201",
+    state: "TX",
+    zipcode: "77001"
+  },
+  year: 2025,
+  aptc_override: null, // Puede forzar un monto específico de APTC
+  csr_override: null,  // Puede forzar un nivel CSR específico
+  offset: 0,
+  limit: 100
+};
+// Procesamiento de APTC en la respuesta
+function processAPTC(plan) {
+  return {
+    planId: plan.id,
+    originalPremium: plan.premium,
+    aptcAmount: plan.aptc_eligible ? (plan.premium_w_credit || 0) : 0,
+    finalPremium: plan.premium - (plan.premium_w_credit || 0),
+    percentageSavings: ((plan.premium_w_credit || 0) / plan.premium * 100).toFixed(2)
+  };
+}
+CSR (Cost Sharing Reduction) Plans
+// Identificación de planes CSR
+function identifyCSRPlans(plans) {
+  const csrPlans = {
+    csr73: [], // 73% actuarial value
+    csr87: [], // 87% actuarial value
+    csr94: [], // 94% actuarial value
+    standard: [] // Sin CSR
+  };
+  
+  plans.forEach(plan => {
+    // Los planes CSR tienen variantes en el ID
+    if (plan.id.includes('-73')) {
+      csrPlans.csr73.push(plan);
+    } else if (plan.id.includes('-87')) {
+      csrPlans.csr87.push(plan);
+    } else if (plan.id.includes('-94')) {
+      csrPlans.csr94.push(plan);
+    } else {
+      csrPlans.standard.push(plan);
+    }
+    
+    // Alternativa: usar el campo csr_variant si existe
+    if (plan.csr_variant) {
+      switch(plan.csr_variant) {
+        case '73':
+          csrPlans.csr73.push(plan);
+          break;
+        case '87':
+          csrPlans.csr87.push(plan);
+          break;
+        case '94':
+          csrPlans.csr94.push(plan);
+          break;
+      }
+    }
+  });
+  
+  return csrPlans;
+}
+5. Estructura de Payloads
+Payload Completo con Todas las Opciones
+const completePayload = {
+  // Información del hogar
+  household: {
+    income: 45000,           // Ingreso anual del hogar
+    people: [
+      {
+        age: 35,
+        aptc_eligible: true,
+        gender: "Male",
+        uses_tobacco: false,
+        is_parent: true
+      },
+      {
+        age: 33,
+        aptc_eligible: true,
+        gender: "Female", 
+        uses_tobacco: false,
+        is_parent: true
+      },
+      {
+        age: 10,
+        aptc_eligible: true,
+        gender: "Male",
+        uses_tobacco: false,
+        is_parent: false
+      }
+    ],
+    has_married_couple: true,
+    effective_date: "2025-01-01" // Fecha de inicio de cobertura
+  },
+  
+  // Configuración del mercado
+  market: "Individual", // Opciones: "Individual", "SHOP"
+  
+  // Ubicación (TODOS son requeridos)
+  place: {
+    countyfips: "48201",  // CRÍTICO: Sin esto no funciona
+    state: "TX",          // Código de estado de 2 letras
+    zipcode: "77001"      // ZIP de 5 dígitos
+  },
+  
+  // Año de cobertura
+  year: 2025,
+  
+  // Filtros opcionales
+  filter: {
+    metal_levels: ["Bronze", "Silver", "Gold"], // Filtrar por nivel
+    types: ["HMO", "PPO"],                      // Filtrar por tipo
+    issuers: ["12345", "67890"],                // IDs de aseguradoras
+    premium_range: {
+      min: 200,
+      max: 500
+    },
+    deductible_range: {
+      min: 0,
+      max: 5000
+    }
+  },
+  
+  // Overrides opcionales
+  aptc_override: 250,  // Forzar monto APTC específico
+  csr_override: "87",  // Forzar nivel CSR
+  
+  // Paginación
+  offset: 0,
+  limit: 100,
+  
+  // Opciones de ordenamiento
+  order: "premium",     // Ordenar por prima
+  direction: "asc"      // Ascendente o descendente
+};
+6. Procesamiento de Respuestas
+Estructura Completa de Respuesta
+// Ejemplo de respuesta de la API
+const apiResponse = {
+  plans: [
+    {
+      // Identificación
+      id: "12345TX0010001",
+      name: "Blue Choice Bronze 6000",
+      plan_id_type: "HIOS-PLAN-ID",
+      
+      // Clasificación
+      metal_level: "Bronze",
+      type: "HMO",
+      design_type: "DESIGN1",
+      market: "Individual",
+      state: "TX",
+      
+      // Aseguradora
+      issuer: {
+        id: "12345",
+        name: "Blue Cross Blue Shield of Texas",
+        toll_free: "1-800-123-4567",
+        tty: "1-800-123-4568",
+        href: "https://www.bcbstx.com"
+      },
+      
+      // Precios base
+      premium: 285.50,           // Prima mensual
+      premium_w_credit: 185.50,  // Prima con APTC
+      ehb_premium: 280.00,       // Prima de beneficios esenciales
+      pediatric_dental_premium: 5.50,
+      
+      // Deducibles
+      deductible: [
+        {
+          amount: 6000,
+          family_cost: "per_person",
+          display_string: "$6,000 Individual"
+        }
+      ],
+      
+      // Out-of-pocket máximo
+      moops: [
+        {
+          amount: 8700,
+          family_cost: "per_person",
+          display_string: "$8,700 Individual"
+        }
+      ],
+      
+      // Calidad
+      quality_rating: {
+        available: true,
+        year: 2024,
+        global_rating: 4,
+        global_rating_display: "4 out of 5 stars"
+      },
+      
+      // Beneficios principales
+      benefits: [
+        {
+          name: "Primary Care Visit to Treat an Injury or Illness",
+          covered: true,
+          cost_sharings: [
+            {
+              coinsurance_rate: 0,
+              copay_amount: 40,
+              copay_options: "$40",
+              display_string: "$40 Copay after deductible"
+            }
+          ],
+          explanation: "per visit",
+          exclusions: "",
+          has_limits: false
+        },
+        {
+          name: "Specialist Visit",
+          covered: true,
+          cost_sharings: [
+            {
+              coinsurance_rate: 0.2,
+              copay_amount: 0,
+              copay_options: "No Charge",
+              display_string: "20% Coinsurance after deductible"
+            }
+          ]
+        },
+        {
+          name: "Emergency Room Services",
+          covered: true,
+          cost_sharings: [
+            {
+              coinsurance_rate: 0.2,
+              copay_amount: 0,
+              display_string: "20% Coinsurance after deductible"
+            }
+          ]
+        },
+        {
+          name: "Generic Drugs",
+          covered: true,
+          cost_sharings: [
+            {
+              copay_amount: 15,
+              display_string: "$15 Copay"
+            }
+          ]
+        }
+      ],
+      
+      // Red de proveedores
+      network: [
+        {
+          network_tier: "PREFERRED",
+          network_name: "BlueChoice Network"
+        }
+      ],
+      
+      // Información HSA
+      hsa_eligible: true,
+      
+      // URLs de documentos
+      brochure_url: "https://...",
+      summary_of_benefits_url: "https://...",
+      drug_formulary_url: "https://...",
+      network_url: "https://...",
+      
+      // Información de inscripción
+      enrollment_required: true,
+      adult_dental: false,
+      child_dental: true,
+      
+      // CSR variant (si aplica)
+      csr_variant: "73", // Puede ser "73", "87", "94" o null
+      
+      // Disponibilidad
+      suppressed: false,
+      tobacco_wellness: false,
+      disease_mgmt_programs: [
+        "Diabetes Management",
+        "Heart Disease Management"
+      ]
+    }
+  ],
+  
+  // Metadata de la respuesta
+  total: 150,           // Total de planes disponibles
+  count: 100,           // Planes en esta página
+  offset: 0,            // Offset actual
+  limit: 100,           // Límite por página
+  
+  // Información del request
+  request: {
+    year: 2025,
+    state: "TX",
+    zipcode: "77001",
+    fips: "48201"
+  },
+  
+  // Facetas para filtrado
+  facets: {
+    metal_levels: {
+      "Bronze": 45,
+      "Silver": 55,
+      "Gold": 35,
+      "Platinum": 15
+    },
+    types: {
+      "HMO": 80,
+      "PPO": 50,
+      "EPO": 20
+    },
+    issuers: {
+      "12345": 30,
+      "67890": 25,
+      "11111": 45
+    }
+  }
+};
+// Función para procesar la respuesta
+function processAPIResponse(response) {
+  const processedPlans = response.plans.map(plan => ({
+    // Información básica
+    id: plan.id,
+    name: plan.name,
+    metalLevel: plan.metal_level,
+    type: plan.type,
+    
+    // Aseguradora
+    issuer: {
+      id: plan.issuer.id,
+      name: plan.issuer.name,
+      phone: plan.issuer.toll_free
+    },
+    
+    // Precios
+    pricing: {
+      monthlyPremium: plan.premium,
+      aptcCredit: plan.premium - (plan.premium_w_credit || plan.premium),
+      finalPremium: plan.premium_w_credit || plan.premium,
+      deductible: plan.deductible?.[0]?.amount || 0,
+      outOfPocketMax: plan.moops?.[0]?.amount || 0
+    },
+    
+    // Copagos principales
+    copays: {
+      primaryCare: extractCopay(plan, "Primary Care"),
+      specialist: extractCopay(plan, "Specialist"),
+      emergency: extractCopay(plan, "Emergency"),
+      genericDrugs: extractCopay(plan, "Generic Drugs")
+    },
+    
+    // Características
+    features: {
+      hsaEligible: plan.hsa_eligible,
+      hasChildDental: plan.child_dental,
+      qualityRating: plan.quality_rating?.global_rating || null,
+      csrLevel: plan.csr_variant || 'standard'
+    },
+    
+    // URLs
+    documents: {
+      brochure: plan.brochure_url,
+      summary: plan.summary_of_benefits_url,
+      formulary: plan.drug_formulary_url,
+      network: plan.network_url
+    }
+  }));
+  
+  return {
+    plans: processedPlans,
+    metadata: {
+      total: response.total,
+      currentPage: Math.floor(response.offset / response.limit) + 1,
+      totalPages: Math.ceil(response.total / response.limit),
+      hasMore: response.offset + response.count < response.total
+    },
+    facets: response.facets
+  };
+}
+function extractCopay(plan, serviceType) {
+  const benefit = plan.benefits?.find(b => 
+    b.name.toLowerCase().includes(serviceType.toLowerCase())
+  );
+  
+  if (!benefit) return null;
+  
+  const costSharing = benefit.cost_sharings?.[0];
+  if (!costSharing) return null;
+  
+  if (costSharing.copay_amount) {
+    return {
+      type: 'copay',
+      amount: costSharing.copay_amount,
+      display: `$${costSharing.copay_amount}`
+    };
+  } else if (costSharing.coinsurance_rate) {
+    return {
+      type: 'coinsurance',
+      rate: costSharing.coinsurance_rate,
+      display: `${costSharing.coinsurance_rate * 100}%`
+    };
+  }
+  
+  return null;
+}
+7. Filtros y Búsquedas
+Sistema Completo de Filtros
+class CMSPlanFilter {
+  constructor(plans) {
+    this.originalPlans = plans;
+    this.filteredPlans = [...plans];
+  }
+  
+  // Filtrar por nivel de metal
+  filterByMetalLevel(levels) {
+    if (!levels || levels.length === 0) return this;
+    
+    this.filteredPlans = this.filteredPlans.filter(plan => 
+      levels.includes(plan.metal_level)
+    );
+    
+    return this;
+  }
+  
+  // Filtrar por tipo de plan
+  filterByType(types) {
+    if (!types || types.length === 0) return this;
+    
+    this.filteredPlans = this.filteredPlans.filter(plan => 
+      types.includes(plan.type)
+    );
+    
+    return this;
+  }
+  
+  // Filtrar por rango de precio
+  filterByPriceRange(minPrice, maxPrice) {
+    this.filteredPlans = this.filteredPlans.filter(plan => {
+      const price = plan.premium_w_credit || plan.premium;
+      return price >= minPrice && price <= maxPrice;
+    });
+    
+    return this;
+  }
+  
+  // Filtrar por deducible máximo
+  filterByMaxDeductible(maxDeductible) {
+    this.filteredPlans = this.filteredPlans.filter(plan => {
+      const deductible = plan.deductible?.[0]?.amount || 0;
+      return deductible <= maxDeductible;
+    });
+    
+    return this;
+  }
+  
+  // Filtrar por aseguradora
+  filterByIssuer(issuerIds) {
+    if (!issuerIds || issuerIds.length === 0) return this;
+    
+    this.filteredPlans = this.filteredPlans.filter(plan => 
+      issuerIds.includes(plan.issuer.id)
+    );
+    
+    return this;
+  }
+  
+  // Filtrar por calificación de calidad
+  filterByQualityRating(minRating) {
+    this.filteredPlans = this.filteredPlans.filter(plan => {
+      const rating = plan.quality_rating?.global_rating || 0;
+      return rating >= minRating;
+    });
+    
+    return this;
+  }
+  
+  // Filtrar por elegibilidad HSA
+  filterByHSAEligible(hsaEligible) {
+    if (hsaEligible === null || hsaEligible === undefined) return this;
+    
+    this.filteredPlans = this.filteredPlans.filter(plan => 
+      plan.hsa_eligible === hsaEligible
+    );
+    
+    return this;
+  }
+  
+  // Filtrar planes CSR
+  filterByCSRLevel(csrLevel) {
+    if (!csrLevel) return this;
+    
+    this.filteredPlans = this.filteredPlans.filter(plan => {
+      if (csrLevel === 'standard') {
+        return !plan.csr_variant || plan.csr_variant === '0';
+      }
+      return plan.csr_variant === csrLevel;
+    });
+    
+    return this;
+  }
+  
+  // Ordenar resultados
+  sortBy(field, direction = 'asc') {
+    this.filteredPlans.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch(field) {
+        case 'premium':
+          aValue = a.premium_w_credit || a.premium;
+          bValue = b.premium_w_credit || b.premium;
+          break;
+        case 'deductible':
+          aValue = a.deductible?.[0]?.amount || 0;
+          bValue = b.deductible?.[0]?.amount || 0;
+          break;
+        case 'quality':
+          aValue = a.quality_rating?.global_rating || 0;
+          bValue = b.quality_rating?.global_rating || 0;
+          break;
+        case 'name':
+          aValue = a.name;
+          bValue = b.name;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (direction === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+    
+    return this;
+  }
+  
+  // Obtener resultados
+  getResults() {
+    return this.filteredPlans;
+  }
+  
+  // Obtener estadísticas
+  getStats() {
+    return {
+      totalOriginal: this.originalPlans.length,
+      totalFiltered: this.filteredPlans.length,
+      metalLevels: this.getUniqueValues('metal_level'),
+      types: this.getUniqueValues('type'),
+      issuers: this.getUniqueIssuers(),
+      priceRange: this.getPriceRange(),
+      deductibleRange: this.getDeductibleRange()
+    };
+  }
+  
+  getUniqueValues(field) {
+    const values = {};
+    this.filteredPlans.forEach(plan => {
+      const value = plan[field];
+      values[value] = (values[value] || 0) + 1;
+    });
+    return values;
+  }
+  
+  getUniqueIssuers() {
+    const issuers = {};
+    this.filteredPlans.forEach(plan => {
+      const issuer = plan.issuer.name;
+      issuers[issuer] = (issuers[issuer] || 0) + 1;
+    });
+    return issuers;
+  }
+  
+  getPriceRange() {
+    const prices = this.filteredPlans.map(p => p.premium_w_credit || p.premium);
+    return {
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+      avg: prices.reduce((a, b) => a + b, 0) / prices.length
+    };
+  }
+  
+  getDeductibleRange() {
+    const deductibles = this.filteredPlans.map(p => p.deductible?.[0]?.amount || 0);
+    return {
+      min: Math.min(...deductibles),
+      max: Math.max(...deductibles),
+      avg: deductibles.reduce((a, b) => a + b, 0) / deductibles.length
+    };
+  }
+}
+// Uso del sistema de filtros
+async function searchAndFilterPlans() {
+  // Obtener todos los planes
+  const allPlans = await fetchAllCMSPlans('77001', 'TX', '48201');
+  
+  // Aplicar filtros
+  const filter = new CMSPlanFilter(allPlans);
+  
+  const filteredResults = filter
+    .filterByMetalLevel(['Bronze', 'Silver'])
+    .filterByType(['HMO', 'PPO'])
+    .filterByPriceRange(100, 400)
+    .filterByMaxDeductible(5000)
+    .filterByQualityRating(3)
+    .sortBy('premium', 'asc')
+    .getResults();
+  
+  console.log(`Planes filtrados: ${filteredResults.length}`);
+  console.log('Estadísticas:', filter.getStats());
+  
+  return filteredResults;
+}
+8. Manejo de Errores
+Sistema Robusto de Manejo de Errores
+class CMSAPIError extends Error {
+  constructor(message, status, details) {
+    super(message);
+    this.name = 'CMSAPIError';
+    this.status = status;
+    this.details = details;
+  }
+}
+async function fetchPlansWithErrorHandling(zipcode, state, countyfips) {
+  const maxRetries = 3;
+  let retryCount = 0;
+  let lastError = null;
+  
+  while (retryCount < maxRetries) {
+    try {
+      console.log(`🔄 Intento ${retryCount + 1} de ${maxRetries}`);
+      
+      // Validación de parámetros
+      if (!zipcode || zipcode.length !== 5) {
+        throw new CMSAPIError('ZIP code debe tener 5 dígitos', 400, { zipcode });
+      }
+      
+      if (!state || state.length !== 2) {
+        throw new CMSAPIError('Estado debe ser código de 2 letras', 400, { state });
+      }
+      
+      if (!countyfips || countyfips.length !== 5) {
+        throw new CMSAPIError('County FIPS debe tener 5 dígitos', 400, { countyfips });
+      }
+      
+      const payload = {
+        household: {
+          income: 50000,
+          people: [
+            {
+              age: 30,
+              aptc_eligible: true,
+              gender: "Male",
+              uses_tobacco: false
+            }
+          ]
+        },
+        market: "Individual",
+        place: {
+          countyfips: countyfips,
+          state: state,
+          zipcode: zipcode
+        },
+        year: 2025,
+        offset: 0,
+        limit: 100
+      };
+      
+      const response = await fetch('https://marketplace.api.healthcare.gov/api/v1/plans/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        timeout: 30000 // 30 segundos timeout
+      });
+      
+      // Manejo de diferentes códigos de error
+      if (!response.ok) {
+        const errorBody = await response.text();
+        
+        switch(response.status) {
+          case 400:
+            throw new CMSAPIError('Solicitud inválida', 400, { 
+              body: errorBody,
+              payload: payload 
+            });
+          
+          case 404:
+            throw new CMSAPIError('No se encontraron planes para esta ubicación', 404, {
+              zipcode,
+              state,
+              countyfips
+            });
+          
+          case 429:
+            // Rate limit - esperar antes de reintentar
+            console.log('⏳ Rate limit alcanzado, esperando 60 segundos...');
+            await new Promise(resolve => setTimeout(resolve, 60000));
+            retryCount++;
+            continue;
+          
+          case 500:
+          case 502:
+          case 503:
+            // Error del servidor - reintentar con backoff exponencial
+            const waitTime = Math.pow(2, retryCount) * 1000;
+            console.log(`⏳ Error del servidor, esperando ${waitTime/1000} segundos...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            retryCount++;
+            continue;
+          
+          default:
+            throw new CMSAPIError(`Error HTTP: ${response.status}`, response.status, {
+              body: errorBody
+            });
+        }
+      }
+      
+      const data = await response.json();
+      
+      // Validar respuesta
+      if (!data.plans) {
+        throw new CMSAPIError('Respuesta inválida: falta campo plans', 500, data);
+      }
+      
+      console.log(`✅ Éxito: ${data.plans.length} planes obtenidos`);
+      return data.plans;
+      
+    } catch (error) {
+      lastError = error;
+      
+      if (error.name === 'CMSAPIError') {
+        // Si es un error conocido que no debe reintentarse
+        if ([400, 404].includes(error.status)) {
+          throw error;
+        }
+      }
+      
+      // Error de red o timeout
+      if (error.name === 'FetchError' || error.message.includes('timeout')) {
+        console.log(`⚠️ Error de red, reintentando...`);
+        retryCount++;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        continue;
+      }
+      
+      // Otros errores
+      console.error(`❌ Error no manejado:`, error);
+      retryCount++;
+    }
+  }
+  
+  // Si llegamos aquí, agotamos los reintentos
+  throw new CMSAPIError(
+    `Fallo después de ${maxRetries} intentos: ${lastError?.message}`,
+    500,
+    { originalError: lastError }
+  );
+}
+9. Optimización y Cache
+Sistema de Cache para Reducir Llamadas a la API
+class CMSPlanCache {
+  constructor() {
+    this.cache = new Map();
+    this.cacheTimeout = 3600000; // 1 hora en millisegundos
+  }
+  
+  getCacheKey(zipcode, state, countyfips, year) {
+    return `${zipcode}-${state}-${countyfips}-${year}`;
+  }
+  
+  async getPlans(zipcode, state, countyfips, year = 2025) {
+    const cacheKey = this.getCacheKey(zipcode, state, countyfips, year);
+    
+    // Verificar si existe en cache y no ha expirado
+    if (this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      const age = Date.now() - cached.timestamp;
+      
+      if (age < this.cacheTimeout) {
+        console.log(`📦 Usando cache (edad: ${Math.round(age/1000)}s)`);
+        return cached.data;
+      } else {
+        console.log(`🗑️ Cache expirado, eliminando...`);
+        this.cache.delete(cacheKey);
+      }
+    }
+    
+    // No hay cache válido, obtener de la API
+    console.log(`🌐 Obteniendo datos frescos de la API...`);
+    const plans = await fetchAllCMSPlans(zipcode, state, countyfips, year);
+    
+    // Guardar en cache
+    this.cache.set(cacheKey, {
+      data: plans,
+      timestamp: Date.now(),
+      metadata: {
+        zipcode,
+        state,
+        countyfips,
+        year,
+        count: plans.length
+      }
+    });
+    
+    return plans;
+  }
+  
+  clearCache() {
+    console.log(`🧹 Limpiando cache (${this.cache.size} entradas)`);
+    this.cache.clear();
+  }
+  
+  getCacheStats() {
+    const stats = {
+      entries: this.cache.size,
+      totalPlans: 0,
+      oldestEntry: null,
+      newestEntry: null
+    };
+    
+    this.cache.forEach((value, key) => {
+      stats.totalPlans += value.data.length;
+      
+      if (!stats.oldestEntry || value.timestamp < stats.oldestEntry) {
+        stats.oldestEntry = value.timestamp;
+      }
+      
+      if (!stats.newestEntry || value.timestamp > stats.newestEntry) {
+        stats.newestEntry = value.timestamp;
+      }
+    });
+    
+    return stats;
+  }
+}
+// Uso del cache
+const planCache = new CMSPlanCache();
+async function getPlansWithCache() {
+  // Primera llamada - va a la API
+  const plans1 = await planCache.getPlans('77001', 'TX', '48201');
+  
+  // Segunda llamada - usa cache
+  const plans2 = await planCache.getPlans('77001', 'TX', '48201');
+  
+  // Ver estadísticas
+  console.log('Cache stats:', planCache.getCacheStats());
+}
+10. Ejemplos Completos
+Implementación Completa para una Aplicación
+// archivo: cmsService.js
+class CMSHealthcareService {
+  constructor() {
+    this.baseURL = 'https://marketplace.api.healthcare.gov/api/v1';
+    this.cache = new CMSPlanCache();
+  }
+  
+  // Obtener planes para un cliente específico
+  async getPlansForClient(clientData) {
+    const { zipcode, state, countyfips, age, income, familySize, smoker } = clientData;
+    
+    const payload = {
+      household: {
+        income: income,
+        people: this.buildPeopleArray(age, familySize, smoker)
+      },
+      market: "Individual",
+      place: {
+        countyfips: countyfips,
+        state: state,
+        zipcode: zipcode
+      },
+      year: new Date().getFullYear() + 1, // Año siguiente
+      offset: 0,
+      limit: 100
+    };
+    
+    return await this.fetchWithPagination(payload);
+  }
+  
+  // Construir array de personas para el hogar
+  buildPeopleArray(primaryAge, familySize, smoker) {
+    const people = [];
+    
+    // Persona principal
+    people.push({
+      age: primaryAge,
+      aptc_eligible: true,
+      gender: "Male", // Puede ser dinámico
+      uses_tobacco: smoker
+    });
+    
+    // Agregar familia si aplica
+    if (familySize > 1) {
+      // Cónyuge
+      people.push({
+        age: primaryAge - 2, // Aproximación
+        aptc_eligible: true,
+        gender: "Female",
+        uses_tobacco: false
+      });
+    }
+    
+    // Agregar hijos
+    for (let i = 2; i < familySize; i++) {
+      people.push({
+        age: 10, // Edad promedio hijo
+        aptc_eligible: true,
+        gender: i % 2 === 0 ? "Male" : "Female",
+        uses_tobacco: false
+      });
+    }
+    
+    return people;
+  }
+  
+  // Fetch con paginación automática
+  async fetchWithPagination(basePayload) {
+    let allPlans = [];
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const payload = {
+        ...basePayload,
+        offset: offset,
+        limit: limit
+      };
+      
+      try {
+        const response = await fetch(`${this.baseURL}/plans/search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.plans && data.plans.length > 0) {
+          allPlans = allPlans.concat(data.plans);
+          offset += limit;
+          
+          // Verificar si hay más páginas
+          hasMore = data.plans.length === limit && allPlans.length < data.total;
+        } else {
+          hasMore = false;
+        }
+        
+      } catch (error) {
+        console.error(`Error en offset ${offset}:`, error);
+        hasMore = false;
+      }
+    }
+    
+    return this.processPlans(allPlans);
+  }
+  
+  // Procesar y enriquecer planes
+  processPlans(plans) {
+    return plans.map(plan => ({
+      // ID y nombre
+      id: plan.id,
+      name: plan.name,
+      displayName: this.formatPlanName(plan.name),
+      
+      // Clasificación
+      metalLevel: plan.metal_level,
+      metalLevelOrder: this.getMetalLevelOrder(plan.metal_level),
+      type: plan.type,
+      typeDisplay: this.getTypeDisplay(plan.type),
+      
+      // Aseguradora
+      issuer: {
+        id: plan.issuer.id,
+        name: plan.issuer.name,
+        logo: this.getIssuerLogo(plan.issuer),
+        phone: plan.issuer.toll_free,
+        website: plan.issuer.href
+      },
+      
+      // Precios calculados
+      pricing: {
+        monthlyPremium: plan.premium,
+        yearlyPremium: plan.premium * 12,
+        withAPTC: plan.premium_w_credit || plan.premium,
+        savings: plan.premium - (plan.premium_w_credit || plan.premium),
+        savingsPercent: this.calculateSavingsPercent(plan),
+        deductible: plan.deductible?.[0]?.amount || 0,
+        outOfPocketMax: plan.moops?.[0]?.amount || 0
+      },
+      
+      // Copagos formateados
+      copays: this.extractAllCopays(plan),
+      
+      // Beneficios clave
+      keyBenefits: this.extractKeyBenefits(plan),
+      
+      // Características
+      features: {
+        hsaEligible: plan.hsa_eligible,
+        childDental: plan.child_dental,
+        adultDental: plan.adult_dental,
+        qualityRating: plan.quality_rating?.global_rating,
+        qualityStars: this.getStarsDisplay(plan.quality_rating?.global_rating),
+        csrLevel: this.getCSRLevel(plan)
+      },
+      
+      // URLs de documentos
+      documents: {
+        brochure: plan.brochure_url,
+        summary: plan.summary_of_benefits_url,
+        formulary: plan.drug_formulary_url,
+        providerDirectory: plan.network_url
+      },
+      
+      // Datos para filtrado
+      filterData: {
+        premium: plan.premium_w_credit || plan.premium,
+        deductible: plan.deductible?.[0]?.amount || 0,
+        metalLevel: plan.metal_level,
+        type: plan.type,
+        issuerId: plan.issuer.id,
+        qualityRating: plan.quality_rating?.global_rating || 0,
+        hsaEligible: plan.hsa_eligible
+      },
+      
+      // Datos originales por si se necesitan
+      _raw: plan
+    }));
+  }
+  
+  // Funciones auxiliares
+  formatPlanName(name) {
+    // Acortar nombres largos
+    return name
+      .replace('Health Insurance', '')
+      .replace('Company', 'Co.')
+      .trim();
+  }
+  
+  getMetalLevelOrder(level) {
+    const order = {
+      'Bronze': 1,
+      'Silver': 2,
+      'Gold': 3,
+      'Platinum': 4,
+      'Catastrophic': 0
+    };
+    return order[level] || 999;
+  }
+  
+  getTypeDisplay(type) {
+    const displays = {
+      'HMO': 'HMO - Health Maintenance Organization',
+      'PPO': 'PPO - Preferred Provider Organization',
+      'EPO': 'EPO - Exclusive Provider Organization',
+      'POS': 'POS - Point of Service'
+    };
+    return displays[type] || type;
+  }
+  
+  getIssuerLogo(issuer) {
+    // Mapeo de logos por ID o nombre
+    const logoMap = {
+      '12345': 'https://logo.clearbit.com/bcbstx.com',
+      'Blue Cross': 'https://logo.clearbit.com/bcbs.com',
+      'Aetna': 'https://logo.clearbit.com/aetna.com',
+      'United': 'https://logo.clearbit.com/uhc.com'
+    };
+    
+    // Buscar por ID primero
+    if (logoMap[issuer.id]) return logoMap[issuer.id];
+    
+    // Buscar por nombre parcial
+    for (const [key, logo] of Object.entries(logoMap)) {
+      if (issuer.name.includes(key)) return logo;
+    }
+    
+    // Logo por defecto
+    return '/images/default-insurer-logo.png';
+  }
+  
+  calculateSavingsPercent(plan) {
+    if (!plan.premium_w_credit) return 0;
+    const savings = plan.premium - plan.premium_w_credit;
+    return Math.round((savings / plan.premium) * 100);
+  }
+  
+  extractAllCopays(plan) {
+    const copays = {};
+    const importantServices = [
+      'Primary Care Visit',
+      'Specialist Visit',
+      'Emergency Room',
+      'Urgent Care',
+      'Generic Drugs',
+      'Preferred Brand Drugs',
+      'Laboratory Tests',
+      'X-rays and Diagnostic Imaging',
+      'Mental Health Outpatient',
+      'Preventive Care'
+    ];
+    
+    importantServices.forEach(service => {
+      const benefit = plan.benefits?.find(b => 
+        b.name.toLowerCase().includes(service.toLowerCase())
+      );
+      
+      if (benefit) {
+        const costSharing = benefit.cost_sharings?.[0];
+        if (costSharing) {
+          copays[service] = {
+            copay: costSharing.copay_amount,
+            coinsurance: costSharing.coinsurance_rate,
+            display: costSharing.display_string || this.formatCostSharing(costSharing)
+          };
+        }
+      }
+    });
+    
+    return copays;
+  }
+  
+  formatCostSharing(costSharing) {
+    if (costSharing.copay_amount) {
+      return `$${costSharing.copay_amount} copay`;
+    } else if (costSharing.coinsurance_rate) {
+      return `${costSharing.coinsurance_rate * 100}% coinsurance`;
+    }
+    return 'No charge';
+  }
+  
+  extractKeyBenefits(plan) {
+    return plan.benefits
+      ?.filter(b => b.covered)
+      .slice(0, 10) // Top 10 beneficios
+      .map(benefit => ({
+        name: benefit.name,
+        cost: benefit.cost_sharings?.[0]?.display_string || 'Covered',
+        hasLimits: benefit.has_limits,
+        explanation: benefit.explanation
+      }));
+  }
+  
+  getStarsDisplay(rating) {
+    if (!rating) return 'Not rated';
+    return '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  }
+  
+  getCSRLevel(plan) {
+    if (plan.csr_variant === '73') return 'CSR 73% (Silver)';
+    if (plan.csr_variant === '87') return 'CSR 87% (Silver)';
+    if (plan.csr_variant === '94') return 'CSR 94% (Silver)';
+    if (plan.id.includes('-73')) return 'CSR 73%';
+    if (plan.id.includes('-87')) return 'CSR 87%';
+    if (plan.id.includes('-94')) return 'CSR 94%';
+    return 'Standard';
+  }
+}
+// Exportar servicio
+const cmsService = new CMSHealthcareService();
+// Ejemplo de uso completo
+async function main() {
+  try {
+    // Datos del cliente
+    const clientData = {
+      zipcode: '77001',
+      state: 'TX',
+      countyfips: '48201',
+      age: 35,
+      income: 45000,
+      familySize: 3,
+      smoker: false
+    };
+    
+    console.log('🔍 Buscando planes para cliente...');
+    const plans = await cmsService.getPlansForClient(clientData);
+    
+    console.log(`✅ ${plans.length} planes encontrados`);
+    
+    // Filtrar por Bronze y Silver con prima menor a $300
+    const affordablePlans = plans.filter(plan => 
+      ['Bronze', 'Silver'].includes(plan.metalLevel) &&
+      plan.pricing.withAPTC < 300
+    );
+    
+    console.log(`💰 ${affordablePlans.length} planes asequibles encontrados`);
+    
+    // Mostrar top 5 planes más baratos
+    const top5 = affordablePlans
+      .sort((a, b) => a.pricing.withAPTC - b.pricing.withAPTC)
+      .slice(0, 5);
+    
+    console.log('\n📋 Top 5 Planes Más Económicos:');
+    top5.forEach((plan, index) => {
+      console.log(`
+${index + 1}. ${plan.name}
+   Aseguradora: ${plan.issuer.name}
+   Nivel: ${plan.metalLevel}
+   Tipo: ${plan.type}
+   Prima mensual: $${plan.pricing.monthlyPremium.toFixed(2)}
+   Con APTC: $${plan.pricing.withAPTC.toFixed(2)}
+   Ahorro: $${plan.pricing.savings.toFixed(2)} (${plan.pricing.savingsPercent}%)
+   Deducible: $${plan.pricing.deductible.toLocaleString()}
+   Calificación: ${plan.features.qualityStars}
+      `);
+    });
+    
+  } catch (error) {
+    console.error('❌ Error:', error);
+  }
+}
+// Ejecutar si es el archivo principal
+if (require.main === module) {
+  main();
+}
+module.exports = { CMSHealthcareService, cmsService };
+Información Adicional Crítica
+Códigos FIPS de Condados de Texas
+const TEXAS_COUNTY_FIPS = {
+  'Harris County': '48201',    // Houston
+  'Dallas County': '48113',    // Dallas
+  'Tarrant County': '48439',   // Fort Worth
+  'Bexar County': '48029',     // San Antonio
+  'Travis County': '48453',    // Austin
+  'Collin County': '48085',    // Plano
+  'Denton County': '48121',    // Denton
+  'Fort Bend County': '48157', // Sugar Land
+  'El Paso County': '48141',   // El Paso
+  'Williamson County': '48491' // Round Rock
+};
+Endpoints Adicionales Útiles
+// Obtener condados por ZIP code
+async function getCountiesForZip(zipcode) {
+  const response = await fetch(
+    `https://marketplace.api.healthcare.gov/api/v1/counties/search?zipcode=${zipcode}`
+  );
+  return await response.json();
+}
+// Obtener años de cobertura disponibles
+async function getCoverageYears() {
+  const response = await fetch(
+    'https://marketplace.api.healthcare.gov/api/v1/coverage-years'
+  );
+  return await response.json();
+}
+// Obtener aseguradoras por estado
+async function getIssuersForState(state) {
+  const response = await fetch(
+    `https://marketplace.api.healthcare.gov/api/v1/issuers?state=${state}`
+  );
+  return await response.json();
+}
+Notas Importantes
+SIEMPRE incluir countyfips - Sin esto la API no funciona
+Límite de 100 planes por request - Usar paginación para obtener todos
+APTC requiere income y aptc_eligible=true en el payload
+CSR plans tienen variantes en el ID del plan (-73, -87, -94)
+Cache recomendado de 1 hora para reducir llamadas a la API
+Rate limit de aproximadamente 100 requests por minuto
+Los precios están en dólares mensuales
+quality_rating puede ser null para planes nuevos
+Este documento contiene TODO lo necesario para implementar la integración completa con la API del CMS Healthcare.gov.
