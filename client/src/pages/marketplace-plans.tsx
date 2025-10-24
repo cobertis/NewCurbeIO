@@ -398,6 +398,46 @@ export default function MarketplacePlansPage() {
 
       {marketplacePlans && filteredPlans && (
         <div className="grid gap-4">
+          {/* Top Pagination Controls */}
+          {totalFilteredPlans > pageSize && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="py-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <p className="text-sm text-muted-foreground font-medium">
+                    Showing <span className="font-bold text-foreground">{Math.min(((currentPage - 1) * pageSize) + 1, totalFilteredPlans)}</span> - <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalFilteredPlans)}</span> of <span className="font-bold text-foreground">{totalFilteredPlans}</span> plans
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      data-testid="button-prev-page-top"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1 px-3 py-1 bg-background rounded-md border">
+                      <span className="text-sm font-medium">
+                        Page <span className="font-bold text-primary">{currentPage}</span> of <span className="font-bold">{totalPages}</span>
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      data-testid="button-next-page-top"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {filteredPlans.map((plan: any, index: number) => (
             <Card key={plan.id || index} className="overflow-hidden hover-elevate">
               <div className="flex flex-col lg:flex-row">
@@ -584,13 +624,13 @@ export default function MarketplacePlansPage() {
             </Card>
           )}
           
-          {/* Pagination Controls */}
+          {/* Bottom Pagination Controls */}
           {totalFilteredPlans > pageSize && (
-            <Card>
+            <Card className="bg-primary/5 border-primary/20">
               <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {Math.min(((currentPage - 1) * pageSize) + 1, totalFilteredPlans)} - {Math.min(currentPage * pageSize, totalFilteredPlans)} of {totalFilteredPlans} plans
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <p className="text-sm text-muted-foreground font-medium">
+                    Showing <span className="font-bold text-foreground">{Math.min(((currentPage - 1) * pageSize) + 1, totalFilteredPlans)}</span> - <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalFilteredPlans)}</span> of <span className="font-bold text-foreground">{totalFilteredPlans}</span> plans
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -598,14 +638,14 @@ export default function MarketplacePlansPage() {
                       size="sm"
                       onClick={() => setCurrentPage(currentPage - 1)}
                       disabled={currentPage === 1}
-                      data-testid="button-prev-page"
+                      data-testid="button-prev-page-bottom"
                     >
                       <ChevronLeft className="h-4 w-4" />
                       Previous
                     </Button>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 px-3 py-1 bg-background rounded-md border">
                       <span className="text-sm font-medium">
-                        Page {currentPage} of {totalPages}
+                        Page <span className="font-bold text-primary">{currentPage}</span> of <span className="font-bold">{totalPages}</span>
                       </span>
                     </div>
                     <Button
@@ -613,7 +653,7 @@ export default function MarketplacePlansPage() {
                       size="sm"
                       onClick={() => setCurrentPage(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      data-testid="button-next-page"
+                      data-testid="button-next-page-bottom"
                     >
                       Next
                       <ChevronRight className="h-4 w-4" />
