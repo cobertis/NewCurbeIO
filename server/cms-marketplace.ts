@@ -282,6 +282,28 @@ export async function fetchMarketplacePlans(
     
     console.log('[CMS_MARKETPLACE] Successfully fetched', data.plans?.length || 0, 'plans');
     
+    // Calculate household_aptc if not provided by the API
+    // The CMS API may not always include household_aptc directly, so we calculate it
+    // from the first plan that has premium_w_credit
+    if (!data.household_aptc && data.plans && data.plans.length > 0) {
+      // Find the first plan with premium_w_credit to calculate APTC
+      const planWithCredit = data.plans.find(plan => 
+        plan.premium_w_credit !== undefined && 
+        plan.premium_w_credit !== null &&
+        plan.premium > plan.premium_w_credit
+      );
+      
+      if (planWithCredit && planWithCredit.premium_w_credit !== undefined) {
+        // Calculate APTC as the difference between premium and premium_w_credit
+        data.household_aptc = planWithCredit.premium - planWithCredit.premium_w_credit;
+        console.log('[CMS_MARKETPLACE] Calculated household_aptc from plan data:', data.household_aptc);
+      } else {
+        // Set to 0 if no plans have tax credits
+        data.household_aptc = 0;
+        console.log('[CMS_MARKETPLACE] No plans with tax credits found, setting household_aptc to 0');
+      }
+    }
+    
     return data;
   } catch (error) {
     console.error('[CMS_MARKETPLACE] Error fetching plans:', error);
