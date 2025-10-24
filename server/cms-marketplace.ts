@@ -92,6 +92,7 @@ interface MarketplaceApiResponse {
   household_csr?: string;
   household_lcbp_premium?: number;
   household_slcsp_premium?: number;
+  request_data?: any; // Data about the request for transparency
 }
 
 /**
@@ -123,8 +124,8 @@ function formatGenderForCMS(gender?: string): string {
 }
 
 /**
- * Fetch health insurance plans from CMS Marketplace API
- * Following the exact documentation specifications
+ * Fetch ALL health insurance plans from CMS Marketplace API in parallel
+ * Optimized for speed - gets all plans in one go
  */
 export async function fetchMarketplacePlans(
   quoteData: {
@@ -153,6 +154,101 @@ export async function fetchMarketplacePlans(
   },
   page?: number,
   pageSize?: number
+): Promise<MarketplaceApiResponse> {
+  // If page is specified, return just that page (for backwards compatibility)
+  if (page && page > 1) {
+    return fetchSinglePage(quoteData, page);
+  }
+  
+  // Otherwise, fetch ALL plans in parallel
+  console.log('[CMS_MARKETPLACE] 🚀 Iniciando carga rápida de TODOS los planes');
+  
+  // First, get the total count with page 1
+  const firstPage = await fetchSinglePage(quoteData, 1);
+  const totalPlans = firstPage.total || 0;
+  
+  if (totalPlans <= 10) {
+    // If 10 or fewer plans, we already have them all
+    return firstPage;
+  }
+  
+  // Calculate how many pages we need (API returns max 10 per page)
+  const plansPerPage = 10; // API limitation
+  const totalPages = Math.ceil(totalPlans / plansPerPage);
+  
+  console.log(`[CMS_MARKETPLACE] 📊 ${totalPlans} planes disponibles en ${totalPages} páginas`);
+  console.log(`[CMS_MARKETPLACE] ⚡ Obteniendo todas las páginas en paralelo...`);
+  
+  // Create promises for all remaining pages (we already have page 1)
+  const pagePromises: Promise<MarketplaceApiResponse>[] = [];
+  
+  // Batch requests in groups of 5 to avoid overwhelming the API
+  const batchSize = 5;
+  for (let page = 2; page <= totalPages; page++) {
+    pagePromises.push(fetchSinglePage(quoteData, page));
+    
+    // Add small delay between batches to be respectful to the API
+    if (page % batchSize === 0 && page < totalPages) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+  
+  // Fetch all pages in parallel
+  const remainingPages = await Promise.all(pagePromises);
+  
+  // Combine all plans from all pages
+  const allPlans = [...(firstPage.plans || [])];
+  for (const pageData of remainingPages) {
+    if (pageData.plans) {
+      allPlans.push(...pageData.plans);
+    }
+  }
+  
+  // Remove duplicates by plan ID (just in case)
+  const uniquePlans = allPlans.filter((plan, index, self) =>
+    index === self.findIndex(p => p.id === plan.id)
+  );
+  
+  console.log(`[CMS_MARKETPLACE] ✅ ${uniquePlans.length} planes únicos obtenidos exitosamente`);
+  
+  // Return combined response with all plans
+  return {
+    ...firstPage,
+    plans: uniquePlans,
+    total: uniquePlans.length,
+    request_data: firstPage.request_data
+  };
+}
+
+/**
+ * Fetch a single page of marketplace plans - internal helper function
+ */
+async function fetchSinglePage(
+  quoteData: {
+    zipCode: string;
+    county: string;
+    state: string;
+    householdIncome: number;
+    client: {
+      dateOfBirth: string;
+      gender?: string;
+      pregnant?: boolean;
+      usesTobacco?: boolean;
+    };
+    spouses?: Array<{
+      dateOfBirth: string;
+      gender?: string;
+      pregnant?: boolean;
+      usesTobacco?: boolean;
+    }>;
+    dependents?: Array<{
+      dateOfBirth: string;
+      gender?: string;
+      pregnant?: boolean;
+      usesTobacco?: boolean;
+    }>;
+  },
+  page: number
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
   
@@ -202,11 +298,13 @@ export async function fetchMarketplacePlans(
   const year = new Date().getFullYear(); // Current year
 
   // Get county FIPS code - CRÍTICO según documentación
-  console.log('[CMS_MARKETPLACE] 🔍 Iniciando búsqueda de planes para:', {
-    ZIP: quoteData.zipCode,
-    Estado: quoteData.state,
-    County: quoteData.county,
-  });
+  if (page === 1) { // Only log on first page to reduce noise
+    console.log(`[CMS_MARKETPLACE] 📄 Página ${page}:`, {
+      ZIP: quoteData.zipCode,
+      Estado: quoteData.state,
+      County: quoteData.county,
+    });
+  }
 
   const countyFips = await getCountyFips(quoteData.zipCode, quoteData.county, quoteData.state);
   
@@ -215,13 +313,14 @@ export async function fetchMarketplacePlans(
     throw new Error(`Unable to determine county FIPS for ${quoteData.county}, ${quoteData.state}. Please verify the address information.`);
   }
 
-  console.log('[CMS_MARKETPLACE] County FIPS:', countyFips);
+  if (page === 1) {
+    console.log('[CMS_MARKETPLACE] County FIPS:', countyFips);
+  }
 
-  // Calculate pagination parameters - Máximo 100 según documentación
-  const currentPage = page || 1;
-  // IMPORTANTE: Usar siempre 100 para obtener el máximo de planes permitido
-  const limit = 100; // Forzar a 100 siempre para obtener todos los planes disponibles
-  const offset = (currentPage - 1) * limit;
+  // Calculate pagination parameters
+  const currentPage = page;
+  const limit = 100; // Try to get max, but API only returns 10
+  const offset = (currentPage - 1) * 10; // Use 10 because that's what API actually returns
 
   // Build request body following the EXACT structure from documentation
   // IMPORTANTE: limit y offset van en el body, no en la URL
@@ -244,8 +343,10 @@ export async function fetchMarketplacePlans(
     // csr_override: null,  // Opcional - puede forzar un nivel CSR específico
   };
 
-  console.log(`[CMS_MARKETPLACE] 📊 Página ${currentPage}: Solicitando hasta ${limit} planes, offset: ${offset}`);
-  console.log('[CMS_MARKETPLACE] Request body:', JSON.stringify(requestBody, null, 2));
+  if (page === 1) {
+    console.log(`[CMS_MARKETPLACE] 📊 Página ${currentPage}: Solicitando hasta ${limit} planes, offset: ${offset}`);
+    console.log('[CMS_MARKETPLACE] Request body:', JSON.stringify(requestBody, null, 2));
+  }
 
   try {
     // CMS Marketplace API endpoint - exacto de la documentación
@@ -284,7 +385,9 @@ export async function fetchMarketplacePlans(
       console.log(`[CMS_MARKETPLACE] 📊 Total de planes disponibles: ${data.total}`);
     }
     
-    console.log(`[CMS_MARKETPLACE] ✅ Página ${currentPage}: ${data.plans?.length || 0} planes obtenidos`);
+    if (page === 1 || page % 5 === 0) { // Reduce logging noise
+      console.log(`[CMS_MARKETPLACE] ✅ Página ${currentPage}: ${data.plans?.length || 0} planes obtenidos`);
+    }
     
     // Agregar información del request para mostrar al usuario
     data.request_data = {

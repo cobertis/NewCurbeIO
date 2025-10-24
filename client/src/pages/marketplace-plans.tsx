@@ -64,7 +64,7 @@ export default function MarketplacePlansPage() {
   const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(200); // Mostrar TODOS los planes en una página
 
   // Auto-fetch marketplace plans when component mounts
   useEffect(() => {
@@ -78,112 +78,68 @@ export default function MarketplacePlansPage() {
     
     setIsLoadingPlans(true);
     try {
-      // Según documentación: Máximo permitido por la API es 100
-      const limit = 100;
-      let allPlans: any[] = [];
-      let offset = 0;
-      let totalPlansCount = 0;
-      let hasMoreData = true;
-      let marketplaceMetadata: any = null;
-      let apiRequestData: any = null;
-      
-      console.log(`🔍 Iniciando búsqueda de planes para Quote: ${quoteId}`);
+      console.log(`🚀 Cargando TODOS los planes para Quote: ${quoteId}`);
 
-      // Fetch ALL plans as per documentation - NO LIMIT
-      while (hasMoreData) {
-        const currentPage = Math.floor(offset / limit) + 1;
-        
-        const response = await fetch(
-          `/api/quotes/${quoteId}/marketplace-plans?page=${currentPage}&pageSize=${limit}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            credentials: 'include',
-          }
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to fetch plans');
+      // Fetch ALL plans in one optimized call - backend handles parallel fetching
+      const response = await fetch(
+        `/api/quotes/${quoteId}/marketplace-plans?page=1&pageSize=1000`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          credentials: 'include',
         }
+      );
 
-        const data = await response.json();
-        
-        // Primera iteración: guardar el total y metadata
-        if (offset === 0) {
-          totalPlansCount = data.total || 0;
-          console.log(`📊 Total de planes disponibles: ${totalPlansCount || 'Unknown'}`);
-          
-          // Guardar los datos del request para mostrarlos al usuario
-          apiRequestData = data.request_data || {
-            household_income: (quoteData as any)?.quote?.householdIncome,
-            people_count: totalApplicants,
-            location: {
-              zip: quote?.zipCode,
-              state: quote?.state,
-              county: quote?.county
-            }
-          };
-          
-          marketplaceMetadata = {
-            year: data.year,
-            household_aptc: data.household_aptc,
-            household_csr: data.household_csr,
-            household_slcsp_premium: data.household_slcsp_premium,
-            household_lcbp_premium: data.household_lcbp_premium,
-            request_data: apiRequestData,
-          };
-        }
-
-        // Add plans from this page to the collection
-        if (data.plans && data.plans.length > 0) {
-          allPlans = allPlans.concat(data.plans);
-          console.log(`✅ Página ${currentPage}: ${data.plans.length} planes obtenidos (Total acumulado: ${allPlans.length})`);
-          
-          // IMPORTANTE: La API puede devolver menos planes del límite solicitado
-          // Continuar hasta obtener TODOS los planes disponibles
-          if (totalPlansCount > 0 && allPlans.length >= totalPlansCount) {
-            // Ya tenemos todos los planes
-            hasMoreData = false;
-            console.log(`✅ Búsqueda completa: obtenidos todos los ${totalPlansCount} planes`);
-          } else if (data.plans.length === 0) {
-            // No hay más planes
-            hasMoreData = false;
-            console.log(`✅ Búsqueda completa: no hay más planes disponibles`);
-          } else {
-            // Incrementar offset para la siguiente página
-            offset += data.plans.length; // Usar el número real de planes devueltos
-            console.log(`📋 Continuando búsqueda... (${allPlans.length}/${totalPlansCount} planes obtenidos)`);
-          }
-          
-          // Pequeña pausa para no sobrecargar la API (según documentación)
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } else {
-          // No hay más planes
-          hasMoreData = false;
-          console.log(`✅ Búsqueda completa: no hay más planes en página ${currentPage}`);
-        }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch plans');
       }
 
-      // Combine all plans with metadata
+      const data = await response.json();
+      
+      // Backend now returns ALL plans at once
+      const totalPlansCount = data.total || data.plans?.length || 0;
+      console.log(`📊 Total de planes disponibles: ${totalPlansCount}`);
+      
+      // Prepare metadata with all information
+      const apiRequestData = data.request_data || {
+        household_income: (quoteData as any)?.quote?.householdIncome,
+        people_count: totalApplicants,
+        location: {
+          zip: quote?.zipCode,
+          state: quote?.state,
+          county: quote?.county
+        }
+      };
+      
+      const marketplaceMetadata = {
+        year: data.year,
+        household_aptc: data.household_aptc,
+        household_csr: data.household_csr,
+        household_slcsp_premium: data.household_slcsp_premium,
+        household_lcbp_premium: data.household_lcbp_premium,
+        request_data: apiRequestData,
+      };
+
+      // Set all plans at once
       const combinedData = {
         ...marketplaceMetadata,
-        plans: allPlans,
+        plans: data.plans || [],
       };
 
       setMarketplacePlans(combinedData);
       setCurrentPage(1);
       
-      const totalPlans = allPlans.length;
+      const totalPlans = data.plans?.length || 0;
       
-      console.log(`✅ Búsqueda completa: ${totalPlans} planes obtenidos en total`);
+      console.log(`✅ ${totalPlans} planes cargados exitosamente en una sola llamada rápida!`);
       
       toast({
-        title: "Plans loaded successfully",
-        description: `Found ${totalPlans} available health insurance plans`,
+        title: "Planes cargados exitosamente",
+        description: `${totalPlans} planes de seguro de salud disponibles`,
       });
     } catch (error: any) {
       console.error('Error fetching marketplace plans:', error);
@@ -589,8 +545,28 @@ export default function MarketplacePlansPage() {
 
       {marketplacePlans && filteredPlans && (
         <div className="grid gap-4">
-          {/* Top Pagination Controls */}
-          {totalFilteredPlans > pageSize && (
+          {/* Info about showing all plans or pagination controls */}
+          {totalFilteredPlans <= pageSize ? (
+            // Showing all plans in one page
+            <Card className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 mb-4">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-center gap-4">
+                  <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <div className="text-sm font-medium">
+                    <span className="text-green-700 dark:text-green-400">
+                      Mostrando los {totalFilteredPlans} planes en una sola página
+                    </span>
+                    {totalFilteredPlans !== marketplacePlans?.plans?.length && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        (Filtrados de {marketplacePlans?.plans?.length} totales)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Pagination controls when there are more plans than pageSize
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="py-4">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -630,7 +606,7 @@ export default function MarketplacePlansPage() {
           )}
 
           {filteredPlans.map((plan: any, index: number) => (
-            <Card key={plan.id || index} className="overflow-hidden hover-elevate">
+            <Card key={`${plan.id}-${index}`} className="overflow-hidden hover-elevate">
               <div className="flex flex-col lg:flex-row">
                 {/* Plan Info Section */}
                 <div className="flex-1 p-6">
@@ -820,8 +796,22 @@ export default function MarketplacePlansPage() {
             </Card>
           )}
           
-          {/* Bottom Pagination Controls */}
-          {totalFilteredPlans > pageSize && (
+          {/* Bottom info or pagination controls */}
+          {totalFilteredPlans <= pageSize ? (
+            // Info showing all plans in one page (bottom)
+            <Card className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 mt-4">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-center gap-4">
+                  <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <div className="text-sm font-medium text-center">
+                    <span className="text-green-700 dark:text-green-400">
+                      ✓ Todos los {totalFilteredPlans} planes visibles arriba
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="py-4">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
