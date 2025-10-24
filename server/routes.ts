@@ -7813,7 +7813,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId: currentUser.companyId,
         createdBy: currentUser.id,
         // effectiveDate and clientDateOfBirth remain as strings (yyyy-MM-dd)
+        
+        // Map frontend address fields to database fields
+        // Map mailing address fields (frontend sends without prefix)
+        mailing_street: req.body.street,
+        mailing_city: req.body.city,
+        mailing_state: req.body.state,
+        mailing_postal_code: req.body.postal_code,
+        mailing_county: req.body.county,
+        
+        // Map physical address fields (fix field name discrepancies)
+        physical_street: req.body.physical_address, // frontend sends physical_address instead of physical_street
+        physical_postal_code: req.body.physical_postalCode, // frontend sends camelCase instead of snake_case
+        
+        // Remove the old field names from payload to avoid conflicts
+        street: undefined,
+        city: undefined,
+        state: undefined,
+        postal_code: undefined,
+        county: undefined,
+        physical_address: undefined,
+        physical_postalCode: undefined
       };
+      
+      // Remove undefined fields from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
       
       // Validate request body using Zod schema
       const validatedData = insertQuoteSchema.parse(payload);
