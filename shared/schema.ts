@@ -1299,12 +1299,12 @@ export const quotes = pgTable("quotes", {
   dependents: jsonb("dependents").default([]), // Array of dependent objects
   
   // Step 4: Addresses
-  // Physical Address (Required)
-  physical_street: text("physical_street").notNull(),
+  // Physical Address (Optional - often same as mailing)
+  physical_street: text("physical_street"),
   physical_address_line_2: text("physical_address_line_2"), // Apt, Suite, Unit, etc.
-  physical_city: text("physical_city").notNull(),
-  physical_state: text("physical_state").notNull(),
-  physical_postal_code: text("physical_postal_code").notNull(),
+  physical_city: text("physical_city"),
+  physical_state: text("physical_state"),
+  physical_postal_code: text("physical_postal_code"),
   physical_county: text("physical_county"),
   
   // Mailing Address (Optional)
