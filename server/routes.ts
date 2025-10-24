@@ -7807,6 +7807,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const currentUser = req.user!;
     
     try {
+      // Debug log to see what fields are being received
+      console.log('[QUOTE DEBUG] Received fields:', Object.keys(req.body));
+      console.log('[QUOTE DEBUG] Mailing address fields:', {
+        mailing_street: req.body.mailing_street,
+        mailing_city: req.body.mailing_city,
+        mailing_state: req.body.mailing_state,
+        mailing_postal_code: req.body.mailing_postal_code,
+        mailing_county: req.body.mailing_county
+      });
+      
       // NO date conversions - keep dates as yyyy-MM-dd strings
       const payload = {
         ...req.body,
@@ -7815,31 +7825,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // effectiveDate and clientDateOfBirth remain as strings (yyyy-MM-dd)
         
         // Map frontend address fields to database fields
-        // Map mailing address fields (frontend sends without prefix)
-        mailing_street: req.body.street,
-        mailing_city: req.body.city,
-        mailing_state: req.body.state,
-        mailing_postal_code: req.body.postal_code,
-        mailing_county: req.body.county,
+        // Frontend already sends fields WITH mailing_ prefix, so use them directly
+        mailing_street: req.body.mailing_street,
+        mailing_city: req.body.mailing_city,
+        mailing_state: req.body.mailing_state,
+        mailing_postal_code: req.body.mailing_postal_code,
+        mailing_county: req.body.mailing_county,
         
         // Map physical address fields (fix field name discrepancies)
-        physical_street: req.body.physical_address, // frontend sends physical_address instead of physical_street
-        physical_city: req.body.physical_city, // frontend sends physical_city correctly
-        physical_state: req.body.physical_state, // frontend sends physical_state correctly
-        physical_postal_code: req.body.physical_postalCode, // frontend sends camelCase instead of snake_case
-        physical_county: req.body.physical_county, // frontend sends physical_county correctly
+        physical_street: req.body.physical_street || req.body.physical_address, // frontend might send either
+        physical_city: req.body.physical_city,
+        physical_state: req.body.physical_state,
+        physical_postal_code: req.body.physical_postal_code || req.body.physical_postalCode, // handle both snake_case and camelCase
+        physical_county: req.body.physical_county,
         
-        // Remove the old field names from payload to avoid conflicts
-        street: undefined,
-        city: undefined,
-        state: undefined,
-        postal_code: undefined,
-        county: undefined,
+        // Remove duplicate fields that may have been sent from frontend
+        // These are being removed because we've already mapped them above
         physical_address: undefined,
-        physical_city: undefined, // Remove the original field to avoid duplicates
-        physical_state: undefined, // Remove the original field to avoid duplicates
-        physical_postalCode: undefined, // Remove the camelCase version
-        physical_county: undefined // Remove the original field to avoid duplicates
+        physical_postalCode: undefined // Remove the camelCase version
       };
       
       // Remove undefined fields from payload
@@ -7847,6 +7850,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (payload[key] === undefined) {
           delete payload[key];
         }
+      });
+      
+      // Debug log to see the final payload after mapping and cleanup
+      console.log('[QUOTE DEBUG] Mapped payload:', Object.keys(payload));
+      console.log('[QUOTE DEBUG] Address data in final payload:', {
+        mailing_street: payload.mailing_street,
+        mailing_city: payload.mailing_city,
+        mailing_state: payload.mailing_state,
+        mailing_postal_code: payload.mailing_postal_code,
+        mailing_county: payload.mailing_county,
+        physical_street: payload.physical_street,
+        physical_city: payload.physical_city,
+        physical_state: payload.physical_state,
+        physical_postal_code: payload.physical_postal_code,
+        physical_county: payload.physical_county
       });
       
       // Validate request body using Zod schema
@@ -8126,7 +8144,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // 2. NO date conversions - keep dates as yyyy-MM-dd strings
-      const payload = { ...req.body };
+      // Apply same address field mapping as in create quote
+      const payload = {
+        ...req.body,
+        // Map address fields consistently with create route
+        // Frontend sends fields WITH mailing_ prefix, use them directly
+        mailing_street: req.body.mailing_street,
+        mailing_city: req.body.mailing_city,
+        mailing_state: req.body.mailing_state,
+        mailing_postal_code: req.body.mailing_postal_code,
+        mailing_county: req.body.mailing_county,
+        
+        // Map physical address fields (fix field name discrepancies)
+        physical_street: req.body.physical_street || req.body.physical_address,
+        physical_city: req.body.physical_city,
+        physical_state: req.body.physical_state,
+        physical_postal_code: req.body.physical_postal_code || req.body.physical_postalCode,
+        physical_county: req.body.physical_county,
+        
+        // Remove duplicate fields
+        physical_address: undefined,
+        physical_postalCode: undefined
+      };
+      
+      // Remove undefined fields from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
       
       // Dates remain as strings (yyyy-MM-dd) - no conversion needed
       // effectiveDate, clientDateOfBirth, spouse.dateOfBirth, dependent.dateOfBirth all stay as strings
