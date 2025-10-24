@@ -160,6 +160,26 @@ const normalizeSSN = (ssn: string | null | undefined): string => {
   return digits;
 };
 
+// Convert Date object or string to yyyy-MM-dd format
+const toDateString = (date: Date | string | null | undefined): string | undefined => {
+  if (!date) return undefined;
+  
+  // If already a string in yyyy-MM-dd format, return as-is
+  if (typeof date === 'string') {
+    return date;
+  }
+  
+  // If Date object, convert to yyyy-MM-dd
+  if (date instanceof Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  return undefined;
+};
+
 // Display SSN: hidden shows XXX-XX-6789, visible shows 123-45-6789
 // Only allows viewing complete SSN (9 digits), incomplete SSN always shows masked
 const displaySSN = (ssn: string | null | undefined, isVisible: boolean): string => {
@@ -3023,14 +3043,46 @@ export default function QuotesPage() {
         physical_county: physical_county || county || "",
         country: data.country || "United States",
         spouses: data.spouses?.map((spouse: any) => ({
-          ...spouse,
+          role: "spouse",
+          firstName: spouse.firstName || "",
+          middleName: spouse.middleName || "",
+          lastName: spouse.lastName || "",
+          secondLastName: spouse.secondLastName || "",
+          dateOfBirth: toDateString(spouse.dateOfBirth),
           ssn: normalizeSSN(spouse.ssn),
+          gender: spouse.gender || "",
+          phone: spouse.phone || "",
+          email: spouse.email || "",
+          isApplicant: spouse.isApplicant || false,
+          tobaccoUser: spouse.tobaccoUser || false,
+          pregnant: spouse.pregnant || false,
+          preferredLanguage: spouse.preferredLanguage || "",
           countryOfBirth: spouse.countryOfBirth || "",
+          maritalStatus: spouse.maritalStatus || "",
+          weight: spouse.weight || "",
+          height: spouse.height || "",
         })) || [],
         dependents: data.dependents?.map((dependent: any) => ({
-          ...dependent,
+          role: "dependent",
+          firstName: dependent.firstName || "",
+          middleName: dependent.middleName || "",
+          lastName: dependent.lastName || "",
+          secondLastName: dependent.secondLastName || "",
+          dateOfBirth: toDateString(dependent.dateOfBirth),
           ssn: normalizeSSN(dependent.ssn),
+          gender: dependent.gender || "",
+          phone: dependent.phone || "",
+          email: dependent.email || "",
+          isApplicant: dependent.isApplicant || false,
+          isPrimaryDependent: dependent.isPrimaryDependent || false,
+          tobaccoUser: dependent.tobaccoUser || false,
+          pregnant: dependent.pregnant || false,
+          preferredLanguage: dependent.preferredLanguage || "",
           countryOfBirth: dependent.countryOfBirth || "",
+          maritalStatus: dependent.maritalStatus || "",
+          weight: dependent.weight || "",
+          height: dependent.height || "",
+          relation: dependent.relation || "",
         })) || [],
       };
       
