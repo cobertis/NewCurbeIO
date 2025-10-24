@@ -299,20 +299,33 @@ export default function MarketplacePlansPage() {
 
               {/* APTC Info */}
               {marketplacePlans && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-xs text-muted-foreground uppercase">Tax Credit</h4>
-                  <div className="text-sm space-y-1">
-                    <div>
-                      APTC: <span className="font-semibold text-green-600">
-                        {marketplacePlans.household_aptc > 0 
-                          ? formatCurrency(marketplacePlans.household_aptc) + '/mo'
-                          : 'Not Eligible'}
-                      </span>
+                <div className="space-y-2 col-span-1 md:col-span-2">
+                  <h4 className="font-semibold text-xs text-muted-foreground uppercase">Premium Tax Credit (APTC)</h4>
+                  {marketplacePlans.household_aptc > 0 ? (
+                    <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                      <div className="text-xl font-bold text-green-700 dark:text-green-400">
+                        {formatCurrency(marketplacePlans.household_aptc)}/month
+                      </div>
+                      <div className="text-sm text-green-600 dark:text-green-500 mt-1">
+                        Annual Savings: <span className="font-semibold">{formatCurrency(marketplacePlans.household_aptc * 12)}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        This tax credit reduces your monthly insurance premium
+                      </div>
+                      {marketplacePlans.household_csr && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          CSR Level: {marketplacePlans.household_csr}
+                        </div>
+                      )}
                     </div>
-                    {marketplacePlans.household_csr && (
-                      <div className="text-xs text-muted-foreground">CSR: {marketplacePlans.household_csr}</div>
-                    )}
-                  </div>
+                  ) : (
+                    <div className="bg-muted/30 rounded-lg p-3">
+                      <div className="text-sm font-medium">Not Eligible for Tax Credit</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Based on household income and size
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -644,14 +657,19 @@ export default function MarketplacePlansPage() {
                       {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && (
                         <div className="mt-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200 dark:border-green-800">
                           <p className="text-xs text-green-700 dark:text-green-400 mb-1 font-semibold">
-                            After APTC (Tax Credit Applied)
+                            After APTC Tax Credit
                           </p>
                           <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                            {formatCurrency(plan.premium_w_credit)}
+                            {formatCurrency(plan.premium_w_credit)}/mo
                           </p>
-                          <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                            APTC Applied: {formatCurrency(plan.premium - plan.premium_w_credit)}/mo
-                          </p>
+                          <div className="space-y-1 mt-2 pt-2 border-t border-green-200 dark:border-green-800">
+                            <p className="text-xs text-green-600 dark:text-green-500">
+                              Monthly Savings: <span className="font-semibold">{formatCurrency(plan.premium - plan.premium_w_credit)}</span>
+                            </p>
+                            <p className="text-xs text-green-600 dark:text-green-500">
+                              Annual Savings: <span className="font-semibold">{formatCurrency((plan.premium - plan.premium_w_credit) * 12)}</span>
+                            </p>
+                          </div>
                         </div>
                       )}
                       
