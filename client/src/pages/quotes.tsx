@@ -3362,53 +3362,33 @@ export default function QuotesPage() {
   const handleAddSpouse = () => {
     appendSpouse({
       firstName: "",
-      middleName: "",
       lastName: "",
-      secondLastName: "",
       dateOfBirth: "",
       ssn: "",
       gender: "",
-      phone: "",
-      email: "",
       isApplicant: true,
+      isPrimaryDependent: false,
       tobaccoUser: false,
+      pregnant: false,
       selfEmployed: false,
-      employerName: "",
-      employerPhone: "",
-      position: "",
-      annualIncome: "",
       incomeFrequency: "monthly",
-      immigrationStatus: "",
-      naturalizationNumber: "",
-      uscisNumber: "",
-      immigrationStatusCategory: "",
     });
   };
 
   const handleAddDependent = () => {
     appendDependent({
       firstName: "",
-      middleName: "",
       lastName: "",
-      secondLastName: "",
       dateOfBirth: "",
       ssn: "",
       gender: "",
-      phone: "",
-      email: "",
-      isApplicant: true,
-      tobaccoUser: false,
       relation: "",
+      isApplicant: true,
+      isPrimaryDependent: false,
+      tobaccoUser: false,
+      pregnant: false,
       selfEmployed: false,
-      employerName: "",
-      employerPhone: "",
-      position: "",
-      annualIncome: "",
       incomeFrequency: "monthly",
-      immigrationStatus: "",
-      naturalizationNumber: "",
-      uscisNumber: "",
-      immigrationStatusCategory: "",
     });
   };
 
@@ -7045,6 +7025,35 @@ export default function QuotesPage() {
                                 </FormItem>
                               )}
                             />
+
+                            <FormField
+                              control={form.control}
+                              name={`spouses.${index}.isPrimaryDependent`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid={`checkbox-spouse-dependent-${index}`}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
+                                      Is Primary Dependent
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">Check this if this person is a dependent of the primary applicant and does not apply for insurance directly. This is common when the spouse or child is covered under another insurance plan or does not qualify directly.</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
                           </div>
                         </CardContent>
                       </Card>
@@ -7314,6 +7323,35 @@ export default function QuotesPage() {
                                   </FormControl>
                                   <div className="space-y-1 leading-none">
                                     <FormLabel className="cursor-pointer">Pregnant</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.isPrimaryDependent`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid={`checkbox-dependent-primary-${index}`}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
+                                      Is Primary Dependent
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">Marque esta opción si esta persona es dependiente del aplicante principal y no aplica directamente para el seguro. Esto es común cuando el hijo está cubierto bajo otro plan de seguro o no califica directamente.</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </FormLabel>
                                   </div>
                                 </FormItem>
                               )}
