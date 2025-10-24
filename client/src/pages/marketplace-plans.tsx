@@ -323,6 +323,168 @@ export default function MarketplacePlansPage() {
         </CardContent>
       </Card>
 
+      {/* Quote Summary Card */}
+      {quote && marketplacePlans && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              Quote Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Household Information */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Household Information</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Annual Income</span>
+                    <span className="font-medium">{formatCurrency(quote.householdIncome || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Household Size</span>
+                    <span className="font-medium">{(quote.members?.length || 0) + 1} members</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Location</span>
+                    <span className="font-medium text-right">
+                      {quote.city}, {quote.state} {quote.zipCode}
+                    </span>
+                  </div>
+                  {quote.county && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">County</span>
+                      <span className="font-medium">{quote.county}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Primary Applicant */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Primary Applicant</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Name</span>
+                    <span className="font-medium">{quote.clientFirstName} {quote.clientLastName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Date of Birth</span>
+                    <span className="font-medium">{new Date(quote.clientDateOfBirth).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Age</span>
+                    <span className="font-medium">
+                      {Math.floor((new Date().getTime() - new Date(quote.clientDateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years
+                    </span>
+                  </div>
+                  {quote.clientGender && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Gender</span>
+                      <span className="font-medium">{quote.clientGender}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Tobacco Use</span>
+                    <span className="font-medium">
+                      {quote.clientTobaccoUser ? (
+                        <Badge variant="destructive" className="text-xs">Yes</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">No</Badge>
+                      )}
+                    </span>
+                  </div>
+                  {quote.clientGender?.toLowerCase() === 'female' && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Pregnant</span>
+                      <span className="font-medium">
+                        {quote.clientPregnant ? (
+                          <Badge variant="default" className="text-xs">Yes</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">No</Badge>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Other Members */}
+              {quote.members && quote.members.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Other Members</h4>
+                  <div className="space-y-3">
+                    {quote.members.map((member: any, index: number) => (
+                      <div key={index} className="p-3 bg-muted/30 rounded-lg space-y-1">
+                        <div className="flex justify-between items-start">
+                          <span className="font-medium text-sm">
+                            {member.firstName} {member.lastName}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {member.relationship}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex justify-between">
+                            <span>Age</span>
+                            <span>
+                              {Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years
+                            </span>
+                          </div>
+                          {member.gender && (
+                            <div className="flex justify-between">
+                              <span>Gender</span>
+                              <span>{member.gender}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span>Tobacco</span>
+                            <span>{member.tobaccoUser ? 'Yes' : 'No'}</span>
+                          </div>
+                          {member.gender?.toLowerCase() === 'female' && (
+                            <div className="flex justify-between">
+                              <span>Pregnant</span>
+                              <span>{member.pregnant ? 'Yes' : 'No'}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Coverage Details */}
+            <Separator className="my-4" />
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">
+                  <span className="text-muted-foreground">Coverage Start:</span>{' '}
+                  <span className="font-medium">{new Date(quote.effectiveDate).toLocaleDateString()}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">
+                  <span className="text-muted-foreground">Total Covered:</span>{' '}
+                  <span className="font-medium">{(quote.members?.length || 0) + 1} people</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">
+                  <span className="text-muted-foreground">Monthly Income:</span>{' '}
+                  <span className="font-medium">{formatCurrency((quote.householdIncome || 0) / 12)}</span>
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
