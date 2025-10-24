@@ -111,6 +111,18 @@ function calculateAge(dateOfBirth: string): number {
 }
 
 /**
+ * Format gender for CMS API (expects "Male" or "Female")
+ */
+function formatGenderForCMS(gender?: string): string {
+  if (!gender) return 'Male'; // Default if not provided
+  const lowerGender = gender.toLowerCase();
+  if (lowerGender === 'male' || lowerGender === 'm') return 'Male';
+  if (lowerGender === 'female' || lowerGender === 'f') return 'Female';
+  // For "other" or any other value, default to Male as CMS API only accepts Male/Female
+  return 'Male';
+}
+
+/**
  * Fetch health insurance plans from CMS Marketplace API
  */
 export async function fetchMarketplacePlans(
@@ -152,7 +164,7 @@ export async function fetchMarketplacePlans(
   people.push({
     age: calculateAge(quoteData.client.dateOfBirth),
     dob: quoteData.client.dateOfBirth,
-    gender: quoteData.client.gender?.toLowerCase(),
+    gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
     is_pregnant: quoteData.client.pregnant || false,
     aptc_eligible: true,
@@ -165,7 +177,7 @@ export async function fetchMarketplacePlans(
       people.push({
         age: calculateAge(spouse.dateOfBirth),
         dob: spouse.dateOfBirth,
-        gender: spouse.gender?.toLowerCase(),
+        gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
         is_pregnant: spouse.pregnant || false,
         aptc_eligible: true,
@@ -180,7 +192,7 @@ export async function fetchMarketplacePlans(
       people.push({
         age: calculateAge(dependent.dateOfBirth),
         dob: dependent.dateOfBirth,
-        gender: dependent.gender?.toLowerCase(),
+        gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
         is_pregnant: dependent.pregnant || false,
         aptc_eligible: true,
