@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,10 @@ import {
   FileText,
   Loader2,
   Calendar,
+  User,
+  Phone,
+  MapPin,
+  Hash,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -65,6 +69,17 @@ interface PlanDetails {
   };
 }
 
+// Helper function to format date for display
+const formatDateForDisplay = (dateString: string | Date | null, formatStr = "MM/dd/yyyy") => {
+  if (!dateString) return '';
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return format(date, formatStr);
+  } catch {
+    return dateString.toString();
+  }
+};
+
 // Company logo placeholder component
 const CompanyLogo = ({ name }: { name: string }) => {
   const getInitials = (companyName: string) => {
@@ -89,13 +104,13 @@ const CompanyLogo = ({ name }: { name: string }) => {
   };
 
   return (
-    <div className={`w-16 h-16 rounded-lg ${getCompanyColor(name)} text-white flex items-center justify-center font-bold text-lg`}>
+    <div className={`w-14 h-14 rounded-md ${getCompanyColor(name)} text-white flex items-center justify-center font-bold text-sm`}>
       {getInitials(name)}
     </div>
   );
 };
 
-// Star rating component
+// Star rating component  
 const StarRating = ({ rating }: { rating?: number }) => {
   const stars = rating || 0;
   return (
@@ -103,14 +118,13 @@ const StarRating = ({ rating }: { rating?: number }) => {
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}
-          className={`h-4 w-4 ${
+          className={`h-3.5 w-3.5 ${
             star <= stars
               ? 'fill-yellow-400 text-yellow-400'
               : 'fill-gray-200 text-gray-200'
           }`}
         />
       ))}
-      {rating && <span className="ml-1 text-sm text-muted-foreground">({rating.toFixed(1)})</span>}
     </div>
   );
 };
@@ -124,16 +138,8 @@ export default function MarketplacePlansPage() {
   // Filter states
   const [metalLevels, setMetalLevels] = useState<string[]>([]);
   const [planTypes, setPlanTypes] = useState<string[]>([]);
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [companies, setCompanies] = useState<string[]>([]);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
-  const [effectiveDate, setEffectiveDate] = useState<string>("");
-  const [stateSubsidies, setStateSubsidies] = useState(false);
-  const [enrollmentDate, setEnrollmentDate] = useState<string>("");
-  const [networkTypes, setNetworkTypes] = useState<string[]>([]);
-
-  // Marketplace plans state
-  const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
-  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
 
   // Fetch quote details
   const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
@@ -141,112 +147,37 @@ export default function MarketplacePlansPage() {
     enabled: !!quoteId,
   });
 
-  // Auto-fetch marketplace plans when component mounts
-  useEffect(() => {
-    if (quoteId && !marketplacePlans && !isLoadingPlans) {
-      fetchMarketplacePlans();
-    }
-  }, [quoteId]);
+  const quote = quoteData?.quote;
 
-  const fetchMarketplacePlans = async () => {
-    if (!quoteId) return;
-    
-    setIsLoadingPlans(true);
-    try {
-      const response = await fetch(
-        `/api/quotes/${quoteId}/marketplace-plans?page=1&pageSize=1000`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          credentials: 'include',
-        }
-      );
+  // Fetch marketplace plans
+  const { data: plansData, isLoading: isLoadingPlans } = useQuery({
+    queryKey: [`/api/quotes/${quoteId}/marketplace-plans`],
+    enabled: !!quoteId,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    retry: 3,
+    retryDelay: 1000,
+  });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to fetch plans');
-      }
-
-      const data = await response.json();
-      setMarketplacePlans(data);
-      
-      toast({
-        title: "Planes cargados exitosamente",
-        description: `${data.plans?.length || 0} planes de seguro de salud disponibles`,
-      });
-    } catch (error: any) {
-      console.error('Error fetching marketplace plans:', error);
-      toast({
-        variant: "destructive",
-        title: "Error fetching plans",
-        description: error.message || "Failed to fetch marketplace plans",
-      });
-    } finally {
-      setIsLoadingPlans(false);
-    }
-  };
-
-  // Helper functions
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDateForDisplay = (date: string, format: string = "MM/dd/yyyy") => {
-    if (!date) return "-";
-    try {
-      return new Intl.DateTimeFormat('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(new Date(date));
-    } catch {
-      return date;
-    }
-  };
-
-  const getMetalLevelBadgeClass = (metalLevel: string) => {
-    const level = metalLevel?.toLowerCase();
-    if (level?.includes('bronze')) return 'bg-amber-700 text-white';
-    if (level?.includes('silver')) return 'bg-gray-400 text-white';
-    if (level?.includes('gold')) return 'bg-yellow-500 text-black';
-    if (level?.includes('platinum')) return 'bg-purple-500 text-white';
-    if (level?.includes('catastrophic')) return 'bg-red-600 text-white';
-    return 'bg-blue-500 text-white';
-  };
-
-  // Filter plans
-  const filteredPlans = marketplacePlans?.plans?.filter((plan: any) => {
-    if (metalLevels.length > 0) {
-      const planMetalLevel = plan.metal_level?.toLowerCase();
-      const hasMatchingLevel = metalLevels.some(level => 
-        planMetalLevel?.includes(level.toLowerCase())
-      );
-      if (!hasMatchingLevel) return false;
-    }
-    
-    if (planTypes.length > 0 && !planTypes.includes(plan.plan_type)) {
-      return false;
-    }
-    
-    if (selectedCompanies.length > 0 && !selectedCompanies.includes(plan.issuer?.name)) {
-      return false;
-    }
-    
-    return true;
-  }) || [];
+  const allPlans = plansData?.plans || [];
+  const totalCount = plansData?.totalCount || 0;
+  const taxCredit = plansData?.taxCredit || 0;
+  const householdInfo = plansData?.householdInfo;
 
   // Get unique companies from plans
-  const uniqueCompanies = Array.from(
-    new Set(marketplacePlans?.plans?.map((plan: any) => plan.issuer?.name) || [])
-  ).sort();
+  const availableCompanies = useMemo(() => {
+    const uniqueCompanies = new Set(allPlans.map(plan => plan.issuer.name));
+    return Array.from(uniqueCompanies).sort();
+  }, [allPlans]);
+
+  // Filter plans based on selected filters
+  const filteredPlans = useMemo(() => {
+    return allPlans.filter(plan => {
+      if (metalLevels.length > 0 && !metalLevels.includes(plan.metal_level)) return false;
+      if (planTypes.length > 0 && !planTypes.includes(plan.plan_type)) return false;
+      if (companies.length > 0 && !companies.includes(plan.issuer.name)) return false;
+      return true;
+    });
+  }, [allPlans, metalLevels, planTypes, companies]);
 
   // Loading state
   if (isLoadingQuote || isLoadingPlans) {
@@ -254,500 +185,459 @@ export default function MarketplacePlansPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg text-muted-foreground">
-            {isLoadingQuote ? "Cargando detalles..." : "Obteniendo planes del marketplace..."}
-          </p>
+          <p className="text-lg text-muted-foreground">Loading marketplace plans...</p>
         </div>
       </div>
     );
   }
 
-  const quote = (quoteData as any)?.quote;
-  const members = (quoteData as any)?.quote?.members || [];
-  const totalApplicants = members.filter((m: any) => m.isApplicant).length + (quote?.clientIsApplicant ? 1 : 0);
-  const householdSize = 1 + members.length;
-  
-  // Get agent data - adjust this based on your actual data structure
-  const agent = (quoteData as any)?.agent;
-  const product = { name: "Healthcare.gov" }; // Default product name
-  
-  const totalHouseholdIncome = quote?.householdIncome || 0;
-  const formattedIncome = totalHouseholdIncome > 0 
-    ? formatCurrency(totalHouseholdIncome)
+  if (!quote) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <p className="text-center text-muted-foreground">Quote not found</p>
+            <Button 
+              className="w-full mt-4"
+              onClick={() => setLocation("/quotes")}
+            >
+              Back to Quotes
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Calculate total annual income
+  const totalIncome = householdInfo?.income || quote.totalAnnualIncome || 0;
+  const formattedIncome = totalIncome > 0 
+    ? `$${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
     : '-';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="flex h-screen">
-        {/* Left Sidebar - 300px width */}
-        <div className="w-[300px] border-r bg-background flex flex-col">
-          <ScrollArea className="flex-1">
-            <div className="p-6 space-y-6">
-              {/* Back button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation(`/quotes/${quoteId}`)}
-                data-testid="button-back-to-quote"
-                className="mb-4"
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Volver al Quote
-              </Button>
+    <div className="h-full flex bg-gray-50">
+      {/* Left Panel - Fixed width */}
+      <div className="w-[300px] border-r bg-white flex flex-col h-full">
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            {/* Back button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation(`/quotes/${quoteId}`)}
+              className="mb-2"
+              data-testid="button-back"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Back to Quote
+            </Button>
 
-              {/* Summary Card - From quotes.tsx structure */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold">Resumen</h2>
-                
-                <div className="space-y-3">
-                  <div className="pb-3 border-b">
-                    <label className="text-xs text-muted-foreground">Agente</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={agent?.avatar || undefined} />
-                        <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                          {agent?.firstName?.[0] || 'A'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-medium">{agent?.firstName || 'Unknown'} {agent?.lastName || ''}</span>
-                    </div>
-                  </div>
+            {/* Title */}
+            <div>
+              <h2 className="text-lg font-bold">Resultados del plan {totalCount}</h2>
+            </div>
 
-                  <div className="pb-3 border-b">
-                    <label className="text-xs text-muted-foreground">Transportista</label>
-                    <p className="text-sm font-medium">{product?.name || quote?.productType}</p>
-                  </div>
-
-                  <div className="pb-3 border-b">
-                    <label className="text-xs text-muted-foreground">Fecha efectiva</label>
-                    <p className="text-sm">{formatDateForDisplay(quote?.effectiveDate)}</p>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-muted-foreground">Última actualización</label>
-                    <p className="text-sm text-muted-foreground">
-                      {quote?.updatedAt ? format(new Date(quote.updatedAt), "MMM dd, yyyy h:mm a") : '-'}
-                    </p>
+            {/* Summary Section */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Summary</h3>
+              
+              <div className="space-y-2">
+                <div className="pb-2 border-b">
+                  <label className="text-xs text-muted-foreground">Agent</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                        JF
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">Jason Fonseca</span>
                   </div>
                 </div>
-              </div>
 
-              {/* Household Information */}
-              <div className="space-y-3 pt-4 border-t">
-                <h3 className="text-sm font-semibold">Información del hogar</h3>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">Titular</span>
-                    <span className="text-xs font-medium">
-                      {quote?.clientFirstName} {quote?.clientLastName}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">Fecha de nacimiento</span>
-                    <span className="text-xs">{quote?.clientDateOfBirth ? formatDateForDisplay(quote.clientDateOfBirth) : '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">Teléfono</span>
-                    <span className="text-xs">{quote?.clientPhone || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">Ubicación</span>
-                    <span className="text-xs">{quote?.city}, {quote?.state} {quote?.zipCode}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">Ingreso anual total</span>
-                    <span className="text-xs font-semibold">{formattedIncome}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">ID de miembro</span>
-                    <span className="text-xs">-</span>
-                  </div>
+                <div className="pb-2 border-b">
+                  <label className="text-xs text-muted-foreground">Carrier</label>
+                  <p className="text-sm font-medium">Health Insurance (ACA)</p>
                 </div>
-              </div>
 
-              <Separator />
+                <div className="pb-2 border-b">
+                  <label className="text-xs text-muted-foreground">Effective date</label>
+                  <p className="text-sm">{formatDateForDisplay(quote.effectiveDate)}</p>
+                </div>
 
-              {/* Filters Section */}
-              <div className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold mb-3">
-                    Resultados del plan ({filteredPlans.length})
-                  </h3>
+                  <label className="text-xs text-muted-foreground">Last update</label>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(quote.updatedAt || quote.createdAt), "MMM dd, yyyy h:mm a")}
+                  </p>
                 </div>
-
-                {/* Effective Date */}
-                <div>
-                  <Label htmlFor="effective-date" className="text-xs">Fecha de efectividad</Label>
-                  <Select value={effectiveDate} onValueChange={setEffectiveDate}>
-                    <SelectTrigger id="effective-date" className="w-full h-8 text-xs">
-                      <SelectValue placeholder={formatDateForDisplay(quote?.effectiveDate)} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={quote?.effectiveDate}>{formatDateForDisplay(quote?.effectiveDate)}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* State Subsidies */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Subsidios del estado</Label>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="state-subsidies"
-                      checked={stateSubsidies}
-                      onCheckedChange={(checked) => setStateSubsidies(checked as boolean)}
-                    />
-                    <label
-                      htmlFor="state-subsidies"
-                      className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Incluir subsidios estatales
-                    </label>
-                  </div>
-                </div>
-
-                {/* Plan Type */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Tipo de plan</Label>
-                  <div className="space-y-2">
-                    {['HMO', 'EPO', 'PPO', 'POS'].map((type) => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`plan-type-${type}`}
-                          checked={planTypes.includes(type)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setPlanTypes([...planTypes, type]);
-                            } else {
-                              setPlanTypes(planTypes.filter(t => t !== type));
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor={`plan-type-${type}`}
-                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {type}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Metal Levels */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Niveles de metal</Label>
-                  <div className="space-y-2">
-                    {['Bronze', 'Silver', 'Gold', 'Platinum'].map((level) => (
-                      <div key={level} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`metal-${level}`}
-                          checked={metalLevels.includes(level)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setMetalLevels([...metalLevels, level]);
-                            } else {
-                              setMetalLevels(metalLevels.filter(l => l !== level));
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor={`metal-${level}`}
-                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {level}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Companies */}
-                {uniqueCompanies.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-xs">Compañías</Label>
-                    <ScrollArea className="h-32">
-                      <div className="space-y-2">
-                        {uniqueCompanies.map((company: unknown) => {
-                          const companyName = String(company);
-                          return (
-                            <div key={companyName} className="flex items-center space-x-2">
-                              <Checkbox 
-                                id={`company-${companyName}`}
-                                checked={selectedCompanies.includes(companyName)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setSelectedCompanies([...selectedCompanies, companyName]);
-                                  } else {
-                                    setSelectedCompanies(selectedCompanies.filter(c => c !== companyName));
-                                  }
-                                }}
-                              />
-                              <label
-                                htmlFor={`company-${companyName}`}
-                                className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 truncate"
-                                title={companyName}
-                              >
-                                {companyName}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-
-                {/* More Options */}
-                <Collapsible open={showMoreFilters} onOpenChange={setShowMoreFilters}>
-                  <CollapsibleTrigger className="flex items-center gap-2 text-xs font-medium hover:text-primary transition-colors">
-                    {showMoreFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                    Más opciones
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2 space-y-3">
-                    <div>
-                      <Label htmlFor="enrollment-date" className="text-xs">Fecha de inscripción preferida</Label>
-                      <input
-                        type="date"
-                        id="enrollment-date"
-                        value={enrollmentDate}
-                        onChange={(e) => setEnrollmentDate(e.target.value)}
-                        className="w-full h-8 px-2 text-xs border rounded"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Red médica</Label>
-                      <div className="space-y-2">
-                        {['Nacional', 'Regional', 'Local'].map((network) => (
-                          <div key={network} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`network-${network}`}
-                              checked={networkTypes.includes(network)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setNetworkTypes([...networkTypes, network]);
-                                } else {
-                                  setNetworkTypes(networkTypes.filter(n => n !== network));
-                                }
-                              }}
-                            />
-                            <label
-                              htmlFor={`network-${network}`}
-                              className="text-xs font-medium leading-none"
-                            >
-                              {network}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-
-                {/* Clear Filters Button */}
-                {(metalLevels.length > 0 || planTypes.length > 0 || selectedCompanies.length > 0) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setMetalLevels([]);
-                      setPlanTypes([]);
-                      setSelectedCompanies([]);
-                      setNetworkTypes([]);
-                      setStateSubsidies(false);
-                      setEnrollmentDate("");
-                    }}
-                    className="w-full"
-                    data-testid="button-clear-filters"
-                  >
-                    Limpiar filtros
-                  </Button>
-                )}
               </div>
             </div>
-          </ScrollArea>
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
-            {/* Header with Household Info */}
-            <Card className="mb-6 bg-white dark:bg-gray-800">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-8">
-                    {/* Household Size */}
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                        <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">Tamaño del hogar</div>
-                        <div className="text-2xl font-bold">{householdSize}</div>
-                      </div>
+            {/* Household Information */}
+            <div className="space-y-3 pt-3 border-t">
+              <h3 className="text-sm font-semibold">Household Information</h3>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Holder</span>
+                  <span className="text-xs font-medium">
+                    {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Date of birth</span>
+                  <span className="text-xs">{quote.clientDateOfBirth ? formatDateForDisplay(quote.clientDateOfBirth) : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Phone</span>
+                  <span className="text-xs">{quote.clientPhone || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Location</span>
+                  <span className="text-xs">{quote.physical_city}, {quote.physical_state} {quote.physical_postal_code}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Total annual income</span>
+                  <span className="text-xs font-semibold">{formattedIncome}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Member ID</span>
+                  <span className="text-xs">-</span>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Filters Section */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">Filters</h3>
+
+              {/* Effective Date */}
+              <div className="space-y-2">
+                <Label className="text-xs">Fecha de efectividad</Label>
+                <Select defaultValue={quote.effectiveDate}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={quote.effectiveDate}>
+                      {formatDateForDisplay(quote.effectiveDate)}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* State Subsidies */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="subsidies" />
+                  <label htmlFor="subsidies" className="text-xs font-medium">
+                    Subsidios del estado
+                  </label>
+                </div>
+              </div>
+
+              {/* Plan Types */}
+              <div className="space-y-2">
+                <Label className="text-xs">Tipo de plan</Label>
+                <div className="space-y-1">
+                  {['HMO', 'EPO', 'PPO', 'POS'].map(type => (
+                    <div key={type} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={type}
+                        checked={planTypes.includes(type)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setPlanTypes([...planTypes, type]);
+                          } else {
+                            setPlanTypes(planTypes.filter(t => t !== type));
+                          }
+                        }}
+                      />
+                      <label htmlFor={type} className="text-xs">
+                        {type}
+                      </label>
                     </div>
+                  ))}
+                </div>
+              </div>
 
-                    {/* Annual Income */}
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                        <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">Ingreso anual</div>
-                        <div className="text-2xl font-bold">{formattedIncome}</div>
-                      </div>
+              {/* Metal Levels */}
+              <div className="space-y-2">
+                <Label className="text-xs">Niveles de metal</Label>
+                <div className="space-y-1">
+                  {[
+                    { value: 'Bronze', color: 'text-orange-700' },
+                    { value: 'Silver', color: 'text-gray-500' },
+                    { value: 'Gold', color: 'text-yellow-600' },
+                    { value: 'Platinum', color: 'text-slate-700' }
+                  ].map(level => (
+                    <div key={level.value} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={level.value}
+                        checked={metalLevels.includes(level.value)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setMetalLevels([...metalLevels, level.value]);
+                          } else {
+                            setMetalLevels(metalLevels.filter(l => l !== level.value));
+                          }
+                        }}
+                      />
+                      <label htmlFor={level.value} className={`text-xs ${level.color} font-medium`}>
+                        {level.value}
+                      </label>
                     </div>
+                  ))}
+                </div>
+              </div>
 
-                    {/* Tax Credit */}
-                    {marketplacePlans?.household_aptc && (
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
-                          <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <div>
-                          <div className="text-sm text-muted-foreground">Crédito fiscal mensual</div>
-                          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                            {formatCurrency(marketplacePlans.household_aptc)}
-                          </div>
-                        </div>
+              {/* Companies */}
+              {availableCompanies.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Compañías</Label>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {availableCompanies.map(company => (
+                      <div key={company} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={company}
+                          checked={companies.includes(company)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setCompanies([...companies, company]);
+                            } else {
+                              setCompanies(companies.filter(c => c !== company));
+                            }
+                          }}
+                        />
+                        <label htmlFor={company} className="text-xs truncate">
+                          {company}
+                        </label>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground mb-1">
-                      {filteredPlans.length} planes disponibles
-                    </div>
-                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                      Año {marketplacePlans?.year || new Date().getFullYear()}
-                    </Badge>
+                    ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Plans Grid */}
-            <div className="space-y-4">
-              {filteredPlans.length === 0 ? (
-                <Card className="bg-white dark:bg-gray-800">
-                  <CardContent className="py-12 text-center">
-                    <FileText className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
-                    <p className="text-lg font-medium mb-2">No se encontraron planes</p>
-                    <p className="text-sm text-muted-foreground">
-                      Intenta ajustar los filtros para ver más resultados
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredPlans.map((plan: PlanDetails) => {
-                  const deductible = plan.deductibles?.[0]?.amount || 0;
-                  const maxOutOfPocket = plan.moops?.[0]?.amount || 0;
-                  const primaryCareVisit = plan.benefits?.find(b => 
-                    b.name?.toLowerCase().includes('primary') || 
-                    b.name?.toLowerCase().includes('doctor')
-                  )?.cost_sharings?.[0]?.display_string || 'Ver detalles';
-                  
-                  const premiumWithoutCredit = plan.premium || 0;
-                  const taxCredit = marketplacePlans?.household_aptc || 0;
-                  const premiumWithCredit = Math.max(0, premiumWithoutCredit - taxCredit);
-
-                  return (
-                    <Card key={plan.id} className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex items-start gap-6">
-                          {/* Company Logo */}
-                          <CompanyLogo name={plan.issuer?.name || 'Unknown'} />
-
-                          {/* Plan Details */}
-                          <div className="flex-1">
-                            {/* Plan Name and Rating */}
-                            <div className="mb-3">
-                              <div className="flex items-center gap-4 mb-2">
-                                <h3 className="text-lg font-semibold">{plan.name}</h3>
-                                <Badge variant="outline" className="text-xs">
-                                  {plan.plan_type}
-                                </Badge>
-                                <Badge className={getMetalLevelBadgeClass(plan.metal_level)}>
-                                  {plan.metal_level}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <StarRating rating={plan.quality_rating?.global_rating} />
-                                <span className="text-sm text-muted-foreground">{plan.issuer?.name}</span>
-                              </div>
-                            </div>
-
-                            {/* Plan Benefits Grid */}
-                            <div className="grid grid-cols-3 gap-6 py-4 border-t border-b">
-                              <div>
-                                <div className="text-xs text-muted-foreground mb-1">Deducible</div>
-                                <div className="text-lg font-semibold">{formatCurrency(deductible)}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-muted-foreground mb-1">Máximo de bolsillo</div>
-                                <div className="text-lg font-semibold">{formatCurrency(maxOutOfPocket)}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-muted-foreground mb-1">Visita de atención primaria</div>
-                                <div className="text-sm font-medium">{primaryCareVisit}</div>
-                              </div>
-                            </div>
-
-                            {/* Plan Links */}
-                            <div className="flex items-center gap-4 mt-3 text-sm">
-                              <button className="text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline">
-                                Resumen del plan
-                              </button>
-                              <span className="text-gray-300">|</span>
-                              <button className="text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline">
-                                Detalles
-                              </button>
-                              <span className="text-gray-300">|</span>
-                              <button className="text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline">
-                                Red de proveedores
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Pricing Section */}
-                          <div className="text-right min-w-[200px]">
-                            {taxCredit > 0 && (
-                              <div className="mb-2">
-                                <div className="text-xs text-muted-foreground line-through">
-                                  {formatCurrency(premiumWithoutCredit)}/mes
-                                </div>
-                                <div className="text-xs text-green-600 dark:text-green-400">
-                                  Sin crédito fiscal
-                                </div>
-                              </div>
-                            )}
-                            <div className="mb-4">
-                              <div className="text-3xl font-bold text-primary">
-                                {formatCurrency(premiumWithCredit)}
-                              </div>
-                              <div className="text-sm text-muted-foreground">/mes</div>
-                              {taxCredit > 0 && (
-                                <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">
-                                  Con crédito fiscal
-                                </div>
-                              )}
-                            </div>
-                            <Button 
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                              data-testid={`button-apply-plan-${plan.id}`}
-                            >
-                              Aplicar al plan
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })
               )}
+
+              {/* More Options */}
+              <Collapsible open={showMoreFilters} onOpenChange={setShowMoreFilters}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-medium hover:text-primary">
+                  <span>Más opciones</span>
+                  {showMoreFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2 pt-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Fecha de inscripción preferida</Label>
+                    <Select>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="immediate">Inmediata</SelectItem>
+                        <SelectItem value="next-month">Próximo mes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Red médica</Label>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="network-local" />
+                        <label htmlFor="network-local" className="text-xs">Local</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="network-national" />
+                        <label htmlFor="network-national" className="text-xs">Nacional</label>
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </div>
+        </ScrollArea>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6">
+          {/* Header with household info */}
+          <Card className="mb-4 bg-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Household Size</p>
+                      <p className="text-lg font-bold">{householdInfo?.people?.length || 1}</p>
+                    </div>
+                  </div>
+                  <Separator orientation="vertical" className="h-10" />
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Annual Income</p>
+                      <p className="text-lg font-bold">{formattedIncome}</p>
+                    </div>
+                  </div>
+                  {taxCredit > 0 && (
+                    <>
+                      <Separator orientation="vertical" className="h-10" />
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                          Tax Credit
+                        </Badge>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Monthly Credit</p>
+                          <p className="text-lg font-bold text-green-600">
+                            ${taxCredit.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Showing</p>
+                  <p className="text-lg font-bold">{filteredPlans.length} plans</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Plans List */}
+          <div className="space-y-3">
+            {filteredPlans.map((plan) => {
+              const deductible = plan.deductibles?.find(d => d.type === 'Individual')?.amount || 0;
+              const maxOutOfPocket = plan.moops?.find(m => m.type === 'Individual')?.amount || 0;
+              const primaryCare = plan.benefits?.find(b => b.name === 'Primary Care Visit')?.cost_sharings?.[0]?.display_string || 'N/A';
+              
+              const getMetalBadgeColor = (level: string) => {
+                switch(level?.toLowerCase()) {
+                  case 'bronze': return 'bg-orange-100 text-orange-800 border-orange-200';
+                  case 'silver': return 'bg-gray-100 text-gray-800 border-gray-200';
+                  case 'gold': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                  case 'platinum': return 'bg-slate-100 text-slate-800 border-slate-200';
+                  default: return 'bg-gray-100 text-gray-800 border-gray-200';
+                }
+              };
+
+              return (
+                <Card key={plan.id} className="bg-white hover:shadow-lg transition-shadow">
+                  <CardContent className="p-5">
+                    <div className="flex gap-4">
+                      {/* Company Logo */}
+                      <div className="flex-shrink-0">
+                        <CompanyLogo name={plan.issuer.name} />
+                      </div>
+
+                      {/* Plan Details */}
+                      <div className="flex-1 space-y-3">
+                        {/* Plan Name and Rating */}
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <h3 className="text-base font-semibold line-clamp-1">
+                              {plan.name}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <StarRating rating={plan.quality_rating?.global_rating} />
+                              <Badge variant="outline" className="text-xs">
+                                {plan.plan_type}
+                              </Badge>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs border ${getMetalBadgeColor(plan.metal_level)}`}
+                              >
+                                {plan.metal_level}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Plan Benefits */}
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Deductible</p>
+                            <p className="font-semibold">
+                              {deductible === 0 ? '$0' : `$${deductible.toLocaleString()}`}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Max Out of Pocket</p>
+                            <p className="font-semibold">${maxOutOfPocket.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Primary Care Visit</p>
+                            <p className="font-semibold text-sm">{primaryCare}</p>
+                          </div>
+                        </div>
+
+                        {/* Links */}
+                        <div className="flex gap-3 text-xs">
+                          <button className="text-primary hover:underline">Plan Summary</button>
+                          <span className="text-muted-foreground">|</span>
+                          <button className="text-primary hover:underline">Details</button>
+                          <span className="text-muted-foreground">|</span>
+                          <button className="text-primary hover:underline">Provider Network</button>
+                        </div>
+                      </div>
+
+                      {/* Pricing and Action */}
+                      <div className="flex-shrink-0 text-right space-y-2">
+                        {taxCredit > 0 && plan.premium_w_credit !== undefined ? (
+                          <div>
+                            <p className="text-xs text-muted-foreground line-through">
+                              ${plan.premium.toFixed(2)}/mo
+                            </p>
+                            <p className="text-2xl font-bold text-green-600">
+                              ${plan.premium_w_credit.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">per month</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-2xl font-bold">
+                              ${plan.premium.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">per month</p>
+                          </div>
+                        )}
+                        <Button 
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          data-testid={`button-apply-${plan.id}`}
+                        >
+                          Apply to plan
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* No results message */}
+          {filteredPlans.length === 0 && (
+            <Card className="bg-white">
+              <CardContent className="p-12 text-center">
+                <p className="text-muted-foreground">No plans found matching your filters.</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => {
+                    setMetalLevels([]);
+                    setPlanTypes([]);
+                    setCompanies([]);
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
