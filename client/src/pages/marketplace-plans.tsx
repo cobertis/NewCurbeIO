@@ -70,25 +70,74 @@ export default function MarketplacePlansPage() {
     
     setIsLoadingPlans(true);
     try {
-      const response = await fetch('/api/cms-marketplace/plans', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ quoteId }),
-      });
+      const pageSize = 10; // Fetch 10 plans at a time as per backend configuration
+      let allPlans: any[] = [];
+      let currentPageNum = 1;
+      let hasMoreData = true;
+      let marketplaceMetadata: any = null;
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to fetch plans');
+      // Fetch all pages sequentially until we get less than pageSize results
+      while (hasMoreData) {
+        const response = await fetch(
+          `/api/quotes/${quoteId}/marketplace-plans?page=${currentPageNum}&pageSize=${pageSize}`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to fetch plans');
+        }
+
+        const data = await response.json();
+        
+        // Store metadata from the first response
+        if (currentPageNum === 1) {
+          marketplaceMetadata = {
+            year: data.year,
+            household_aptc: data.household_aptc,
+            household_csr: data.household_csr,
+            household_slcsp_premium: data.household_slcsp_premium,
+            household_lcbp_premium: data.household_lcbp_premium,
+          };
+        }
+
+        // Add plans from this page to the collection
+        if (data.plans && data.plans.length > 0) {
+          allPlans = [...allPlans, ...data.plans];
+          
+          // Check if we need to fetch more pages
+          if (data.plans.length < pageSize) {
+            // Less than pageSize results means this is the last page
+            hasMoreData = false;
+          } else {
+            // Continue to next page
+            currentPageNum++;
+          }
+        } else {
+          // No plans returned, stop fetching
+          hasMoreData = false;
+        }
+        
+        // Log progress
+        console.log(`[Marketplace] Fetched page ${currentPageNum - 1}, got ${data.plans?.length || 0} plans, total so far: ${allPlans.length}`);
       }
 
-      const data = await response.json();
-      setMarketplacePlans(data);
+      // Combine all plans with metadata
+      const combinedData = {
+        ...marketplaceMetadata,
+        plans: allPlans,
+      };
+
+      setMarketplacePlans(combinedData);
       setCurrentPage(1);
       
-      const totalPlans = data.plans?.length || 0;
+      const totalPlans = allPlans.length;
       
       toast({
         title: "Plans loaded successfully",

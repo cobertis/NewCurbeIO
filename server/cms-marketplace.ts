@@ -149,7 +149,9 @@ export async function fetchMarketplacePlans(
       pregnant?: boolean;
       usesTobacco?: boolean;
     }>;
-  }
+  },
+  page?: number,
+  pageSize?: number
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
   
@@ -235,11 +237,21 @@ export async function fetchMarketplacePlans(
     year,
   };
 
-  console.log('[CMS_MARKETPLACE] Requesting plans with full request body:', JSON.stringify(requestBody, null, 2));
+  // Calculate pagination parameters
+  const currentPage = page || 1;
+  const limit = pageSize || 10; // Default to 10 per page as user mentioned
+  const offset = (currentPage - 1) * limit;
+
+  console.log('[CMS_MARKETPLACE] Requesting plans with pagination:', {
+    page: currentPage,
+    limit,
+    offset,
+  });
+  console.log('[CMS_MARKETPLACE] Full request body:', JSON.stringify(requestBody, null, 2));
 
   try {
-    // CMS Marketplace API endpoint
-    const apiUrl = 'https://marketplace.api.healthcare.gov/api/v1/plans/search';
+    // CMS Marketplace API endpoint with pagination parameters
+    const apiUrl = `https://marketplace.api.healthcare.gov/api/v1/plans/search?limit=${limit}&offset=${offset}`;
     
     const response = await fetch(apiUrl, {
       method: 'POST',

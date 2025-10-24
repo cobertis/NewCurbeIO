@@ -9688,12 +9688,122 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         })),
       };
       
-      // Fetch plans from CMS Marketplace
-      const marketplaceData = await fetchMarketplacePlans(quoteData);
+      // Get pagination parameters from query string
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      
+      // Fetch plans from CMS Marketplace with pagination
+      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize);
       
       // TODO: Add audit logging when logger service is available
       // Log successful fetch for tracking
-      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}`);
+      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}, page ${page}`);
+      
+      res.json(marketplaceData);
+    } catch (error: any) {
+      console.error("Error fetching marketplace plans:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch marketplace plans",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
+  // GET endpoint for health insurance plans with server-side pagination
+  app.get("/api/quotes/:id/marketplace-plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const quoteId = req.params.id;
+    
+    try {
+      // Get pagination parameters from query string
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      
+      if (!quoteId) {
+        return res.status(400).json({ message: "Quote ID is required" });
+      }
+      
+      // Get quote details
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get quote members
+      const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
+      
+      // Get household income
+      const incomePromises = members.map(member => 
+        storage.getQuoteMemberIncome(member.id, quote.companyId)
+      );
+      const incomeRecords = await Promise.all(incomePromises);
+      const totalIncome = incomeRecords.reduce((sum, income) => {
+        if (income?.totalAnnualIncome) {
+          return sum + Number(income.totalAnnualIncome);
+        }
+        return sum;
+      }, 0);
+      
+      // Prepare data for CMS API
+      const client = members.find(m => m.role === 'client');
+      const spouses = members.filter(m => m.role === 'spouse');
+      const dependents = members.filter(m => m.role === 'dependent');
+      
+      // If no client in members, check the quote's client fields
+      const clientData = client || {
+        dateOfBirth: quote.clientDateOfBirth,
+        gender: quote.clientGender,
+        tobaccoUser: quote.clientTobaccoUser,
+        pregnant: false, // No pregnant field in quotes table for client
+      };
+      
+      if (!clientData || !clientData.dateOfBirth) {
+        return res.status(400).json({ message: "Client information incomplete - date of birth required" });
+      }
+      
+      if (!quote.physical_postal_code || !quote.physical_county || !quote.physical_state) {
+        return res.status(400).json({ message: "Quote address information incomplete" });
+      }
+      
+      const quoteData = {
+        zipCode: quote.physical_postal_code,
+        county: quote.physical_county,
+        state: quote.physical_state,
+        householdIncome: totalIncome,
+        client: {
+          dateOfBirth: clientData.dateOfBirth,
+          gender: clientData.gender || undefined,
+          pregnant: clientData.pregnant || false,
+          usesTobacco: clientData.tobaccoUser || false,
+        },
+        spouses: spouses.map(s => ({
+          dateOfBirth: s.dateOfBirth!,
+          gender: s.gender || undefined,
+          pregnant: s.pregnant || false,
+          usesTobacco: s.tobaccoUser || false,
+        })),
+        dependents: dependents.map(d => ({
+          dateOfBirth: d.dateOfBirth!,
+          gender: d.gender || undefined,
+          pregnant: d.pregnant || false,
+          usesTobacco: d.tobaccoUser || false,
+        })),
+      };
+      
+      // Dynamic import of CMS Marketplace service (same as other endpoints)
+      const cmsMarketplace = await import('./cms-marketplace.js');
+      const { fetchMarketplacePlans: fetchPlans } = cmsMarketplace;
+      
+      // Fetch plans from CMS Marketplace with pagination
+      const marketplaceData = await fetchPlans(quoteData, page, pageSize);
+      
+      // Log successful fetch for tracking
+      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}, page ${page}`);
       
       res.json(marketplaceData);
     } catch (error: any) {
