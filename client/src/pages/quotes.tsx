@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -4947,6 +4947,34 @@ export default function QuotesPage() {
                       </p>
                       <p className="text-sm font-medium mt-1">-</p>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Household Income Section - CRITICAL FOR CMS API */}
+              <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                        <DollarSign className="h-5 w-5 text-green-700 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-green-700 dark:text-green-400 uppercase tracking-wide">Total Household Income</p>
+                        <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                          {householdIncomeData?.totalIncome 
+                            ? `$${householdIncomeData.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                            : '$0'}
+                        </p>
+                        <p className="text-xs text-green-600 dark:text-green-500 mt-1">Annual income for all applicants</p>
+                      </div>
+                    </div>
+                    {(!householdIncomeData?.totalIncome || householdIncomeData.totalIncome === 0) && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-md">
+                        <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Required for marketplace plans</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
