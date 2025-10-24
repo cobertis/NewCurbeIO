@@ -2752,6 +2752,7 @@ export default function QuotesPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isCreatingQuote, setIsCreatingQuote] = useState(false);
   
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
@@ -2796,6 +2797,23 @@ export default function QuotesPage() {
   
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/quotes/new";
+  
+  // Function to handle viewing a quote - navigates to the quote detail page
+  const handleViewQuote = (quote: Quote | any) => {
+    console.log('[handleViewQuote] Navigating to quote:', quote?.id);
+    if (quote?.id) {
+      // Navigate to the quote detail page
+      setLocation(`/quotes/${quote.id}`);
+      console.log('[handleViewQuote] Navigation called to:', `/quotes/${quote.id}`);
+    } else {
+      console.error('[handleViewQuote] No quote ID provided');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not open quote - no ID found",
+      });
+    }
+  };
 
   // Fetch current user
   const { data: userData } = useQuery<{ user: UserType }>({
@@ -3023,83 +3041,138 @@ export default function QuotesPage() {
     onSuccess: async (response: any) => {
       console.log('[CREATE QUOTE] onSuccess called with response:', response);
       
-      // Get the created quote ID
-      const quoteId = response?.quote?.id || response?.id;
-      
-      console.log('[CREATE QUOTE] Extracted quote ID:', quoteId);
-      console.log('[CREATE QUOTE] Full response structure:', JSON.stringify(response, null, 2));
-      
-      // IMMEDIATELY fetch and display the created quote
-      if (quoteId) {
-        console.log('[CREATE QUOTE] Fetching and opening quote:', quoteId);
+      try {
+        // Get the created quote ID
+        const quoteId = response?.quote?.id || response?.id;
         
-        // First invalidate to get fresh data
-        await queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+        console.log('[CREATE QUOTE] Extracted quote ID:', quoteId);
+        console.log('[CREATE QUOTE] Full response structure:', JSON.stringify(response, null, 2));
         
-        // Then fetch the quotes data
-        const quotesResponse = await queryClient.fetchQuery({ queryKey: ["/api/quotes"] });
-        const fetchedQuote = (quotesResponse as any)?.quotes?.find((q: any) => q.id === quoteId);
-        
-        if (fetchedQuote) {
-          // Parse the quote data properly
-          const parsedQuote = {
-            ...fetchedQuote,
-            spouses: Array.isArray(fetchedQuote.spouses) ? fetchedQuote.spouses : 
-                     (fetchedQuote.spouses && typeof fetchedQuote.spouses === 'object' ? 
-                      Object.values(fetchedQuote.spouses) : []),
-            dependents: Array.isArray(fetchedQuote.dependents) ? fetchedQuote.dependents : 
-                        (fetchedQuote.dependents && typeof fetchedQuote.dependents === 'object' ? 
-                         Object.values(fetchedQuote.dependents) : [])
-          };
+        // IMMEDIATELY navigate to the created quote
+        if (quoteId) {
+          console.log('[CREATE QUOTE] Navigating to quote:', quoteId);
           
-          // Open the quote view
-          handleViewQuote(parsedQuote);
+          // Navigate to the quote detail page
+          handleViewQuote({ id: quoteId });
           
           // Reset the form for next time
-          form.reset(getInitialFormValues());
+          form.reset({
+            effectiveDate: initialEffectiveDate,
+            agentId: userData?.user?.id || "",
+            productType: "",
+            clientFirstName: "",
+            clientMiddleName: "",
+            clientLastName: "",
+            clientSecondLastName: "",
+            clientEmail: "",
+            clientPhone: "",
+            clientDateOfBirth: "",
+            clientGender: "",
+            clientIsApplicant: true,
+            clientTobaccoUser: false,
+            clientPregnant: false,
+            clientSsn: "",
+            clientPreferredLanguage: "",
+            clientCountryOfBirth: "",
+            clientMaritalStatus: "",
+            clientWeight: "",
+            clientHeight: "",
+            spouses: [],
+            dependents: [],
+            street: "",
+            addressLine2: "",
+            city: "",
+            state: "",
+            postalCode: "",
+            county: "",
+            country: "United States",
+            physical_address: "",
+            physical_addressLine2: "",
+            physical_city: "",
+            physical_state: "",
+            physical_postalCode: "",
+            physical_county: "",
+            physical_country: "United States",
+          });
           setCurrentStep(1);
           setIsCreatingQuote(false);
           
+          // Invalidate queries to refresh data in the background
+          queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+          
           toast({
             title: "Quote Created Successfully!",
-            description: `Quote ID: ${quoteId} is now open.`,
+            description: `Quote ID: ${quoteId}`,
           });
         } else {
-          console.error('[CREATE QUOTE] Could not find the created quote in the response');
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Quote created but could not open it. Please refresh the page.",
+          // Fallback: if we don't get the ID, show error
+          console.error('[CREATE QUOTE] No quote ID in response:', response);
+          
+          // Still reset the form
+          form.reset({
+            effectiveDate: initialEffectiveDate,
+            agentId: userData?.user?.id || "",
+            productType: "",
+            clientFirstName: "",
+            clientMiddleName: "",
+            clientLastName: "",
+            clientSecondLastName: "",
+            clientEmail: "",
+            clientPhone: "",
+            clientDateOfBirth: "",
+            clientGender: "",
+            clientIsApplicant: true,
+            clientTobaccoUser: false,
+            clientPregnant: false,
+            clientSsn: "",
+            clientPreferredLanguage: "",
+            clientCountryOfBirth: "",
+            clientMaritalStatus: "",
+            clientWeight: "",
+            clientHeight: "",
+            spouses: [],
+            dependents: [],
+            street: "",
+            addressLine2: "",
+            city: "",
+            state: "",
+            postalCode: "",
+            county: "",
+            country: "United States",
+            physical_address: "",
+            physical_addressLine2: "",
+            physical_city: "",
+            physical_state: "",
+            physical_postalCode: "",
+            physical_county: "",
+            physical_country: "United States",
           });
-        }
-      } else {
-        // Fallback: if we don't get the ID, try to fetch quotes and open the latest one
-        console.error('[CREATE QUOTE] No quote ID in response, trying fallback:', response);
-        
-        await queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-        const quotesResponse = await queryClient.fetchQuery({ queryKey: ["/api/quotes"] });
-        const quotes = (quotesResponse as any)?.quotes;
-        
-        if (quotes?.length > 0) {
-          const latestQuote = quotes[0];
-          const parsedQuote = {
-            ...latestQuote,
-            spouses: Array.isArray(latestQuote.spouses) ? latestQuote.spouses : [],
-            dependents: Array.isArray(latestQuote.dependents) ? latestQuote.dependents : []
-          };
-          handleViewQuote(parsedQuote);
+          setCurrentStep(1);
+          setIsCreatingQuote(false);
+          
+          // Invalidate queries to refresh the list
+          await queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
           
           toast({
             title: "Quote Created",
-            description: `Quote ID: ${latestQuote.id}`,
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Quote created but could not open it. Please refresh the page.",
+            description: "The quote was created successfully. You can find it in the quotes list.",
           });
         }
+      } catch (error) {
+        console.error('[CREATE QUOTE] Error in onSuccess handler:', error);
+        console.error('[CREATE QUOTE] Error details:', JSON.stringify(error));
+        
+        // Reset form state even on error
+        setCurrentStep(1);
+        setIsCreatingQuote(false);
+        
+        // Invalidate queries to refresh the list
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+        
+        toast({
+          title: "Quote Created",
+          description: "The quote was created but there was an issue navigating to it. Please check the quotes list.",
+        });
       }
       
       // Invalidate queries and reset form in background
