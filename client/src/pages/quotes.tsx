@@ -2968,9 +2968,17 @@ export default function QuotesPage() {
     mutationFn: async (data: any) => {
       console.log('[CREATE QUOTE] Sending request with data:', data);
       
+      // Remove original address fields and remap them with correct names
+      const { 
+        street, addressLine2, city, state, postalCode, county,
+        physical_address, physical_addressLine2, 
+        physical_city, physical_state, physical_postalCode, physical_county,
+        ...restData 
+      } = data;
+      
       // Clean up data to avoid sending undefined or empty string fields
       const cleanedData = {
-        ...data,
+        ...restData,
         effectiveDate: data.effectiveDate,
         clientDateOfBirth: data.clientDateOfBirth || undefined,
         clientSsn: normalizeSSN(data.clientSsn),
@@ -2981,14 +2989,21 @@ export default function QuotesPage() {
         clientWeight: data.clientWeight || "",
         clientHeight: data.clientHeight || "",
         clientPregnant: data.clientPregnant || false,
-        // Ensure physical address fields have defaults
-        physical_address: data.physical_address || data.street || "",
-        physical_addressLine2: data.physical_addressLine2 || data.addressLine2 || "",
-        physical_city: data.physical_city || data.city || "",
-        physical_state: data.physical_state || data.state || "",
-        physical_postalCode: data.physical_postalCode || data.postalCode || "",
-        physical_county: data.physical_county || data.county || "",
-        physical_country: data.physical_country || data.country || "United States",
+        // Map mailing address fields with correct prefix
+        mailing_street: street || "",
+        mailing_address_line_2: addressLine2 || "",
+        mailing_city: city || "",
+        mailing_state: state || "",
+        mailing_postal_code: postalCode || "",
+        mailing_county: county || "",
+        // Map physical address fields - note: physical_street, not physical_address!
+        physical_street: physical_address || street || "",
+        physical_address_line_2: physical_addressLine2 || addressLine2 || "",
+        physical_city: physical_city || city || "",
+        physical_state: physical_state || state || "",
+        physical_postal_code: physical_postalCode || postalCode || "",
+        physical_county: physical_county || county || "",
+        country: data.country || "United States",
         spouses: data.spouses?.map((spouse: any) => ({
           ...spouse,
           ssn: normalizeSSN(spouse.ssn),
