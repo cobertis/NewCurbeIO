@@ -3005,7 +3005,7 @@ export default function QuotesPage() {
       console.log('[CREATE QUOTE] Received response:', result);
       return result;
     },
-    onSuccess: (response: any) => {
+    onSuccess: async (response: any) => {
       console.log('[CREATE QUOTE] onSuccess called with response:', response);
       
       // Get the created quote ID
@@ -3014,25 +3014,77 @@ export default function QuotesPage() {
       console.log('[CREATE QUOTE] Extracted quote ID:', quoteId);
       console.log('[CREATE QUOTE] Full response structure:', JSON.stringify(response, null, 2));
       
-      // IMMEDIATELY navigate to the created quote using router
+      // IMMEDIATELY fetch and display the created quote
       if (quoteId) {
-        console.log('[CREATE QUOTE] Navigating to quote:', quoteId);
+        console.log('[CREATE QUOTE] Fetching and opening quote:', quoteId);
         
-        // Navigate using wouter router
-        setLocation(`/quotes/${quoteId}`);
+        // First invalidate to get fresh data
+        await queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
         
-        toast({
-          title: "Quote created",
-          description: "Opening quote details...",
-        });
+        // Then fetch the quotes data
+        const quotesResponse = await queryClient.fetchQuery({ queryKey: ["/api/quotes"] });
+        const fetchedQuote = (quotesResponse as any)?.quotes?.find((q: any) => q.id === quoteId);
+        
+        if (fetchedQuote) {
+          // Parse the quote data properly
+          const parsedQuote = {
+            ...fetchedQuote,
+            spouses: Array.isArray(fetchedQuote.spouses) ? fetchedQuote.spouses : 
+                     (fetchedQuote.spouses && typeof fetchedQuote.spouses === 'object' ? 
+                      Object.values(fetchedQuote.spouses) : []),
+            dependents: Array.isArray(fetchedQuote.dependents) ? fetchedQuote.dependents : 
+                        (fetchedQuote.dependents && typeof fetchedQuote.dependents === 'object' ? 
+                         Object.values(fetchedQuote.dependents) : [])
+          };
+          
+          // Open the quote view
+          handleViewQuote(parsedQuote);
+          
+          // Reset the form for next time
+          form.reset(getInitialFormValues());
+          setCurrentStep(1);
+          setIsCreatingQuote(false);
+          
+          toast({
+            title: "Quote Created Successfully!",
+            description: `Quote ID: ${quoteId} is now open.`,
+          });
+        } else {
+          console.error('[CREATE QUOTE] Could not find the created quote in the response');
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Quote created but could not open it. Please refresh the page.",
+          });
+        }
       } else {
-        console.error('[CREATE QUOTE] No quote ID in response:', response);
+        // Fallback: if we don't get the ID, try to fetch quotes and open the latest one
+        console.error('[CREATE QUOTE] No quote ID in response, trying fallback:', response);
         
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Quote created but could not navigate to it.",
-        });
+        await queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+        const quotesResponse = await queryClient.fetchQuery({ queryKey: ["/api/quotes"] });
+        const quotes = (quotesResponse as any)?.quotes;
+        
+        if (quotes?.length > 0) {
+          const latestQuote = quotes[0];
+          const parsedQuote = {
+            ...latestQuote,
+            spouses: Array.isArray(latestQuote.spouses) ? latestQuote.spouses : [],
+            dependents: Array.isArray(latestQuote.dependents) ? latestQuote.dependents : []
+          };
+          handleViewQuote(parsedQuote);
+          
+          toast({
+            title: "Quote Created",
+            description: `Quote ID: ${latestQuote.id}`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Quote created but could not open it. Please refresh the page.",
+          });
+        }
       }
       
       // Invalidate queries and reset form in background

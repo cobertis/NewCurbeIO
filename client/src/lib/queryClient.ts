@@ -1,12 +1,12 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-async function throwIfResNotOk(res: Response) {
+async function throwIfResNotOk(res: Response, text?: string) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
+    const errorText = text || (await res.text()) || res.statusText;
     
     // Check if response is JSON and contains deactivated flag
     try {
-      const errorData = JSON.parse(text);
+      const errorData = JSON.parse(errorText);
       if (errorData.deactivated) {
         // Redirect to login immediately with deactivated message
         window.location.href = "/login?deactivated=true";
@@ -21,7 +21,7 @@ async function throwIfResNotOk(res: Response) {
       }
     }
     
-    throw new Error(`${res.status}: ${text}`);
+    throw new Error(`${res.status}: ${errorText}`);
   }
 }
 
@@ -37,8 +37,21 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
-  return await res.json();
+  // Read the response text once
+  const text = await res.text();
+  
+  // Check if response is ok, passing the text we already read
+  if (!res.ok) {
+    await throwIfResNotOk(res, text);
+  }
+  
+  // Parse JSON response if content exists
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch (e) {
+    console.error('Failed to parse response as JSON:', text);
+    return {};
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
