@@ -5,28 +5,33 @@
  * to fetch real-time health insurance plan quotations based on client data.
  */
 
+// Interface matching the official CMS Marketplace API format
 interface MarketplaceQuoteRequest {
-  zipCode: string;
-  county: string;
-  householdSize: number;
-  householdIncome: number;
-  aptcOverride?: number;
-  csrOverride?: string;
-  market?: 'Individual';
-  place?: {
+  household: {
+    income: number;
+    effective_date?: string;
+    has_married_couple?: boolean;
+    people: Array<{
+      age: number;
+      dob?: string;
+      gender?: string;
+      uses_tobacco?: boolean;
+      is_pregnant?: boolean;
+      aptc_eligible?: boolean;
+      has_mec?: boolean;
+      is_parent?: boolean;
+      relationship?: string;
+      utilization?: 'Low' | 'Medium' | 'High';
+    }>;
+  };
+  market: 'Individual';
+  place: {
     countyfips: string;
     state: string;
     zipcode: string;
   };
-  people: Array<{
-    age: number;
-    dob?: string;
-    gender?: string;
-    pregnant?: boolean;
-    parent?: boolean;
-    utilizesTobacco?: boolean;
-  }>;
-  year?: number;
+  year: number;
+  aptc_override?: number;
 }
 
 interface MarketplacePlan {
@@ -140,7 +145,7 @@ export async function fetchMarketplacePlans(
     throw new Error('CMS_MARKETPLACE_API_KEY is not configured');
   }
 
-  // Build household members array
+  // Build household members array following CMS API format
   const people = [];
   
   // Add client
@@ -148,8 +153,10 @@ export async function fetchMarketplacePlans(
     age: calculateAge(quoteData.client.dateOfBirth),
     dob: quoteData.client.dateOfBirth,
     gender: quoteData.client.gender?.toLowerCase(),
-    pregnant: quoteData.client.pregnant || false,
-    utilizesTobacco: quoteData.client.usesTobacco || false,
+    uses_tobacco: quoteData.client.usesTobacco || false,
+    is_pregnant: quoteData.client.pregnant || false,
+    aptc_eligible: true,
+    relationship: 'Self'
   });
   
   // Add spouses
@@ -159,8 +166,10 @@ export async function fetchMarketplacePlans(
         age: calculateAge(spouse.dateOfBirth),
         dob: spouse.dateOfBirth,
         gender: spouse.gender?.toLowerCase(),
-        pregnant: spouse.pregnant || false,
-        utilizesTobacco: spouse.usesTobacco || false,
+        uses_tobacco: spouse.usesTobacco || false,
+        is_pregnant: spouse.pregnant || false,
+        aptc_eligible: true,
+        relationship: 'Spouse'
       });
     });
   }
@@ -172,8 +181,10 @@ export async function fetchMarketplacePlans(
         age: calculateAge(dependent.dateOfBirth),
         dob: dependent.dateOfBirth,
         gender: dependent.gender?.toLowerCase(),
-        pregnant: dependent.pregnant || false,
-        utilizesTobacco: dependent.usesTobacco || false,
+        uses_tobacco: dependent.usesTobacco || false,
+        is_pregnant: dependent.pregnant || false,
+        aptc_eligible: true,
+        relationship: 'Child'
       });
     });
   }
@@ -197,31 +208,22 @@ export async function fetchMarketplacePlans(
 
   console.log('[CMS_MARKETPLACE] County FIPS:', countyFips);
 
+  // Build request body following the official CMS Marketplace API format
   const requestBody: MarketplaceQuoteRequest = {
-    zipCode: quoteData.zipCode,
-    county: quoteData.county,
-    householdSize,
-    householdIncome: quoteData.householdIncome,
+    household: {
+      income: quoteData.householdIncome,
+      people: people // Already in correct format
+    },
     market: 'Individual',
     place: {
       countyfips: countyFips,
       state: quoteData.state,
       zipcode: quoteData.zipCode,
     },
-    people,
     year,
   };
 
-  console.log('[CMS_MARKETPLACE] Requesting plans with:', {
-    zipCode: quoteData.zipCode,
-    county: quoteData.county,
-    state: quoteData.state,
-    countyFips,
-    householdSize,
-    householdIncome: quoteData.householdIncome,
-    peopleCount: people.length,
-    year,
-  });
+  console.log('[CMS_MARKETPLACE] Requesting plans with full request body:', JSON.stringify(requestBody, null, 2));
 
   try {
     // CMS Marketplace API endpoint
