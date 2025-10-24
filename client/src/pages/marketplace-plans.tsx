@@ -65,7 +65,7 @@ export default function MarketplacePlansPage() {
     }
   }, [quoteId]);
 
-  const fetchMarketplacePlans = async (page: number = 1) => {
+  const fetchMarketplacePlans = async () => {
     if (!quoteId) return;
     
     setIsLoadingPlans(true);
@@ -76,11 +76,7 @@ export default function MarketplacePlansPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ 
-          quoteId,
-          page,
-          pageSize 
-        }),
+        body: JSON.stringify({ quoteId }),
       });
 
       if (!response.ok) {
@@ -90,14 +86,13 @@ export default function MarketplacePlansPage() {
 
       const data = await response.json();
       setMarketplacePlans(data);
-      setCurrentPage(page);
+      setCurrentPage(1);
       
-      const totalPlans = data.totalCount || data.plans?.length || 0;
-      const showingPlans = data.plans?.length || 0;
+      const totalPlans = data.plans?.length || 0;
       
       toast({
         title: "Plans loaded successfully",
-        description: `Showing ${showingPlans} of ${totalPlans} available health insurance plans (Page ${page}/${data.totalPages || 1})`,
+        description: `Found ${totalPlans} available health insurance plans`,
       });
     } catch (error: any) {
       console.error('Error fetching marketplace plans:', error);
@@ -131,8 +126,8 @@ export default function MarketplacePlansPage() {
     return 'bg-blue-500 text-white';
   };
 
-  // Filter and sort plans
-  const filteredPlans = marketplacePlans?.plans?.filter((plan: any) => {
+  // Filter and sort all plans
+  const allFilteredPlans = marketplacePlans?.plans?.filter((plan: any) => {
     if (metalLevelFilter !== "all" && !plan.metal_level?.toLowerCase().includes(metalLevelFilter)) {
       return false;
     }
@@ -156,7 +151,16 @@ export default function MarketplacePlansPage() {
       default:
         return 0;
     }
-  });
+  }) || [];
+
+  // Calculate pagination for client-side
+  const totalFilteredPlans = allFilteredPlans.length;
+  const totalPages = Math.ceil(totalFilteredPlans / pageSize);
+  
+  // Get plans for current page
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const filteredPlans = allFilteredPlans.slice(startIndex, endIndex);
 
   // Loading state
   if (isLoadingQuote || isLoadingPlans) {
@@ -262,7 +266,10 @@ export default function MarketplacePlansPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="metal-level">Metal Level</Label>
-              <Select value={metalLevelFilter} onValueChange={setMetalLevelFilter}>
+              <Select value={metalLevelFilter} onValueChange={(value) => {
+                setMetalLevelFilter(value);
+                setCurrentPage(1);
+              }}>
                 <SelectTrigger id="metal-level" data-testid="filter-metal-level">
                   <SelectValue placeholder="All levels" />
                 </SelectTrigger>
@@ -279,7 +286,10 @@ export default function MarketplacePlansPage() {
 
             <div>
               <Label htmlFor="plan-type">Plan Type</Label>
-              <Select value={planTypeFilter} onValueChange={setPlanTypeFilter}>
+              <Select value={planTypeFilter} onValueChange={(value) => {
+                setPlanTypeFilter(value);
+                setCurrentPage(1);
+              }}>
                 <SelectTrigger id="plan-type" data-testid="filter-plan-type">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
@@ -300,14 +310,20 @@ export default function MarketplacePlansPage() {
                 type="number"
                 placeholder="No limit"
                 value={maxPremium}
-                onChange={(e) => setMaxPremium(e.target.value)}
+                onChange={(e) => {
+                  setMaxPremium(e.target.value);
+                  setCurrentPage(1);
+                }}
                 data-testid="filter-max-premium"
               />
             </div>
 
             <div>
               <Label htmlFor="sort-by">Sort By</Label>
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={(value) => {
+                setSortBy(value);
+                setCurrentPage(1);
+              }}>
                 <SelectTrigger id="sort-by" data-testid="filter-sort">
                   <SelectValue />
                 </SelectTrigger>
@@ -324,7 +340,7 @@ export default function MarketplacePlansPage() {
           {(metalLevelFilter !== "all" || planTypeFilter !== "all" || maxPremium) && (
             <div className="mt-4 flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                Showing {filteredPlans?.length || 0} of {marketplacePlans?.plans?.length || 0} plans
+                Showing {totalFilteredPlans} of {marketplacePlans?.plans?.length || 0} plans
               </span>
               <Button
                 variant="ghost"
@@ -333,6 +349,7 @@ export default function MarketplacePlansPage() {
                   setMetalLevelFilter("all");
                   setPlanTypeFilter("all");
                   setMaxPremium("");
+                  setCurrentPage(1);
                 }}
                 data-testid="button-clear-filters"
               >
@@ -535,25 +552,19 @@ export default function MarketplacePlansPage() {
           )}
           
           {/* Pagination Controls */}
-          {filteredPlans.length > 0 && marketplacePlans.totalPages > 1 && (
+          {totalFilteredPlans > pageSize && (
             <Card>
               <CardContent className="py-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, marketplacePlans.totalCount)} of {marketplacePlans.totalCount} plans
+                    Showing {Math.min(((currentPage - 1) * pageSize) + 1, totalFilteredPlans)} - {Math.min(currentPage * pageSize, totalFilteredPlans)} of {totalFilteredPlans} plans
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        // Clear filters when navigating pages
-                        setMetalLevelFilter("all");
-                        setPlanTypeFilter("all");
-                        setMaxPremium("");
-                        fetchMarketplacePlans(currentPage - 1);
-                      }}
-                      disabled={currentPage === 1 || isLoadingPlans}
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
                       data-testid="button-prev-page"
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -561,20 +572,14 @@ export default function MarketplacePlansPage() {
                     </Button>
                     <div className="flex items-center gap-1">
                       <span className="text-sm font-medium">
-                        Page {currentPage} of {marketplacePlans.totalPages}
+                        Page {currentPage} of {totalPages}
                       </span>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        // Clear filters when navigating pages
-                        setMetalLevelFilter("all");
-                        setPlanTypeFilter("all");
-                        setMaxPremium("");
-                        fetchMarketplacePlans(currentPage + 1);
-                      }}
-                      disabled={currentPage === marketplacePlans.totalPages || isLoadingPlans}
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
                       data-testid="button-next-page"
                     >
                       Next

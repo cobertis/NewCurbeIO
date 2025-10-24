@@ -149,10 +149,8 @@ export async function fetchMarketplacePlans(
       pregnant?: boolean;
       usesTobacco?: boolean;
     }>;
-  },
-  page: number = 1,
-  pageSize: number = 10
-): Promise<MarketplaceApiResponse & { page: number; pageSize: number; totalCount: number; totalPages: number }> {
+  }
+): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
   
   if (!apiKey) {
@@ -270,25 +268,9 @@ export async function fetchMarketplacePlans(
 
     const data: MarketplaceApiResponse = await response.json();
     
-    const totalCount = data.plans?.length || 0;
-    console.log('[CMS_MARKETPLACE] Successfully fetched', totalCount, 'plans total');
+    console.log('[CMS_MARKETPLACE] Successfully fetched', data.plans?.length || 0, 'plans');
     
-    // Implement server-side pagination
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedPlans = data.plans?.slice(startIndex, endIndex) || [];
-    const totalPages = Math.ceil(totalCount / pageSize);
-    
-    console.log(`[CMS_MARKETPLACE] Returning page ${page} of ${totalPages} (${paginatedPlans.length} plans)`);
-    
-    return {
-      ...data,
-      plans: paginatedPlans,
-      page,
-      pageSize,
-      totalCount,
-      totalPages
-    };
+    return data;
   } catch (error) {
     console.error('[CMS_MARKETPLACE] Error fetching plans:', error);
     throw error;

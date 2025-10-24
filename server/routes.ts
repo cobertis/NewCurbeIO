@@ -9610,7 +9610,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const currentUser = req.user!;
     
     try {
-      const { quoteId, page = 1, pageSize = 10 } = req.body;
+      const { quoteId } = req.body;
       
       if (!quoteId) {
         return res.status(400).json({ message: "Quote ID is required" });
@@ -9688,12 +9688,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         })),
       };
       
-      // Fetch plans from CMS Marketplace with pagination
-      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize);
+      // Fetch plans from CMS Marketplace
+      const marketplaceData = await fetchMarketplacePlans(quoteData);
       
       // TODO: Add audit logging when logger service is available
       // Log successful fetch for tracking
-      console.log(`[CMS_MARKETPLACE] Successfully fetched page ${page} with ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}`);
+      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}`);
       
       res.json(marketplaceData);
     } catch (error: any) {
