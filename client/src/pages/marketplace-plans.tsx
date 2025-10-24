@@ -32,7 +32,15 @@ import {
   Calendar,
   Users,
   CreditCard,
+  ChevronDown,
+  Database,
+  FileText,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export default function MarketplacePlansPage() {
   const [, params] = useRoute("/quotes/:id/marketplace-plans");
@@ -77,6 +85,7 @@ export default function MarketplacePlansPage() {
       let totalPlansCount = 0;
       let hasMoreData = true;
       let marketplaceMetadata: any = null;
+      let apiRequestData: any = null;
       
       console.log(`🔍 Iniciando búsqueda de planes para Quote: ${quoteId}`);
 
@@ -108,12 +117,24 @@ export default function MarketplacePlansPage() {
           totalPlansCount = data.total || 0;
           console.log(`📊 Total de planes disponibles: ${totalPlansCount || 'Unknown'}`);
           
+          // Guardar los datos del request para mostrarlos al usuario
+          apiRequestData = data.request_data || {
+            household_income: (quoteData as any)?.quote?.householdIncome,
+            people_count: totalApplicants,
+            location: {
+              zip: quote?.zipCode,
+              state: quote?.state,
+              county: quote?.county
+            }
+          };
+          
           marketplaceMetadata = {
             year: data.year,
             household_aptc: data.household_aptc,
             household_csr: data.household_csr,
             household_slcsp_premium: data.household_slcsp_premium,
             household_lcbp_premium: data.household_lcbp_premium,
+            request_data: apiRequestData,
           };
         }
 
@@ -122,19 +143,20 @@ export default function MarketplacePlansPage() {
           allPlans = allPlans.concat(data.plans);
           console.log(`✅ Página ${currentPage}: ${data.plans.length} planes obtenidos (Total acumulado: ${allPlans.length})`);
           
-          // Si recibimos menos planes que el límite, hemos terminado (según documentación)
-          if (data.plans.length < limit) {
+          // IMPORTANTE: La API puede devolver menos planes del límite solicitado
+          // Continuar hasta obtener TODOS los planes disponibles
+          if (totalPlansCount > 0 && allPlans.length >= totalPlansCount) {
+            // Ya tenemos todos los planes
             hasMoreData = false;
-            console.log(`✅ Búsqueda completa: última página con ${data.plans.length} planes`);
+            console.log(`✅ Búsqueda completa: obtenidos todos los ${totalPlansCount} planes`);
+          } else if (data.plans.length === 0) {
+            // No hay más planes
+            hasMoreData = false;
+            console.log(`✅ Búsqueda completa: no hay más planes disponibles`);
           } else {
             // Incrementar offset para la siguiente página
-            offset += limit;
-            
-            // Verificación adicional por si acaso
-            if (totalPlansCount > 0 && allPlans.length >= totalPlansCount) {
-              hasMoreData = false;
-              console.log(`✅ Búsqueda completa: obtenidos todos los ${totalPlansCount} planes`);
-            }
+            offset += data.plans.length; // Usar el número real de planes devueltos
+            console.log(`📋 Continuando búsqueda... (${allPlans.length}/${totalPlansCount} planes obtenidos)`);
           }
           
           // Pequeña pausa para no sobrecargar la API (según documentación)
@@ -343,12 +365,70 @@ export default function MarketplacePlansPage() {
                 <div className="space-y-2">
                   <h4 className="font-semibold text-xs text-muted-foreground uppercase">Results</h4>
                   <div className="text-sm space-y-1">
-                    <div>{marketplacePlans.plans?.length || 0} Plans Available</div>
+                    <div className="font-bold text-lg">{marketplacePlans.plans?.length || 0} Plans Available</div>
                     <div className="text-xs text-muted-foreground">Year {marketplacePlans.year}</div>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* API Request Data - Collapsible Section */}
+            {marketplacePlans?.request_data && (
+              <>
+                <Separator className="my-4" />
+                <Collapsible className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+                    <Database className="h-4 w-4" />
+                    View Data Sent to CMS Healthcare.gov API
+                    <ChevronDown className="h-4 w-4 ml-auto" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="mt-3 p-4 bg-muted/30 rounded-lg space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <div className="font-semibold mb-1">Household Income</div>
+                          <div className="font-mono text-xs p-2 bg-background rounded">
+                            {formatCurrency(marketplacePlans.request_data.household_income)}/year
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-semibold mb-1">Location</div>
+                          <div className="font-mono text-xs p-2 bg-background rounded space-y-1">
+                            <div>ZIP: {marketplacePlans.request_data.location?.zip}</div>
+                            <div>State: {marketplacePlans.request_data.location?.state}</div>
+                            <div>County: {marketplacePlans.request_data.location?.county}</div>
+                            <div>County FIPS: {marketplacePlans.request_data.location?.county_fips}</div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-semibold mb-1">People ({marketplacePlans.request_data.people?.length || 0} members)</div>
+                          <div className="font-mono text-xs p-2 bg-background rounded space-y-1">
+                            {marketplacePlans.request_data.people?.map((person: any, idx: number) => (
+                              <div key={idx} className="pb-1 border-b border-border last:border-0">
+                                <div>Age: {person.age}, {person.gender}</div>
+                                <div>Tobacco: {person.tobacco ? 'Yes' : 'No'}</div>
+                                {person.pregnant && <div>Pregnant: Yes</div>}
+                                <div className="text-green-600 dark:text-green-400">APTC Eligible: {person.aptc_eligible ? 'Yes' : 'No'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-semibold mb-1">API Parameters</div>
+                          <div className="font-mono text-xs p-2 bg-background rounded space-y-1">
+                            <div>Year: {marketplacePlans.request_data.year}</div>
+                            <div>Limit per page: {marketplacePlans.request_data.limit}</div>
+                            <div className="text-green-600 dark:text-green-400">
+                              APTC Calculation: {marketplacePlans.household_aptc > 0 ? 'Eligible' : 'Not Eligible'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
 
             {/* Members List - Compact */}
             {(quoteData as any)?.quote?.members && (quoteData as any)?.quote?.members.length > 0 && (

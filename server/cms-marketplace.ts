@@ -219,10 +219,12 @@ export async function fetchMarketplacePlans(
 
   // Calculate pagination parameters - Máximo 100 según documentación
   const currentPage = page || 1;
-  const limit = Math.min(pageSize || 100, 100); // Máximo permitido por la API es 100
+  // IMPORTANTE: Usar siempre 100 para obtener el máximo de planes permitido
+  const limit = 100; // Forzar a 100 siempre para obtener todos los planes disponibles
   const offset = (currentPage - 1) * limit;
 
   // Build request body following the EXACT structure from documentation
+  // IMPORTANTE: limit y offset van en el body, no en la URL
   const requestBody = {
     household: {
       income: quoteData.householdIncome, // Ingreso anual del hogar
@@ -235,8 +237,9 @@ export async function fetchMarketplacePlans(
       zipcode: quoteData.zipCode, // ZIP de 5 dígitos
     },
     year: year,
-    offset: offset,
+    // Paginación en el body según documentación
     limit: limit,
+    offset: offset,
     // aptc_override: null, // Opcional - puede forzar un monto APTC específico
     // csr_override: null,  // Opcional - puede forzar un nivel CSR específico
   };
@@ -282,6 +285,28 @@ export async function fetchMarketplacePlans(
     }
     
     console.log(`[CMS_MARKETPLACE] ✅ Página ${currentPage}: ${data.plans?.length || 0} planes obtenidos`);
+    
+    // Agregar información del request para mostrar al usuario
+    data.request_data = {
+      household_income: quoteData.householdIncome,
+      people_count: people.length,
+      people: people.map((p: any) => ({
+        age: p.age,
+        gender: p.gender,
+        tobacco: p.uses_tobacco,
+        pregnant: p.is_pregnant,
+        aptc_eligible: p.aptc_eligible
+      })),
+      location: {
+        zip: quoteData.zipCode,
+        state: quoteData.state,
+        county: quoteData.county,
+        county_fips: countyFips
+      },
+      year: year,
+      limit: limit,
+      offset: offset
+    };
     
     // Calculate household_aptc if not provided by the API
     // The CMS API may not always include household_aptc directly, so we calculate it
