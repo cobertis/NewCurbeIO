@@ -225,7 +225,7 @@ export default function MarketplacePlansPage() {
     );
   }
 
-  const quote = quoteData?.quote;
+  const quote = (quoteData as any)?.quote;
   const totalApplicants = (quote?.members || []).filter((m: any) => m.isApplicant).length + (quote?.clientIsApplicant ? 1 : 0);
 
   return (
