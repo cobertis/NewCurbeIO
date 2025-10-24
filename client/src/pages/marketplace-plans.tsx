@@ -19,6 +19,7 @@ import {
   Shield,
   Loader2,
   ChevronLeft,
+  ChevronRight,
   Filter,
   DollarSign,
   Heart,
@@ -51,9 +52,11 @@ export default function MarketplacePlansPage() {
     enabled: !!quoteId,
   });
 
-  // State for marketplace plans
+  // State for marketplace plans and pagination
   const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
 
   // Auto-fetch marketplace plans when component mounts
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function MarketplacePlansPage() {
     }
   }, [quoteId]);
 
-  const fetchMarketplacePlans = async () => {
+  const fetchMarketplacePlans = async (page: number = 1) => {
     if (!quoteId) return;
     
     setIsLoadingPlans(true);
@@ -73,7 +76,11 @@ export default function MarketplacePlansPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ quoteId }),
+        body: JSON.stringify({ 
+          quoteId,
+          page,
+          pageSize 
+        }),
       });
 
       if (!response.ok) {
@@ -83,10 +90,14 @@ export default function MarketplacePlansPage() {
 
       const data = await response.json();
       setMarketplacePlans(data);
+      setCurrentPage(page);
+      
+      const totalPlans = data.totalCount || data.plans?.length || 0;
+      const showingPlans = data.plans?.length || 0;
       
       toast({
         title: "Plans loaded successfully",
-        description: `Found ${data.plans?.length || 0} available health insurance plans`,
+        description: `Showing ${showingPlans} of ${totalPlans} available health insurance plans (Page ${page}/${data.totalPages || 1})`,
       });
     } catch (error: any) {
       console.error('Error fetching marketplace plans:', error);
@@ -519,6 +530,58 @@ export default function MarketplacePlansPage() {
                 <p className="text-sm text-muted-foreground">
                   Try adjusting your filter criteria to see more plans
                 </p>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Pagination Controls */}
+          {filteredPlans.length > 0 && marketplacePlans.totalPages > 1 && (
+            <Card>
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, marketplacePlans.totalCount)} of {marketplacePlans.totalCount} plans
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Clear filters when navigating pages
+                        setMetalLevelFilter("all");
+                        setPlanTypeFilter("all");
+                        setMaxPremium("");
+                        fetchMarketplacePlans(currentPage - 1);
+                      }}
+                      disabled={currentPage === 1 || isLoadingPlans}
+                      data-testid="button-prev-page"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-medium">
+                        Page {currentPage} of {marketplacePlans.totalPages}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Clear filters when navigating pages
+                        setMetalLevelFilter("all");
+                        setPlanTypeFilter("all");
+                        setMaxPremium("");
+                        fetchMarketplacePlans(currentPage + 1);
+                      }}
+                      disabled={currentPage === marketplacePlans.totalPages || isLoadingPlans}
+                      data-testid="button-next-page"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
