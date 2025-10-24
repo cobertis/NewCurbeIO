@@ -69,6 +69,35 @@ interface PlanDetails {
   };
 }
 
+interface Quote {
+  id: string;
+  clientFirstName: string;
+  clientMiddleName?: string;
+  clientLastName: string;
+  clientSecondLastName?: string;
+  clientDateOfBirth?: string;
+  clientPhone?: string;
+  physical_city?: string;
+  physical_state?: string;
+  physical_postal_code?: string;
+  effectiveDate: string;
+  createdAt: string;
+  updatedAt: string;
+  totalAnnualIncome?: string;
+}
+
+interface Member {
+  id: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  role: string;
+  isApplicant: boolean;
+  income?: {
+    totalAnnualIncome?: string;
+  };
+}
+
 // Helper function to format date for display
 const formatDateForDisplay = (dateString: string | Date | null, formatStr = "MM/dd/yyyy") => {
   if (!dateString) return '';
@@ -142,15 +171,31 @@ export default function MarketplacePlansPage() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   // Fetch quote details
-  const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
+  const { data: quoteData, isLoading: isLoadingQuote } = useQuery<{ quote: Quote }>({
     queryKey: [`/api/quotes/${quoteId}/detail`],
     enabled: !!quoteId,
   });
 
   const quote = quoteData?.quote;
 
+  // Fetch members to get accurate household size and income
+  const { data: membersData } = useQuery<{ members: Member[] }>({
+    queryKey: [`/api/quotes/${quoteId}/members`],
+    enabled: !!quoteId,
+  });
+
+  const members = membersData?.members || [];
+
   // Fetch marketplace plans
-  const { data: plansData, isLoading: isLoadingPlans } = useQuery({
+  const { data: plansData, isLoading: isLoadingPlans } = useQuery<{
+    plans: PlanDetails[];
+    totalCount: number;
+    taxCredit: number;
+    householdInfo?: {
+      income: number;
+      people: Array<{ age: number }>;
+    };
+  }>({
     queryKey: [`/api/quotes/${quoteId}/marketplace-plans`],
     enabled: !!quoteId,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
@@ -178,6 +223,50 @@ export default function MarketplacePlansPage() {
       return true;
     });
   }, [allPlans, metalLevels, planTypes, companies]);
+
+  // Calculate actual household size (primary + spouse + dependents who are applicants)
+  const householdSize = useMemo(() => {
+    // Start with 1 for the primary applicant
+    let size = 1;
+    
+    // Add members who are applicants
+    const applicantMembers = members.filter(m => m.isApplicant);
+    size += applicantMembers.length;
+    
+    // Use householdInfo if available as it's the source of truth from CMS
+    if (householdInfo?.people?.length) {
+      return householdInfo.people.length;
+    }
+    
+    return size;
+  }, [members, householdInfo]);
+
+  // Calculate total annual income from all members
+  const totalIncome = useMemo(() => {
+    // Use householdInfo income if available (from CMS API)
+    if (householdInfo?.income) {
+      return householdInfo.income;
+    }
+    
+    // Otherwise calculate from members
+    let total = 0;
+    
+    // Add primary's income if available
+    if (quote?.totalAnnualIncome) {
+      total += parseFloat(quote.totalAnnualIncome) || 0;
+    }
+    
+    // Add each member's income
+    members.forEach(member => {
+      if (member.income?.totalAnnualIncome) {
+        total += parseFloat(member.income.totalAnnualIncome) || 0;
+      }
+    });
+    
+    return total || 24000; // Default to $24,000 if no income data
+  }, [quote, members, householdInfo]);
+
+  const formattedIncome = `$${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   // Loading state
   if (isLoadingQuote || isLoadingPlans) {
@@ -208,12 +297,6 @@ export default function MarketplacePlansPage() {
       </div>
     );
   }
-
-  // Calculate total annual income
-  const totalIncome = householdInfo?.income || quote.totalAnnualIncome || 0;
-  const formattedIncome = totalIncome > 0 
-    ? `$${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-    : '-';
 
   return (
     <div className="h-full flex bg-gray-50">
@@ -472,7 +555,7 @@ export default function MarketplacePlansPage() {
                     <Users className="h-5 w-5 text-primary" />
                     <div>
                       <p className="text-xs text-muted-foreground">Household Size</p>
-                      <p className="text-lg font-bold">{householdInfo?.people?.length || 1}</p>
+                      <p className="text-lg font-bold">{householdSize}</p>
                     </div>
                   </div>
                   <Separator orientation="vertical" className="h-10" />
