@@ -71,13 +71,14 @@ export default function MarketplacePlansPage() {
     setIsLoadingPlans(true);
     try {
       const pageSize = 10; // Fetch 10 plans at a time as per backend configuration
+      const maxPages = 20; // Maximum 20 pages (200 plans) to prevent infinite loop
       let allPlans: any[] = [];
       let currentPageNum = 1;
       let hasMoreData = true;
       let marketplaceMetadata: any = null;
 
-      // Fetch all pages sequentially until we get less than pageSize results
-      while (hasMoreData) {
+      // Fetch all pages sequentially until we get less than pageSize results or reach max pages
+      while (hasMoreData && currentPageNum <= maxPages) {
         const response = await fetch(
           `/api/quotes/${quoteId}/marketplace-plans?page=${currentPageNum}&pageSize=${pageSize}`,
           {
@@ -109,15 +110,25 @@ export default function MarketplacePlansPage() {
 
         // Add plans from this page to the collection
         if (data.plans && data.plans.length > 0) {
-          allPlans = [...allPlans, ...data.plans];
+          // Check for duplicate plans to avoid infinite loops
+          const existingPlanIds = new Set(allPlans.map(p => p.id));
+          const newUniquePlans = data.plans.filter((p: any) => !existingPlanIds.has(p.id));
           
-          // Check if we need to fetch more pages
-          if (data.plans.length < pageSize) {
-            // Less than pageSize results means this is the last page
+          if (newUniquePlans.length === 0) {
+            // All plans on this page are duplicates, we've reached the end
+            console.log(`[Marketplace] Page ${currentPageNum} contains only duplicate plans, stopping`);
             hasMoreData = false;
           } else {
-            // Continue to next page
-            currentPageNum++;
+            allPlans = [...allPlans, ...newUniquePlans];
+            
+            // Check if we need to fetch more pages
+            if (data.plans.length < pageSize || newUniquePlans.length < data.plans.length) {
+              // Less than pageSize results or some duplicates mean we're near the end
+              hasMoreData = false;
+            } else {
+              // Continue to next page
+              currentPageNum++;
+            }
           }
         } else {
           // No plans returned, stop fetching
@@ -125,7 +136,7 @@ export default function MarketplacePlansPage() {
         }
         
         // Log progress
-        console.log(`[Marketplace] Fetched page ${currentPageNum - 1}, got ${data.plans?.length || 0} plans, total so far: ${allPlans.length}`);
+        console.log(`[Marketplace] Fetched page ${currentPageNum}, got ${data.plans?.length || 0} plans, total unique: ${allPlans.length}`);
       }
 
       // Combine all plans with metadata
