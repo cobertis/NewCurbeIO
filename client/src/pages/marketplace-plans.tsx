@@ -236,16 +236,36 @@ export default function MarketplacePlansPage() {
                     <span className="text-sm text-muted-foreground">Coverage Year</span>
                     <span className="font-semibold">{marketplacePlans.year}</span>
                   </div>
-                  {marketplacePlans.household_aptc > 0 && (
+                  {marketplacePlans.household_aptc !== undefined && (
                     <>
                       <Separator />
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Tax Credit</span>
+                        <span className="text-sm text-muted-foreground">APTC (Monthly Tax Credit)</span>
                         <span className="font-semibold text-green-600">
-                          {formatCurrency(marketplacePlans.household_aptc)}/mo
+                          {marketplacePlans.household_aptc > 0 
+                            ? formatCurrency(marketplacePlans.household_aptc) + '/mo'
+                            : '$0/mo (Not Eligible)'}
                         </span>
                       </div>
                     </>
+                  )}
+                  {marketplacePlans.household_slcsp_premium !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">SLCSP Premium</span>
+                      <span className="text-sm">{formatCurrency(marketplacePlans.household_slcsp_premium)}/mo</span>
+                    </div>
+                  )}
+                  {marketplacePlans.household_lcbp_premium !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">LCBP Premium</span>
+                      <span className="text-sm">{formatCurrency(marketplacePlans.household_lcbp_premium)}/mo</span>
+                    </div>
+                  )}
+                  {marketplacePlans.household_csr && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">CSR Level</span>
+                      <span className="text-sm">{marketplacePlans.household_csr}</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -488,16 +508,29 @@ export default function MarketplacePlansPage() {
                   <div className="space-y-4">
                     {/* Monthly Premium */}
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Monthly Premium</p>
+                      <p className="text-sm text-muted-foreground mb-1">Monthly Premium (Before APTC)</p>
                       <p className="text-3xl font-bold">{formatCurrency(plan.premium)}</p>
-                      {plan.premium_w_credit && marketplacePlans.household_aptc > 0 && (
-                        <div className="mt-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-md">
-                          <p className="text-xs text-green-700 dark:text-green-400 mb-1">After Tax Credit</p>
+                      
+                      {/* Show premium with credit if it exists, regardless of household_aptc value */}
+                      {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && (
+                        <div className="mt-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200 dark:border-green-800">
+                          <p className="text-xs text-green-700 dark:text-green-400 mb-1 font-semibold">
+                            After APTC (Tax Credit Applied)
+                          </p>
                           <p className="text-2xl font-bold text-green-700 dark:text-green-400">
                             {formatCurrency(plan.premium_w_credit)}
                           </p>
                           <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                            Save {formatCurrency(plan.premium - plan.premium_w_credit)}/mo
+                            APTC Applied: {formatCurrency(plan.premium - plan.premium_w_credit)}/mo
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* If no premium_w_credit but household has APTC, show message */}
+                      {!plan.premium_w_credit && marketplacePlans.household_aptc > 0 && (
+                        <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-md">
+                          <p className="text-xs text-amber-700 dark:text-amber-400">
+                            APTC not available for this plan
                           </p>
                         </div>
                       )}
