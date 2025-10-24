@@ -7824,7 +7824,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Map physical address fields (fix field name discrepancies)
         physical_street: req.body.physical_address, // frontend sends physical_address instead of physical_street
+        physical_city: req.body.physical_city, // frontend sends physical_city correctly
+        physical_state: req.body.physical_state, // frontend sends physical_state correctly
         physical_postal_code: req.body.physical_postalCode, // frontend sends camelCase instead of snake_case
+        physical_county: req.body.physical_county, // frontend sends physical_county correctly
         
         // Remove the old field names from payload to avoid conflicts
         street: undefined,
@@ -7833,7 +7836,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         postal_code: undefined,
         county: undefined,
         physical_address: undefined,
-        physical_postalCode: undefined
+        physical_city: undefined, // Remove the original field to avoid duplicates
+        physical_state: undefined, // Remove the original field to avoid duplicates
+        physical_postalCode: undefined, // Remove the camelCase version
+        physical_county: undefined // Remove the original field to avoid duplicates
       };
       
       // Remove undefined fields from payload
