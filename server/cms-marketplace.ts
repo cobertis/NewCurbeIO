@@ -124,6 +124,7 @@ function formatGenderForCMS(gender?: string): string {
 
 /**
  * Fetch health insurance plans from CMS Marketplace API
+ * Following the exact documentation specifications
  */
 export async function fetchMarketplacePlans(
   quoteData: {
@@ -159,18 +160,17 @@ export async function fetchMarketplacePlans(
     throw new Error('CMS_MARKETPLACE_API_KEY is not configured');
   }
 
-  // Build household members array following CMS API format
+  // Build household members array following CMS API format from documentation
   const people = [];
   
-  // Add client
+  // Add client - CRITICAL: aptc_eligible must be true for APTC calculation
   people.push({
     age: calculateAge(quoteData.client.dateOfBirth),
-    dob: quoteData.client.dateOfBirth,
+    aptc_eligible: true, // DEBE ser true para recibir créditos según documentación
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
     is_pregnant: quoteData.client.pregnant || false,
-    aptc_eligible: true,
-    relationship: 'Self'
+    // Removed dob and relationship as they're not in the documentation payload
   });
   
   // Add spouses
@@ -178,12 +178,10 @@ export async function fetchMarketplacePlans(
     quoteData.spouses.forEach(spouse => {
       people.push({
         age: calculateAge(spouse.dateOfBirth),
-        dob: spouse.dateOfBirth,
+        aptc_eligible: true, // DEBE ser true para recibir créditos
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
         is_pregnant: spouse.pregnant || false,
-        aptc_eligible: true,
-        relationship: 'Spouse'
       });
     });
   }
@@ -193,71 +191,69 @@ export async function fetchMarketplacePlans(
     quoteData.dependents.forEach(dependent => {
       people.push({
         age: calculateAge(dependent.dateOfBirth),
-        dob: dependent.dateOfBirth,
+        aptc_eligible: true, // DEBE ser true para recibir créditos
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
-        is_pregnant: dependent.pregnant || false,
-        aptc_eligible: true,
-        relationship: 'Child'
+        is_pregnant: false, // Children usually not pregnant
       });
     });
   }
 
-  const householdSize = people.length;
-  const year = new Date().getFullYear(); // Current year for plan ratings
+  const year = new Date().getFullYear(); // Current year
 
-  // Get county FIPS code - REQUIRED by CMS API
-  console.log('[CMS_MARKETPLACE] Fetching county FIPS for:', {
-    zipCode: quoteData.zipCode,
-    county: quoteData.county,
-    state: quoteData.state,
+  // Get county FIPS code - CRÍTICO según documentación
+  console.log('[CMS_MARKETPLACE] 🔍 Iniciando búsqueda de planes para:', {
+    ZIP: quoteData.zipCode,
+    Estado: quoteData.state,
+    County: quoteData.county,
   });
 
   const countyFips = await getCountyFips(quoteData.zipCode, quoteData.county, quoteData.state);
   
   if (!countyFips) {
-    console.error('[CMS_MARKETPLACE] Could not determine county FIPS code');
+    console.error('[CMS_MARKETPLACE] ❌ Could not determine county FIPS code');
     throw new Error(`Unable to determine county FIPS for ${quoteData.county}, ${quoteData.state}. Please verify the address information.`);
   }
 
   console.log('[CMS_MARKETPLACE] County FIPS:', countyFips);
 
-  // Build request body following the official CMS Marketplace API format
-  const requestBody: MarketplaceQuoteRequest = {
-    household: {
-      income: quoteData.householdIncome,
-      people: people // Already in correct format
-    },
-    market: 'Individual',
-    place: {
-      countyfips: countyFips,
-      state: quoteData.state,
-      zipcode: quoteData.zipCode,
-    },
-    year,
-  };
-
-  // Calculate pagination parameters
+  // Calculate pagination parameters - Máximo 100 según documentación
   const currentPage = page || 1;
-  const limit = pageSize || 10; // Default to 10 per page as user mentioned
+  const limit = Math.min(pageSize || 100, 100); // Máximo permitido por la API es 100
   const offset = (currentPage - 1) * limit;
 
-  console.log('[CMS_MARKETPLACE] Requesting plans with pagination:', {
-    page: currentPage,
-    limit,
-    offset,
-  });
-  console.log('[CMS_MARKETPLACE] Full request body:', JSON.stringify(requestBody, null, 2));
+  // Build request body following the EXACT structure from documentation
+  const requestBody = {
+    household: {
+      income: quoteData.householdIncome, // Ingreso anual del hogar
+      people: people, // Array de personas
+    },
+    market: 'Individual', // Mercado individual
+    place: {
+      countyfips: countyFips, // CRÍTICO: Código FIPS del condado
+      state: quoteData.state, // Estado de 2 letras
+      zipcode: quoteData.zipCode, // ZIP de 5 dígitos
+    },
+    year: year,
+    offset: offset,
+    limit: limit,
+    // aptc_override: null, // Opcional - puede forzar un monto APTC específico
+    // csr_override: null,  // Opcional - puede forzar un nivel CSR específico
+  };
+
+  console.log(`[CMS_MARKETPLACE] 📊 Página ${currentPage}: Solicitando hasta ${limit} planes, offset: ${offset}`);
+  console.log('[CMS_MARKETPLACE] Request body:', JSON.stringify(requestBody, null, 2));
 
   try {
-    // CMS Marketplace API endpoint with pagination parameters
-    const apiUrl = `https://marketplace.api.healthcare.gov/api/v1/plans/search?limit=${limit}&offset=${offset}`;
+    // CMS Marketplace API endpoint - exacto de la documentación
+    const apiUrl = 'https://marketplace.api.healthcare.gov/api/v1/plans/search';
     
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': apiKey,
+        'Accept': 'application/json',
+        'apikey': apiKey, // Mantenemos el API key aunque la doc dice que no es necesario
       },
       body: JSON.stringify(requestBody),
     });
@@ -280,7 +276,12 @@ export async function fetchMarketplacePlans(
 
     const data: MarketplaceApiResponse = await response.json();
     
-    console.log('[CMS_MARKETPLACE] Successfully fetched', data.plans?.length || 0, 'plans');
+    // Primera iteración: guardar el total según documentación
+    if (offset === 0 && data.total) {
+      console.log(`[CMS_MARKETPLACE] 📊 Total de planes disponibles: ${data.total}`);
+    }
+    
+    console.log(`[CMS_MARKETPLACE] ✅ Página ${currentPage}: ${data.plans?.length || 0} planes obtenidos`);
     
     // Calculate household_aptc if not provided by the API
     // The CMS API may not always include household_aptc directly, so we calculate it
@@ -296,12 +297,17 @@ export async function fetchMarketplacePlans(
       if (planWithCredit && planWithCredit.premium_w_credit !== undefined) {
         // Calculate APTC as the difference between premium and premium_w_credit
         data.household_aptc = planWithCredit.premium - planWithCredit.premium_w_credit;
-        console.log('[CMS_MARKETPLACE] Calculated household_aptc from plan data:', data.household_aptc);
+        console.log('[CMS_MARKETPLACE] 💰 APTC calculado desde los planes:', data.household_aptc);
       } else {
         // Set to 0 if no plans have tax credits
         data.household_aptc = 0;
-        console.log('[CMS_MARKETPLACE] No plans with tax credits found, setting household_aptc to 0');
+        console.log('[CMS_MARKETPLACE] ⚠️ No se encontraron planes con crédito fiscal');
       }
+    }
+    
+    // Log if we're reaching the end of pagination
+    if (data.plans && data.plans.length < limit) {
+      console.log(`[CMS_MARKETPLACE] ✅ Búsqueda completa: última página con ${data.plans.length} planes`);
     }
     
     return data;

@@ -70,22 +70,27 @@ export default function MarketplacePlansPage() {
     
     setIsLoadingPlans(true);
     try {
-      const pageSize = 10; // Fetch 10 plans at a time as per backend configuration
+      // Según documentación: Máximo permitido por la API es 100
+      const limit = 100;
       let allPlans: any[] = [];
-      let currentPageNum = 1;
+      let offset = 0;
+      let totalPlansCount = 0;
       let hasMoreData = true;
       let marketplaceMetadata: any = null;
-      const maxPages = 200; // Safety limit to prevent infinite loops
-      const maxPlansToFetch = 200; // Limit total plans to 200 for performance
+      
+      console.log(`🔍 Iniciando búsqueda de planes para Quote: ${quoteId}`);
 
-      // Fetch pages sequentially until we reach max plans or no more data
-      while (hasMoreData && currentPageNum <= maxPages && allPlans.length < maxPlansToFetch) {
+      // Fetch ALL plans as per documentation - NO LIMIT
+      while (hasMoreData) {
+        const currentPage = Math.floor(offset / limit) + 1;
+        
         const response = await fetch(
-          `/api/quotes/${quoteId}/marketplace-plans?page=${currentPageNum}&pageSize=${pageSize}`,
+          `/api/quotes/${quoteId}/marketplace-plans?page=${currentPage}&pageSize=${limit}`,
           {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
+              'Accept': 'application/json',
             },
             credentials: 'include',
           }
@@ -98,8 +103,11 @@ export default function MarketplacePlansPage() {
 
         const data = await response.json();
         
-        // Store metadata from the first response
-        if (currentPageNum === 1) {
+        // Primera iteración: guardar el total y metadata
+        if (offset === 0) {
+          totalPlansCount = data.total || 0;
+          console.log(`📊 Total de planes disponibles: ${totalPlansCount || 'Unknown'}`);
+          
           marketplaceMetadata = {
             year: data.year,
             household_aptc: data.household_aptc,
@@ -111,30 +119,30 @@ export default function MarketplacePlansPage() {
 
         // Add plans from this page to the collection
         if (data.plans && data.plans.length > 0) {
-          // Simple approach: just add all plans without duplicate checking
-          // The API should handle pagination properly
-          allPlans = [...allPlans, ...data.plans];
+          allPlans = allPlans.concat(data.plans);
+          console.log(`✅ Página ${currentPage}: ${data.plans.length} planes obtenidos (Total acumulado: ${allPlans.length})`);
           
-          // Log progress
-          console.log(`[Marketplace] Fetched page ${currentPageNum}, got ${data.plans.length} plans, total: ${allPlans.length}`);
-          
-          // Check if we should continue
-          if (data.plans.length < pageSize) {
-            // Less than pageSize results means this is the last page
+          // Si recibimos menos planes que el límite, hemos terminado (según documentación)
+          if (data.plans.length < limit) {
             hasMoreData = false;
-            console.log(`[Marketplace] Last page reached (got ${data.plans.length} plans, expected ${pageSize})`);
-          } else if (allPlans.length >= maxPlansToFetch) {
-            // Reached our limit
-            hasMoreData = false;
-            console.log(`[Marketplace] Reached max plans limit (${maxPlansToFetch})`);
+            console.log(`✅ Búsqueda completa: última página con ${data.plans.length} planes`);
           } else {
-            // Continue to next page
-            currentPageNum++;
+            // Incrementar offset para la siguiente página
+            offset += limit;
+            
+            // Verificación adicional por si acaso
+            if (totalPlansCount > 0 && allPlans.length >= totalPlansCount) {
+              hasMoreData = false;
+              console.log(`✅ Búsqueda completa: obtenidos todos los ${totalPlansCount} planes`);
+            }
           }
+          
+          // Pequeña pausa para no sobrecargar la API (según documentación)
+          await new Promise(resolve => setTimeout(resolve, 100));
         } else {
-          // No plans returned, stop fetching
+          // No hay más planes
           hasMoreData = false;
-          console.log(`[Marketplace] No plans returned on page ${currentPageNum}, stopping`);
+          console.log(`✅ Búsqueda completa: no hay más planes en página ${currentPage}`);
         }
       }
 
@@ -148,6 +156,8 @@ export default function MarketplacePlansPage() {
       setCurrentPage(1);
       
       const totalPlans = allPlans.length;
+      
+      console.log(`✅ Búsqueda completa: ${totalPlans} planes obtenidos en total`);
       
       toast({
         title: "Plans loaded successfully",
