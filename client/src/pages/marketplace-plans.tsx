@@ -592,7 +592,7 @@ export default function MarketplacePlansPage() {
           </Card>
 
           {/* Plans List */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             {filteredPlans.map((plan) => {
               const deductible = plan.deductibles?.find(d => d.type === 'Individual')?.amount || 0;
               const maxOutOfPocket = plan.moops?.find(m => m.type === 'Individual')?.amount || 0;
@@ -609,92 +609,91 @@ export default function MarketplacePlansPage() {
               };
 
               return (
-                <Card key={plan.id} className="bg-white hover:shadow-lg transition-shadow">
-                  <CardContent className="p-5">
-                    <div className="flex gap-4">
-                      {/* Company Logo */}
-                      <div className="flex-shrink-0">
-                        <CompanyLogo name={plan.issuer.name} />
-                      </div>
-
-                      {/* Plan Details */}
-                      <div className="flex-1 space-y-3">
-                        {/* Plan Name and Rating */}
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <h3 className="text-base font-semibold line-clamp-1">
-                              {plan.name}
-                            </h3>
-                            <div className="flex items-center gap-2">
-                              <StarRating rating={plan.quality_rating?.global_rating} />
-                              <Badge variant="outline" className="text-xs">
-                                {plan.plan_type}
-                              </Badge>
-                              <Badge 
-                                variant="outline" 
-                                className={`text-xs border ${getMetalBadgeColor(plan.metal_level)}`}
-                              >
-                                {plan.metal_level}
-                              </Badge>
-                            </div>
-                          </div>
+                <Card key={plan.id} className="bg-white hover-elevate transition-all">
+                  <CardContent className="p-6">
+                    {/* Top Row: Logo, Name, Rating, and Price */}
+                    <div className="flex items-start justify-between gap-6 mb-4">
+                      {/* Left: Logo + Plan Info */}
+                      <div className="flex gap-4 flex-1 min-w-0">
+                        <div className="flex-shrink-0">
+                          <CompanyLogo name={plan.issuer.name} />
                         </div>
-
-                        {/* Plan Benefits */}
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Deductible</p>
-                            <p className="font-semibold">
-                              {deductible === 0 ? '$0' : `$${deductible.toLocaleString()}`}
-                            </p>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold mb-1.5 line-clamp-2">
+                            {plan.name}
+                          </h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <StarRating rating={plan.quality_rating?.global_rating} />
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs font-medium ${getMetalBadgeColor(plan.metal_level)}`}
+                            >
+                              {plan.metal_level}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {plan.plan_type}
+                            </Badge>
                           </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Max Out of Pocket</p>
-                            <p className="font-semibold">${maxOutOfPocket.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Primary Care Visit</p>
-                            <p className="font-semibold text-sm">{primaryCare}</p>
-                          </div>
-                        </div>
-
-                        {/* Links */}
-                        <div className="flex gap-3 text-xs">
-                          <button className="text-primary hover:underline">Plan Summary</button>
-                          <span className="text-muted-foreground">|</span>
-                          <button className="text-primary hover:underline">Details</button>
-                          <span className="text-muted-foreground">|</span>
-                          <button className="text-primary hover:underline">Provider Network</button>
                         </div>
                       </div>
 
-                      {/* Pricing and Action */}
-                      <div className="flex-shrink-0 text-right space-y-2">
+                      {/* Right: Price and Button */}
+                      <div className="flex-shrink-0 text-right min-w-[160px]">
                         {taxCredit > 0 && plan.premium_w_credit !== undefined ? (
-                          <div>
-                            <p className="text-xs text-muted-foreground line-through">
-                              ${plan.premium.toFixed(2)}/mo
-                            </p>
-                            <p className="text-2xl font-bold text-green-600">
-                              ${plan.premium_w_credit.toFixed(2)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">per month</p>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="text-2xl font-bold">
+                          <div className="mb-3">
+                            <p className="text-sm text-muted-foreground line-through">
                               ${plan.premium.toFixed(2)}
                             </p>
-                            <p className="text-xs text-muted-foreground">per month</p>
+                            <p className="text-3xl font-bold text-green-600 leading-none">
+                              ${plan.premium_w_credit.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">per month</p>
+                          </div>
+                        ) : (
+                          <div className="mb-3">
+                            <p className="text-3xl font-bold leading-none">
+                              ${plan.premium.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">per month</p>
                           </div>
                         )}
                         <Button 
-                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          className="w-full"
                           data-testid={`button-apply-${plan.id}`}
                         >
                           Apply to plan
                         </Button>
                       </div>
+                    </div>
+
+                    <Separator className="my-4" />
+
+                    {/* Bottom Row: Benefits */}
+                    <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Deductible</p>
+                        <p className="text-base font-semibold">
+                          {deductible === 0 ? '$0' : `$${deductible.toLocaleString()}`}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Max Out of Pocket</p>
+                        <p className="text-base font-semibold">${maxOutOfPocket.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Primary Care Visit</p>
+                        <p className="text-base font-semibold">{primaryCare}</p>
+                      </div>
+                    </div>
+
+                    {/* Links */}
+                    <div className="flex gap-3 text-xs mt-4 pt-3 border-t">
+                      <button className="text-primary hover:underline font-medium">Plan Summary</button>
+                      <span className="text-muted-foreground">|</span>
+                      <button className="text-primary hover:underline font-medium">Details</button>
+                      <span className="text-muted-foreground">|</span>
+                      <button className="text-primary hover:underline font-medium">Provider Network</button>
                     </div>
                   </CardContent>
                 </Card>
