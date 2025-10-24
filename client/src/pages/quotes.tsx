@@ -5051,6 +5051,9 @@ export default function QuotesPage() {
                             {viewingQuote.clientIsApplicant && (
                               <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
                             )}
+                            {viewingQuote.isPrimaryDependent && (
+                              <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Primary Dependent</Badge>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
@@ -5119,6 +5122,9 @@ export default function QuotesPage() {
                               <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
                               {spouse.isApplicant && (
                                 <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                              )}
+                              {spouse.isPrimaryDependent && (
+                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Primary Dependent</Badge>
                               )}
                             </div>
                           </div>
@@ -5201,6 +5207,9 @@ export default function QuotesPage() {
                               <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
                               {dependent.isApplicant && (
                                 <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                              )}
+                              {dependent.isPrimaryDependent && (
+                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Primary Dependent</Badge>
                               )}
                             </div>
                           </div>
