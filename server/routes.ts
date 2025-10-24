@@ -7872,6 +7872,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const quote = await storage.createQuote(validatedData);
       
+      // Process spouses if provided
+      if (req.body.spouses && Array.isArray(req.body.spouses)) {
+        console.log(`[QUOTE DEBUG] Processing ${req.body.spouses.length} spouses`);
+        for (const spouse of req.body.spouses) {
+          try {
+            // Convert dateOfBirth to Date if present
+            const memberData = {
+              ...spouse,
+              dateOfBirth: spouse.dateOfBirth ? new Date(spouse.dateOfBirth) : undefined,
+            };
+            
+            await storage.ensureQuoteMember(
+              quote.id,
+              currentUser.companyId!,
+              'spouse',
+              memberData
+            );
+            console.log(`[QUOTE DEBUG] Created spouse member for quote ${quote.id}`);
+          } catch (error) {
+            console.error(`Error creating spouse member:`, error);
+            // Continue processing other members even if one fails
+          }
+        }
+      }
+      
+      // Process dependents if provided
+      if (req.body.dependents && Array.isArray(req.body.dependents)) {
+        console.log(`[QUOTE DEBUG] Processing ${req.body.dependents.length} dependents`);
+        for (const dependent of req.body.dependents) {
+          try {
+            // Convert dateOfBirth to Date if present
+            const memberData = {
+              ...dependent,
+              dateOfBirth: dependent.dateOfBirth ? new Date(dependent.dateOfBirth) : undefined,
+            };
+            
+            await storage.ensureQuoteMember(
+              quote.id,
+              currentUser.companyId!,
+              'dependent',
+              memberData
+            );
+            console.log(`[QUOTE DEBUG] Created dependent member for quote ${quote.id}`);
+          } catch (error) {
+            console.error(`Error creating dependent member:`, error);
+            // Continue processing other members even if one fails
+          }
+        }
+      }
+      
       await logger.logCrud({
         req,
         operation: "create",
@@ -7882,6 +7932,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           productType: quote.productType,
           clientEmail: quote.clientEmail,
           createdBy: currentUser.email,
+          spousesCreated: req.body.spouses?.length || 0,
+          dependentsCreated: req.body.dependents?.length || 0,
         },
       });
       
