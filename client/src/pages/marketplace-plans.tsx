@@ -44,6 +44,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 // Helper to format yyyy-MM-dd string without timezone conversion
 const formatDateFromString = (dateString: string): string => {
@@ -87,6 +94,9 @@ export default function MarketplacePlansPage() {
   const [selectedNetworks, setSelectedNetworks] = useState<Set<string>>(new Set());
   const [selectedPlanFeatures, setSelectedPlanFeatures] = useState<Set<string>>(new Set());
   const [selectedDiseasePrograms, setSelectedDiseasePrograms] = useState<Set<string>>(new Set());
+  
+  // Poverty Guidelines Dialog
+  const [isPovertyGuidelinesOpen, setIsPovertyGuidelinesOpen] = useState(false);
 
   // Fetch quote details
   const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
@@ -602,7 +612,7 @@ export default function MarketplacePlansPage() {
                   variant="outline" 
                   size="sm" 
                   className="w-full"
-                  onClick={() => window.open('https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines', '_blank')}
+                  onClick={() => setIsPovertyGuidelinesOpen(true)}
                   data-testid="button-poverty-guidelines-info"
                 >
                   <Info className="h-4 w-4 mr-2" />
@@ -1315,6 +1325,104 @@ export default function MarketplacePlansPage() {
           </div>
         </div>
       )}
+
+      {/* Poverty Guidelines Dialog */}
+      <Dialog open={isPovertyGuidelinesOpen} onOpenChange={setIsPovertyGuidelinesOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>2025 Poverty guideline for Florida</DialogTitle>
+            <DialogDescription>
+              The Poverty Guidelines information displayed on this website is obtained directly from the Centers for Medicare & Medicaid Services (CMS) API.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-4">
+            {/* Table Header */}
+            <div className="grid grid-cols-13 gap-2 pb-3 border-b font-medium text-sm">
+              <div className="col-span-1">Household Size</div>
+              <div className="text-right">%50</div>
+              <div className="text-right">%75</div>
+              <div className="text-right">%100</div>
+              <div className="text-right">%125</div>
+              <div className="text-right">%138</div>
+              <div className="text-right">%133</div>
+              <div className="text-right">%135</div>
+              <div className="text-right">%138</div>
+              <div className="text-right">%150</div>
+              <div className="text-right">%175</div>
+              <div className="text-right">%180</div>
+              <div className="text-right">%185</div>
+            </div>
+
+            {/* Table Rows */}
+            <div className="space-y-1 mt-2">
+              {[
+                { size: 1, p50: 7825, p75: 11737, p100: 15658, p125: 19562, p138: 20345, p133: 20814, p135: 21127, p138_2: 21597, p150: 23475, p175: 27387, p180: 28170, p185: 28952 },
+                { size: 2, p50: 10575, p75: 15862, p100: 21150, p125: 26437, p138: 27495, p133: 28129, p135: 28552, p138_2: 29187, p150: 31725, p175: 37012, p180: 38070, p185: 39127 },
+                { size: 3, p50: 13325, p75: 19987, p100: 26650, p125: 33312, p138: 34645, p133: 35444, p135: 35977, p138_2: 36777, p150: 39975, p175: 46637, p180: 47970, p185: 49302 },
+                { size: 4, p50: 16075, p75: 24112, p100: 32150, p125: 40187, p138: 41795, p133: 42759, p135: 43402, p138_2: 44367, p150: 48225, p175: 56262, p180: 57870, p185: 59477 },
+                { size: 5, p50: 18825, p75: 28237, p100: 37650, p125: 47062, p138: 48945, p133: 50074, p135: 50827, p138_2: 51957, p150: 56475, p175: 65887, p180: 67770, p185: 69652 },
+                { size: 6, p50: 21575, p75: 32362, p100: 43150, p125: 53937, p138: 56095, p133: 57389, p135: 58252, p138_2: 59547, p150: 64725, p175: 75512, p180: 77670, p185: 79827 },
+                { size: 7, p50: 24325, p75: 36487, p100: 48650, p125: 60812, p138: 63245, p133: 64704, p135: 65677, p138_2: 67137, p150: 72975, p175: 85137, p180: 87570, p185: 90002 },
+                { size: 8, p50: 27075, p75: 40612, p100: 54150, p125: 67687, p138: 70395, p133: 72019, p135: 73102, p138_2: 74727, p150: 81225, p175: 94762, p180: 97470, p185: 100177 },
+                { size: 9, p50: 29825, p75: 44737, p100: 59650, p125: 74562, p138: 77545, p133: 79334, p135: 80527, p138_2: 82317, p150: 89475, p175: 104387, p180: 107370, p185: 110352 },
+                { size: 10, p50: 32575, p75: 48862, p100: 65150, p125: 81437, p138: 84695, p133: 86649, p135: 87952, p138_2: 89907, p150: 97725, p175: 114012, p180: 117270, p185: 120527 },
+                { size: 11, p50: 35325, p75: 52987, p100: 70650, p125: 88312, p138: 91845, p133: 93964, p135: 95377, p138_2: 97497, p150: 105975, p175: 123637, p180: 127170, p185: 130702 },
+                { size: 12, p50: 38075, p75: 57112, p100: 76150, p125: 95187, p138: 98995, p133: 101279, p135: 102802, p138_2: 105087, p150: 114225, p175: 133262, p180: 137070, p185: 140877 },
+                { size: 13, p50: 40825, p75: 61237, p100: 81650, p125: 102062, p138: 106145, p133: 108594, p135: 110227, p138_2: 112677, p150: 122475, p175: 142887, p180: 146970, p185: 151052 },
+                { size: 14, p50: 43575, p75: 65362, p100: 87150, p125: 108937, p138: 113295, p133: 115909, p135: 117652, p138_2: 120267, p150: 130725, p175: 152512, p180: 156870, p185: 161227 },
+              ].map((row) => {
+                const householdSize = 1 + allFamilyMembers.length;
+                const isCurrentSize = row.size === householdSize;
+                return (
+                  <div
+                    key={row.size}
+                    className={`grid grid-cols-13 gap-2 py-1.5 px-2 rounded text-sm ${
+                      isCurrentSize ? 'bg-primary/10 border border-primary/20 font-semibold' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3 text-muted-foreground" />
+                      {row.size}
+                    </div>
+                    <div className="text-right">{formatCurrency(row.p50)}</div>
+                    <div className="text-right">{formatCurrency(row.p75)}</div>
+                    <div className="text-right">{formatCurrency(row.p100)}</div>
+                    <div className="text-right">{formatCurrency(row.p125)}</div>
+                    <div className="text-right">{formatCurrency(row.p138)}</div>
+                    <div className="text-right">{formatCurrency(row.p133)}</div>
+                    <div className="text-right">{formatCurrency(row.p135)}</div>
+                    <div className="text-right">{formatCurrency(row.p138_2)}</div>
+                    <div className="text-right">{formatCurrency(row.p150)}</div>
+                    <div className="text-right">{formatCurrency(row.p175)}</div>
+                    <div className="text-right">{formatCurrency(row.p180)}</div>
+                    <div className="text-right">{formatCurrency(row.p185)}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Disclaimer */}
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg flex gap-3">
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                The Poverty Guidelines information displayed on this website is obtained directly from the <strong>Centers for Medicare & Medicaid Services (CMS)</strong> API. <strong>Apizeal</strong> does not alter, modify, or validate this data. Accordingly, Apizeal assumes no responsibility or liability for any errors, omissions, outdated information, or inaccuracies that may arise from the data provided by the CMS. Any discrepancies or concerns regarding the displayed information should be verified directly with the <strong>CMS</strong>.
+              </p>
+            </div>
+
+            {/* Close Button */}
+            <div className="mt-6 flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsPovertyGuidelinesOpen(false)}
+                data-testid="button-close-poverty-dialog"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
