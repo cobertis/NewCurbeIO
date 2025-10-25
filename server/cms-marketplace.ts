@@ -73,6 +73,8 @@ interface MarketplacePlan {
   type: string; // HMO, PPO, EPO, POS - this is the plan network type
   specialist_referral_required: boolean;
   hsa_eligible: boolean;
+  has_dental_child_coverage?: boolean; // Calculated from benefits
+  has_dental_adult_coverage?: boolean; // Calculated from benefits
   premium_scenarios?: Array<{
     age: number;
     premium: number;

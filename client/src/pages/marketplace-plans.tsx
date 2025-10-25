@@ -276,9 +276,15 @@ export default function MarketplacePlansPage() {
     
     // Plan features filter - show ONLY plans that have ALL selected features
     if (selectedPlanFeatures.size > 0) {
-      // Check simple choice
-      if (selectedPlanFeatures.has('simple_choice')) {
-        if (!plan.simple_choice) {
+      // Check dental child coverage
+      if (selectedPlanFeatures.has('dental_child')) {
+        if (!plan.has_dental_child_coverage) {
+          return false;
+        }
+      }
+      // Check dental adult coverage
+      if (selectedPlanFeatures.has('dental_adult')) {
+        if (!plan.has_dental_adult_coverage) {
           return false;
         }
       }
@@ -288,9 +294,9 @@ export default function MarketplacePlansPage() {
           return false;
         }
       }
-      // Check national network
-      if (selectedPlanFeatures.has('national_network')) {
-        if (!plan.has_national_network) {
+      // Check simple choice
+      if (selectedPlanFeatures.has('simple_choice')) {
+        if (!plan.simple_choice) {
           return false;
         }
       }
@@ -703,14 +709,24 @@ export default function MarketplacePlansPage() {
                           ) : (
                             <span className="text-xs text-muted-foreground">Rating: N/A</span>
                           )}
-                          {plan.simple_choice && (
-                            <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700">
-                              Simple Choice
+                          {plan.has_dental_child_coverage && (
+                            <Badge variant="outline" className="text-xs bg-purple-50 dark:bg-purple-950 border-purple-300 dark:border-purple-700">
+                              Dental Child
+                            </Badge>
+                          )}
+                          {plan.has_dental_adult_coverage && (
+                            <Badge variant="outline" className="text-xs bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700">
+                              Dental Adult
                             </Badge>
                           )}
                           {plan.hsa_eligible && (
                             <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700">
-                              HSA Eligible
+                              HSA
+                            </Badge>
+                          )}
+                          {plan.simple_choice && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700">
+                              Simple Choice
                             </Badge>
                           )}
                         </div>
@@ -1068,22 +1084,43 @@ export default function MarketplacePlansPage() {
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        id="feature-simple-choice"
-                        checked={selectedPlanFeatures.has('simple_choice')}
+                        id="feature-dental-child"
+                        checked={selectedPlanFeatures.has('dental_child')}
                         onChange={(e) => {
                           const newSelected = new Set(selectedPlanFeatures);
                           if (e.target.checked) {
-                            newSelected.add('simple_choice');
+                            newSelected.add('dental_child');
                           } else {
-                            newSelected.delete('simple_choice');
+                            newSelected.delete('dental_child');
                           }
                           setSelectedPlanFeatures(newSelected);
                           setCurrentPage(1);
                         }}
                         className="h-4 w-4"
                       />
-                      <label htmlFor="feature-simple-choice" className="text-sm cursor-pointer flex-1">
-                        Simple choice ({marketplacePlans?.plans?.filter((p: any) => p.simple_choice).length || 0})
+                      <label htmlFor="feature-dental-child" className="text-sm cursor-pointer flex-1">
+                        Dental coverage Children ({marketplacePlans?.plans?.filter((p: any) => p.has_dental_child_coverage).length || 0})
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="feature-dental-adult"
+                        checked={selectedPlanFeatures.has('dental_adult')}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedPlanFeatures);
+                          if (e.target.checked) {
+                            newSelected.add('dental_adult');
+                          } else {
+                            newSelected.delete('dental_adult');
+                          }
+                          setSelectedPlanFeatures(newSelected);
+                          setCurrentPage(1);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="feature-dental-adult" className="text-sm cursor-pointer flex-1">
+                        Dental coverage Adult ({marketplacePlans?.plans?.filter((p: any) => p.has_dental_adult_coverage).length || 0})
                       </label>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -1104,28 +1141,28 @@ export default function MarketplacePlansPage() {
                         className="h-4 w-4"
                       />
                       <label htmlFor="feature-hsa-eligible" className="text-sm cursor-pointer flex-1">
-                        HSA eligible ({marketplacePlans?.plans?.filter((p: any) => p.hsa_eligible).length || 0})
+                        HSA qualified ({marketplacePlans?.plans?.filter((p: any) => p.hsa_eligible).length || 0})
                       </label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        id="feature-national-network"
-                        checked={selectedPlanFeatures.has('national_network')}
+                        id="feature-simple-choice"
+                        checked={selectedPlanFeatures.has('simple_choice')}
                         onChange={(e) => {
                           const newSelected = new Set(selectedPlanFeatures);
                           if (e.target.checked) {
-                            newSelected.add('national_network');
+                            newSelected.add('simple_choice');
                           } else {
-                            newSelected.delete('national_network');
+                            newSelected.delete('simple_choice');
                           }
                           setSelectedPlanFeatures(newSelected);
                           setCurrentPage(1);
                         }}
                         className="h-4 w-4"
                       />
-                      <label htmlFor="feature-national-network" className="text-sm cursor-pointer flex-1">
-                        National network ({marketplacePlans?.plans?.filter((p: any) => p.has_national_network).length || 0})
+                      <label htmlFor="feature-simple-choice" className="text-sm cursor-pointer flex-1">
+                        Simple choice ({marketplacePlans?.plans?.filter((p: any) => p.simple_choice).length || 0})
                       </label>
                     </div>
                   </CollapsibleContent>

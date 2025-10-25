@@ -9882,6 +9882,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Fetch plans from CMS Marketplace with pagination
       const marketplaceData = await fetchPlans(quoteData, page, pageSize);
       
+      // Enrich plans with dental coverage information from benefits
+      if (marketplaceData.plans) {
+        marketplaceData.plans = marketplaceData.plans.map((plan: any) => {
+          // Check for dental coverage in benefits
+          const hasDentalChild = plan.benefits?.some((b: any) => 
+            b.type?.toLowerCase().includes('dental') && 
+            b.type?.toLowerCase().includes('child') &&
+            b.covered === true
+          ) || false;
+          
+          const hasDentalAdult = plan.benefits?.some((b: any) => 
+            b.type?.toLowerCase().includes('dental') && 
+            b.type?.toLowerCase().includes('adult') &&
+            b.covered === true
+          ) || false;
+          
+          return {
+            ...plan,
+            has_dental_child_coverage: hasDentalChild,
+            has_dental_adult_coverage: hasDentalAdult,
+          };
+        });
+      }
+      
       // Log successful fetch for tracking
       console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}, page ${page}`);
       
