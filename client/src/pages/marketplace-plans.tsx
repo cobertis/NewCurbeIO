@@ -99,6 +99,10 @@ export default function MarketplacePlansPage() {
   
   // Poverty Guidelines Dialog
   const [isPovertyGuidelinesOpen, setIsPovertyGuidelinesOpen] = useState(false);
+  
+  // Plan Comparison States
+  const [selectedPlansForComparison, setSelectedPlansForComparison] = useState<Set<string>>(new Set());
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
 
   // Fetch quote details
   const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
@@ -384,6 +388,40 @@ export default function MarketplacePlansPage() {
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const filteredPlans = allFilteredPlans.slice(startIndex, endIndex);
+  
+  // Helper functions for plan comparison
+  const togglePlanForComparison = (planId: string) => {
+    const newSelected = new Set(selectedPlansForComparison);
+    if (newSelected.has(planId)) {
+      newSelected.delete(planId);
+    } else {
+      if (newSelected.size >= 5) {
+        toast({
+          variant: "destructive",
+          title: "Maximum plans reached",
+          description: "You can compare up to 5 plans at a time",
+        });
+        return;
+      }
+      newSelected.add(planId);
+    }
+    setSelectedPlansForComparison(newSelected);
+  };
+  
+  const removePlanFromComparison = (planId: string) => {
+    const newSelected = new Set(selectedPlansForComparison);
+    newSelected.delete(planId);
+    setSelectedPlansForComparison(newSelected);
+  };
+  
+  const clearAllComparisons = () => {
+    setSelectedPlansForComparison(new Set());
+  };
+  
+  // Get selected plans data
+  const selectedPlansData = Array.from(selectedPlansForComparison)
+    .map(id => marketplacePlans?.plans?.find((p: any) => p.id === id))
+    .filter(Boolean);
 
   // Loading state
   if (isLoadingQuote || isLoadingPlans) {
@@ -965,9 +1003,16 @@ export default function MarketplacePlansPage() {
                   {/* Footer with Actions */}
                   <div className="px-6 pb-4 pt-2 border-t flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" id={`compare-${plan.id}`} className="h-4 w-4" />
+                      <input 
+                        type="checkbox" 
+                        id={`compare-${plan.id}`} 
+                        className="h-4 w-4 cursor-pointer"
+                        checked={selectedPlansForComparison.has(plan.id)}
+                        onChange={() => togglePlanForComparison(plan.id)}
+                        data-testid={`checkbox-compare-${index}`}
+                      />
                       <label htmlFor={`compare-${plan.id}`} className="text-sm cursor-pointer">
-                        Comparar
+                        Compare
                       </label>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1464,6 +1509,316 @@ export default function MarketplacePlansPage() {
               data-testid="button-close-poverty-dialog"
             >
               Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sticky Bottom Bar - Plan Comparison */}
+      {selectedPlansForComparison.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-primary/10 dark:bg-primary/20 border-t border-primary/30 p-4 z-50">
+          <div className="container mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1 overflow-x-auto">
+              {selectedPlansData.map((plan: any) => (
+                <div
+                  key={plan.id}
+                  className="flex items-center gap-2 bg-background rounded-lg px-3 py-2 border flex-shrink-0"
+                >
+                  <div className="flex flex-col min-w-0">
+                    <p className="text-xs font-medium truncate">{plan.issuer?.name || 'Unknown'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{formatCurrency(plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium)}/mo</p>
+                  </div>
+                  <button
+                    onClick={() => removePlanFromComparison(plan.id)}
+                    className="text-muted-foreground hover:text-destructive"
+                    data-testid={`button-remove-comparison-${plan.id}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllComparisons}
+                data-testid="button-clear-comparisons"
+              >
+                Clear
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsComparisonOpen(true)}
+                disabled={selectedPlansForComparison.size < 2}
+                data-testid="button-open-comparison"
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Compare ({selectedPlansForComparison.size})
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Comparison Dialog */}
+      <Dialog open={isComparisonOpen} onOpenChange={setIsComparisonOpen}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="flex items-center justify-between">
+              <span>Compare Plans ({selectedPlansForComparison.size})</span>
+              <Button variant="ghost" size="sm" onClick={() => setIsComparisonOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+            <DialogDescription>
+              Side-by-side comparison of selected health insurance plans
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-x-auto overflow-y-auto">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 bg-background z-10">
+                <tr>
+                  <th className="text-left py-3 px-4 font-semibold text-sm bg-muted border-b min-w-[200px]">Plan Details</th>
+                  {selectedPlansData.map((plan: any) => (
+                    <th key={plan.id} className="py-3 px-4 border-b min-w-[250px]">
+                      <div className="flex flex-col items-start gap-2">
+                        <div className="flex items-center gap-2 w-full justify-between">
+                          <p className="font-semibold text-sm text-left">{plan.issuer?.name}</p>
+                          <button
+                            onClick={() => removePlanFromComparison(plan.id)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-left">{plan.name}</p>
+                        <Button variant="default" size="sm" className="w-full">
+                          Select Plan
+                        </Button>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Premium */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Premium</td>
+                  {selectedPlansData.map((plan: any) => (
+                    <td key={plan.id} className="py-3 px-4 text-center">
+                      <p className="text-2xl font-bold">
+                        {formatCurrency(plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium)}
+                      </p>
+                      {plan.premium_w_credit !== undefined && plan.premium > plan.premium_w_credit && (
+                        <p className="text-xs text-green-600 dark:text-green-500">
+                          Save {formatCurrency(plan.premium - plan.premium_w_credit)}
+                        </p>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Deductible */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Deductible</td>
+                  {selectedPlansData.map((plan: any) => {
+                    const mainDeductible = plan.deductibles?.find((d: any) => !d.family) || plan.deductibles?.[0];
+                    return (
+                      <td key={plan.id} className="py-3 px-4 text-center">
+                        <p className="text-xl font-bold">{mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}</p>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Out-of-pocket max */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Out-of-pocket max</td>
+                  {selectedPlansData.map((plan: any) => {
+                    const individualMoop = plan.moops?.find((m: any) => !m.family);
+                    const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
+                    return (
+                      <td key={plan.id} className="py-3 px-4 text-center">
+                        <p className="text-xl font-bold">{outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}</p>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Metal Level */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Metal</td>
+                  {selectedPlansData.map((plan: any) => (
+                    <td key={plan.id} className="py-3 px-4 text-center">
+                      <Badge variant="outline">{plan.metal_level || 'N/A'}</Badge>
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Network */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Network</td>
+                  {selectedPlansData.map((plan: any) => (
+                    <td key={plan.id} className="py-3 px-4 text-center">
+                      <Badge variant="outline">{plan.type || 'N/A'}</Badge>
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Rating */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Rating</td>
+                  {selectedPlansData.map((plan: any) => (
+                    <td key={plan.id} className="py-3 px-4 text-center">
+                      {plan.quality_rating?.available ? (
+                        <span className="text-sm">
+                          {plan.quality_rating.global_rating > 0 
+                            ? `${plan.quality_rating.global_rating}/5` 
+                            : 'New/Ineligible'}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">N/A</span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Primary Doctor visits */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Primary Doctor visits</td>
+                  {selectedPlansData.map((plan: any) => {
+                    const getBenefitCost = (benefitName: string) => {
+                      const benefit = plan.benefits?.find((b: any) => 
+                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
+                      );
+                      if (!benefit) return null;
+                      const costSharing = benefit.cost_sharings?.[0];
+                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                    };
+                    const cost = getBenefitCost('Primary Care') || (plan.copay_primary ? formatCurrency(plan.copay_primary) : null);
+                    return (
+                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
+                        {cost || 'No Charge After Deductible'}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Specialist Visits */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Specialist Visits</td>
+                  {selectedPlansData.map((plan: any) => {
+                    const getBenefitCost = (benefitName: string) => {
+                      const benefit = plan.benefits?.find((b: any) => 
+                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
+                      );
+                      if (!benefit) return null;
+                      const costSharing = benefit.cost_sharings?.[0];
+                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                    };
+                    const cost = getBenefitCost('Specialist') || (plan.copay_specialist ? formatCurrency(plan.copay_specialist) : null);
+                    return (
+                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
+                        {cost || 'No Charge After Deductible'}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Urgent care */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Urgent care</td>
+                  {selectedPlansData.map((plan: any) => {
+                    const getBenefitCost = (benefitName: string) => {
+                      const benefit = plan.benefits?.find((b: any) => 
+                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
+                      );
+                      if (!benefit) return null;
+                      const costSharing = benefit.cost_sharings?.[0];
+                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                    };
+                    const cost = getBenefitCost('Urgent Care') || (plan.copay_urgent_care ? formatCurrency(plan.copay_urgent_care) : null);
+                    return (
+                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
+                        {cost || 'No Charge After Deductible'}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Emergencies */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Emergencies</td>
+                  {selectedPlansData.map((plan: any) => {
+                    const getBenefitCost = (benefitName: string) => {
+                      const benefit = plan.benefits?.find((b: any) => 
+                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
+                      );
+                      if (!benefit) return null;
+                      const costSharing = benefit.cost_sharings?.[0];
+                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                    };
+                    const cost = getBenefitCost('Emergency') || (plan.copay_emergency ? formatCurrency(plan.copay_emergency) : null);
+                    return (
+                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
+                        {cost || '40% Coinsurance after deductible'}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Mental health */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Mental health</td>
+                  {selectedPlansData.map((plan: any) => {
+                    const getBenefitCost = (benefitName: string) => {
+                      const benefit = plan.benefits?.find((b: any) => 
+                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
+                      );
+                      if (!benefit) return null;
+                      const costSharing = benefit.cost_sharings?.[0];
+                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                    };
+                    const cost = getBenefitCost('Mental');
+                    return (
+                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
+                        {cost || 'No Charge After Deductible'}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Generic drugs */}
+                <tr className="border-b hover-elevate">
+                  <td className="py-3 px-4 font-medium text-sm">Generic drugs</td>
+                  {selectedPlansData.map((plan: any) => {
+                    const getBenefitCost = (benefitName: string) => {
+                      const benefit = plan.benefits?.find((b: any) => 
+                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
+                      );
+                      if (!benefit) return null;
+                      const costSharing = benefit.cost_sharings?.[0];
+                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                    };
+                    const cost = getBenefitCost('Generic Drugs');
+                    return (
+                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
+                        {cost || 'No Charge After Deductible'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="px-6 py-4 border-t flex justify-between">
+            <Button variant="outline" onClick={() => setIsComparisonOpen(false)}>
+              Back to list
             </Button>
           </div>
         </DialogContent>
