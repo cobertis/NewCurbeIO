@@ -1008,10 +1008,7 @@ export default function MarketplacePlansPage() {
           <div className="space-y-4">
             <Card className="sticky top-4 max-h-[calc(100vh-2rem)] flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
-                <Button variant="default" className="w-full" data-testid="button-filter-plans">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter plans
-                </Button>
+                <h3 className="font-semibold text-sm">Filters</h3>
               </CardHeader>
               <CardContent className="space-y-4 overflow-y-auto flex-1">
                 {/* Monthly premium max */}
