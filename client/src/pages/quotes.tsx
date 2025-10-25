@@ -5179,8 +5179,8 @@ export default function QuotesPage() {
                     </div>
 
                     {/* Spouses */}
-                    {membersDetailsData?.members?.filter(m => m.role === 'spouse').map((spouse, index) => (
-                      <div key={`spouse-${spouse.id}`} className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b hover-elevate items-center">
+                    {(viewingQuoteWithMembers.spouses || []).map((spouse: any, index: number) => (
+                      <div key={`spouse-${spouse.id || index}`} className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b hover-elevate items-center">
                         <Avatar className="h-9 w-9 border-2 border-muted">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
                             {spouse.firstName?.[0]}{spouse.lastName?.[0]}
@@ -5246,26 +5246,28 @@ export default function QuotesPage() {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
-                            onClick={() => setDeletingMember({ 
-                              id: spouse.id, 
-                              name: `${spouse.firstName} ${spouse.lastName}`,
-                              role: 'Spouse'
-                            })}
-                            data-testid={`button-delete-spouse-${index}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {spouse.id && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
+                              onClick={() => setDeletingMember({ 
+                                id: spouse.id, 
+                                name: `${spouse.firstName} ${spouse.lastName}`,
+                                role: 'Spouse'
+                              })}
+                              data-testid={`button-delete-spouse-${index}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
 
                     {/* Dependents */}
-                    {membersDetailsData?.members?.filter(m => m.role === 'dependent').map((dependent, index) => (
-                      <div key={`dependent-${dependent.id}`} className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
+                    {(viewingQuoteWithMembers.dependents || []).map((dependent: any, index: number) => (
+                      <div key={`dependent-${dependent.id || index}`} className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
                         <Avatar className="h-9 w-9 border-2 border-muted">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
                             {dependent.firstName?.[0]}{dependent.lastName?.[0]}
@@ -5331,19 +5333,21 @@ export default function QuotesPage() {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
-                            onClick={() => setDeletingMember({ 
-                              id: dependent.id, 
-                              name: `${dependent.firstName} ${dependent.lastName}`,
-                              role: dependent.relation || 'Dependent'
-                            })}
-                            data-testid={`button-delete-dependent-${index}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {dependent.id && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
+                              onClick={() => setDeletingMember({ 
+                                id: dependent.id, 
+                                name: `${dependent.firstName} ${dependent.lastName}`,
+                                role: dependent.relation || 'Dependent'
+                              })}
+                              data-testid={`button-delete-dependent-${index}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
