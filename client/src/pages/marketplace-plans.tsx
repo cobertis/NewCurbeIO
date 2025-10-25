@@ -139,7 +139,7 @@ export default function MarketplacePlansPage() {
   const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(200); // Mostrar TODOS los planes en una página
+  const [pageSize] = useState(10); // 10 planes por página
 
   // Auto-fetch marketplace plans when component mounts
   useEffect(() => {
@@ -710,9 +710,10 @@ export default function MarketplacePlansPage() {
 
           {marketplacePlans && filteredPlans && (
             <div className="grid gap-4">
-              {/* Compact pagination header */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b">
-                <div className="flex items-center gap-3">
+              {/* Header with Sort, Order, and Pagination */}
+              <div className="space-y-3 pb-2 border-b">
+                {/* First Row: Sort, Order, and Pagination Controls */}
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Sort by</span>
                     <Select value={sortBy.replace(/_asc|_desc/, '')} onValueChange={(value) => {
@@ -748,14 +749,10 @@ export default function MarketplacePlansPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium">
-                    Total plan ({totalFilteredPlans})
-                  </span>
+                  {/* Pagination Controls */}
                   {totalPages > 1 && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 ml-auto">
                       <Button
                         variant="outline"
                         size="icon"
@@ -820,6 +817,13 @@ export default function MarketplacePlansPage() {
                       </Button>
                     </div>
                   )}
+                </div>
+
+                {/* Second Row: Total Plans Count */}
+                <div className="flex items-center">
+                  <span className="text-sm font-medium">
+                    Total plans: {totalFilteredPlans} {totalPages > 1 && `(Page ${currentPage} of ${totalPages})`}
+                  </span>
                 </div>
               </div>
 
