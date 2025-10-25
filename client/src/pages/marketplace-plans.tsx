@@ -268,17 +268,48 @@ export default function MarketplacePlansPage() {
   const quote = (quoteData as any)?.quote;
   const allMembers = (quoteData as any)?.members || [];
   // Exclude client role from members since it's already shown as "Self"
-  const members = allMembers.filter((m: any) => m.member?.role !== 'client');
+  const normalizedMembers = allMembers.filter((m: any) => m.member?.role !== 'client');
   
-  // Count applicants: primary client (if applicant) + other members with isApplicant=true
+  // Combine normalized members with JSONB spouses/dependents
+  const allFamilyMembers = [
+    ...normalizedMembers.map((m: any) => ({
+      source: 'normalized',
+      firstName: m.member.firstName,
+      lastName: m.member.lastName,
+      dateOfBirth: m.member.dateOfBirth,
+      gender: m.member.gender,
+      role: m.member.role,
+      isApplicant: m.member.isApplicant,
+    })),
+    ...(quote?.spouses || []).map((s: any) => ({
+      source: 'jsonb',
+      firstName: s.firstName,
+      lastName: s.lastName,
+      dateOfBirth: s.dateOfBirth,
+      gender: s.gender,
+      role: 'spouse',
+      isApplicant: s.isApplicant,
+    })),
+    ...(quote?.dependents || []).map((d: any) => ({
+      source: 'jsonb',
+      firstName: d.firstName,
+      lastName: d.lastName,
+      dateOfBirth: d.dateOfBirth,
+      gender: d.gender,
+      role: d.relation || 'dependent',
+      isApplicant: d.isApplicant,
+    })),
+  ];
+  
+  // Count applicants: primary client (if applicant) + family members with isApplicant=true
   const clientIsApplicant = quote?.clientIsApplicant !== false;
-  const otherApplicants = members.filter((m: any) => m.member?.isApplicant === true).length;
+  const otherApplicants = allFamilyMembers.filter((m: any) => m.isApplicant === true).length;
   const totalApplicants = (clientIsApplicant ? 1 : 0) + otherApplicants;
   
-  // Count dependents: members with role in {dependent, child, other} OR isApplicant=false
-  const totalDependents = members.filter((m: any) => {
-    const role = m.member?.role;
-    const isApplicant = m.member?.isApplicant;
+  // Count dependents: family members with role in {dependent, child, other} OR isApplicant=false
+  const totalDependents = allFamilyMembers.filter((m: any) => {
+    const role = m.role;
+    const isApplicant = m.isApplicant;
     return ['dependent', 'child', 'other'].includes(role) || isApplicant === false;
   }).length;
 
@@ -375,10 +406,10 @@ export default function MarketplacePlansPage() {
                   </div>
 
                   {/* Other family members */}
-                  {members?.map((memberData: any, index: number) => {
-                    const member = memberData.member;
+                  {allFamilyMembers?.map((member: any, index: number) => {
+                    const isDependent = ['dependent', 'child', 'other'].includes(member.role) || member.isApplicant === false;
                     return (
-                      <div key={member.id || index} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 mt-2">
+                      <div key={`${member.firstName}-${member.lastName}-${index}`} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 mt-2">
                         <Avatar className="h-10 w-10">
                           <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
                             {member.firstName?.charAt(0) || 'M'}
@@ -387,8 +418,11 @@ export default function MarketplacePlansPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm">{member.firstName} {member.lastName}</p>
-                            {member.isApplicant && (
+                            {member.isApplicant && !isDependent && (
                               <Badge variant="secondary" className="text-xs">Applicant</Badge>
+                            )}
+                            {isDependent && (
+                              <Badge variant="outline" className="text-xs">Dependent</Badge>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground">
