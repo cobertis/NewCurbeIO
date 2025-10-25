@@ -279,12 +279,12 @@ export default function MarketplacePlansPage() {
       }
     }
     
-    // Deductible filter
+    // Deductible filter - use SAME logic as UI display
     if (maxDeductible) {
-      const mainDeductible = plan.deductibles?.find((d: any) => 
-        d.type?.toLowerCase().includes('individual') || 
-        d.type?.toLowerCase().includes('medical')
-      );
+      const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
+      const familyDeductible = plan.deductibles?.find((d: any) => d.family);
+      const mainDeductible = individualDeductible || familyDeductible || plan.deductibles?.[0];
+      
       if (mainDeductible && mainDeductible.amount > parseFloat(maxDeductible)) {
         return false;
       }
