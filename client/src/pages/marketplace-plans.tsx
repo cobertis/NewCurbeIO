@@ -594,7 +594,8 @@ export default function MarketplacePlansPage() {
                         <Shield className="h-7 w-7 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base mb-1">{plan.name}</h3>
+                        <h3 className="font-semibold text-base mb-0.5">{plan.name}</h3>
+                        <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className="text-xs">
                             CATEGORÍA {plan.metal_level?.toUpperCase() || 'N/A'}
