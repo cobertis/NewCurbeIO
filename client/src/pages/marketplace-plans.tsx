@@ -1269,7 +1269,7 @@ export default function MarketplacePlansPage() {
                 </Collapsible>
 
                 {/* Disease programs */}
-                <Collapsible>
+                <Collapsible defaultOpen>
                   <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5">
                     <Label className="text-xs font-medium cursor-pointer">Disease programs</Label>
                     <ChevronDown className="h-4 w-4" />
