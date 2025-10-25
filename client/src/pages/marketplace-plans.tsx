@@ -597,12 +597,16 @@ export default function MarketplacePlansPage() {
                         <h3 className="font-semibold text-base mb-0.5 text-muted-foreground">{plan.issuer?.name || 'Insurance Provider'}</h3>
                         <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {plan.metal_level || 'N/A'}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {plan.plan_type || 'N/A'}
-                          </Badge>
+                          {plan.metal_level && (
+                            <Badge variant="outline" className="text-xs">
+                              {plan.metal_level}
+                            </Badge>
+                          )}
+                          {plan.plan_type && (
+                            <Badge variant="outline" className="text-xs">
+                              {plan.plan_type}
+                            </Badge>
+                          )}
                           {plan.quality_rating?.available ? (
                             <span className="text-xs">
                               Rating: {plan.quality_rating.global_rating > 0 
