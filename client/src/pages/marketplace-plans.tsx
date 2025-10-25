@@ -399,86 +399,85 @@ export default function MarketplacePlansPage() {
 
         {/* Right: Plans List */}
         <div className="space-y-4">
-      {/* Plans List */}
-      {!marketplacePlans && !isLoadingPlans && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Shield className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
-            <p className="text-lg font-medium mb-2">No plans loaded</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Click the button below to fetch available health insurance plans
-            </p>
-            <Button onClick={fetchMarketplacePlans} data-testid="button-load-plans">
-              Load Marketplace Plans
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {marketplacePlans && filteredPlans && (
-        <div className="grid gap-4">
-          {/* Info about showing all plans or pagination controls */}
-          {totalFilteredPlans <= pageSize ? (
-            // Showing all plans in one page
-            <Card className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 mb-4">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-center gap-4">
-                  <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <div className="text-sm font-medium">
-                    <span className="text-green-700 dark:text-green-400">
-                      Mostrando los {totalFilteredPlans} planes en una sola página
-                    </span>
-                    {totalFilteredPlans !== marketplacePlans?.plans?.length && (
-                      <span className="text-xs text-muted-foreground ml-2">
-                        (Filtrados de {marketplacePlans?.plans?.length} totales)
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            // Pagination controls when there are more plans than pageSize
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="py-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Showing <span className="font-bold text-foreground">{Math.min(((currentPage - 1) * pageSize) + 1, totalFilteredPlans)}</span> - <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalFilteredPlans)}</span> of <span className="font-bold text-foreground">{totalFilteredPlans}</span> plans
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      data-testid="button-prev-page-top"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-1 px-3 py-1 bg-background rounded-md border">
-                      <span className="text-sm font-medium">
-                        Page <span className="font-bold text-primary">{currentPage}</span> of <span className="font-bold">{totalPages}</span>
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      data-testid="button-next-page-top"
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+          {!marketplacePlans && !isLoadingPlans && (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Shield className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
+                <p className="text-lg font-medium mb-2">No plans loaded</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Click the button below to fetch available health insurance plans
+                </p>
+                <Button onClick={fetchMarketplacePlans} data-testid="button-load-plans">
+                  Load Marketplace Plans
+                </Button>
               </CardContent>
             </Card>
           )}
 
-          {filteredPlans.map((plan: any, index: number) => (
-            <Card key={`${plan.id}-${index}`} className="overflow-hidden hover-elevate">
+          {marketplacePlans && filteredPlans && (
+            <div className="grid gap-4">
+              {/* Info about showing all plans or pagination controls */}
+              {totalFilteredPlans <= pageSize ? (
+                // Showing all plans in one page
+                <Card className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 mb-4">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-center gap-4">
+                      <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <div className="text-sm font-medium">
+                        <span className="text-green-700 dark:text-green-400">
+                          Mostrando los {totalFilteredPlans} planes en una sola página
+                        </span>
+                        {totalFilteredPlans !== marketplacePlans?.plans?.length && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            (Filtrados de {marketplacePlans?.plans?.length} totales)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                // Pagination controls when there are more plans than pageSize
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="py-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <p className="text-sm text-muted-foreground font-medium">
+                        Showing <span className="font-bold text-foreground">{Math.min(((currentPage - 1) * pageSize) + 1, totalFilteredPlans)}</span> - <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalFilteredPlans)}</span> of <span className="font-bold text-foreground">{totalFilteredPlans}</span> plans
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          data-testid="button-prev-page-top"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        <div className="flex items-center gap-1 px-3 py-1 bg-background rounded-md border">
+                          <span className="text-sm font-medium">
+                            Page <span className="font-bold text-primary">{currentPage}</span> of <span className="font-bold">{totalPages}</span>
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          data-testid="button-next-page-top"
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {filteredPlans.map((plan: any, index: number) => (
+                <Card key={`${plan.id}-${index}`} className="overflow-hidden hover-elevate">
               <div className="flex flex-col lg:flex-row">
                 {/* Plan Info Section */}
                 <div className="flex-1 p-6">
@@ -720,6 +719,8 @@ export default function MarketplacePlansPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+            </div>
           )}
         </div>
       </div>
