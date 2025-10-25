@@ -220,8 +220,8 @@ export default function MarketplacePlansPage() {
     return acc;
   }, {}) || {};
   
-  const carriers = Object.entries(carrierCounts)
-    .map(([name, count]) => ({ name, count }))
+  const carriers: Array<{ name: string; count: number }> = Object.entries(carrierCounts)
+    .map(([name, count]) => ({ name, count: count as number }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // Filter and sort all plans
@@ -230,7 +230,7 @@ export default function MarketplacePlansPage() {
     if (metalLevelFilter !== "all" && !plan.metal_level?.toLowerCase().includes(metalLevelFilter)) {
       return false;
     }
-    if (planTypeFilter !== "all" && plan.plan_type !== planTypeFilter) {
+    if (planTypeFilter !== "all" && plan.type !== planTypeFilter) {
       return false;
     }
     
@@ -269,7 +269,7 @@ export default function MarketplacePlansPage() {
     
     // Network filter (checkbox)
     if (selectedNetworks.size > 0) {
-      if (!selectedNetworks.has(plan.plan_type)) {
+      if (!selectedNetworks.has(plan.type)) {
         return false;
       }
     }
@@ -683,7 +683,7 @@ export default function MarketplacePlansPage() {
                             {plan.metal_level || 'N/A'}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
-                            {plan.plan_type || 'N/A'}
+                            {plan.type || 'N/A'}
                           </Badge>
                           {plan.quality_rating?.available ? (
                             <span className="text-xs">
@@ -1017,7 +1017,7 @@ export default function MarketplacePlansPage() {
                   <CollapsibleContent className="space-y-2 mt-2">
                     {['PPO', 'HMO', 'POS', 'EPO'].map((network) => {
                       const count = marketplacePlans?.plans?.filter((p: any) => 
-                        p.plan_type === network
+                        p.type === network
                       ).length || 0;
                       return (
                         <div key={network} className="flex items-center space-x-2">
