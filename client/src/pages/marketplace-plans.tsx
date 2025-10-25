@@ -354,7 +354,7 @@ export default function MarketplacePlansPage() {
                         <Badge variant="secondary" className="text-xs">Self</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {quote.clientDOB ? `${formatDateFromString(quote.clientDOB)} (${calculateAgeFromString(quote.clientDOB)})` : 'N/A'}
+                        {quote.clientDateOfBirth ? `${formatDateFromString(quote.clientDateOfBirth)} (${calculateAgeFromString(quote.clientDateOfBirth)})` : 'N/A'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {quote.clientGender || 'Not specified'} • {quote.clientIsApplicant !== false ? '🟢 Applicant' : 'Member'}
