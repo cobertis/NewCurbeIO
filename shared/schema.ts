@@ -1224,6 +1224,30 @@ export type SmsChatNote = typeof smsChatNotes.$inferSelect;
 export type InsertSmsChatNote = z.infer<typeof insertSmsChatNoteSchema>;
 
 // =====================================================
+// QUOTE NOTES (Internal notes for insurance quotes)
+// =====================================================
+
+export const quoteNotes = pgTable("quote_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }), // The quote this note is about
+  note: text("note").notNull(), // The actual note content
+  isUrgent: boolean("is_urgent").notNull().default(false), // Whether this is an urgent note
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }), // Multi-tenant reference
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who created the note
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertQuoteNoteSchema = createInsertSchema(quoteNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type QuoteNote = typeof quoteNotes.$inferSelect;
+export type InsertQuoteNote = z.infer<typeof insertQuoteNoteSchema>;
+
+// =====================================================
 // FINANCIAL SUPPORT TICKETS
 // =====================================================
 
