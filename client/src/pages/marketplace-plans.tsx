@@ -597,35 +597,31 @@ export default function MarketplacePlansPage() {
                         <h3 className="font-semibold text-base mb-0.5 text-muted-foreground">{plan.issuer?.name || 'Insurance Provider'}</h3>
                         <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
                         <div className="flex flex-wrap items-center gap-2">
-                          {plan.metal_level && (
-                            <Badge variant="outline" className="text-xs">
-                              {plan.metal_level}
-                            </Badge>
-                          )}
-                          {plan.plan_type && (
-                            <Badge variant="outline" className="text-xs">
-                              {plan.plan_type}
-                            </Badge>
-                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {plan.metal_level || 'N/A'}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {plan.plan_type || 'N/A'}
+                          </Badge>
                           {plan.quality_rating?.available ? (
                             <span className="text-xs">
                               Rating: {plan.quality_rating.global_rating > 0 
                                 ? `${plan.quality_rating.global_rating}/5` 
-                                : 'New-Ineligible for Scoring'}
+                                : 'New/Ineligible'}
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Rating: New-Ineligible for Scoring</span>
+                            <span className="text-xs text-muted-foreground">Rating: N/A</span>
                           )}
-                          {plan.has_dental_adult_coverage && (
-                            <span className="text-xs">
-                              Dental Adult: {plan.has_dental_adult_coverage ? '✓' : '✗'}
-                            </span>
-                          )}
-                          {plan.has_dental_child_coverage && (
-                            <span className="text-xs">
-                              Dental Child: {plan.has_dental_child_coverage ? '✓' : '✗'}
-                            </span>
-                          )}
+                          <span className="text-xs">
+                            Dental Adult: <Badge variant="outline" className="text-xs inline-block ml-1">
+                              {plan.has_dental_adult_coverage ? 'Yes' : 'No'}
+                            </Badge>
+                          </span>
+                          <span className="text-xs">
+                            Dental Child: <Badge variant="outline" className="text-xs inline-block ml-1">
+                              {plan.has_dental_child_coverage ? 'Yes' : 'No'}
+                            </Badge>
+                          </span>
                         </div>
                       </div>
                     </div>

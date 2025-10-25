@@ -72,6 +72,8 @@ interface MarketplacePlan {
   metal_level: string;
   plan_type: string;
   specialist_referral_required: boolean;
+  has_dental_adult_coverage?: boolean;
+  has_dental_child_coverage?: boolean;
   premium_scenarios?: Array<{
     age: number;
     premium: number;
