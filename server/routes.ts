@@ -9943,6 +9943,66 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== HHS POVERTY GUIDELINES API ====================
+  
+  // Import HHS Poverty Guidelines service
+  const hhsPovertyGuidelines = await import('./hhs-poverty-guidelines.js');
+  const { fetchPovertyGuidelines, getPovertyGuidelinePercentages } = hhsPovertyGuidelines;
+  
+  // Get Poverty Guidelines from HHS API
+  app.get("/api/hhs/poverty-guidelines", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { year, state } = req.query;
+      
+      const currentYear = new Date().getFullYear();
+      const requestedYear = year ? parseInt(year as string) : currentYear;
+      
+      console.log(`[HHS Poverty Guidelines] Fetching data for year ${requestedYear}, state: ${state || 'default (48 states + DC)'}`);
+      
+      const guidelines = await fetchPovertyGuidelines(requestedYear, state as string | undefined);
+      
+      res.json(guidelines);
+    } catch (error: any) {
+      console.error("Error fetching poverty guidelines:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch poverty guidelines",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+  
+  // Get Poverty Guideline percentages for a specific household size
+  app.get("/api/hhs/poverty-guidelines/percentages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { householdSize, year, state } = req.query;
+      
+      if (!householdSize) {
+        return res.status(400).json({ message: "householdSize is required" });
+      }
+      
+      const currentYear = new Date().getFullYear();
+      const requestedYear = year ? parseInt(year as string) : currentYear;
+      const size = parseInt(householdSize as string);
+      
+      console.log(`[HHS Poverty Guidelines] Calculating percentages for household size ${size}, year ${requestedYear}, state: ${state || 'default'}`);
+      
+      const percentages = await getPovertyGuidelinePercentages(size, requestedYear, state as string | undefined);
+      
+      res.json({
+        household_size: size,
+        year: requestedYear,
+        state: state || undefined,
+        percentages
+      });
+    } catch (error: any) {
+      console.error("Error calculating poverty guideline percentages:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to calculate poverty guideline percentages",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup WebSocket for real-time chat updates with session validation
