@@ -595,44 +595,42 @@ export default function MarketplacePlansPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-base mb-0.5 text-muted-foreground">{plan.issuer?.name || 'Insurance Provider'}</h3>
-                        <p className="text-xs text-muted-foreground mb-3">Plan ID: {plan.id || 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {plan.metal_level || 'N/A'}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {plan.plan_type || 'N/A'}
+                          </Badge>
+                          {plan.quality_rating?.available ? (
+                            <span className="text-xs">
+                              Rating: {plan.quality_rating.global_rating > 0 
+                                ? `${plan.quality_rating.global_rating}/5` 
+                                : 'New-Ineligible for Scoring'}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Rating: New-Ineligible for Scoring</span>
+                          )}
+                          {plan.has_dental_adult_coverage && (
+                            <span className="text-xs">
+                              Dental Adult: {plan.has_dental_adult_coverage ? '✓' : '✗'}
+                            </span>
+                          )}
+                          {plan.has_dental_child_coverage && (
+                            <span className="text-xs">
+                              Dental Child: {plan.has_dental_child_coverage ? '✓' : '✗'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Main Content Grid */}
                   <div className="p-6">
-                    {/* Plan Name with Badges */}
-                    <div className="mb-4">
-                      <h4 className="text-base font-medium mb-2 text-primary">{plan.name}</h4>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {plan.metal_level || 'N/A'}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {plan.plan_type || 'N/A'}
-                        </Badge>
-                        {plan.quality_rating?.available ? (
-                          <span className="text-xs">
-                            Rating: {plan.quality_rating.global_rating > 0 
-                              ? `${plan.quality_rating.global_rating}/5` 
-                              : 'New-Ineligible for Scoring'}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Rating: New-Ineligible for Scoring</span>
-                        )}
-                        {plan.has_dental_adult_coverage && (
-                          <span className="text-xs">
-                            Dental Adult: {plan.has_dental_adult_coverage ? '✓' : '✗'}
-                          </span>
-                        )}
-                        {plan.has_dental_child_coverage && (
-                          <span className="text-xs">
-                            Dental Child: {plan.has_dental_child_coverage ? '✓' : '✗'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    {/* Plan Name */}
+                    <h4 className="text-base font-medium mb-4 text-primary">{plan.name}</h4>
                     
                     <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6 mb-6">
                       {/* Left: Prima mensual */}
