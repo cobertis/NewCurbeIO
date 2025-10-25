@@ -266,7 +266,9 @@ export default function MarketplacePlansPage() {
   }
 
   const quote = (quoteData as any)?.quote;
-  const members = (quoteData as any)?.members || [];
+  const allMembers = (quoteData as any)?.members || [];
+  // Exclude client role from members since it's already shown as "Self"
+  const members = allMembers.filter((m: any) => m.member?.role !== 'client');
   const totalApplicants = (members.filter((m: any) => m.member?.isApplicant).length) + (quote?.clientIsApplicant !== false ? 1 : 0);
   const totalDependents = members.filter((m: any) => m.member?.role === 'dependent').length;
 
