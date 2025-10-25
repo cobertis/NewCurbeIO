@@ -7,6 +7,11 @@ Curbe is a multi-tenant CRM system integrating iMessage/SMS/RCS, designed to pro
 Preferred communication style: Simple, everyday language.
 Design style: Extremely professional corporate design - NO bright colors, NO emojis, space-efficient mobile-responsive UI.
 
+**Toast Notifications:**
+- All toast notifications auto-dismiss after 3 seconds
+- Auto-dismiss timeout configured in `client/src/hooks/use-toast.ts` (TOAST_REMOVE_DELAY: 1000ms, auto-dismiss: 3000ms)
+- Users can still manually dismiss toasts before the timeout
+
 **Loading State Pattern (MANDATORY):**
 ALWAYS use centered full-screen loading states for async operations in sheets, dialogs, and major UI components. Pattern:
 ```tsx
@@ -52,6 +57,13 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM for data management and enforces strict multi-tenancy. Security features include robust password management, account activation, and 2FA. The modular feature system ensures flexibility and extensibility. All dates throughout the system are handled as `yyyy-MM-dd` strings to prevent timezone conversion issues, storing pure dates without time components in the database (PostgreSQL `date` type).
+
+**Quote Family Members Display Logic:**
+The quote detail view displays family members (spouses/dependents) from two data sources:
+- `quote_members` table: Normalized records with full income/immigration data (created when adding members after quote creation)
+- JSONB columns (`quotes.spouses`, `quotes.dependents`): Basic member data stored when creating quotes via the wizard form
+- The UI merges both sources using `viewingQuoteWithMembers` object, displaying members from either storage method
+- Members from JSONB columns may not have IDs and show "-" for income/immigration fields until detailed records are created
 
 ## External Dependencies
 
