@@ -266,38 +266,24 @@ export default function MarketplacePlansPage() {
   }
 
   const quote = (quoteData as any)?.quote;
-  const allMembers = (quoteData as any)?.members || [];
-  // Exclude client role from members since it's already shown as "Self"
-  const normalizedMembers = allMembers.filter((m: any) => m.member?.role !== 'client');
   
-  // Combine normalized members with JSONB spouses/dependents
+  // Build family members list from JSONB fields (spouses and dependents)
   const allFamilyMembers = [
-    ...normalizedMembers.map((m: any) => ({
-      source: 'normalized',
-      firstName: m.member.firstName,
-      lastName: m.member.lastName,
-      dateOfBirth: m.member.dateOfBirth,
-      gender: m.member.gender,
-      role: m.member.role,
-      isApplicant: m.member.isApplicant,
-    })),
     ...(quote?.spouses || []).map((s: any) => ({
-      source: 'jsonb',
       firstName: s.firstName,
       lastName: s.lastName,
       dateOfBirth: s.dateOfBirth,
       gender: s.gender,
       role: 'spouse',
-      isApplicant: s.isApplicant,
+      isApplicant: s.isApplicant !== false, // Default to true if not specified
     })),
     ...(quote?.dependents || []).map((d: any) => ({
-      source: 'jsonb',
       firstName: d.firstName,
       lastName: d.lastName,
       dateOfBirth: d.dateOfBirth,
       gender: d.gender,
       role: d.relation || 'dependent',
-      isApplicant: d.isApplicant,
+      isApplicant: d.isApplicant === true, // Dependents are typically not applicants
     })),
   ];
   
