@@ -261,95 +261,12 @@ export default function MarketplacePlansPage() {
         </Button>
       )}
 
-      {/* Top: 2-column cards (Filters | Summary) */}
+      {/* 3-column layout: Household Info | Plans | Filters */}
       {quote && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-          {/* Left: Filters Card */}
-          <Card>
-              <CardHeader className="pb-3">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Filter className="h-4 w-4" />
-                  Filters
-                </h3>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="metal-level">Metal Level</Label>
-                    <Select value={metalLevelFilter} onValueChange={(value) => {
-                      setMetalLevelFilter(value);
-                      setCurrentPage(1);
-                    }}>
-                      <SelectTrigger id="metal-level" data-testid="filter-metal-level">
-                        <SelectValue placeholder="All levels" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Levels</SelectItem>
-                        <SelectItem value="bronze">Bronze</SelectItem>
-                        <SelectItem value="silver">Silver</SelectItem>
-                        <SelectItem value="gold">Gold</SelectItem>
-                        <SelectItem value="platinum">Platinum</SelectItem>
-                        <SelectItem value="catastrophic">Catastrophic</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="plan-type">Plan Type</Label>
-                    <Select value={planTypeFilter} onValueChange={(value) => {
-                      setPlanTypeFilter(value);
-                      setCurrentPage(1);
-                    }}>
-                      <SelectTrigger id="plan-type" data-testid="filter-plan-type">
-                        <SelectValue placeholder="All types" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="HMO">HMO</SelectItem>
-                        <SelectItem value="PPO">PPO</SelectItem>
-                        <SelectItem value="EPO">EPO</SelectItem>
-                        <SelectItem value="POS">POS</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="max-premium">Max Monthly Premium</Label>
-                    <Input
-                      id="max-premium"
-                      type="number"
-                      placeholder="No limit"
-                      value={maxPremium}
-                      onChange={(e) => {
-                        setMaxPremium(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      data-testid="filter-max-premium"
-                    />
-                  </div>
-
-                  {(metalLevelFilter !== "all" || planTypeFilter !== "all" || maxPremium) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
-                        setMetalLevelFilter("all");
-                        setPlanTypeFilter("all");
-                        setMaxPremium("");
-                        setCurrentPage(1);
-                      }}
-                      data-testid="button-clear-filters"
-                    >
-                      Clear Filters
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-          {/* Right: Household Information Card */}
-          <Card>
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-4 sm:gap-6">
+          {/* Left Sidebar: Household Information */}
+          <div className="space-y-4">
+            <Card>
               <CardHeader className="pb-3">
                 <h3 className="font-semibold text-sm">Household information</h3>
               </CardHeader>
@@ -448,11 +365,10 @@ export default function MarketplacePlansPage() {
                 </div>
               </CardContent>
             </Card>
-        </div>
-      )}
+          </div>
 
-      {/* Bottom: Plans List (full width) */}
-      <div className="space-y-4">
+          {/* Center: Plans List */}
+          <div className="space-y-4">
           {!marketplacePlans && !isLoadingPlans && (
             <Card>
               <CardContent className="py-12 text-center">
@@ -775,7 +691,105 @@ export default function MarketplacePlansPage() {
               )}
             </div>
           )}
-      </div>
+          </div>
+
+          {/* Right Sidebar: Filters */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <Button variant="default" className="w-full" data-testid="button-filter-plans">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter plans
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="monthly-premium-max" className="text-sm font-medium">Monthly premium max</Label>
+                  <Input
+                    id="monthly-premium-max"
+                    type="number"
+                    placeholder="No limit"
+                    value={maxPremium}
+                    onChange={(e) => {
+                      setMaxPremium(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    data-testid="filter-monthly-premium-max"
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="deductible-max" className="text-sm font-medium">Deductible max</Label>
+                  <Input
+                    id="deductible-max"
+                    type="number"
+                    placeholder="9200"
+                    data-testid="filter-deductible-max"
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Metal Level</Label>
+                  <Select value={metalLevelFilter} onValueChange={(value) => {
+                    setMetalLevelFilter(value);
+                    setCurrentPage(1);
+                  }}>
+                    <SelectTrigger className="mt-2" data-testid="filter-metal-level-right">
+                      <SelectValue placeholder="All levels" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Levels</SelectItem>
+                      <SelectItem value="bronze">Bronze</SelectItem>
+                      <SelectItem value="silver">Silver</SelectItem>
+                      <SelectItem value="gold">Gold</SelectItem>
+                      <SelectItem value="platinum">Platinum</SelectItem>
+                      <SelectItem value="catastrophic">Catastrophic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Plan Type</Label>
+                  <Select value={planTypeFilter} onValueChange={(value) => {
+                    setPlanTypeFilter(value);
+                    setCurrentPage(1);
+                  }}>
+                    <SelectTrigger className="mt-2" data-testid="filter-plan-type-right">
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="HMO">HMO</SelectItem>
+                      <SelectItem value="PPO">PPO</SelectItem>
+                      <SelectItem value="EPO">EPO</SelectItem>
+                      <SelectItem value="POS">POS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(metalLevelFilter !== "all" || planTypeFilter !== "all" || maxPremium) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-4"
+                    onClick={() => {
+                      setMetalLevelFilter("all");
+                      setPlanTypeFilter("all");
+                      setMaxPremium("");
+                      setCurrentPage(1);
+                    }}
+                    data-testid="button-clear-filters-right"
+                  >
+                    Clear All Filters
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
