@@ -1597,22 +1597,6 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                   />
                   <FormField
                     control={editForm.control}
-                    name="isPrimaryDependent"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-primary-dependent"
-                          />
-                        </FormControl>
-                        <FormLabel className="cursor-pointer">Dependent</FormLabel>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
                     name="tobaccoUser"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center space-x-2 space-y-0">
@@ -2162,22 +2146,6 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
                           />
                         </FormControl>
                         <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={addMemberForm.control}
-                    name="isPrimaryDependent"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-primary-dependent"
-                          />
-                        </FormControl>
-                        <FormLabel className="cursor-pointer">Dependent</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -5170,9 +5138,6 @@ export default function QuotesPage() {
                             {viewingQuote.clientIsApplicant && (
                               <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
                             )}
-                            {viewingQuote.isPrimaryDependent && (
-                              <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Primary Dependent</Badge>
-                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
@@ -5241,9 +5206,6 @@ export default function QuotesPage() {
                               <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
                               {spouse.isApplicant && (
                                 <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
-                              )}
-                              {spouse.isPrimaryDependent && (
-                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Primary Dependent</Badge>
                               )}
                             </div>
                           </div>
@@ -5328,9 +5290,6 @@ export default function QuotesPage() {
                               <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
                               {dependent.isApplicant && (
                                 <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
-                              )}
-                              {dependent.isPrimaryDependent && (
-                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Primary Dependent</Badge>
                               )}
                             </div>
                           </div>
@@ -7224,35 +7183,6 @@ export default function QuotesPage() {
                                 </FormItem>
                               )}
                             />
-
-                            <FormField
-                              control={form.control}
-                              name={`spouses.${index}.isPrimaryDependent`}
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                      data-testid={`checkbox-spouse-dependent-${index}`}
-                                    />
-                                  </FormControl>
-                                  <div className="space-y-1 leading-none">
-                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
-                                      Is Primary Dependent
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Info className="h-4 w-4 text-muted-foreground" />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p className="max-w-xs">Check this if this person is a dependent of the primary applicant and does not apply for insurance directly. This is common when the spouse or child is covered under another insurance plan or does not qualify directly.</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </FormLabel>
-                                  </div>
-                                </FormItem>
-                              )}
-                            />
                           </div>
                         </CardContent>
                       </Card>
@@ -7522,35 +7452,6 @@ export default function QuotesPage() {
                                   </FormControl>
                                   <div className="space-y-1 leading-none">
                                     <FormLabel className="cursor-pointer">Pregnant</FormLabel>
-                                  </div>
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={form.control}
-                              name={`dependents.${index}.isPrimaryDependent`}
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                      data-testid={`checkbox-dependent-primary-${index}`}
-                                    />
-                                  </FormControl>
-                                  <div className="space-y-1 leading-none">
-                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
-                                      Is Primary Dependent
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Info className="h-4 w-4 text-muted-foreground" />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p className="max-w-xs">Marque esta opción si esta persona es dependiente del aplicante principal y no aplica directamente para el seguro. Esto es común cuando el hijo está cubierto bajo otro plan de seguro o no califica directamente.</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </FormLabel>
                                   </div>
                                 </FormItem>
                               )}
