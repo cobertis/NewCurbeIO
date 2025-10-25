@@ -1597,6 +1597,26 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                   />
                   <FormField
                     control={editForm.control}
+                    name="isPrimaryDependent"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-is-dependent"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="flex items-center gap-2 cursor-pointer">
+                            Dependent
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
                     name="tobaccoUser"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center space-x-2 space-y-0">
@@ -2146,6 +2166,26 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
                           />
                         </FormControl>
                         <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={addMemberForm.control}
+                    name="isPrimaryDependent"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-is-dependent"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="flex items-center gap-2 cursor-pointer">
+                            Dependent
+                          </FormLabel>
+                        </div>
                       </FormItem>
                     )}
                   />
@@ -5138,6 +5178,9 @@ export default function QuotesPage() {
                             {viewingQuote.clientIsApplicant && (
                               <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
                             )}
+                            {viewingQuote.isPrimaryDependent && (
+                              <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
@@ -5206,6 +5249,9 @@ export default function QuotesPage() {
                               <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
                               {spouse.isApplicant && (
                                 <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                              )}
+                              {spouse.isPrimaryDependent && (
+                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
                               )}
                             </div>
                           </div>
@@ -5290,6 +5336,9 @@ export default function QuotesPage() {
                               <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
                               {dependent.isApplicant && (
                                 <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                              )}
+                              {dependent.isPrimaryDependent && (
+                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
                               )}
                             </div>
                           </div>
@@ -7125,6 +7174,27 @@ export default function QuotesPage() {
 
                             <FormField
                               control={form.control}
+                              name={`spouses.${index}.isPrimaryDependent`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid={`checkbox-spouse-${index}-dependent`}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
+                                      Dependent
+                                    </FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
                               name={`spouses.${index}.tobaccoUser`}
                               render={({ field }) => (
                                 <FormItem className="flex flex-row items-start space-x-3 space-y-0">
@@ -7414,6 +7484,27 @@ export default function QuotesPage() {
                                   </FormControl>
                                   <div className="space-y-1 leading-none">
                                     <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`dependents.${index}.isPrimaryDependent`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid={`checkbox-dependent-${index}-dependent`}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="flex items-center gap-2 cursor-pointer">
+                                      Dependent
+                                    </FormLabel>
                                   </div>
                                 </FormItem>
                               )}
