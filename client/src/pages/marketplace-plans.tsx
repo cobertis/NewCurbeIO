@@ -269,8 +269,18 @@ export default function MarketplacePlansPage() {
   const allMembers = (quoteData as any)?.members || [];
   // Exclude client role from members since it's already shown as "Self"
   const members = allMembers.filter((m: any) => m.member?.role !== 'client');
-  const totalApplicants = (members.filter((m: any) => m.member?.isApplicant).length) + (quote?.clientIsApplicant !== false ? 1 : 0);
-  const totalDependents = members.filter((m: any) => m.member?.role === 'dependent').length;
+  
+  // Count applicants: primary client (if applicant) + other members with isApplicant=true
+  const clientIsApplicant = quote?.clientIsApplicant !== false;
+  const otherApplicants = members.filter((m: any) => m.member?.isApplicant === true).length;
+  const totalApplicants = (clientIsApplicant ? 1 : 0) + otherApplicants;
+  
+  // Count dependents: members with role in {dependent, child, other} OR isApplicant=false
+  const totalDependents = members.filter((m: any) => {
+    const role = m.member?.role;
+    const isApplicant = m.member?.isApplicant;
+    return ['dependent', 'child', 'other'].includes(role) || isApplicant === false;
+  }).length;
 
   return (
     <div className="p-4 sm:p-6">
