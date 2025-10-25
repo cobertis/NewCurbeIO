@@ -2781,8 +2781,13 @@ export default function QuotesPage() {
   // Validation dialog state
   const [missingDataDialog, setMissingDataDialog] = useState<{open: boolean; missingFields: string[]}>({open: false, missingFields: []});
   
-  // Log when dialog state changes
-  console.log('[DIALOG STATE]', missingDataDialog);
+  // Log when dialog state changes with useEffect
+  useEffect(() => {
+    console.log('[DIALOG STATE - useEffect]', missingDataDialog);
+    if (missingDataDialog.open) {
+      console.log('[DIALOG] Dialog should be visible now!', missingDataDialog.missingFields);
+    }
+  }, [missingDataDialog]);
   
   // Advanced filters state
   const [filters, setFilters] = useState({
