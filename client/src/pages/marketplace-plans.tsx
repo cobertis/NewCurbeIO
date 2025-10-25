@@ -354,6 +354,31 @@ export default function MarketplacePlansPage() {
                   </div>
                 </div>
 
+                {/* APTC Tax Credit Section - Llamativo */}
+                {marketplacePlans && marketplacePlans.household_aptc > 0 && (
+                  <div className="pt-2 border-t">
+                    <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg border-2 border-green-200 dark:border-green-800">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-8 w-8 rounded-full bg-green-600 dark:bg-green-700 flex items-center justify-center">
+                          <DollarSign className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-green-700 dark:text-green-400">APTC Tax Credit</p>
+                          <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                            {formatCurrency(marketplacePlans.household_aptc)}<span className="text-sm font-normal">/month</span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-green-200 dark:border-green-800">
+                        <p className="text-xs text-green-600 dark:text-green-500 mb-1">Ahorro estimado anual</p>
+                        <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                          {formatCurrency(marketplacePlans.household_aptc * 12)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Family members section */}
                 <div className="pt-2 border-t">
                   <h4 className="font-semibold text-sm mb-3">Family members</h4>
