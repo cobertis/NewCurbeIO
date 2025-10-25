@@ -246,176 +246,51 @@ export default function MarketplacePlansPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            {/* Title Section */}
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
-                <Shield className="h-6 w-6 text-primary" />
-                Healthcare.gov Marketplace Plans
-              </h1>
-              <p className="text-muted-foreground">
-                Quote #{quoteId} for {quote.clientFirstName} {quote.clientLastName}
-              </p>
-            </div>
-
-            {/* Compact Summary Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Location & Income */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-xs text-muted-foreground uppercase">Location</h4>
-                <div className="text-sm">
-                  {quote.city}, {quote.state} {quote.zipCode}
-                  {quote.county && (
-                    <div className="text-xs text-muted-foreground">{quote.county}</div>
-                  )}
-                </div>
-                <div className="pt-2">
-                  <div className="text-xs text-muted-foreground">Household Income</div>
-                  <div className="font-semibold">{formatCurrency((quoteData as any)?.quote?.householdIncome || 0)}/year</div>
-                </div>
+          <CardContent className="pt-6">
+            {/* Compact single-line summary */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm mb-4">
+              <div>
+                <span className="text-muted-foreground">Location:</span>
+                <span className="font-medium ml-1">{quote.city}, {quote.state}</span>
               </div>
-
-              {/* Coverage Info */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-xs text-muted-foreground uppercase">Coverage</h4>
-                <div className="text-sm space-y-1">
-                  <div>Effective: {new Date(quote.effectiveDate).toLocaleDateString()}</div>
-                  <div>Members: {((quoteData as any)?.quote?.members?.filter((m: any) => m.isApplicant).length || 0) + (quote.clientIsApplicant !== false ? 1 : 0)}</div>
-                </div>
+              <div>
+                <span className="text-muted-foreground">Income:</span>
+                <span className="font-medium ml-1">{formatCurrency((quoteData as any)?.quote?.householdIncome || 0)}/yr</span>
               </div>
-
-              {/* APTC Info */}
+              <div>
+                <span className="text-muted-foreground">Members:</span>
+                <span className="font-medium ml-1">{((quoteData as any)?.quote?.members?.filter((m: any) => m.isApplicant).length || 0) + (quote.clientIsApplicant !== false ? 1 : 0)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Effective:</span>
+                <span className="font-medium ml-1">{new Date(quote.effectiveDate).toLocaleDateString()}</span>
+              </div>
               {marketplacePlans && (
-                <div className="space-y-2 col-span-1 md:col-span-2">
-                  <h4 className="font-semibold text-xs text-muted-foreground uppercase">Premium Tax Credit (APTC)</h4>
-                  {marketplacePlans.household_aptc > 0 ? (
-                    <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
-                      <div className="text-xl font-bold text-green-700 dark:text-green-400">
-                        {formatCurrency(marketplacePlans.household_aptc)}/month
-                      </div>
-                      <div className="text-sm text-green-600 dark:text-green-500 mt-1">
-                        Annual Savings: <span className="font-semibold">{formatCurrency(marketplacePlans.household_aptc * 12)}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        This tax credit reduces your monthly insurance premium
-                      </div>
-                      {marketplacePlans.household_csr && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          CSR Level: {marketplacePlans.household_csr}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="bg-muted/30 rounded-lg p-3">
-                      <div className="text-sm font-medium">Not Eligible for Tax Credit</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Based on household income and size
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Plans Info */}
-              {marketplacePlans && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-xs text-muted-foreground uppercase">Results</h4>
-                  <div className="text-sm space-y-1">
-                    <div className="font-bold text-lg">{marketplacePlans.plans?.length || 0} Plans Available</div>
-                    <div className="text-xs text-muted-foreground">Year {marketplacePlans.year}</div>
-                  </div>
+                <div className="ml-auto">
+                  <span className="text-2xl font-bold">{marketplacePlans.plans?.length || 0}</span>
+                  <span className="text-sm text-muted-foreground ml-1">plans</span>
                 </div>
               )}
             </div>
 
-            {/* API Request Data - Collapsible Section */}
-            {marketplacePlans?.request_data && (
-              <>
-                <Separator className="my-4" />
-                <Collapsible className="space-y-2">
-                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
-                    <Database className="h-4 w-4" />
-                    View Data Sent to CMS Healthcare.gov API
-                    <ChevronDown className="h-4 w-4 ml-auto" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="mt-3 p-4 bg-muted/30 rounded-lg space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <div className="font-semibold mb-1">Household Income</div>
-                          <div className="font-mono text-xs p-2 bg-background rounded">
-                            {formatCurrency(marketplacePlans.request_data.household_income)}/year
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-semibold mb-1">Location</div>
-                          <div className="font-mono text-xs p-2 bg-background rounded space-y-1">
-                            <div>ZIP: {marketplacePlans.request_data.location?.zip}</div>
-                            <div>State: {marketplacePlans.request_data.location?.state}</div>
-                            <div>County: {marketplacePlans.request_data.location?.county}</div>
-                            <div>County FIPS: {marketplacePlans.request_data.location?.county_fips}</div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-semibold mb-1">People ({marketplacePlans.request_data.people?.length || 0} members)</div>
-                          <div className="font-mono text-xs p-2 bg-background rounded space-y-1">
-                            {marketplacePlans.request_data.people?.map((person: any, idx: number) => (
-                              <div key={idx} className="pb-1 border-b border-border last:border-0">
-                                <div>Age: {person.age}, {person.gender}</div>
-                                <div>Tobacco: {person.tobacco ? 'Yes' : 'No'}</div>
-                                {person.pregnant && <div>Pregnant: Yes</div>}
-                                <div className="text-green-600 dark:text-green-400">APTC Eligible: {person.aptc_eligible ? 'Yes' : 'No'}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-semibold mb-1">API Parameters</div>
-                          <div className="font-mono text-xs p-2 bg-background rounded space-y-1">
-                            <div>Year: {marketplacePlans.request_data.year}</div>
-                            <div>Limit per page: {marketplacePlans.request_data.limit}</div>
-                            <div className="text-green-600 dark:text-green-400">
-                              APTC Calculation: {marketplacePlans.household_aptc > 0 ? 'Eligible' : 'Not Eligible'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+            {/* APTC - Only if eligible */}
+            {marketplacePlans && marketplacePlans.household_aptc > 0 && (
+              <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-green-700 dark:text-green-400 font-medium">Tax Credit (APTC)</div>
+                    <div className="text-xl font-bold text-green-700 dark:text-green-400">
+                      {formatCurrency(marketplacePlans.household_aptc)}/mo
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </>
-            )}
-
-            {/* Members List - Compact */}
-            {(quoteData as any)?.quote?.members && (quoteData as any)?.quote?.members.length > 0 && (
-              <>
-                <Separator className="my-4" />
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-xs text-muted-foreground uppercase">Household Members</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {/* Primary Applicant */}
-                    <div className="p-2 bg-muted/30 rounded text-sm">
-                      <div className="font-medium">{quote.clientFirstName} {quote.clientLastName} (Primary)</div>
-                      <div className="text-xs text-muted-foreground">
-                        Age {Math.floor((new Date().getTime() - new Date(quote.clientDateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))}
-                        {quote.clientTobaccoUser && ' • Tobacco'}
-                        {quote.clientPregnant && ' • Pregnant'}
-                      </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-green-600 dark:text-green-500">Annual Savings</div>
+                    <div className="text-lg font-bold text-green-700 dark:text-green-400">
+                      {formatCurrency(marketplacePlans.household_aptc * 12)}
                     </div>
-                    {/* Other Members */}
-                    {(quoteData as any)?.quote?.members.map((member: any, index: number) => (
-                      <div key={index} className="p-2 bg-muted/30 rounded text-sm">
-                        <div className="font-medium">{member.firstName} {member.lastName} ({member.relationship})</div>
-                        <div className="text-xs text-muted-foreground">
-                          Age {Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))}
-                          {member.tobaccoUser && ' • Tobacco'}
-                          {member.pregnant && ' • Pregnant'}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
