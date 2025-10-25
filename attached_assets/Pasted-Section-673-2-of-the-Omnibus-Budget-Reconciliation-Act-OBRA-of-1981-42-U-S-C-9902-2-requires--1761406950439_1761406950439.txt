@@ -1,0 +1,29 @@
+Section 673(2) of the Omnibus Budget Reconciliation Act (OBRA) of 1981 (42 U.S.C. 9902(2)) requires the Secretary of the Department of Health and Human Services to update the poverty guidelines at least annually, adjusting them on the basis of the Consumer Price Index for All Urban Consumers (CPI-U). The poverty guidelines are used as an eligibility criterion by Medicaid and a number of other Federal programs. The poverty guidelines are a simplified version of the poverty thresholds that the Census Bureau uses to prepare its estimates of the number of individuals and families in poverty.
+
+Poverty Guidelines
+Poverty Guidelines Frequently Asked Questions
+Poverty Guidelines Further Resources
+Poverty Guidelines API Developer/Technical Guidance
+The following API is available that includes poverty guidelines from 1983 to the current year. Find technical guidance on how to leverage the API as well as links to other resources:
+
+The ASPE Poverty Guidelines API can be accessed with a standard https GET request.
+
+https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines/api/[YEAR]/[STATE]/[HOUSEHOLD_SIZE]
+
+Valid YEARs are: 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008, 2007, 2006, 2005, 2004, 2003, 2002, 2001, 2000, 1999, 1998, 1997, 1996, 1995, 1994, 1993, 1992, 1991, 1990, 1989, 1988, 1987, 1986, 1985, 1984, and 1983.  Invalid YEARs will default to 2025.
+
+Valid STATEs are:  'us' (for the 48 contiguous states and the District of Columbia), 'hi' (Hawaii), and 'ak' (Alaska).  Uppercase values are accepted.  Invalid STATEs will default to 'us'.
+
+Valid HOUSEHOLD_SIZEs are: 1 through 8.  Invalid HOUSEHOLD_SIZEs will default to 1.
+
+For example, an HTTPS GET request to the following URL https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines/api/2023/us/4 will return the following JSON data:
+
+{ "data" :
+    {"year" : 2023,
+     "state" : "us"
+     "household_size" : 4,
+     "poverty_threshold" : 30000
+    },
+    "method" : "GET",
+    "status" : 200
+}

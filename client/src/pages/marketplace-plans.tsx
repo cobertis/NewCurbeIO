@@ -548,6 +548,73 @@ export default function MarketplacePlansPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Poverty Guidelines Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <h3 className="font-semibold text-sm">Poverty Guidelines</h3>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Header Row */}
+                <div className="grid grid-cols-2 gap-4 pb-2 border-b text-xs font-medium text-muted-foreground">
+                  <div>Household size</div>
+                  <div className="text-right">100% Poverty Guidelines</div>
+                </div>
+
+                {/* Poverty Guidelines Data */}
+                {[
+                  { size: 1, amount: 15650 },
+                  { size: 2, amount: 21150 },
+                  { size: 3, amount: 26650 },
+                  { size: 4, amount: 32150 },
+                  { size: 5, amount: 37650 },
+                  { size: 6, amount: 43150 },
+                  { size: 7, amount: 48650 },
+                  { size: 8, amount: 54150 },
+                ].map(({ size, amount }) => {
+                  const householdSize = 1 + allFamilyMembers.length;
+                  const isCurrentSize = size === householdSize;
+                  return (
+                    <div
+                      key={size}
+                      className={`grid grid-cols-2 gap-4 py-1.5 px-2 rounded ${
+                        isCurrentSize ? 'bg-primary/10 border border-primary/20' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 text-sm">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className={isCurrentSize ? 'font-semibold' : ''}>{size}</span>
+                      </div>
+                      <div className={`text-sm text-right ${isCurrentSize ? 'font-semibold' : ''}`}>
+                        {formatCurrency(amount)}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Additional Person Note */}
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  Add $5,500 for each additional person
+                </div>
+
+                {/* More Information Button */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => window.open('https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines', '_blank')}
+                  data-testid="button-poverty-guidelines-info"
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  More information
+                </Button>
+
+                {/* Disclaimer */}
+                <p className="text-xs text-muted-foreground pt-2 border-t">
+                  Poverty Guidelines data is retrieved from the CMS API. Apizeal does not modify this information and is not responsible for its accuracy or timeliness.
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Center: Plans List */}
