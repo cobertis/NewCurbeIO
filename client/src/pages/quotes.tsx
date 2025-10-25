@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -2943,6 +2943,11 @@ export default function QuotesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<{ id: string; clientName: string } | null>(null);
   
+  // Notes sheet state
+  const [notesSheetOpen, setNotesSheetOpen] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -3008,6 +3013,75 @@ export default function QuotesPage() {
   const viewingQuote = quoteDetail?.quote || quotesData?.quotes?.find(q => q.id === params?.id);
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
+
+  // Fetch quote notes
+  const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
+    queryKey: ['/api/quotes', params?.id, 'notes'],
+    enabled: !!params?.id && params?.id !== 'new',
+  });
+
+  const quoteNotes = quoteNotesData?.notes || [];
+  const quoteNotesCount = quoteNotes.length || 0;
+
+  // Create note mutation
+  const createNoteMutation = useMutation({
+    mutationFn: async () => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      if (!newNoteText.trim()) throw new Error("Note content is required");
+      return apiRequest('/api/quotes/' + viewingQuote.id + '/notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          note: newNoteText.trim(),
+          isUrgent: isUrgent,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'notes'] });
+      }
+      setNewNoteText("");
+      setIsUrgent(false);
+      toast({
+        title: "Note created",
+        description: "Your note has been saved successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create note",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete note mutation
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (noteId: string) => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/notes/${noteId}`);
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'notes'] });
+      }
+      toast({
+        title: "Note deleted",
+        description: "The note has been removed successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete note",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Delete payment method mutation
   const deletePaymentMethodMutation = useMutation({
@@ -4940,6 +5014,101 @@ export default function QuotesPage() {
                   <span className="text-xs">-</span>
                 </div>
               </div>
+            </div>
+
+            {/* Policy Actions */}
+            <div className="space-y-2 pt-4 border-t">
+              <button
+                onClick={() => {}}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-documents"
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Documents</span>
+                </div>
+                <Badge variant="secondary" className="text-xs h-5 px-1.5">12</Badge>
+              </button>
+
+              <button
+                onClick={() => setNotesSheetOpen(true)}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-notes"
+              >
+                <div className="flex items-center gap-2.5">
+                  <StickyNote className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Notes</span>
+                </div>
+                <Badge variant="secondary" className="text-xs h-5 px-1.5">{quoteNotesCount}</Badge>
+              </button>
+
+              <button
+                onClick={() => {}}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-reminders"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Bell className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Reminders</span>
+                </div>
+                <Badge variant="secondary" className="text-xs h-5 px-1.5">1</Badge>
+              </button>
+
+              <button
+                onClick={() => {}}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-signature-forms"
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileSignature className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Signature Forms</span>
+                </div>
+                <Badge variant="secondary" className="text-xs h-5 px-1.5">1</Badge>
+              </button>
+
+              <button
+                onClick={() => {}}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-commissions"
+              >
+                <div className="flex items-center gap-2.5">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Commissions</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {}}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-tasks"
+              >
+                <div className="flex items-center gap-2.5">
+                  <ListTodo className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Tasks</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {}}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-life-changes"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Heart className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Life Changes</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {}}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-logs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <ScrollText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Logs</span>
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -7630,6 +7799,125 @@ export default function QuotesPage() {
           setEditingMember({ type, index });
         }}
       />
+
+      {/* Notes Sheet */}
+      <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="left" data-testid="sheet-notes">
+          <SheetHeader>
+            <SheetTitle className="text-xl font-semibold">Notes</SheetTitle>
+            <SheetDescription>Add and manage internal notes for this quote</SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6">
+            {/* Add New Note */}
+            <div className="space-y-4 pb-6 border-b">
+              <Textarea
+                placeholder="Type your note"
+                value={newNoteText}
+                onChange={(e) => setNewNoteText(e.target.value)}
+                className="min-h-[120px] resize-none"
+                data-testid="textarea-note"
+              />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="urgent-note"
+                    checked={isUrgent}
+                    onCheckedChange={(checked) => setIsUrgent(!!checked)}
+                    data-testid="checkbox-urgent"
+                  />
+                  <label
+                    htmlFor="urgent-note"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Is this an urgent note?
+                  </label>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNotesSheetOpen(false);
+                      setNewNoteText("");
+                      setIsUrgent(false);
+                    }}
+                    data-testid="button-close-notes"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => createNoteMutation.mutate()}
+                    disabled={!newNoteText.trim() || createNoteMutation.isPending}
+                    data-testid="button-send-note"
+                  >
+                    {createNoteMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      'Send'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes List */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">All Notes ({quoteNotesCount})</h3>
+
+              {isLoadingNotes ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : quoteNotes.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <StickyNote className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No notes yet</p>
+                  <p className="text-xs mt-1">Add your first note above</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {quoteNotes.map((note: any) => (
+                    <Card key={note.id} className={note.isUrgent ? "border-destructive bg-destructive/5" : ""} data-testid={`note-${note.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 space-y-2">
+                            {note.isUrgent && (
+                              <Badge variant="destructive" className="text-xs">Urgent</Badge>
+                            )}
+                            <p className="text-sm whitespace-pre-wrap">{note.note}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this note?')) {
+                                deleteNoteMutation.mutate(note.id);
+                              }
+                            }}
+                            disabled={deleteNoteMutation.isPending}
+                            data-testid={`button-delete-note-${note.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete Quote Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
