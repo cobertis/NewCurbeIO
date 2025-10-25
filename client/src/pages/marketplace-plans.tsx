@@ -274,16 +274,25 @@ export default function MarketplacePlansPage() {
       }
     }
     
-    // Plan features filter
+    // Plan features filter - show ONLY plans that have ALL selected features
     if (selectedPlanFeatures.size > 0) {
-      if (selectedPlanFeatures.has('dental_child') && !plan.has_dental_child_coverage) {
-        return false;
+      // Check dental child coverage
+      if (selectedPlanFeatures.has('dental_child')) {
+        if (!plan.has_dental_child_coverage) {
+          return false;
+        }
       }
-      if (selectedPlanFeatures.has('dental_adult') && !plan.has_dental_adult_coverage) {
-        return false;
+      // Check dental adult coverage
+      if (selectedPlanFeatures.has('dental_adult')) {
+        if (!plan.has_dental_adult_coverage) {
+          return false;
+        }
       }
-      if (selectedPlanFeatures.has('simple_choice') && !plan.simple_choice) {
-        return false;
+      // Check simple choice
+      if (selectedPlanFeatures.has('simple_choice')) {
+        if (!plan.simple_choice) {
+          return false;
+        }
       }
     }
     
@@ -1073,8 +1082,8 @@ export default function MarketplacePlansPage() {
                         }}
                         className="h-4 w-4"
                       />
-                      <label htmlFor="feature-dental-child" className="text-sm cursor-pointer">
-                        Dental coverage Children
+                      <label htmlFor="feature-dental-child" className="text-sm cursor-pointer flex-1">
+                        Dental coverage Children ({marketplacePlans?.plans?.filter((p: any) => p.has_dental_child_coverage).length || 0})
                       </label>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -1094,8 +1103,8 @@ export default function MarketplacePlansPage() {
                         }}
                         className="h-4 w-4"
                       />
-                      <label htmlFor="feature-dental-adult" className="text-sm cursor-pointer">
-                        Dental coverage Adult
+                      <label htmlFor="feature-dental-adult" className="text-sm cursor-pointer flex-1">
+                        Dental coverage Adult ({marketplacePlans?.plans?.filter((p: any) => p.has_dental_adult_coverage).length || 0})
                       </label>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -1115,8 +1124,8 @@ export default function MarketplacePlansPage() {
                         }}
                         className="h-4 w-4"
                       />
-                      <label htmlFor="feature-simple-choice" className="text-sm cursor-pointer">
-                        Simple choice
+                      <label htmlFor="feature-simple-choice" className="text-sm cursor-pointer flex-1">
+                        Simple choice ({marketplacePlans?.plans?.filter((p: any) => p.simple_choice).length || 0})
                       </label>
                     </div>
                   </CollapsibleContent>
