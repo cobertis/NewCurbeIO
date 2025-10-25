@@ -227,33 +227,35 @@ export default function MarketplacePlansPage() {
   const totalApplicants = (quote?.members || []).filter((m: any) => m.isApplicant).length + (quote?.clientIsApplicant ? 1 : 0);
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
-      {/* Combined Filters & Summary Card */}
+    <div className="p-4 sm:p-6">
+      {/* Back button */}
       {quote && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setLocation(`/quotes/${quoteId}`)}
-                  data-testid="button-back-to-quote"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Back to Quote
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-              {/* Left: Filters */}
-              <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation(`/quotes/${quoteId}`)}
+          data-testid="button-back-to-quote"
+          className="mb-4"
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Back to Quote
+        </Button>
+      )}
+
+      {/* 2-column layout: Sidebar (left) + Plans (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 sm:gap-6">
+        {/* Left Sidebar: Filters + Summary */}
+        {quote && (
+          <div className="space-y-4">
+            {/* Filters Card */}
+            <Card>
+              <CardHeader className="pb-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Filter className="h-4 w-4" />
                   Filters
                 </h3>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-3">
                   <div>
                     <Label htmlFor="metal-level">Metal Level</Label>
@@ -344,61 +346,59 @@ export default function MarketplacePlansPage() {
                     </Button>
                   )}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Right: Summary */}
-              <div className="space-y-4">
-                {/* Compact single-line summary */}
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
-                  <div>
+            {/* Summary Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <h3 className="font-semibold text-sm">Quote Summary</h3>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Location:</span>
-                    <span className="font-medium ml-1">{quote.city}, {quote.state}</span>
+                    <span className="font-medium">{quote.city}, {quote.state}</span>
                   </div>
-                  <div>
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Income:</span>
-                    <span className="font-medium ml-1">{formatCurrency((quoteData as any)?.quote?.householdIncome || 0)}/yr</span>
+                    <span className="font-medium">{formatCurrency((quoteData as any)?.quote?.householdIncome || 0)}/yr</span>
                   </div>
-                  <div>
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Members:</span>
-                    <span className="font-medium ml-1">{((quoteData as any)?.quote?.members?.filter((m: any) => m.isApplicant).length || 0) + (quote.clientIsApplicant !== false ? 1 : 0)}</span>
+                    <span className="font-medium">{((quoteData as any)?.quote?.members?.filter((m: any) => m.isApplicant).length || 0) + (quote.clientIsApplicant !== false ? 1 : 0)}</span>
                   </div>
-                  <div>
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Effective:</span>
-                    <span className="font-medium ml-1">{new Date(quote.effectiveDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(quote.effectiveDate).toLocaleDateString()}</span>
                   </div>
                   {marketplacePlans && (
-                    <div className="ml-auto">
-                      <span className="text-2xl font-bold">{marketplacePlans.plans?.length || 0}</span>
-                      <span className="text-sm text-muted-foreground ml-1">plans</span>
+                    <div className="flex justify-between pt-2 border-t">
+                      <span className="text-muted-foreground">Plans:</span>
+                      <span className="text-xl font-bold">{marketplacePlans.plans?.length || 0}</span>
                     </div>
                   )}
                 </div>
 
                 {/* APTC - Only if eligible */}
                 {marketplacePlans && marketplacePlans.household_aptc > 0 && (
-                  <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-xs text-green-700 dark:text-green-400 font-medium">Tax Credit (APTC)</div>
-                        <div className="text-xl font-bold text-green-700 dark:text-green-400">
-                          {formatCurrency(marketplacePlans.household_aptc)}/mo
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs text-green-600 dark:text-green-500">Annual Savings</div>
-                        <div className="text-lg font-bold text-green-700 dark:text-green-400">
-                          {formatCurrency(marketplacePlans.household_aptc * 12)}
-                        </div>
-                      </div>
+                  <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800 mt-3">
+                    <div className="text-xs text-green-700 dark:text-green-400 font-medium mb-1">Tax Credit (APTC)</div>
+                    <div className="text-xl font-bold text-green-700 dark:text-green-400 mb-2">
+                      {formatCurrency(marketplacePlans.household_aptc)}/mo
+                    </div>
+                    <div className="text-xs text-green-600 dark:text-green-500">
+                      Annual Savings: <span className="font-semibold">{formatCurrency(marketplacePlans.household_aptc * 12)}</span>
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
+        {/* Right: Plans List */}
+        <div className="space-y-4">
       {/* Plans List */}
       {!marketplacePlans && !isLoadingPlans && (
         <Card>
@@ -722,7 +722,7 @@ export default function MarketplacePlansPage() {
             </Card>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
