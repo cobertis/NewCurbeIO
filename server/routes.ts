@@ -9679,6 +9679,124 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== QUOTE NOTES ====================
+  
+  // Create a new note for a quote
+  app.post("/api/quotes/:quoteId/notes", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const { note, isUrgent } = req.body;
+      
+      if (!note || note.trim() === "") {
+        return res.status(400).json({ message: "Note content is required" });
+      }
+      
+      const newNote = await storage.createQuoteNote({
+        quoteId,
+        note: note.trim(),
+        isUrgent: isUrgent || false,
+        companyId: quote.companyId,
+        createdBy: currentUser.id,
+      });
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_note",
+        entityId: newNote.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          isUrgent: newNote.isUrgent,
+          createdBy: currentUser.email,
+        },
+      });
+      
+      res.status(201).json(newNote);
+    } catch (error: any) {
+      console.error("Error creating quote note:", error);
+      res.status(500).json({ message: "Failed to create quote note" });
+    }
+  });
+  
+  // Get all notes for a quote
+  app.get("/api/quotes/:quoteId/notes", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const notes = await storage.getQuoteNotes(quoteId, quote.companyId);
+      
+      res.json({ notes });
+    } catch (error: any) {
+      console.error("Error fetching quote notes:", error);
+      res.status(500).json({ message: "Failed to fetch quote notes" });
+    }
+  });
+  
+  // Delete a quote note
+  app.delete("/api/quotes/:quoteId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, noteId } = req.params;
+    
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Delete the note (storage method handles company ID filtering)
+      await storage.deleteQuoteNote(noteId, currentUser.role === "superadmin" ? undefined : quote.companyId);
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_note",
+        entityId: noteId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Quote note deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting quote note:", error);
+      res.status(500).json({ message: "Failed to delete quote note" });
+    }
+  });
+
   // ==================== CMS MARKETPLACE API ====================
   
   // Import CMS Marketplace service
