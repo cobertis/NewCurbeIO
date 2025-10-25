@@ -4749,11 +4749,6 @@ export default function QuotesPage() {
                   <p className="text-sm font-medium">{product?.name || viewingQuote.productType}</p>
                 </div>
 
-                <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">Effective date</label>
-                  <p className="text-sm">{formatDateForDisplay(viewingQuote.effectiveDate, "MM/dd/yyyy")}</p>
-                </div>
-
                 <div>
                   <label className="text-xs text-muted-foreground">Last update</label>
                   <p className="text-sm text-muted-foreground">
