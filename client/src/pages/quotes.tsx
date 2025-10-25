@@ -1985,7 +1985,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   );
 }
 
-// Add Member Sheet Component - Professional design matching Edit Member
+// Add Member Sheet Component - NUEVO DISEÑO que funciona como Edit Member
 interface AddMemberSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1998,7 +1998,43 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
   const { toast } = useToast();
   const [memberTab, setMemberTab] = useTabsState(["basic", "income", "immigration"], "basic");
   const [isSaving, setIsSaving] = useState(false);
+  const [createdMemberId, setCreatedMemberId] = useState<string | null>(null);
   
+  // Queries para Income e Immigration (igual que Edit Member)
+  const { data: incomeData, isLoading: incomeLoading } = useQuery<{ income: any }>({
+    queryKey: ['/api/quotes/members', createdMemberId, 'income'],
+    queryFn: async () => {
+      const res = await fetch(`/api/quotes/members/${createdMemberId}/income`, {
+        credentials: 'include',
+      });
+      if (res.status === 404) {
+        return { income: null };
+      }
+      if (!res.ok) {
+        throw new Error('Failed to fetch income data');
+      }
+      return await res.json();
+    },
+    enabled: !!createdMemberId && memberTab === 'income',
+  });
+
+  const { data: immigrationData, isLoading: immigrationLoading } = useQuery<{ immigration: any }>({
+    queryKey: ['/api/quotes/members', createdMemberId, 'immigration'],
+    queryFn: async () => {
+      const res = await fetch(`/api/quotes/members/${createdMemberId}/immigration`, {
+        credentials: 'include',
+      });
+      if (res.status === 404) {
+        return { immigration: null };
+      }
+      if (!res.ok) {
+        throw new Error('Failed to fetch immigration data');
+      }
+      return await res.json();
+    },
+    enabled: !!createdMemberId && memberTab === 'immigration',
+  });
+
   const addMemberSchema = dependentSchema;
 
   const defaultValues = {
@@ -2038,12 +2074,38 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
     defaultValues,
   });
 
+  // Reset cuando se abre
   useEffect(() => {
     if (open) {
+      setCreatedMemberId(null);
       addMemberForm.reset(defaultValues);
       setMemberTab('basic');
     }
   }, [open]);
+
+  // Cargar Income data cuando esté disponible
+  useEffect(() => {
+    if (incomeData?.income && createdMemberId) {
+      const income = incomeData.income;
+      addMemberForm.setValue('employerName', income.employerName || '');
+      addMemberForm.setValue('employerPhone', income.employerPhone || '');
+      addMemberForm.setValue('position', income.position || '');
+      addMemberForm.setValue('annualIncome', income.annualIncome || '');
+      addMemberForm.setValue('incomeFrequency', income.incomeFrequency || 'annually');
+      addMemberForm.setValue('selfEmployed', income.selfEmployed || false);
+    }
+  }, [incomeData, createdMemberId]);
+
+  // Cargar Immigration data cuando esté disponible
+  useEffect(() => {
+    if (immigrationData?.immigration && createdMemberId) {
+      const immigration = immigrationData.immigration;
+      addMemberForm.setValue('immigrationStatus', immigration.immigrationStatus || '');
+      addMemberForm.setValue('uscisNumber', immigration.uscisNumber || '');
+      addMemberForm.setValue('naturalizationNumber', immigration.naturalizationNumber || '');
+      addMemberForm.setValue('immigrationStatusCategory', immigration.immigrationStatusCategory || '');
+    }
+  }, [immigrationData, createdMemberId]);
 
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
   
@@ -2052,9 +2114,18 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
     setIsSaving(true);
     
     try {
-      await onSave(data);
-      addMemberForm.reset(defaultValues);
-      setMemberTab('basic');
+      const result: any = await onSave(data);
+      
+      // Después del primer save, guardamos el memberId
+      if (result?.memberId && !createdMemberId) {
+        setCreatedMemberId(result.memberId);
+        toast({
+          title: "Member created",
+          description: "You can now add income and immigration details",
+        });
+      }
+      
+      // NO resetear el formulario, mantener los datos
     } catch (error) {
       console.error('[AddMemberSheet] Error:', error);
     } finally {
@@ -5696,7 +5767,14 @@ export default function QuotesPage() {
               open={addingMember}
               onOpenChange={setAddingMember}
               quote={viewingQuote}
-              onSave={(data) => addMemberMutation.mutate(data)}
+              onSave={(data) => {
+                return new Promise((resolve, reject) => {
+                  addMemberMutation.mutate(data, {
+                    onSuccess: (result) => resolve(result),
+                    onError: (error) => reject(error),
+                  });
+                });
+              }}
               isPending={addMemberMutation.isPending}
             />
 
