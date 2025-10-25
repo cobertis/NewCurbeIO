@@ -460,7 +460,7 @@ export default function MarketplacePlansPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Annual income and Address row */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-[130px_1fr] gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground mb-1">Annual income</p>
                     <button
@@ -482,9 +482,9 @@ export default function MarketplacePlansPage() {
                       <MapPin className="h-3 w-3" />
                       Address
                     </p>
-                    <p className="text-sm">‣ {quote.physical_county || 'N/A'}</p>
-                    <p className="text-sm">‣ {quote.physical_state || 'N/A'}</p>
-                    <p className="text-sm">‣ {quote.physical_postal_code || 'N/A'}</p>
+                    <p className="text-sm whitespace-nowrap">‣ {quote.physical_county || 'N/A'}</p>
+                    <p className="text-sm whitespace-nowrap">‣ {quote.physical_state || 'N/A'}</p>
+                    <p className="text-sm whitespace-nowrap">‣ {quote.physical_postal_code || 'N/A'}</p>
                   </div>
                 </div>
 
@@ -621,7 +621,7 @@ export default function MarketplacePlansPage() {
 
                 {/* Disclaimer */}
                 <p className="text-xs text-muted-foreground pt-2 border-t">
-                  Poverty Guidelines data is retrieved from the CMS API. Apizeal does not modify this information and is not responsible for its accuracy or timeliness.
+                  Poverty Guidelines data is retrieved from the CMS API. Curbe.io does not modify this information and is not responsible for its accuracy or timeliness.
                 </p>
               </CardContent>
             </Card>
