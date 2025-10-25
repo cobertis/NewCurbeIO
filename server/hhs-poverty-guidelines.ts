@@ -1,10 +1,12 @@
 /**
- * HHS Poverty Guidelines API Integration
+ * HHS Poverty Guidelines Integration
  * 
- * This service integrates with the U.S. Department of Health and Human Services (HHS)
- * Poverty Guidelines API to fetch official federal poverty level data.
+ * NOTE: The HHS does not provide a public JSON API for Poverty Guidelines.
+ * This service uses official HHS data that is manually updated each year.
  * 
- * API Documentation: https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines/poverty-guidelines-api
+ * Official source: https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines
+ * 
+ * The Poverty Guidelines are updated annually in January by the Department of Health and Human Services.
  */
 
 interface PovertyGuidelinesResponse {
@@ -15,55 +17,30 @@ interface PovertyGuidelinesResponse {
     amount: number;
   }>;
   additional_person_increment?: number;
+  source: 'api' | 'static';
 }
 
 /**
- * Fetches Poverty Guidelines from the HHS API
+ * Fetches Poverty Guidelines
+ * 
+ * IMPORTANT: The HHS does not provide a public JSON API. This function returns
+ * official HHS data that is maintained as static data within this application.
+ * Data is updated annually when HHS publishes new guidelines (typically in January).
+ * 
  * @param year - The year for which to fetch guidelines (e.g., 2025)
- * @param state - Optional state code (e.g., 'FL' for Florida). If not provided, uses the 48 contiguous states standard.
- * @returns Poverty Guidelines data
+ * @param state - Optional state code (e.g., 'FL', 'AK', 'HI'). If not provided, uses 48 contiguous states + DC.
+ * @returns Poverty Guidelines data with official HHS values
  */
 export async function fetchPovertyGuidelines(
   year: number = new Date().getFullYear(),
   state?: string
 ): Promise<PovertyGuidelinesResponse> {
-  try {
-    // The HHS API endpoint for poverty guidelines
-    const baseUrl = 'https://aspe.hhs.gov/poverty-guidelines';
-    
-    // Construct the API URL - The exact endpoint structure may vary
-    // This is a common pattern for government APIs
-    let apiUrl = `${baseUrl}/${year}`;
-    if (state) {
-      apiUrl += `?state=${state.toUpperCase()}`;
-    }
-    
-    console.log(`[HHS Poverty Guidelines] Fetching data from: ${apiUrl}`);
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Curbe-CRM/1.0',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HHS API returned status ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log('[HHS Poverty Guidelines] Successfully fetched data:', JSON.stringify(data, null, 2));
-    
-    return data;
-  } catch (error) {
-    console.error('[HHS Poverty Guidelines] Error fetching data:', error);
-    
-    // Return fallback data for 2025 (48 contiguous states + DC)
-    // These are the official 2025 HHS Poverty Guidelines
-    console.log('[HHS Poverty Guidelines] Using fallback data for year 2025');
-    return getFallbackPovertyGuidelines(year, state);
-  }
+  console.log(`[HHS Poverty Guidelines] Requested year: ${year}, state: ${state || 'default (48 states + DC)'}`);
+  console.log('[HHS Poverty Guidelines] Note: Using official HHS data (no public API available)');
+  
+  // Return official HHS Poverty Guidelines data
+  // Data is maintained as static values and updated annually per HHS publications
+  return getFallbackPovertyGuidelines(year, state);
 }
 
 /**
@@ -124,6 +101,7 @@ function getFallbackPovertyGuidelines(year: number, state?: string): PovertyGuid
     state: state?.toUpperCase(),
     guidelines,
     additional_person_increment: additionalPersonIncrement,
+    source: 'static' as const,
   };
 }
 

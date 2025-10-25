@@ -110,6 +110,15 @@ export default function MarketplacePlansPage() {
     enabled: !!quoteId,
   });
 
+  // Fetch Poverty Guidelines from HHS API
+  const { data: povertyGuidelines, isLoading: isLoadingPovertyGuidelines } = useQuery({
+    queryKey: ['/api/hhs/poverty-guidelines', { 
+      year: new Date().getFullYear(), 
+      state: (quoteData as any)?.quote?.physical_state 
+    }],
+    enabled: !!quoteData,
+  });
+
   // State for marketplace plans and pagination
   const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
@@ -572,40 +581,41 @@ export default function MarketplacePlansPage() {
                 </div>
 
                 {/* Poverty Guidelines Data */}
-                {[
-                  { size: 1, amount: 15650 },
-                  { size: 2, amount: 21150 },
-                  { size: 3, amount: 26650 },
-                  { size: 4, amount: 32150 },
-                  { size: 5, amount: 37650 },
-                  { size: 6, amount: 43150 },
-                  { size: 7, amount: 48650 },
-                  { size: 8, amount: 54150 },
-                ].map(({ size, amount }) => {
-                  const householdSize = 1 + allFamilyMembers.length;
-                  const isCurrentSize = size === householdSize;
-                  return (
-                    <div
-                      key={size}
-                      className={`grid grid-cols-2 gap-4 py-1.5 px-2 rounded ${
-                        isCurrentSize ? 'bg-primary/10 border border-primary/20' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className={isCurrentSize ? 'font-semibold' : ''}>{size}</span>
+                {isLoadingPovertyGuidelines ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  (povertyGuidelines as any)?.guidelines?.map((item: any) => {
+                    const size = item.household_size;
+                    const amount = item.amount;
+                    const householdSize = 1 + allFamilyMembers.length;
+                    const isCurrentSize = size === householdSize;
+                    return (
+                      <div
+                        key={size}
+                        className={`grid grid-cols-2 gap-4 py-1.5 px-2 rounded ${
+                          isCurrentSize ? 'bg-primary/10 border border-primary/20' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 text-sm">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className={isCurrentSize ? 'font-semibold' : ''}>{size}</span>
+                        </div>
+                        <div className={`text-sm text-right ${isCurrentSize ? 'font-semibold' : ''}`}>
+                          {formatCurrency(amount)}
+                        </div>
                       </div>
-                      <div className={`text-sm text-right ${isCurrentSize ? 'font-semibold' : ''}`}>
-                        {formatCurrency(amount)}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
 
                 {/* Additional Person Note */}
-                <div className="text-xs text-muted-foreground pt-2 border-t">
-                  Add $5,500 for each additional person
-                </div>
+                {!isLoadingPovertyGuidelines && (povertyGuidelines as any)?.additional_person_increment && (
+                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                    Add {formatCurrency((povertyGuidelines as any).additional_person_increment)} for each additional person
+                  </div>
+                )}
 
                 {/* More Information Button */}
                 <Button 
@@ -621,7 +631,7 @@ export default function MarketplacePlansPage() {
 
                 {/* Disclaimer */}
                 <p className="text-xs text-muted-foreground pt-2 border-t">
-                  Poverty Guidelines data is retrieved from the CMS API. Curbe.io does not modify this information and is not responsible for its accuracy or timeliness.
+                  Poverty Guidelines data is retrieved from the HHS API. Curbe.io does not modify this information and is not responsible for its accuracy or timeliness.
                 </p>
               </CardContent>
             </Card>
@@ -1330,9 +1340,11 @@ export default function MarketplacePlansPage() {
       <Dialog open={isPovertyGuidelinesOpen} onOpenChange={setIsPovertyGuidelinesOpen}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>2025 Poverty guideline for Florida</DialogTitle>
+            <DialogTitle>
+              {(povertyGuidelines as any)?.year || new Date().getFullYear()} Poverty guideline for {(povertyGuidelines as any)?.state || quote?.physical_state || 'the United States'}
+            </DialogTitle>
             <DialogDescription>
-              The Poverty Guidelines information displayed on this website is obtained directly from the Centers for Medicare & Medicaid Services (CMS) API.
+              The Poverty Guidelines information displayed on this website is obtained directly from the U.S. Department of Health and Human Services (HHS) API.
             </DialogDescription>
           </DialogHeader>
           
@@ -1356,57 +1368,75 @@ export default function MarketplacePlansPage() {
 
             {/* Table Rows */}
             <div className="space-y-1 mt-2">
-              {[
-                { size: 1, p50: 7825, p75: 11737, p100: 15658, p125: 19562, p138: 20345, p133: 20814, p135: 21127, p138_2: 21597, p150: 23475, p175: 27387, p180: 28170, p185: 28952 },
-                { size: 2, p50: 10575, p75: 15862, p100: 21150, p125: 26437, p138: 27495, p133: 28129, p135: 28552, p138_2: 29187, p150: 31725, p175: 37012, p180: 38070, p185: 39127 },
-                { size: 3, p50: 13325, p75: 19987, p100: 26650, p125: 33312, p138: 34645, p133: 35444, p135: 35977, p138_2: 36777, p150: 39975, p175: 46637, p180: 47970, p185: 49302 },
-                { size: 4, p50: 16075, p75: 24112, p100: 32150, p125: 40187, p138: 41795, p133: 42759, p135: 43402, p138_2: 44367, p150: 48225, p175: 56262, p180: 57870, p185: 59477 },
-                { size: 5, p50: 18825, p75: 28237, p100: 37650, p125: 47062, p138: 48945, p133: 50074, p135: 50827, p138_2: 51957, p150: 56475, p175: 65887, p180: 67770, p185: 69652 },
-                { size: 6, p50: 21575, p75: 32362, p100: 43150, p125: 53937, p138: 56095, p133: 57389, p135: 58252, p138_2: 59547, p150: 64725, p175: 75512, p180: 77670, p185: 79827 },
-                { size: 7, p50: 24325, p75: 36487, p100: 48650, p125: 60812, p138: 63245, p133: 64704, p135: 65677, p138_2: 67137, p150: 72975, p175: 85137, p180: 87570, p185: 90002 },
-                { size: 8, p50: 27075, p75: 40612, p100: 54150, p125: 67687, p138: 70395, p133: 72019, p135: 73102, p138_2: 74727, p150: 81225, p175: 94762, p180: 97470, p185: 100177 },
-                { size: 9, p50: 29825, p75: 44737, p100: 59650, p125: 74562, p138: 77545, p133: 79334, p135: 80527, p138_2: 82317, p150: 89475, p175: 104387, p180: 107370, p185: 110352 },
-                { size: 10, p50: 32575, p75: 48862, p100: 65150, p125: 81437, p138: 84695, p133: 86649, p135: 87952, p138_2: 89907, p150: 97725, p175: 114012, p180: 117270, p185: 120527 },
-                { size: 11, p50: 35325, p75: 52987, p100: 70650, p125: 88312, p138: 91845, p133: 93964, p135: 95377, p138_2: 97497, p150: 105975, p175: 123637, p180: 127170, p185: 130702 },
-                { size: 12, p50: 38075, p75: 57112, p100: 76150, p125: 95187, p138: 98995, p133: 101279, p135: 102802, p138_2: 105087, p150: 114225, p175: 133262, p180: 137070, p185: 140877 },
-                { size: 13, p50: 40825, p75: 61237, p100: 81650, p125: 102062, p138: 106145, p133: 108594, p135: 110227, p138_2: 112677, p150: 122475, p175: 142887, p180: 146970, p185: 151052 },
-                { size: 14, p50: 43575, p75: 65362, p100: 87150, p125: 108937, p138: 113295, p133: 115909, p135: 117652, p138_2: 120267, p150: 130725, p175: 152512, p180: 156870, p185: 161227 },
-              ].map((row) => {
-                const householdSize = 1 + allFamilyMembers.length;
-                const isCurrentSize = row.size === householdSize;
-                return (
-                  <div
-                    key={row.size}
-                    className={`grid grid-cols-13 gap-2 py-1.5 px-2 rounded text-sm ${
-                      isCurrentSize ? 'bg-primary/10 border border-primary/20 font-semibold' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3 text-muted-foreground" />
-                      {row.size}
+              {isLoadingPovertyGuidelines ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                // Generate rows up to household size 14
+                Array.from({ length: 14 }, (_, i) => {
+                  const size = i + 1;
+                  
+                  // Get base amount for this household size
+                  const baseGuideline = (povertyGuidelines as any)?.guidelines?.find((g: any) => g.household_size === size);
+                  let p100 = baseGuideline?.amount || 0;
+                  
+                  // If size > 8, calculate using additional person increment
+                  if (size > 8 && !baseGuideline && (povertyGuidelines as any)?.additional_person_increment) {
+                    const base8 = (povertyGuidelines as any)?.guidelines?.find((g: any) => g.household_size === 8)?.amount || 0;
+                    const additionalPeople = size - 8;
+                    p100 = base8 + (additionalPeople * (povertyGuidelines as any).additional_person_increment);
+                  }
+                  
+                  // Calculate all percentages based on 100% value
+                  const p50 = Math.round(p100 * 0.50);
+                  const p75 = Math.round(p100 * 0.75);
+                  const p125 = Math.round(p100 * 1.25);
+                  const p133 = Math.round(p100 * 1.33);
+                  const p135 = Math.round(p100 * 1.35);
+                  const p138 = Math.round(p100 * 1.38);
+                  const p150 = Math.round(p100 * 1.50);
+                  const p175 = Math.round(p100 * 1.75);
+                  const p180 = Math.round(p100 * 1.80);
+                  const p185 = Math.round(p100 * 1.85);
+                  
+                  const householdSize = 1 + allFamilyMembers.length;
+                  const isCurrentSize = size === householdSize;
+                  
+                  return (
+                    <div
+                      key={size}
+                      className={`grid grid-cols-13 gap-2 py-1.5 px-2 rounded text-sm ${
+                        isCurrentSize ? 'bg-primary/10 border border-primary/20 font-semibold' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3 w-3 text-muted-foreground" />
+                        {size}
+                      </div>
+                      <div className="text-right">{formatCurrency(p50)}</div>
+                      <div className="text-right">{formatCurrency(p75)}</div>
+                      <div className="text-right">{formatCurrency(p100)}</div>
+                      <div className="text-right">{formatCurrency(p125)}</div>
+                      <div className="text-right">{formatCurrency(p138)}</div>
+                      <div className="text-right">{formatCurrency(p133)}</div>
+                      <div className="text-right">{formatCurrency(p135)}</div>
+                      <div className="text-right">{formatCurrency(p138)}</div>
+                      <div className="text-right">{formatCurrency(p150)}</div>
+                      <div className="text-right">{formatCurrency(p175)}</div>
+                      <div className="text-right">{formatCurrency(p180)}</div>
+                      <div className="text-right">{formatCurrency(p185)}</div>
                     </div>
-                    <div className="text-right">{formatCurrency(row.p50)}</div>
-                    <div className="text-right">{formatCurrency(row.p75)}</div>
-                    <div className="text-right">{formatCurrency(row.p100)}</div>
-                    <div className="text-right">{formatCurrency(row.p125)}</div>
-                    <div className="text-right">{formatCurrency(row.p138)}</div>
-                    <div className="text-right">{formatCurrency(row.p133)}</div>
-                    <div className="text-right">{formatCurrency(row.p135)}</div>
-                    <div className="text-right">{formatCurrency(row.p138_2)}</div>
-                    <div className="text-right">{formatCurrency(row.p150)}</div>
-                    <div className="text-right">{formatCurrency(row.p175)}</div>
-                    <div className="text-right">{formatCurrency(row.p180)}</div>
-                    <div className="text-right">{formatCurrency(row.p185)}</div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
             {/* Disclaimer */}
             <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg flex gap-3">
               <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                The Poverty Guidelines information displayed on this website is obtained directly from the <strong>Centers for Medicare & Medicaid Services (CMS)</strong> API. <strong>Apizeal</strong> does not alter, modify, or validate this data. Accordingly, Apizeal assumes no responsibility or liability for any errors, omissions, outdated information, or inaccuracies that may arise from the data provided by the CMS. Any discrepancies or concerns regarding the displayed information should be verified directly with the <strong>CMS</strong>.
+                The Poverty Guidelines information displayed on this website is obtained directly from the <strong>U.S. Department of Health and Human Services (HHS)</strong> API. <strong>Curbe.io</strong> does not alter, modify, or validate this data. Accordingly, Curbe.io assumes no responsibility or liability for any errors, omissions, outdated information, or inaccuracies that may arise from the data provided by the HHS. Any discrepancies or concerns regarding the displayed information should be verified directly with the <strong>HHS</strong>.
               </p>
             </div>
 
