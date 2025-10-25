@@ -258,13 +258,11 @@ export default function MarketplacePlansPage() {
         </Button>
       )}
 
-      {/* 2-column layout: Sidebar (left) + Plans (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 sm:gap-6">
-        {/* Left Sidebar: Filters + Summary */}
-        {quote && (
-          <div className="space-y-4">
-            {/* Filters Card */}
-            <Card>
+      {/* Top: 2-column cards (Filters | Summary) */}
+      {quote && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+          {/* Left: Filters Card */}
+          <Card>
               <CardHeader className="pb-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Filter className="h-4 w-4" />
@@ -347,8 +345,8 @@ export default function MarketplacePlansPage() {
               </CardContent>
             </Card>
 
-            {/* Summary Card */}
-            <Card>
+          {/* Right: Summary Card */}
+          <Card>
               <CardHeader className="pb-3">
                 <h3 className="font-semibold text-sm">Quote Summary</h3>
               </CardHeader>
@@ -392,11 +390,11 @@ export default function MarketplacePlansPage() {
                 )}
               </CardContent>
             </Card>
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Right: Plans List */}
-        <div className="space-y-4">
+      {/* Bottom: Plans List (full width) */}
+      <div className="space-y-4">
           {!marketplacePlans && !isLoadingPlans && (
             <Card>
               <CardContent className="py-12 text-center">
@@ -719,7 +717,6 @@ export default function MarketplacePlansPage() {
               )}
             </div>
           )}
-        </div>
       </div>
     </div>
   );
