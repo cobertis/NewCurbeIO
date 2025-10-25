@@ -267,7 +267,7 @@ export default function MarketplacePlansPage() {
 
   const quote = (quoteData as any)?.quote;
   const totalApplicants = ((quote?.members || []).filter((m: any) => m.isApplicant).length) + (quote?.clientIsApplicant !== false ? 1 : 0);
-  const totalMembers = (quote?.members?.length || 0) + 1; // +1 for client
+  const totalDependents = (quote?.members || []).filter((m: any) => m.role === 'dependent').length;
 
   return (
     <div className="p-4 sm:p-6">
@@ -328,15 +328,15 @@ export default function MarketplacePlansPage() {
                 <div className="pt-2 border-t">
                   <h4 className="font-semibold text-sm mb-3">Family members</h4>
                   
-                  {/* Applicants and Members count */}
+                  {/* Applicants and Dependents count */}
                   <div className="grid grid-cols-2 gap-4 mb-3">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Applicants</p>
                       <p className="text-2xl font-bold">{totalApplicants}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Members</p>
-                      <p className="text-2xl font-bold">{totalMembers}</p>
+                      <p className="text-xs text-muted-foreground mb-1">Dependents</p>
+                      <p className="text-2xl font-bold">{totalDependents}</p>
                     </div>
                   </div>
 
