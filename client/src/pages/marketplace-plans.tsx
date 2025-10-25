@@ -370,7 +370,7 @@ export default function MarketplacePlansPage() {
                         </div>
                       </div>
                       <div className="pt-3 border-t border-green-200 dark:border-green-800">
-                        <p className="text-xs text-green-600 dark:text-green-500 mb-1">Ahorro estimado anual</p>
+                        <p className="text-xs text-green-600 dark:text-green-500 mb-1">Estimated Annual Savings</p>
                         <p className="text-xl font-bold text-green-700 dark:text-green-300">
                           {formatCurrency(marketplacePlans.household_aptc * 12)}
                         </p>
