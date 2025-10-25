@@ -5144,21 +5144,20 @@ export default function QuotesPage() {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          {spouse.id && (
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
-                              onClick={() => setDeletingMember({ 
-                                id: spouse.id, 
-                                name: `${spouse.firstName} ${spouse.lastName}`,
-                                role: 'Spouse'
-                              })}
-                              data-testid={`button-delete-spouse-${index}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
+                            onClick={() => setDeletingMember({ 
+                              id: spouse.id, 
+                              name: `${spouse.firstName} ${spouse.lastName}`,
+                              role: 'Spouse',
+                              index: index
+                            })}
+                            data-testid={`button-delete-spouse-${index}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -5231,21 +5230,20 @@ export default function QuotesPage() {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          {dependent.id && (
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
-                              onClick={() => setDeletingMember({ 
-                                id: dependent.id, 
-                                name: `${dependent.firstName} ${dependent.lastName}`,
-                                role: dependent.relation || 'Dependent'
-                              })}
-                              data-testid={`button-delete-dependent-${index}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
+                            onClick={() => setDeletingMember({ 
+                              id: dependent.id, 
+                              name: `${dependent.firstName} ${dependent.lastName}`,
+                              role: dependent.relation || 'Dependent',
+                              index: index
+                            })}
+                            data-testid={`button-delete-dependent-${index}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
                     ))}
