@@ -4779,9 +4779,11 @@ export default function QuotesPage() {
       );
     }
 
-    // Combine viewingQuote with full member details for EditMemberSheet
-    const spousesFromMembers = membersDetailsData?.members?.filter(m => m.role === 'spouse') || [];
-    const dependentsFromMembers = membersDetailsData?.members?.filter(m => m.role === 'dependent') || [];
+    // PERMANENT FIX: Show ALL family members (exclude only 'client')
+    const allFamilyMembers = membersDetailsData?.members?.filter(m => m.role !== 'client') || [];
+    const spousesFromMembers = allFamilyMembers.filter(m => m.role === 'spouse');
+    const dependentsFromMembers = allFamilyMembers.filter(m => m.role !== 'spouse'); // Everyone else is a dependent
+    
     const viewingQuoteWithMembers = {
       ...viewingQuote,
       spouses: spousesFromMembers.length > 0 ? spousesFromMembers : (viewingQuote.spouses || []),
