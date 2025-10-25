@@ -428,20 +428,6 @@ export default function MarketplacePlansPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Back button */}
-      {quote && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocation(`/quotes/${quoteId}`)}
-          data-testid="button-back-to-quote"
-          className="mb-4"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Quote
-        </Button>
-      )}
-
       {/* 3-column layout: Household Info | Plans | Filters */}
       {quote && (
         <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-4 sm:gap-6">
