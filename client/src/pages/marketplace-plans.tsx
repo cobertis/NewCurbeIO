@@ -676,7 +676,7 @@ export default function MarketplacePlansPage() {
                         <Shield className="h-7 w-7 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base mb-0.5 text-muted-foreground">{plan.issuer?.name || 'Insurance Provider'}</h3>
+                        <h3 className="font-semibold text-base mb-0.5">{plan.issuer?.name || 'Insurance Provider'}</h3>
                         <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className="text-xs">
