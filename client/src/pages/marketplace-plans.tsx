@@ -267,9 +267,27 @@ export default function MarketplacePlansPage() {
 
   const quote = (quoteData as any)?.quote;
   
+  // Parse JSONB fields - they might come as strings or objects depending on ORM
+  const parseJsonbField = (field: any): any[] => {
+    if (!field) return [];
+    if (Array.isArray(field)) return field;
+    if (typeof field === 'string') {
+      try {
+        const parsed = JSON.parse(field);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+  
+  const spouses = parseJsonbField(quote?.spouses);
+  const dependents = parseJsonbField(quote?.dependents);
+  
   // Build family members list from JSONB fields (spouses and dependents)
   const allFamilyMembers = [
-    ...(quote?.spouses || []).map((s: any) => ({
+    ...spouses.map((s: any) => ({
       firstName: s.firstName,
       lastName: s.lastName,
       dateOfBirth: s.dateOfBirth,
@@ -277,7 +295,7 @@ export default function MarketplacePlansPage() {
       role: 'spouse',
       isApplicant: s.isApplicant !== false, // Default to true if not specified
     })),
-    ...(quote?.dependents || []).map((d: any) => ({
+    ...dependents.map((d: any) => ({
       firstName: d.firstName,
       lastName: d.lastName,
       dateOfBirth: d.dateOfBirth,
