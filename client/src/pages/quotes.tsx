@@ -2770,6 +2770,8 @@ export default function QuotesPage() {
   // Delete address dialog state
   const [deletingAddress, setDeletingAddress] = useState<'mailing' | 'billing' | null>(null);
   
+  // Validation dialog state
+  const [missingDataDialog, setMissingDataDialog] = useState<{open: boolean; missingFields: string[]}>({open: false, missingFields: []});
   
   // Advanced filters state
   const [filters, setFilters] = useState({
@@ -4673,6 +4675,43 @@ export default function QuotesPage() {
         }).format(totalHouseholdIncome)
       : '-';
 
+    // Validate data required for CMS Marketplace API
+    const validateMarketplaceData = () => {
+      const missing: string[] = [];
+      
+      // Check county (required for FIPS code)
+      if (!viewingQuote.physical_county) {
+        missing.push("County information (Physical Address)");
+      }
+      
+      // Check if at least one member has income data
+      const hasIncome = (householdIncomeData as any)?.totalIncome > 0;
+      if (!hasIncome) {
+        missing.push("Household income information");
+      }
+      
+      // Check if primary client has date of birth
+      if (!viewingQuote.clientDateOfBirth) {
+        missing.push("Primary applicant date of birth");
+      }
+      
+      // Check if all applicant spouses have DOB
+      const spousesWithoutDOB = (viewingQuoteWithMembers.spouses || [])
+        .filter((s: any) => s.isApplicant && !s.dateOfBirth);
+      if (spousesWithoutDOB.length > 0) {
+        missing.push(`Date of birth for ${spousesWithoutDOB.length} spouse(s)`);
+      }
+      
+      // Check if all applicant dependents have DOB
+      const dependentsWithoutDOB = (viewingQuoteWithMembers.dependents || [])
+        .filter((d: any) => d.isApplicant && !d.dateOfBirth);
+      if (dependentsWithoutDOB.length > 0) {
+        missing.push(`Date of birth for ${dependentsWithoutDOB.length} dependent(s)`);
+      }
+      
+      return missing;
+    };
+
     return (
       <div className="h-full overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full">
@@ -4852,7 +4891,14 @@ export default function QuotesPage() {
                         variant="default" 
                         size="sm" 
                         data-testid="button-search-plans"
-                        onClick={() => setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`)}
+                        onClick={() => {
+                          const missingFields = validateMarketplaceData();
+                          if (missingFields.length > 0) {
+                            setMissingDataDialog({open: true, missingFields});
+                          } else {
+                            setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`);
+                          }
+                        }}
                       >
                         Search plans
                       </Button>
@@ -7620,6 +7666,30 @@ export default function QuotesPage() {
               data-testid="button-confirm-delete"
             >
               {deleteQuoteMutation.isPending ? 'Deleting...' : 'Delete Permanently'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Missing Data Validation Dialog */}
+      <AlertDialog open={missingDataDialog.open} onOpenChange={(open) => setMissingDataDialog({...missingDataDialog, open})}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Datos Faltantes</AlertDialogTitle>
+            <AlertDialogDescription>
+              No se puede buscar planes porque faltan los siguientes datos requeridos:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-4">
+            <ul className="list-disc pl-6 space-y-2">
+              {missingDataDialog.missingFields.map((field, index) => (
+                <li key={index} className="text-sm text-foreground">{field}</li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setMissingDataDialog({open: false, missingFields: []})}>
+              Entendido
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
