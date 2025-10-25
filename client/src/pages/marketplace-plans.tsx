@@ -1357,118 +1357,120 @@ export default function MarketplacePlansPage() {
 
       {/* Poverty Guidelines Dialog */}
       <Dialog open={isPovertyGuidelinesOpen} onOpenChange={setIsPovertyGuidelinesOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>
-              {(povertyGuidelines as any)?.year || new Date().getFullYear()} Poverty guideline for {(povertyGuidelines as any)?.state || quote?.physical_state || 'the United States'}
+              {(povertyGuidelines as any)?.year || new Date().getFullYear()} Poverty Guidelines for {(povertyGuidelines as any)?.state || quote?.physical_state || 'the United States'}
             </DialogTitle>
             <DialogDescription>
-              The Poverty Guidelines information displayed on this website is obtained directly from the U.S. Department of Health and Human Services (HHS) API.
+              The Poverty Guidelines information displayed on this website is obtained directly from the U.S. Department of Health and Human Services (HHS).
             </DialogDescription>
           </DialogHeader>
           
-          <div className="mt-4">
-            {/* Table Header */}
-            <div className="grid grid-cols-13 gap-2 pb-3 border-b font-medium text-sm">
-              <div className="col-span-1">Household Size</div>
-              <div className="text-right">%50</div>
-              <div className="text-right">%75</div>
-              <div className="text-right">%100</div>
-              <div className="text-right">%125</div>
-              <div className="text-right">%138</div>
-              <div className="text-right">%133</div>
-              <div className="text-right">%135</div>
-              <div className="text-right">%138</div>
-              <div className="text-right">%150</div>
-              <div className="text-right">%175</div>
-              <div className="text-right">%180</div>
-              <div className="text-right">%185</div>
-            </div>
+          <div className="flex-1 overflow-x-auto mt-4">
+            {isLoadingPovertyGuidelines ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="min-w-[1200px]">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2">
+                      <th className="text-left py-3 px-4 font-semibold text-sm bg-muted/30">Household Size</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">50%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">75%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">100%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">125%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">133%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">135%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">138%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">150%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">175%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">180%</th>
+                      <th className="text-right py-3 px-3 font-semibold text-sm bg-muted/30">185%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: 14 }, (_, i) => {
+                      const size = i + 1;
+                      
+                      // Get base amount for this household size
+                      const baseGuideline = (povertyGuidelines as any)?.guidelines?.find((g: any) => g.household_size === size);
+                      let p100 = baseGuideline?.amount || 0;
+                      
+                      // If size > 8, calculate using additional person increment
+                      if (size > 8 && !baseGuideline && (povertyGuidelines as any)?.additional_person_increment) {
+                        const base8 = (povertyGuidelines as any)?.guidelines?.find((g: any) => g.household_size === 8)?.amount || 0;
+                        const additionalPeople = size - 8;
+                        p100 = base8 + (additionalPeople * (povertyGuidelines as any).additional_person_increment);
+                      }
+                      
+                      // Calculate all percentages based on 100% value
+                      const p50 = Math.round(p100 * 0.50);
+                      const p75 = Math.round(p100 * 0.75);
+                      const p125 = Math.round(p100 * 1.25);
+                      const p133 = Math.round(p100 * 1.33);
+                      const p135 = Math.round(p100 * 1.35);
+                      const p138 = Math.round(p100 * 1.38);
+                      const p150 = Math.round(p100 * 1.50);
+                      const p175 = Math.round(p100 * 1.75);
+                      const p180 = Math.round(p100 * 1.80);
+                      const p185 = Math.round(p100 * 1.85);
+                      
+                      const householdSize = 1 + allFamilyMembers.length;
+                      const isCurrentSize = size === householdSize;
+                      
+                      return (
+                        <tr
+                          key={size}
+                          className={`border-b ${
+                            isCurrentSize ? 'bg-primary/10 font-semibold' : 'hover-elevate'
+                          }`}
+                        >
+                          <td className="py-2.5 px-4 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                              {size}
+                            </div>
+                          </td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p50)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p75)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm font-medium">{formatCurrency(p100)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p125)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p133)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p135)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p138)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p150)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p175)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p180)}</td>
+                          <td className="text-right py-2.5 px-3 text-sm">{formatCurrency(p185)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
-            {/* Table Rows */}
-            <div className="space-y-1 mt-2">
-              {isLoadingPovertyGuidelines ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                // Generate rows up to household size 14
-                Array.from({ length: 14 }, (_, i) => {
-                  const size = i + 1;
-                  
-                  // Get base amount for this household size
-                  const baseGuideline = (povertyGuidelines as any)?.guidelines?.find((g: any) => g.household_size === size);
-                  let p100 = baseGuideline?.amount || 0;
-                  
-                  // If size > 8, calculate using additional person increment
-                  if (size > 8 && !baseGuideline && (povertyGuidelines as any)?.additional_person_increment) {
-                    const base8 = (povertyGuidelines as any)?.guidelines?.find((g: any) => g.household_size === 8)?.amount || 0;
-                    const additionalPeople = size - 8;
-                    p100 = base8 + (additionalPeople * (povertyGuidelines as any).additional_person_increment);
-                  }
-                  
-                  // Calculate all percentages based on 100% value
-                  const p50 = Math.round(p100 * 0.50);
-                  const p75 = Math.round(p100 * 0.75);
-                  const p125 = Math.round(p100 * 1.25);
-                  const p133 = Math.round(p100 * 1.33);
-                  const p135 = Math.round(p100 * 1.35);
-                  const p138 = Math.round(p100 * 1.38);
-                  const p150 = Math.round(p100 * 1.50);
-                  const p175 = Math.round(p100 * 1.75);
-                  const p180 = Math.round(p100 * 1.80);
-                  const p185 = Math.round(p100 * 1.85);
-                  
-                  const householdSize = 1 + allFamilyMembers.length;
-                  const isCurrentSize = size === householdSize;
-                  
-                  return (
-                    <div
-                      key={size}
-                      className={`grid grid-cols-13 gap-2 py-1.5 px-2 rounded text-sm ${
-                        isCurrentSize ? 'bg-primary/10 border border-primary/20 font-semibold' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <Users className="h-3 w-3 text-muted-foreground" />
-                        {size}
-                      </div>
-                      <div className="text-right">{formatCurrency(p50)}</div>
-                      <div className="text-right">{formatCurrency(p75)}</div>
-                      <div className="text-right">{formatCurrency(p100)}</div>
-                      <div className="text-right">{formatCurrency(p125)}</div>
-                      <div className="text-right">{formatCurrency(p138)}</div>
-                      <div className="text-right">{formatCurrency(p133)}</div>
-                      <div className="text-right">{formatCurrency(p135)}</div>
-                      <div className="text-right">{formatCurrency(p138)}</div>
-                      <div className="text-right">{formatCurrency(p150)}</div>
-                      <div className="text-right">{formatCurrency(p175)}</div>
-                      <div className="text-right">{formatCurrency(p180)}</div>
-                      <div className="text-right">{formatCurrency(p185)}</div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+          {/* Disclaimer */}
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg flex gap-3">
+            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              The Poverty Guidelines information displayed on this website is obtained directly from the <strong>U.S. Department of Health and Human Services (HHS)</strong>. <strong>Curbe.io</strong> does not alter, modify, or validate this data. Accordingly, Curbe.io assumes no responsibility or liability for any errors, omissions, outdated information, or inaccuracies that may arise from the data provided by the HHS. Any discrepancies or concerns regarding the displayed information should be verified directly with the <strong>HHS</strong>.
+            </p>
+          </div>
 
-            {/* Disclaimer */}
-            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg flex gap-3">
-              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-900 dark:text-blue-100">
-                The Poverty Guidelines information displayed on this website is obtained directly from the <strong>U.S. Department of Health and Human Services (HHS)</strong> API. <strong>Curbe.io</strong> does not alter, modify, or validate this data. Accordingly, Curbe.io assumes no responsibility or liability for any errors, omissions, outdated information, or inaccuracies that may arise from the data provided by the HHS. Any discrepancies or concerns regarding the displayed information should be verified directly with the <strong>HHS</strong>.
-              </p>
-            </div>
-
-            {/* Close Button */}
-            <div className="mt-6 flex justify-end">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsPovertyGuidelinesOpen(false)}
-                data-testid="button-close-poverty-dialog"
-              >
-                Close
-              </Button>
-            </div>
+          {/* Close Button */}
+          <div className="mt-4 flex justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPovertyGuidelinesOpen(false)}
+              data-testid="button-close-poverty-dialog"
+            >
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
