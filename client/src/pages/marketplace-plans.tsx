@@ -417,6 +417,33 @@ export default function MarketplacePlansPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-4 sm:gap-6">
           {/* Left Sidebar: Household Information */}
           <div className="space-y-4">
+            {/* APTC Tax Credit Card */}
+            {marketplacePlans && marketplacePlans.household_aptc > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg border-2 border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-8 w-8 rounded-full bg-green-600 dark:bg-green-700 flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-green-700 dark:text-green-400">APTC Tax Credit</p>
+                        <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                          {formatCurrency(marketplacePlans.household_aptc)}<span className="text-sm font-normal">/month</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-green-200 dark:border-green-800">
+                      <p className="text-xs text-green-600 dark:text-green-500 mb-1">Estimated Annual Savings</p>
+                      <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                        {formatCurrency(marketplacePlans.household_aptc * 12)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader className="pb-3">
                 <h3 className="font-semibold text-sm">Household information</h3>
@@ -885,35 +912,8 @@ export default function MarketplacePlansPage() {
           )}
           </div>
 
-          {/* Right Sidebar: APTC + Filters */}
+          {/* Right Sidebar: Filters */}
           <div className="space-y-4">
-            {/* APTC Tax Credit Section - Llamativo */}
-            {marketplacePlans && marketplacePlans.household_aptc > 0 && (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg border-2 border-green-200 dark:border-green-800">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-8 w-8 rounded-full bg-green-600 dark:bg-green-700 flex items-center justify-center">
-                        <DollarSign className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-green-700 dark:text-green-400">APTC Tax Credit</p>
-                        <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                          {formatCurrency(marketplacePlans.household_aptc)}<span className="text-sm font-normal">/month</span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="pt-3 border-t border-green-200 dark:border-green-800">
-                      <p className="text-xs text-green-600 dark:text-green-500 mb-1">Estimated Annual Savings</p>
-                      <p className="text-xl font-bold text-green-700 dark:text-green-300">
-                        {formatCurrency(marketplacePlans.household_aptc * 12)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             <Card className="sticky top-4">
               <CardHeader className="pb-3">
                 <Button variant="default" className="w-full" data-testid="button-filter-plans">
