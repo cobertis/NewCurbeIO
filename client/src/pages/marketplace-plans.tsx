@@ -1567,11 +1567,8 @@ export default function MarketplacePlansPage() {
       <Dialog open={isComparisonOpen} onOpenChange={setIsComparisonOpen}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-6 py-4 border-b">
-            <DialogTitle className="flex items-center justify-between">
-              <span>Compare Plans ({selectedPlansForComparison.size})</span>
-              <Button variant="ghost" size="sm" onClick={() => setIsComparisonOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+            <DialogTitle>
+              Compare Plans ({selectedPlansForComparison.size})
             </DialogTitle>
             <DialogDescription>
               Side-by-side comparison of selected health insurance plans
