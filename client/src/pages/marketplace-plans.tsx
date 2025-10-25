@@ -38,6 +38,7 @@ import {
   FileText,
   ExternalLink,
   MapPin,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Collapsible,
@@ -111,11 +112,21 @@ export default function MarketplacePlansPage() {
   });
 
   // Fetch Poverty Guidelines from HHS API
-  const { data: povertyGuidelines, isLoading: isLoadingPovertyGuidelines } = useQuery({
-    queryKey: ['/api/hhs/poverty-guidelines', { 
-      year: new Date().getFullYear(), 
-      state: (quoteData as any)?.quote?.physical_state 
-    }],
+  const currentYear = new Date().getFullYear();
+  const quoteState = (quoteData as any)?.quote?.physical_state;
+  const { data: povertyGuidelines, isLoading: isLoadingPovertyGuidelines, error: povertyGuidelinesError } = useQuery({
+    queryKey: ['/api/hhs/poverty-guidelines', currentYear, quoteState],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        year: currentYear.toString(),
+        ...(quoteState && { state: quoteState }),
+      });
+      const response = await fetch(`/api/hhs/poverty-guidelines?${params}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch poverty guidelines: ${response.statusText}`);
+      }
+      return response.json();
+    },
     enabled: !!quoteData,
   });
 
@@ -584,6 +595,14 @@ export default function MarketplacePlansPage() {
                 {isLoadingPovertyGuidelines ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : povertyGuidelinesError ? (
+                  <div className="flex flex-col items-center justify-center py-8 px-4">
+                    <AlertTriangle className="h-8 w-8 text-destructive mb-3" />
+                    <p className="text-sm font-medium text-destructive mb-1">Data Unavailable</p>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Poverty Guidelines for {new Date().getFullYear()} are not available. Please contact support.
+                    </p>
                   </div>
                 ) : (
                   (povertyGuidelines as any)?.guidelines?.map((item: any) => {

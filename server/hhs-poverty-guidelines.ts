@@ -44,61 +44,101 @@ export async function fetchPovertyGuidelines(
 }
 
 /**
- * Returns fallback Poverty Guidelines data when the API is unavailable
- * Based on 2025 official HHS Poverty Guidelines for the 48 contiguous states and DC
+ * Static Poverty Guidelines Data Repository
+ * 
+ * This repository contains official HHS Poverty Guidelines data for available years.
+ * Data must be manually updated when HHS publishes new guidelines (typically in January).
+ * 
+ * Source: https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines
+ */
+const POVERTY_GUIDELINES_DATA: Record<number, {
+  contiguous: Array<{ household_size: number; amount: number }>;
+  alaska: Array<{ household_size: number; amount: number }>;
+  hawaii: Array<{ household_size: number; amount: number }>;
+  additional_person_increment: {
+    contiguous: number;
+    alaska: number;
+    hawaii: number;
+  };
+}> = {
+  2025: {
+    contiguous: [
+      { household_size: 1, amount: 15650 },
+      { household_size: 2, amount: 21150 },
+      { household_size: 3, amount: 26650 },
+      { household_size: 4, amount: 32150 },
+      { household_size: 5, amount: 37650 },
+      { household_size: 6, amount: 43150 },
+      { household_size: 7, amount: 48650 },
+      { household_size: 8, amount: 54150 },
+    ],
+    alaska: [
+      { household_size: 1, amount: 19570 },
+      { household_size: 2, amount: 26430 },
+      { household_size: 3, amount: 33290 },
+      { household_size: 4, amount: 40150 },
+      { household_size: 5, amount: 47010 },
+      { household_size: 6, amount: 53870 },
+      { household_size: 7, amount: 60730 },
+      { household_size: 8, amount: 67590 },
+    ],
+    hawaii: [
+      { household_size: 1, amount: 18010 },
+      { household_size: 2, amount: 24330 },
+      { household_size: 3, amount: 30650 },
+      { household_size: 4, amount: 36970 },
+      { household_size: 5, amount: 43290 },
+      { household_size: 6, amount: 49610 },
+      { household_size: 7, amount: 55930 },
+      { household_size: 8, amount: 62250 },
+    ],
+    additional_person_increment: {
+      contiguous: 5500,
+      alaska: 6860,
+      hawaii: 6320,
+    },
+  },
+};
+
+/**
+ * Returns Poverty Guidelines data for the requested year and state
+ * Based on 2025 official HHS Poverty Guidelines
+ * 
+ * @throws Error if the requested year is not available in the static data repository
  */
 function getFallbackPovertyGuidelines(year: number, state?: string): PovertyGuidelinesResponse {
-  // 2025 Poverty Guidelines for 48 contiguous states and DC
-  const guidelines2025 = [
-    { household_size: 1, amount: 15650 },
-    { household_size: 2, amount: 21150 },
-    { household_size: 3, amount: 26650 },
-    { household_size: 4, amount: 32150 },
-    { household_size: 5, amount: 37650 },
-    { household_size: 6, amount: 43150 },
-    { household_size: 7, amount: 48650 },
-    { household_size: 8, amount: 54150 },
-  ];
-
-  // Alaska has higher poverty guidelines
-  const guidelinesAlaska2025 = [
-    { household_size: 1, amount: 19570 },
-    { household_size: 2, amount: 26430 },
-    { household_size: 3, amount: 33290 },
-    { household_size: 4, amount: 40150 },
-    { household_size: 5, amount: 47010 },
-    { household_size: 6, amount: 53870 },
-    { household_size: 7, amount: 60730 },
-    { household_size: 8, amount: 67590 },
-  ];
-
-  // Hawaii has higher poverty guidelines
-  const guidelinesHawaii2025 = [
-    { household_size: 1, amount: 18010 },
-    { household_size: 2, amount: 24330 },
-    { household_size: 3, amount: 30650 },
-    { household_size: 4, amount: 36970 },
-    { household_size: 5, amount: 43290 },
-    { household_size: 6, amount: 49610 },
-    { household_size: 7, amount: 55930 },
-    { household_size: 8, amount: 62250 },
-  ];
-
-  let guidelines = guidelines2025;
-  let additionalPersonIncrement = 5500;
-
-  // Check if state is Alaska or Hawaii
-  if (state?.toUpperCase() === 'AK') {
-    guidelines = guidelinesAlaska2025;
-    additionalPersonIncrement = 6860;
-  } else if (state?.toUpperCase() === 'HI') {
-    guidelines = guidelinesHawaii2025;
-    additionalPersonIncrement = 6320;
+  // Check if we have data for the requested year
+  const yearData = POVERTY_GUIDELINES_DATA[year];
+  
+  if (!yearData) {
+    const availableYears = Object.keys(POVERTY_GUIDELINES_DATA).join(', ');
+    const errorMessage = `Poverty Guidelines data not available for year ${year}. Available years: ${availableYears}. Please update the static data repository in server/hhs-poverty-guidelines.ts`;
+    console.error(`[HHS Poverty Guidelines] ${errorMessage}`);
+    throw new Error(errorMessage);
   }
 
+  // Determine which guideline set to use based on state
+  let guidelines: Array<{ household_size: number; amount: number }>;
+  let additionalPersonIncrement: number;
+  
+  const stateUpper = state?.toUpperCase();
+  
+  if (stateUpper === 'AK') {
+    guidelines = yearData.alaska;
+    additionalPersonIncrement = yearData.additional_person_increment.alaska;
+  } else if (stateUpper === 'HI') {
+    guidelines = yearData.hawaii;
+    additionalPersonIncrement = yearData.additional_person_increment.hawaii;
+  } else {
+    guidelines = yearData.contiguous;
+    additionalPersonIncrement = yearData.additional_person_increment.contiguous;
+  }
+
+  console.log(`[HHS Poverty Guidelines] Returning ${year} data for ${stateUpper || '48 contiguous states + DC'}`);
+
   return {
-    year: 2025,
-    state: state?.toUpperCase(),
+    year,
+    state: stateUpper,
     guidelines,
     additional_person_increment: additionalPersonIncrement,
     source: 'static' as const,
