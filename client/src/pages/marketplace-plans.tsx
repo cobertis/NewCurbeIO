@@ -88,7 +88,7 @@ export default function MarketplacePlansPage() {
   const [planTypeFilter, setPlanTypeFilter] = useState<string>("all");
   const [maxPremium, setMaxPremium] = useState<string>("");
   const [maxDeductible, setMaxDeductible] = useState<string>("");
-  const [sortBy, setSortBy] = useState<string>("premium_asc");
+  const [sortBy, setSortBy] = useState<string>("deductible_asc");
   
   // New comprehensive filters
   const [selectedCarriers, setSelectedCarriers] = useState<Set<string>>(new Set());
