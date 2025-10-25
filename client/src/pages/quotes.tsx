@@ -357,35 +357,35 @@ const step1Schema = z.object({
 
 const familyMemberSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
-  middleName: z.string().optional(),
+  middleName: z.string().default(''),
   lastName: z.string().min(1, "Last name is required"),
-  secondLastName: z.string().optional(),
+  secondLastName: z.string().default(''),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   ssn: z.string().min(1, "SSN is required"),
   gender: z.string().min(1, "Gender is required"),
-  phone: z.string().optional(),
-  email: z.string().optional(),
+  phone: z.string().default(''),
+  email: z.string().default(''),
   isApplicant: z.boolean().default(false),
   isPrimaryDependent: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
   pregnant: z.boolean().default(false),
-  preferredLanguage: z.string().optional(),
-  countryOfBirth: z.string().optional(),
-  maritalStatus: z.string().optional(),
-  weight: z.string().optional(),
-  height: z.string().optional(),
+  preferredLanguage: z.string().default(''),
+  countryOfBirth: z.string().default(''),
+  maritalStatus: z.string().default(''),
+  weight: z.string().default(''),
+  height: z.string().default(''),
   // Income fields
-  employerName: z.string().optional(),
-  employerPhone: z.string().optional(),
-  position: z.string().optional(),
-  annualIncome: z.string().optional(),
+  employerName: z.string().default(''),
+  employerPhone: z.string().default(''),
+  position: z.string().default(''),
+  annualIncome: z.string().default(''),
   incomeFrequency: z.string().default('annually'), // weekly, biweekly, monthly, annually
   selfEmployed: z.boolean().default(false),
   // Immigration fields
-  immigrationStatus: z.string().optional(),
-  naturalizationNumber: z.string().optional(), // Only for citizens
-  uscisNumber: z.string().optional(),
-  immigrationStatusCategory: z.string().optional(),
+  immigrationStatus: z.string().default(''),
+  naturalizationNumber: z.string().default(''), // Only for citizens
+  uscisNumber: z.string().default(''),
+  immigrationStatusCategory: z.string().default(''),
 });
 
 const spouseSchema = familyMemberSchema;
