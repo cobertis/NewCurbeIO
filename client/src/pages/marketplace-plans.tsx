@@ -305,7 +305,7 @@ export default function MarketplacePlansPage() {
                       onClick={() => setLocation(`/quotes/${quoteId}`)}
                       data-testid="link-annual-income"
                     >
-                      {formatCurrency(marketplacePlans?.household_income || (quoteData as any)?.householdIncome || 0)}
+                      {formatCurrency(marketplacePlans?.household_income || (quoteData as any)?.totalHouseholdIncome || 0)}
                       <ExternalLink className="h-3 w-3" />
                     </button>
                     <p className="text-muted-foreground text-xs mt-1">Effective date</p>
