@@ -266,8 +266,9 @@ export default function MarketplacePlansPage() {
   }
 
   const quote = (quoteData as any)?.quote;
-  const totalApplicants = ((quote?.members || []).filter((m: any) => m.isApplicant).length) + (quote?.clientIsApplicant !== false ? 1 : 0);
-  const totalDependents = (quote?.members || []).filter((m: any) => m.role === 'dependent').length;
+  const members = (quoteData as any)?.members || [];
+  const totalApplicants = (members.filter((m: any) => m.member?.isApplicant).length) + (quote?.clientIsApplicant !== false ? 1 : 0);
+  const totalDependents = members.filter((m: any) => m.member?.role === 'dependent').length;
 
   return (
     <div className="p-4 sm:p-6">
@@ -362,29 +363,32 @@ export default function MarketplacePlansPage() {
                   </div>
 
                   {/* Other family members */}
-                  {(quoteData as any)?.quote?.members?.map((member: any, index: number) => (
-                    <div key={index} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 mt-2">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
-                          {member.firstName?.charAt(0) || 'M'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm">{member.firstName} {member.lastName}</p>
-                          {member.isApplicant && (
-                            <Badge variant="secondary" className="text-xs">Applicant</Badge>
-                          )}
+                  {members?.map((memberData: any, index: number) => {
+                    const member = memberData.member;
+                    return (
+                      <div key={member.id || index} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 mt-2">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
+                            {member.firstName?.charAt(0) || 'M'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{member.firstName} {member.lastName}</p>
+                            {member.isApplicant && (
+                              <Badge variant="secondary" className="text-xs">Applicant</Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {member.dateOfBirth ? `${formatDateFromString(member.dateOfBirth)} (${calculateAgeFromString(member.dateOfBirth)})` : 'N/A'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {member.gender || 'Not specified'} • {member.role || 'Family'}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {member.dob ? `${formatDateFromString(member.dob)} (${calculateAgeFromString(member.dob)})` : 'N/A'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {member.gender || 'Not specified'} • {member.relationshipToClient || 'Family'}
-                        </p>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
