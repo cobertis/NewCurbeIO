@@ -594,87 +594,137 @@ export default function MarketplacePlansPage() {
                         <Shield className="h-7 w-7 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base mb-0.5">{plan.name}</h3>
-                        <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            CATEGORÍA {plan.metal_level?.toUpperCase() || 'N/A'}
-                          </Badge>
-                          {marketplacePlans?.household_csr && (
-                            <Badge variant="default" className="bg-yellow-500 text-yellow-950 text-xs">
-                              CSR
-                            </Badge>
-                          )}
-                          {!plan.quality_rating?.available && (
-                            <span className="text-xs text-muted-foreground">Sin calificar</span>
-                          )}
-                          {plan.simple_choice && (
-                            <Badge variant="outline" className="text-xs">
-                              <Check className="h-3 w-3 mr-1" />
-                              PRECIOS FÁCILES
-                            </Badge>
-                          )}
-                        </div>
+                        <h3 className="font-semibold text-base mb-0.5 text-muted-foreground">{plan.issuer?.name || 'Insurance Provider'}</h3>
+                        <p className="text-xs text-muted-foreground mb-3">Plan ID: {plan.id || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
 
+                  {/* Plan Name & Badges Row */}
+                  <div className="px-6 pb-4">
+                    <h4 className="text-base font-medium mb-2 text-primary">{plan.name}</h4>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {plan.metal_level || 'N/A'}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {plan.plan_type || 'N/A'}
+                      </Badge>
+                      {plan.quality_rating?.available ? (
+                        <span className="text-xs">
+                          Rating: {plan.quality_rating.global_rating > 0 
+                            ? `${plan.quality_rating.global_rating}/5` 
+                            : 'New-Ineligible for Scoring'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Rating: New-Ineligible for Scoring</span>
+                      )}
+                      {plan.has_dental_adult_coverage && (
+                        <span className="text-xs">
+                          Dental Adult: {plan.has_dental_adult_coverage ? '✓' : '✗'}
+                        </span>
+                      )}
+                      {plan.has_dental_child_coverage && (
+                        <span className="text-xs">
+                          Dental Child: {plan.has_dental_child_coverage ? '✓' : '✗'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t"></div>
+
                   {/* Main Content Grid */}
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
+                  <div className="p-6 pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6 mb-6">
                       {/* Left: Prima mensual */}
                       <div>
-                        <p className="text-sm text-muted-foreground mb-2">Prima mensual</p>
+                        <p className="text-sm font-semibold mb-2">Premium</p>
                         <p className="text-4xl font-bold mb-1">
                           {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
                             ? formatCurrency(plan.premium_w_credit)
                             : formatCurrency(plan.premium)}
                         </p>
                         {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
-                          <p className="text-sm text-red-600 dark:text-red-400 line-through">
-                            era {formatCurrency(plan.premium)}
-                          </p>
+                          <>
+                            <p className="text-xs text-green-600 dark:text-green-500">
+                              Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
+                            </p>
+                            <p className="text-xs text-muted-foreground line-through">
+                              Plan was {formatCurrency(plan.premium)}
+                            </p>
+                          </>
                         )}
                       </div>
 
-                      {/* Right: 2x3 Grid of Details */}
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">
-                            Deducible (salud + medicamentos recetados)
-                          </p>
-                          <p className="text-2xl font-bold">
-                            {mainDeductible ? formatCurrency(mainDeductible.amount) : 'N/A'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Deducible de medicamentos</p>
-                          <p className="text-base font-medium">N/A</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Desembolso máximo</p>
-                          <p className="text-base font-medium">
-                            {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Consultas al médico</p>
-                          <p className="text-base font-medium">
-                            {primaryCareCost || 'Sin cargo'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Consulta con el especialista</p>
-                          <p className="text-base font-medium">
-                            {specialistCost || 'Sin cargo'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Medicamentos genéricos</p>
-                          <p className="text-base font-medium">
-                            {genericDrugsCost || 'Sin cargo'}
-                          </p>
-                        </div>
+                      {/* Center: Deductible */}
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Deductible</p>
+                        <p className="text-4xl font-bold mb-1">
+                          {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
+                        </p>
+                        {mainDeductible && (
+                          <>
+                            <p className="text-xs text-muted-foreground">
+                              Individual total ({formatCurrency(mainDeductible.amount)} per person)
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Health & drug combined
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Right: Out-of-pocket max */}
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Out-of-pocket max</p>
+                        <p className="text-4xl font-bold mb-1">
+                          {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Individual total</p>
+                        <p className="text-xs text-muted-foreground">
+                          Maximum for Medical and Drug EHB Benefits
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Benefits Grid - 2x3 */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm font-medium mb-1">Primary Doctor visits</p>
+                        <p className="text-sm text-muted-foreground">
+                          {primaryCareCost || 'No Charge After Deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">Specialist Visits</p>
+                        <p className="text-sm text-muted-foreground">
+                          {specialistCost || 'No Charge After Deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">Urgent care</p>
+                        <p className="text-sm text-muted-foreground">
+                          {urgentCareCost || 'No Charge After Deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">Emergencies</p>
+                        <p className="text-sm text-muted-foreground">
+                          {emergencyCost || '40% Coinsurance after deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">Mental health</p>
+                        <p className="text-sm text-muted-foreground">
+                          {mentalHealthCost || 'No Charge After Deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">Generic drugs</p>
+                        <p className="text-sm text-muted-foreground">
+                          {genericDrugsCost || 'No Charge After Deductible'}
+                        </p>
                       </div>
                     </div>
                   </div>
