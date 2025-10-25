@@ -369,7 +369,7 @@ export default function MarketplacePlansPage() {
                         {quote.clientDateOfBirth ? `${formatDateFromString(quote.clientDateOfBirth)} (${calculateAgeFromString(quote.clientDateOfBirth)})` : 'N/A'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {quote.clientGender || 'Not specified'} • {quote.clientIsApplicant !== false ? '🟢 Applicant' : 'Member'}
+                        {quote.clientGender || 'Not specified'} • {quote.clientIsApplicant !== false ? 'Primary' : 'Member'}
                       </p>
                     </div>
                   </div>
