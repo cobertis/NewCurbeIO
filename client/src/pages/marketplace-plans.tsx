@@ -1020,14 +1020,14 @@ export default function MarketplacePlansPage() {
 
           {/* Right Sidebar: Filters */}
           <div className="space-y-4">
-            <Card className="sticky top-4">
-              <CardHeader className="pb-3">
+            <Card className="sticky top-4 max-h-[calc(100vh-2rem)] flex flex-col">
+              <CardHeader className="pb-3 flex-shrink-0">
                 <Button variant="default" className="w-full" data-testid="button-filter-plans">
                   <Filter className="h-4 w-4 mr-2" />
                   Filter plans
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 overflow-y-auto flex-1">
                 {/* Monthly premium max */}
                 <div>
                   <Label htmlFor="monthly-premium-max" className="text-sm font-medium">Monthly premium max</Label>
