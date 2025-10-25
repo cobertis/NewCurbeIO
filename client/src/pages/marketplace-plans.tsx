@@ -937,7 +937,7 @@ export default function MarketplacePlansPage() {
                     <Label className="text-sm font-medium cursor-pointer">Carriers</Label>
                     <ChevronDown className="h-4 w-4" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 mt-2 max-h-48 overflow-y-auto">
+                  <CollapsibleContent className="space-y-2 mt-2">
                     {carriers.map((carrier) => (
                       <div key={carrier.name} className="flex items-center space-x-2">
                         <input
