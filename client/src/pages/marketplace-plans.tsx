@@ -193,7 +193,23 @@ export default function MarketplacePlansPage() {
         return b.premium - a.premium;
       case "deductible_asc":
         return (a.deductibles?.[0]?.amount || 0) - (b.deductibles?.[0]?.amount || 0);
-      case "rating":
+      case "deductible_desc":
+        return (b.deductibles?.[0]?.amount || 0) - (a.deductibles?.[0]?.amount || 0);
+      case "out_of_pocket_asc":
+        return (a.out_of_pocket_limit || 0) - (b.out_of_pocket_limit || 0);
+      case "out_of_pocket_desc":
+        return (b.out_of_pocket_limit || 0) - (a.out_of_pocket_limit || 0);
+      case "total_cost_asc":
+        const totalA = a.premium * 12 + (a.deductibles?.[0]?.amount || 0);
+        const totalB = b.premium * 12 + (b.deductibles?.[0]?.amount || 0);
+        return totalA - totalB;
+      case "total_cost_desc":
+        const totalDescA = a.premium * 12 + (a.deductibles?.[0]?.amount || 0);
+        const totalDescB = b.premium * 12 + (b.deductibles?.[0]?.amount || 0);
+        return totalDescB - totalDescA;
+      case "rating_asc":
+        return (a.quality_rating?.global_rating || 0) - (b.quality_rating?.global_rating || 0);
+      case "rating_desc":
         return (b.quality_rating?.global_rating || 0) - (a.quality_rating?.global_rating || 0);
       default:
         return 0;
@@ -311,24 +327,6 @@ export default function MarketplacePlansPage() {
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="sort-by">Sort By</Label>
-                    <Select value={sortBy} onValueChange={(value) => {
-                      setSortBy(value);
-                      setCurrentPage(1);
-                    }}>
-                      <SelectTrigger id="sort-by" data-testid="filter-sort">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="premium_asc">Premium: Low to High</SelectItem>
-                        <SelectItem value="premium_desc">Premium: High to Low</SelectItem>
-                        <SelectItem value="deductible_asc">Deductible: Low to High</SelectItem>
-                        <SelectItem value="rating">Quality Rating</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   {(metalLevelFilter !== "all" || planTypeFilter !== "all" || maxPremium) && (
                     <Button
                       variant="outline"
@@ -416,65 +414,118 @@ export default function MarketplacePlansPage() {
 
           {marketplacePlans && filteredPlans && (
             <div className="grid gap-4">
-              {/* Info about showing all plans or pagination controls */}
-              {totalFilteredPlans <= pageSize ? (
-                // Showing all plans in one page
-                <Card className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 mb-4">
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-center gap-4">
-                      <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <div className="text-sm font-medium">
-                        <span className="text-green-700 dark:text-green-400">
-                          Mostrando los {totalFilteredPlans} planes en una sola página
-                        </span>
-                        {totalFilteredPlans !== marketplacePlans?.plans?.length && (
-                          <span className="text-xs text-muted-foreground ml-2">
-                            (Filtrados de {marketplacePlans?.plans?.length} totales)
-                          </span>
-                        )}
-                      </div>
+              {/* Compact pagination header */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Sort by</span>
+                    <Select value={sortBy.replace(/_asc|_desc/, '')} onValueChange={(value) => {
+                      const order = sortBy.endsWith('_desc') ? '_desc' : '_asc';
+                      setSortBy(`${value}${order}`);
+                      setCurrentPage(1);
+                    }}>
+                      <SelectTrigger className="w-[180px] h-9" data-testid="header-sort">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="premium">Monthly premium</SelectItem>
+                        <SelectItem value="deductible">Deductible</SelectItem>
+                        <SelectItem value="out_of_pocket">Out-of-Pocket cost</SelectItem>
+                        <SelectItem value="total_cost">Total costs</SelectItem>
+                        <SelectItem value="rating">Rating</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Order by</span>
+                    <Select value={sortBy.endsWith('_desc') ? 'desc' : 'asc'} onValueChange={(order) => {
+                      const baseSort = sortBy.replace(/_asc|_desc/, '');
+                      setSortBy(`${baseSort}_${order}`);
+                      setCurrentPage(1);
+                    }}>
+                      <SelectTrigger className="w-[140px] h-9" data-testid="header-order">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="asc">Ascending</SelectItem>
+                        <SelectItem value="desc">Descending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium">
+                    Total plan ({totalFilteredPlans})
+                  </span>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        data-testid="button-prev-page"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={() => setCurrentPage(pageNum)}
+                            data-testid={`button-page-${pageNum}`}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                      
+                      {totalPages > 5 && currentPage < totalPages - 2 && (
+                        <>
+                          <span className="px-2 text-muted-foreground">...</span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={() => setCurrentPage(totalPages)}
+                            data-testid={`button-page-${totalPages}`}
+                          >
+                            {totalPages}
+                          </Button>
+                        </>
+                      )}
+                      
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        data-testid="button-next-page"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                // Pagination controls when there are more plans than pageSize
-                <Card className="bg-primary/5 border-primary/20">
-                  <CardContent className="py-4">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <p className="text-sm text-muted-foreground font-medium">
-                        Showing <span className="font-bold text-foreground">{Math.min(((currentPage - 1) * pageSize) + 1, totalFilteredPlans)}</span> - <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalFilteredPlans)}</span> of <span className="font-bold text-foreground">{totalFilteredPlans}</span> plans
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          data-testid="button-prev-page-top"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Previous
-                        </Button>
-                        <div className="flex items-center gap-1 px-3 py-1 bg-background rounded-md border">
-                          <span className="text-sm font-medium">
-                            Page <span className="font-bold text-primary">{currentPage}</span> of <span className="font-bold">{totalPages}</span>
-                          </span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          data-testid="button-next-page-top"
-                        >
-                          Next
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                  )}
+                </div>
+              </div>
 
               {filteredPlans.map((plan: any, index: number) => (
                 <Card key={`${plan.id}-${index}`} className="overflow-hidden hover-elevate">
@@ -655,71 +706,17 @@ export default function MarketplacePlansPage() {
             </Card>
           ))}
 
-          {filteredPlans.length === 0 && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Info className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-                <p className="text-lg font-medium mb-2">No plans match your filters</p>
-                <p className="text-sm text-muted-foreground">
-                  Try adjusting your filter criteria to see more plans
-                </p>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Bottom info or pagination controls */}
-          {totalFilteredPlans <= pageSize ? (
-            // Info showing all plans in one page (bottom)
-            <Card className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 mt-4">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-center gap-4">
-                  <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <div className="text-sm font-medium text-center">
-                    <span className="text-green-700 dark:text-green-400">
-                      ✓ Todos los {totalFilteredPlans} planes visibles arriba
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="py-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Showing <span className="font-bold text-foreground">{Math.min(((currentPage - 1) * pageSize) + 1, totalFilteredPlans)}</span> - <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalFilteredPlans)}</span> of <span className="font-bold text-foreground">{totalFilteredPlans}</span> plans
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      data-testid="button-prev-page-bottom"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-1 px-3 py-1 bg-background rounded-md border">
-                      <span className="text-sm font-medium">
-                        Page <span className="font-bold text-primary">{currentPage}</span> of <span className="font-bold">{totalPages}</span>
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      data-testid="button-next-page-bottom"
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              {filteredPlans.length === 0 && (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Info className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+                    <p className="text-lg font-medium mb-2">No plans match your filters</p>
+                    <p className="text-sm text-muted-foreground">
+                      Try adjusting your filter criteria to see more plans
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>
