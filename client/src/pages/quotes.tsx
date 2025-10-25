@@ -6225,25 +6225,50 @@ export default function QuotesPage() {
                               </Tooltip>
                             </TableCell>
                             <TableCell>
-                              <div>
-                                <div 
-                                  className="font-medium text-sm text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
-                                  onClick={() => setLocation(`/quotes/${quote.id}`)}
-                                >
-                                  {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                                    {quote.clientIsApplicant ? 'Self' : 'Not Applicant'}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    {quote.clientGender ? quote.clientGender.charAt(0).toUpperCase() + quote.clientGender.slice(1) : 'N/A'}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {quote.physical_city}, {quote.physical_state} {quote.physical_postal_code}
-                                </div>
-                              </div>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="cursor-pointer">
+                                    <div 
+                                      className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                                      onClick={() => setLocation(`/quotes/${quote.id}`)}
+                                    >
+                                      {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                                        {quote.clientIsApplicant ? 'Self' : 'Not Applicant'}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        {quote.clientGender ? quote.clientGender.charAt(0).toUpperCase() + quote.clientGender.slice(1) : 'N/A'}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {quote.physical_city}, {quote.physical_state} {quote.physical_postal_code}
+                                    </div>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" sideOffset={5} align="center" className="p-3">
+                                  <div>
+                                    <div className="font-semibold text-sm mb-2 text-center">Client information</div>
+                                    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                                      <div className="text-left font-medium">Client:</div>
+                                      <div className="text-right">
+                                        {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
+                                      </div>
+                                      <div className="text-left font-medium">Date of birth:</div>
+                                      <div className="text-right">
+                                        {quote.clientDateOfBirth ? formatDateForDisplay(quote.clientDateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                                      </div>
+                                      <div className="text-left font-medium">Address:</div>
+                                      <div className="text-right">
+                                        {quote.physical_street || 'N/A'}
+                                        {quote.physical_county && <><br/>{quote.physical_county}</>}
+                                        <br/>{quote.physical_city}, {quote.physical_state} ({quote.physical_state_abbreviation || quote.physical_state}), {quote.physical_postal_code}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
                             </TableCell>
                             <TableCell>
                               <div>
