@@ -269,9 +269,14 @@ export default function MarketplacePlansPage() {
       return false;
     }
     
-    // Premium filter
-    if (maxPremium && plan.premium > parseFloat(maxPremium)) {
-      return false;
+    // Premium filter - compare against the actual price the user sees (with APTC if available)
+    if (maxPremium) {
+      const actualPremium = plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
+        ? plan.premium_w_credit 
+        : plan.premium;
+      if (actualPremium > parseFloat(maxPremium)) {
+        return false;
+      }
     }
     
     // Deductible filter
