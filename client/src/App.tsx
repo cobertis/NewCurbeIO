@@ -788,6 +788,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                               const parts = notification.message.split(':');
                               return `SMS from ${parts[0] || 'Unknown'}`;
                             }
+                            // For quote notifications, show "New Quote"
+                            if (notification.title.toLowerCase().includes('quote')) {
+                              return 'New Quote';
+                            }
                             return notification.title.replace('New ', '').replace(' Created', '');
                           };
 
