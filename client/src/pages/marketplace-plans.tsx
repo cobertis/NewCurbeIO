@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -86,8 +87,8 @@ export default function MarketplacePlansPage() {
   // Filter states
   const [metalLevelFilter, setMetalLevelFilter] = useState<string>("all");
   const [planTypeFilter, setPlanTypeFilter] = useState<string>("all");
-  const [maxPremium, setMaxPremium] = useState<string>("");
-  const [maxDeductible, setMaxDeductible] = useState<string>("");
+  const [maxPremium, setMaxPremium] = useState<number>(3000); // Default max for slider
+  const [maxDeductible, setMaxDeductible] = useState<number>(10000); // Default max for slider
   const [sortBy, setSortBy] = useState<string>("deductible_asc");
   
   // New comprehensive filters
@@ -270,22 +271,22 @@ export default function MarketplacePlansPage() {
     }
     
     // Premium filter - compare against the actual price the user sees (with APTC if available)
-    if (maxPremium) {
+    if (maxPremium < 3000) { // Only filter if slider moved from max
       const actualPremium = plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
         ? plan.premium_w_credit 
         : plan.premium;
-      if (actualPremium > parseFloat(maxPremium)) {
+      if (actualPremium > maxPremium) {
         return false;
       }
     }
     
     // Deductible filter - use SAME logic as UI display
-    if (maxDeductible) {
+    if (maxDeductible < 10000) { // Only filter if slider moved from max
       const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
       const familyDeductible = plan.deductibles?.find((d: any) => d.family);
       const mainDeductible = individualDeductible || familyDeductible || plan.deductibles?.[0];
       
-      if (mainDeductible && mainDeductible.amount > parseFloat(maxDeductible)) {
+      if (mainDeductible && mainDeductible.amount > maxDeductible) {
         return false;
       }
     }
@@ -1075,38 +1076,44 @@ export default function MarketplacePlansPage() {
               <CardHeader className="pb-2 flex-shrink-0">
                 <h3 className="font-semibold text-sm">Filters</h3>
               </CardHeader>
-              <CardContent className="space-y-3 overflow-y-auto flex-1">
+              <CardContent className="space-y-4 overflow-y-auto flex-1">
                 {/* Monthly premium max */}
-                <div>
-                  <Label htmlFor="monthly-premium-max" className="text-xs font-medium">Monthly premium max</Label>
-                  <Input
-                    id="monthly-premium-max"
-                    type="number"
-                    placeholder="2000"
-                    value={maxPremium}
-                    onChange={(e) => {
-                      setMaxPremium(e.target.value);
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Monthly premium max</Label>
+                    <span className="text-xs font-medium text-primary">${maxPremium}</span>
+                  </div>
+                  <Slider
+                    value={[maxPremium]}
+                    onValueChange={(value) => {
+                      setMaxPremium(value[0]);
                       setCurrentPage(1);
                     }}
+                    min={0}
+                    max={3000}
+                    step={50}
                     data-testid="filter-monthly-premium-max"
-                    className="mt-1 h-8"
+                    className="w-full"
                   />
                 </div>
 
                 {/* Deductible max */}
-                <div>
-                  <Label htmlFor="deductible-max" className="text-xs font-medium">Deductible max</Label>
-                  <Input
-                    id="deductible-max"
-                    type="number"
-                    placeholder="9200"
-                    value={maxDeductible}
-                    onChange={(e) => {
-                      setMaxDeductible(e.target.value);
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Deductible max</Label>
+                    <span className="text-xs font-medium text-primary">${maxDeductible}</span>
+                  </div>
+                  <Slider
+                    value={[maxDeductible]}
+                    onValueChange={(value) => {
+                      setMaxDeductible(value[0]);
                       setCurrentPage(1);
                     }}
+                    min={0}
+                    max={10000}
+                    step={100}
                     data-testid="filter-deductible-max"
-                    className="mt-1 h-8"
+                    className="w-full"
                   />
                 </div>
 
@@ -1375,7 +1382,7 @@ export default function MarketplacePlansPage() {
 
                 {/* Clear all filters */}
                 {(selectedCarriers.size > 0 || selectedMetals.size > 0 || selectedNetworks.size > 0 || 
-                  selectedPlanFeatures.size > 0 || selectedDiseasePrograms.size > 0 || maxPremium || maxDeductible) && (
+                  selectedPlanFeatures.size > 0 || selectedDiseasePrograms.size > 0 || maxPremium < 3000 || maxDeductible < 10000) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -1388,8 +1395,8 @@ export default function MarketplacePlansPage() {
                       setSelectedDiseasePrograms(new Set());
                       setMetalLevelFilter("all");
                       setPlanTypeFilter("all");
-                      setMaxPremium("");
-                      setMaxDeductible("");
+                      setMaxPremium(3000);
+                      setMaxDeductible(10000);
                       setCurrentPage(1);
                     }}
                     data-testid="button-clear-all-filters"
