@@ -2781,6 +2781,9 @@ export default function QuotesPage() {
   // Validation dialog state
   const [missingDataDialog, setMissingDataDialog] = useState<{open: boolean; missingFields: string[]}>({open: false, missingFields: []});
   
+  // Log when dialog state changes
+  console.log('[DIALOG STATE]', missingDataDialog);
+  
   // Advanced filters state
   const [filters, setFilters] = useState({
     user: "",
@@ -4958,180 +4961,6 @@ export default function QuotesPage() {
             </Card>
 
             <div className="space-y-6">
-              {/* Policy Information Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Policy Information</h3>
-              
-              {/* Compact Profile Card with 2-Column Grid */}
-              <Card className="bg-muted/10">
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Contact Information Group */}
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3 pb-3 border-b">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                          <User className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs font-medium text-foreground/60">Primary Holder</label>
-                          <p className="text-sm font-semibold mt-0.5">
-                            {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                          </p>
-                          <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                            <Badge variant="default" className="text-xs bg-blue-600 hover:bg-blue-700">
-                              {viewingQuote.clientIsApplicant ? 'Self' : 'Not Applicant'}
-                            </Badge>
-                            {viewingQuote.clientTobaccoUser && (
-                              <Badge variant="outline" className="text-xs">Tobacco User</Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3 pb-3 border-b">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                          <Mail className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs font-medium text-foreground/60">Email</label>
-                          <p className="text-sm mt-0.5">{viewingQuote.clientEmail}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3 pb-3 border-b">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                          <Phone className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs font-medium text-foreground/60">Phone</label>
-                          <p className="text-sm mt-0.5">{viewingQuote.clientPhone}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                          <Calendar className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs font-medium text-foreground/60">Date of Birth</label>
-                          <p className="text-sm mt-0.5 flex items-center gap-1.5">
-                            <span>
-                              {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy") : 'N/A'}
-                              {viewingQuote.clientDateOfBirth && (
-                                <span className="text-foreground/60 ml-2">
-                                  ({calculateAge(viewingQuote.clientDateOfBirth) || 0} years)
-                                </span>
-                              )}
-                            </span>
-                            {viewingQuote.clientDateOfBirth && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMMM dd, yyyy")}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Identification & Address Group */}
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3 pb-3 border-b">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                          <IdCard className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs font-medium text-foreground/60">SSN</label>
-                          <p className="text-sm font-mono mt-0.5">
-                            {viewingQuote.clientSsn || 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3 pb-3 border-b">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                          <User className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs font-medium text-foreground/60">Gender</label>
-                          <p className="text-sm mt-0.5">
-                            {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3 pb-3 border-b">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                          <Home className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs font-medium text-foreground/60">Street Address</label>
-                          <p className="text-sm mt-0.5">
-                            {viewingQuote.physical_street}
-                            {viewingQuote.physical_address_line_2 && <span>, {viewingQuote.physical_address_line_2}</span>}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                          <MapPin className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs font-medium text-foreground/60">Location</label>
-                          <p className="text-sm mt-0.5">
-                            {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
-                            {viewingQuote.physical_county && (
-                              <span className="block text-xs text-foreground/60 mt-0.5">{viewingQuote.physical_county} County</span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Additional Policy Details - More Compact */}
-              <Card className="bg-accent/5">
-                <CardContent className="p-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Hash className="h-3 w-3" />
-                        Member ID
-                      </p>
-                      <p className="text-sm font-medium mt-1">-</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        Marketplace ID
-                      </p>
-                      <p className="text-sm font-medium mt-1">-</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Effective Date
-                      </p>
-                      <p className="text-sm font-medium mt-1">{formatDateForDisplay(viewingQuote.effectiveDate, "MMM dd, yyyy")}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Cancellation
-                      </p>
-                      <p className="text-sm font-medium mt-1">-</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              </div>
 
               {/* Family Members Section - Horizontal Layout */}
               <Card className="bg-accent/5">
@@ -5183,7 +5012,7 @@ export default function QuotesPage() {
                           <div className="flex gap-1 mt-0.5 flex-wrap">
                             <Badge variant="default" className="text-xs h-4 px-1.5">Self</Badge>
                             {viewingQuote.clientIsApplicant && (
-                              <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                              <Badge variant="default" className="text-xs h-4 px-1.5 bg-blue-600 hover:bg-blue-700">Applicant</Badge>
                             )}
                             {viewingQuote.isPrimaryDependent && (
                               <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
@@ -5255,7 +5084,7 @@ export default function QuotesPage() {
                             <div className="flex gap-1 mt-0.5 flex-wrap">
                               <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
                               {spouse.isApplicant && (
-                                <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-blue-600 hover:bg-blue-700">Applicant</Badge>
                               )}
                               {spouse.isPrimaryDependent && (
                                 <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
@@ -5342,7 +5171,7 @@ export default function QuotesPage() {
                             <div className="flex gap-1 mt-0.5 flex-wrap">
                               <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
                               {dependent.isApplicant && (
-                                <Badge variant="secondary" className="text-xs h-4 px-1.5">Applicant</Badge>
+                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-blue-600 hover:bg-blue-700">Applicant</Badge>
                               )}
                               {dependent.isPrimaryDependent && (
                                 <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
