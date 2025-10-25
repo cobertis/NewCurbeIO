@@ -600,44 +600,39 @@ export default function MarketplacePlansPage() {
                     </div>
                   </div>
 
-                  {/* Plan Name & Badges Row */}
-                  <div className="px-6 pb-4">
-                    <h4 className="text-base font-medium mb-2 text-primary">{plan.name}</h4>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {plan.metal_level || 'N/A'}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {plan.plan_type || 'N/A'}
-                      </Badge>
-                      {plan.quality_rating?.available ? (
-                        <span className="text-xs">
-                          Rating: {plan.quality_rating.global_rating > 0 
-                            ? `${plan.quality_rating.global_rating}/5` 
-                            : 'New-Ineligible for Scoring'}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Rating: New-Ineligible for Scoring</span>
-                      )}
-                      {plan.has_dental_adult_coverage && (
-                        <span className="text-xs">
-                          Dental Adult: {plan.has_dental_adult_coverage ? '✓' : '✗'}
-                        </span>
-                      )}
-                      {plan.has_dental_child_coverage && (
-                        <span className="text-xs">
-                          Dental Child: {plan.has_dental_child_coverage ? '✓' : '✗'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="border-t"></div>
-
                   {/* Main Content Grid */}
-                  <div className="p-6 pt-4">
-                    {/* Plan Name */}
-                    <h4 className="text-base font-medium mb-4 text-primary">{plan.name}</h4>
+                  <div className="p-6">
+                    {/* Plan Name with Badges */}
+                    <div className="mb-4">
+                      <h4 className="text-base font-medium mb-2 text-primary">{plan.name}</h4>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {plan.metal_level || 'N/A'}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {plan.plan_type || 'N/A'}
+                        </Badge>
+                        {plan.quality_rating?.available ? (
+                          <span className="text-xs">
+                            Rating: {plan.quality_rating.global_rating > 0 
+                              ? `${plan.quality_rating.global_rating}/5` 
+                              : 'New-Ineligible for Scoring'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Rating: New-Ineligible for Scoring</span>
+                        )}
+                        {plan.has_dental_adult_coverage && (
+                          <span className="text-xs">
+                            Dental Adult: {plan.has_dental_adult_coverage ? '✓' : '✗'}
+                          </span>
+                        )}
+                        {plan.has_dental_child_coverage && (
+                          <span className="text-xs">
+                            Dental Child: {plan.has_dental_child_coverage ? '✓' : '✗'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6 mb-6">
                       {/* Left: Prima mensual */}
