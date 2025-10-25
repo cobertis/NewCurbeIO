@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,6 +36,8 @@ import {
   ChevronDown,
   Database,
   FileText,
+  ExternalLink,
+  MapPin,
 } from "lucide-react";
 import {
   Collapsible,
@@ -345,49 +348,104 @@ export default function MarketplacePlansPage() {
               </CardContent>
             </Card>
 
-          {/* Right: Summary Card */}
+          {/* Right: Household Information Card */}
           <Card>
               <CardHeader className="pb-3">
-                <h3 className="font-semibold text-sm">Quote Summary</h3>
+                <h3 className="font-semibold text-sm">Household information</h3>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Location:</span>
-                    <span className="font-medium">{quote.city}, {quote.state}</span>
+              <CardContent className="space-y-4">
+                {/* Annual income and Address row */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground mb-1">Annual income</p>
+                    <button
+                      className="font-medium flex items-center gap-1 hover:underline"
+                      onClick={() => setLocation(`/quotes/${quoteId}`)}
+                      data-testid="link-annual-income"
+                    >
+                      {formatCurrency((quoteData as any)?.quote?.householdIncome || 0)}
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                    <p className="text-muted-foreground text-xs mt-1">Effective date</p>
+                    <p className="text-sm">{new Date(quote.effectiveDate).toLocaleDateString()}</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Income:</span>
-                    <span className="font-medium">{formatCurrency((quoteData as any)?.quote?.householdIncome || 0)}/yr</span>
+                  <div>
+                    <p className="text-muted-foreground mb-1 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Address
+                    </p>
+                    <p className="text-sm">‣ {quote.county}</p>
+                    <p className="text-sm">‣ {quote.state}</p>
+                    <p className="text-sm">‣ {quote.zipCode}</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Members:</span>
-                    <span className="font-medium">{((quoteData as any)?.quote?.members?.filter((m: any) => m.isApplicant).length || 0) + (quote.clientIsApplicant !== false ? 1 : 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Effective:</span>
-                    <span className="font-medium">{new Date(quote.effectiveDate).toLocaleDateString()}</span>
-                  </div>
-                  {marketplacePlans && (
-                    <div className="flex justify-between pt-2 border-t">
-                      <span className="text-muted-foreground">Plans:</span>
-                      <span className="text-xl font-bold">{marketplacePlans.plans?.length || 0}</span>
-                    </div>
-                  )}
                 </div>
 
-                {/* APTC - Only if eligible */}
-                {marketplacePlans && marketplacePlans.household_aptc > 0 && (
-                  <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800 mt-3">
-                    <div className="text-xs text-green-700 dark:text-green-400 font-medium mb-1">Tax Credit (APTC)</div>
-                    <div className="text-xl font-bold text-green-700 dark:text-green-400 mb-2">
-                      {formatCurrency(marketplacePlans.household_aptc)}/mo
+                {/* Family members section */}
+                <div className="pt-2 border-t">
+                  <h4 className="font-semibold text-sm mb-3">Family members</h4>
+                  
+                  {/* Applicants and Members count */}
+                  <div className="grid grid-cols-2 gap-4 mb-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Applicants</p>
+                      <p className="text-2xl font-bold">
+                        {((quoteData as any)?.quote?.members?.filter((m: any) => m.isApplicant).length || 0) + (quote.clientIsApplicant !== false ? 1 : 0)}
+                      </p>
                     </div>
-                    <div className="text-xs text-green-600 dark:text-green-500">
-                      Annual Savings: <span className="font-semibold">{formatCurrency(marketplacePlans.household_aptc * 12)}</span>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Members</p>
+                      <p className="text-2xl font-bold">
+                        {((quoteData as any)?.quote?.members?.length || 0) + 1}
+                      </p>
                     </div>
                   </div>
-                )}
+
+                  {/* Client (primary applicant) */}
+                  <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {quote.clientFirstName?.charAt(0) || 'C'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">{quote.clientFirstName} {quote.clientLastName}</p>
+                        <Badge variant="secondary" className="text-xs">Self</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {quote.clientDOB ? `${new Date(quote.clientDOB).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} (${Math.floor((new Date().getTime() - new Date(quote.clientDOB).getTime()) / (1000 * 60 * 60 * 24 * 365))})` : 'N/A'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {quote.clientGender || 'Not specified'} • {quote.clientIsApplicant !== false ? '🟢 Applicant' : 'Member'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Other family members */}
+                  {(quoteData as any)?.quote?.members?.map((member: any, index: number) => (
+                    <div key={index} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 mt-2">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
+                          {member.firstName?.charAt(0) || 'M'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{member.firstName} {member.lastName}</p>
+                          {member.isApplicant && (
+                            <Badge variant="secondary" className="text-xs">Applicant</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {member.dob ? `${new Date(member.dob).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} (${Math.floor((new Date().getTime() - new Date(member.dob).getTime()) / (1000 * 60 * 60 * 24 * 365))})` : 'N/A'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {member.gender || 'Not specified'} • {member.relationshipToClient || 'Family'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
         </div>
