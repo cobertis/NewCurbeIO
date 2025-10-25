@@ -1394,6 +1394,23 @@ export default function MarketplacePlansPage() {
         </div>
       )}
 
+      {/* Disclaimer Section */}
+      {quote && (
+        <div className="mt-6 p-5 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-900">
+          <div className="flex gap-3">
+            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-3 text-sm text-blue-900 dark:text-blue-100">
+              <p>
+                This website is operated by <strong>Curbe.io</strong> and is not the Health Insurance Marketplace® website. In offering this quote tool, Curbe.io users are required to comply with all applicable federal laws, including the standards established under 45 CFR §155.220(c) and (d) and standards established under 45 CFR §155.260 to protect the privacy and security of personally identifiable information.
+              </p>
+              <p>
+                This is not an application for health coverage. This tool is designed to preview available plans and prices. You should visit <strong>HealthCare.gov</strong> if you want to enroll members. You'll know exactly what members will pay when you enroll them.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Poverty Guidelines Dialog */}
       <Dialog open={isPovertyGuidelinesOpen} onOpenChange={setIsPovertyGuidelinesOpen}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
