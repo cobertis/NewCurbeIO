@@ -65,6 +65,8 @@ import {
   type InsertOutgoingSmsMessage,
   type SmsChatNote,
   type InsertSmsChatNote,
+  type QuoteNote,
+  type InsertQuoteNote,
   type SubscriptionDiscount,
   type InsertSubscriptionDiscount,
   type FinancialSupportTicket,
@@ -121,6 +123,7 @@ import {
   incomingSmsMessages,
   outgoingSmsMessages,
   smsChatNotes,
+  quoteNotes,
   subscriptionDiscounts,
   financialSupportTickets,
   quotes,
@@ -383,6 +386,11 @@ export interface IStorage {
   getChatNotes(phoneNumber: string, companyId: string): Promise<SmsChatNote[]>;
   updateChatNote(id: string, note: string, companyId?: string): Promise<SmsChatNote | undefined>;
   deleteChatNote(id: string, companyId?: string): Promise<void>;
+  
+  // Quote Notes
+  createQuoteNote(note: InsertQuoteNote): Promise<QuoteNote>;
+  getQuoteNotes(quoteId: string, companyId: string): Promise<QuoteNote[]>;
+  deleteQuoteNote(id: string, companyId?: string): Promise<void>;
   
   // Delete conversation
   deleteConversation(phoneNumber: string, companyId: string): Promise<void>;
@@ -2193,6 +2201,35 @@ export class DbStorage implements IStorage {
     }
     
     await db.delete(smsChatNotes)
+      .where(and(...conditions));
+  }
+  
+  // ==================== QUOTE NOTES ====================
+  
+  async createQuoteNote(note: InsertQuoteNote): Promise<QuoteNote> {
+    const result = await db.insert(quoteNotes).values(note).returning();
+    return result[0];
+  }
+  
+  async getQuoteNotes(quoteId: string, companyId: string): Promise<QuoteNote[]> {
+    return db.select().from(quoteNotes)
+      .where(and(
+        eq(quoteNotes.quoteId, quoteId),
+        eq(quoteNotes.companyId, companyId)
+      ))
+      .orderBy(desc(quoteNotes.createdAt));
+  }
+  
+  async deleteQuoteNote(id: string, companyId?: string): Promise<void> {
+    const conditions = [eq(quoteNotes.id, id)];
+    
+    // If companyId is provided, filter by it (for regular admins)
+    // If not provided, allow superadmins to delete any note
+    if (companyId) {
+      conditions.push(eq(quoteNotes.companyId, companyId));
+    }
+    
+    await db.delete(quoteNotes)
       .where(and(...conditions));
   }
   
