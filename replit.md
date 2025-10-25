@@ -65,6 +65,17 @@ The quote detail view displays family members (spouses/dependents) from two data
 - The UI merges both sources using `viewingQuoteWithMembers` object, displaying members from either storage method
 - Members from JSONB columns may not have IDs and show "-" for income/immigration fields until detailed records are created
 
+**Quote Notes System:**
+Internal notes system for tracking client communications and important information on quotes. Accessible via Notes button in quote detail sidebar. Features include:
+- Create text notes with optional urgent flag (displayed with destructive Badge)
+- Real-time note creation and deletion via REST API
+- Notes display with relative timestamps (e.g., "2 minutes ago") using date-fns formatDistanceToNow
+- Sheet/Drawer UI pattern opening from left side for professional CRM-style interaction
+- Multi-tenant isolation with companyId enforcement
+- Database table: `quote_notes` (id, quoteId, note, isUrgent, createdAt, createdBy)
+- API endpoints: GET/POST /api/quotes/:id/notes, DELETE /api/quotes/:id/notes/:noteId
+- Badge counter on Notes button shows total note count for quick reference
+
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL, Drizzle ORM.
