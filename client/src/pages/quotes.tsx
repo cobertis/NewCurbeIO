@@ -4903,10 +4903,14 @@ export default function QuotesPage() {
                         size="sm" 
                         data-testid="button-search-plans"
                         onClick={() => {
+                          console.log('[BUTTON] Search plans clicked');
                           const missingFields = validateMarketplaceData();
+                          console.log('[BUTTON] Missing fields:', missingFields);
                           if (missingFields.length > 0) {
+                            console.log('[BUTTON] Setting dialog state to open');
                             setMissingDataDialog({open: true, missingFields});
                           } else {
+                            console.log('[BUTTON] Navigating to marketplace plans');
                             setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`);
                           }
                         }}
