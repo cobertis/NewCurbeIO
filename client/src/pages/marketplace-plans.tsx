@@ -438,6 +438,16 @@ export default function MarketplacePlansPage() {
             {marketplacePlans && marketplacePlans.household_aptc > 0 && (
               <Card>
                 <CardContent className="p-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mb-3"
+                    onClick={() => setLocation(`/quotes/${quoteId}`)}
+                    data-testid="button-back-to-quote"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Quote
+                  </Button>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg border-2 border-green-200 dark:border-green-800">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="h-8 w-8 rounded-full bg-green-600 dark:bg-green-700 flex items-center justify-center">
@@ -457,16 +467,6 @@ export default function MarketplacePlansPage() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mt-3"
-                    onClick={() => setLocation(`/quotes/${quoteId}`)}
-                    data-testid="button-back-to-quote"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Quote
-                  </Button>
                 </CardContent>
               </Card>
             )}
