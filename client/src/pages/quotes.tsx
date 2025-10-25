@@ -3473,13 +3473,18 @@ export default function QuotesPage() {
       
       const warnings: string[] = [];
       
+      // Determine role based on relation
+      // role can be: "client", "spouse", "dependent"
+      // relation can be: "spouse", "child", "parent", "sibling", "other"
+      const memberRole = data.relation === 'spouse' ? 'spouse' : 'dependent';
+      
       // Step 1: Create member
       const ensureResponse = await fetch(`/api/quotes/${params.id}/ensure-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          role: data.relation,
+          role: memberRole,
           memberData: {
             firstName: data.firstName,
             middleName: data.middleName || null,
@@ -3499,6 +3504,7 @@ export default function QuotesPage() {
             maritalStatus: data.maritalStatus || null,
             weight: data.weight || null,
             height: data.height || null,
+            relation: data.relation || null, // Guardar el relation también
           },
         }),
       });
