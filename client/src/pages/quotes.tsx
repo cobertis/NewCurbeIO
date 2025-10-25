@@ -4687,32 +4687,32 @@ export default function QuotesPage() {
       
       // Check county (required for FIPS code)
       if (!viewingQuote.physical_county) {
-        missing.push("Información del condado (Dirección física)");
+        missing.push("County information (Physical Address)");
       }
       
       // Check if at least one member has income data
       const hasIncome = (householdIncomeData as any)?.totalIncome > 0;
       if (!hasIncome) {
-        missing.push("Información de ingresos del hogar");
+        missing.push("Household income information");
       }
       
       // Check if primary client has date of birth
       if (!viewingQuote.clientDateOfBirth) {
-        missing.push("Fecha de nacimiento del solicitante principal");
+        missing.push("Primary applicant date of birth");
       }
       
       // Check if all applicant spouses have DOB
       const spousesWithoutDOB = (viewingQuoteWithMembers.spouses || [])
         .filter((s: any) => s.isApplicant && !s.dateOfBirth);
       if (spousesWithoutDOB.length > 0) {
-        missing.push(`Fecha de nacimiento de ${spousesWithoutDOB.length} cónyuge(s)`);
+        missing.push(`Date of birth for ${spousesWithoutDOB.length} spouse(s)`);
       }
       
       // Check if all applicant dependents have DOB
       const dependentsWithoutDOB = (viewingQuoteWithMembers.dependents || [])
         .filter((d: any) => d.isApplicant && !d.dateOfBirth);
       if (dependentsWithoutDOB.length > 0) {
-        missing.push(`Fecha de nacimiento de ${dependentsWithoutDOB.length} dependiente(s)`);
+        missing.push(`Date of birth for ${dependentsWithoutDOB.length} dependent(s)`);
       }
       
       return missing;
@@ -4896,10 +4896,10 @@ export default function QuotesPage() {
                           const missingFields = validateMarketplaceData();
                           if (missingFields.length > 0) {
                             toast({
-                              title: "Datos Faltantes",
+                              title: "Missing Required Data",
                               description: (
                                 <div>
-                                  <p className="mb-2">No se puede buscar planes porque faltan los siguientes datos requeridos:</p>
+                                  <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
                                   <ul className="list-disc pl-4 space-y-1">
                                     {missingFields.map((field, index) => (
                                       <li key={index}>{field}</li>
