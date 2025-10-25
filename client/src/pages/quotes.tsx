@@ -1996,7 +1996,7 @@ interface AddMemberSheetProps {
 
 function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMemberSheetProps) {
   const { toast } = useToast();
-  const [memberTab, setMemberTab] = useTabsState(["basic", "income", "immigration"], "basic");
+  const [memberTab, setMemberTab] = useState<"basic" | "income" | "immigration">("basic");
   
   const addMemberSchema = z.object({
     // Basic Information
@@ -2018,6 +2018,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
     weight: z.string().optional(),
     height: z.string().optional(),
     tobaccoUser: z.boolean().default(false),
+    pregnant: z.boolean().default(false),
     // Income fields
     employerName: z.string().optional(),
     employerPhone: z.string().optional(),
@@ -2051,6 +2052,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
     weight: '',
     height: '',
     tobaccoUser: false,
+    pregnant: false,
     // Income defaults
     employerName: '',
     employerPhone: '',
@@ -2070,20 +2072,23 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
     defaultValues,
   });
 
-  // Track previous open state to prevent multiple resets
-  const prevOpenRef = useRef(false);
-  
-  // Simplified reset logic - only reset on opening transition (false -> true)
+  // Reset form when opening
   useEffect(() => {
-    const isOpening = open && !prevOpenRef.current;
-    if (isOpening) {
+    if (open) {
       addMemberForm.reset(defaultValues);
       setMemberTab('basic');
     }
-    prevOpenRef.current = open;
-  }, [open]); // ONLY depend on open
+  }, [open]);
 
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
+  
+  const handleSaveClick = () => {
+    addMemberForm.handleSubmit((data) => {
+      onSave(data);
+      addMemberForm.reset(defaultValues);
+      setMemberTab('basic');
+    })();
+  };
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -2100,12 +2105,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
               type="button"
               disabled={isPending}
               data-testid="button-save-member"
-              onClick={addMemberForm.handleSubmit((data) => {
-                onSave(data);
-                // Reset form after save for next entry
-                addMemberForm.reset(defaultValues);
-                setMemberTab('basic');
-              })}
+              onClick={handleSaveClick}
               className="mr-10"
             >
               {isPending ? (
@@ -2120,18 +2120,18 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
           </div>
         </div>
         <Form {...addMemberForm}>
-          <form onSubmit={addMemberForm.handleSubmit(onSave)} className="flex flex-col flex-1 min-h-0">
-            <Tabs value={memberTab} onValueChange={setMemberTab} className="flex-1 flex flex-col">
+          <div className="flex flex-col flex-1 min-h-0">
+            <Tabs value={memberTab} onValueChange={(val) => setMemberTab(val as any)} className="flex-1 flex flex-col">
               <TabsList className="grid w-full grid-cols-3 mb-4 mx-4 mt-4">
-                <TabsTrigger value="basic" className="text-xs">
+                <TabsTrigger value="basic" className="text-xs" type="button">
                   <User className="h-4 w-4 mr-1" />
                   Basic Info
                 </TabsTrigger>
-                <TabsTrigger value="income" className="text-xs">
+                <TabsTrigger value="income" className="text-xs" type="button">
                   <DollarSign className="h-4 w-4 mr-1" />
                   Income
                 </TabsTrigger>
-                <TabsTrigger value="immigration" className="text-xs">
+                <TabsTrigger value="immigration" className="text-xs" type="button">
                   <Plane className="h-4 w-4 mr-1" />
                   Immigration
                 </TabsTrigger>
@@ -2754,7 +2754,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
               </div>
             </TabsContent>
           </Tabs>
-        </form>
+        </div>
       </Form>
     </SheetContent>
   </Sheet>
