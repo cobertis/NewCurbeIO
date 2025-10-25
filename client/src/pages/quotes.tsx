@@ -689,17 +689,28 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
   // Find the current member ID based on memberType and memberIndex
   const currentMemberId = useMemo(() => {
-    if (!membersData?.members) return null;
+    if (!membersData?.members) {
+      console.log('[CurrentMemberId] No members data available');
+      return null;
+    }
     
     if (memberType === 'primary') {
-      return membersData.members.find(m => m.role === 'client')?.id;
+      const id = membersData.members.find(m => m.role === 'client')?.id;
+      console.log('[CurrentMemberId] Primary member ID:', id);
+      return id;
     } else if (memberType === 'spouse' && memberIndex !== undefined) {
       const spouses = membersData.members.filter(m => m.role === 'spouse');
-      return spouses[memberIndex]?.id;
+      const id = spouses[memberIndex]?.id;
+      console.log('[CurrentMemberId] Spouse member ID:', id, 'from', spouses.length, 'spouses');
+      return id;
     } else if (memberType === 'dependent' && memberIndex !== undefined) {
       const dependents = membersData.members.filter(m => m.role === 'dependent');
-      return dependents[memberIndex]?.id;
+      const id = dependents[memberIndex]?.id;
+      console.log('[CurrentMemberId] Dependent member ID:', id, 'from', dependents.length, 'dependents at index', memberIndex);
+      console.log('[CurrentMemberId] All members:', membersData.members.map(m => ({ id: m.id, role: m.role, name: `${m.firstName} ${m.lastName}` })));
+      return id;
     }
+    console.log('[CurrentMemberId] No match for memberType:', memberType, 'memberIndex:', memberIndex);
     return null;
   }, [membersData, memberType, memberIndex]);
 
