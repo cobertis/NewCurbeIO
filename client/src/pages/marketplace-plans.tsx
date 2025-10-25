@@ -45,6 +45,29 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
+// Helper to format yyyy-MM-dd string without timezone conversion
+const formatDateFromString = (dateString: string): string => {
+  if (!dateString) return 'N/A';
+  const [year, month, day] = dateString.split('-');
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthName = monthNames[parseInt(month) - 1];
+  return `${monthName} ${day}, ${year}`;
+};
+
+// Helper to calculate age from yyyy-MM-dd string without timezone conversion
+const calculateAgeFromString = (dateString: string): number => {
+  if (!dateString) return 0;
+  const [year, month, day] = dateString.split('-').map(Number);
+  const today = new Date();
+  const birthDate = new Date(year, month - 1, day); // month is 0-indexed
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
 export default function MarketplacePlansPage() {
   const [, params] = useRoute("/quotes/:id/marketplace-plans");
   const [location, setLocation] = useLocation();
@@ -284,7 +307,10 @@ export default function MarketplacePlansPage() {
                       <ExternalLink className="h-3 w-3" />
                     </button>
                     <p className="text-muted-foreground text-xs mt-1">Effective date</p>
-                    <p className="text-sm">{new Date(quote.effectiveDate).toLocaleDateString()}</p>
+                    <p className="text-sm">{quote.effectiveDate ? (() => {
+                      const [year, month, day] = quote.effectiveDate.split('-');
+                      return `${month}/${day}/${year}`;
+                    })() : 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground mb-1 flex items-center gap-1">
@@ -330,7 +356,7 @@ export default function MarketplacePlansPage() {
                         <Badge variant="secondary" className="text-xs">Self</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {quote.clientDOB ? `${new Date(quote.clientDOB).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} (${Math.floor((new Date().getTime() - new Date(quote.clientDOB).getTime()) / (1000 * 60 * 60 * 24 * 365))})` : 'N/A'}
+                        {quote.clientDOB ? `${formatDateFromString(quote.clientDOB)} (${calculateAgeFromString(quote.clientDOB)})` : 'N/A'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {quote.clientGender || 'Not specified'} • {quote.clientIsApplicant !== false ? '🟢 Applicant' : 'Member'}
@@ -354,7 +380,7 @@ export default function MarketplacePlansPage() {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {member.dob ? `${new Date(member.dob).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} (${Math.floor((new Date().getTime() - new Date(member.dob).getTime()) / (1000 * 60 * 60 * 24 * 365))})` : 'N/A'}
+                          {member.dob ? `${formatDateFromString(member.dob)} (${calculateAgeFromString(member.dob)})` : 'N/A'}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {member.gender || 'Not specified'} • {member.relationshipToClient || 'Family'}
