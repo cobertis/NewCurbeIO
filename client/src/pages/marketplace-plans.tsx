@@ -560,182 +560,174 @@ export default function MarketplacePlansPage() {
 
               {filteredPlans.map((plan: any, index: number) => (
                 <Card key={`${plan.id}-${index}`} className="overflow-hidden hover-elevate">
-              <div className="flex flex-col lg:flex-row">
-                {/* Plan Info Section */}
-                <div className="flex-1 p-6">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold mb-1">{plan.name}</h3>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Building2 className="h-3.5 w-3.5" />
-                          {plan.issuer?.name}
-                        </span>
-                        <Badge className={getMetalLevelColor(plan.metal_level)}>
-                          {plan.metal_level}
-                        </Badge>
-                        {plan.plan_type && (
-                          <Badge variant="outline">{plan.plan_type}</Badge>
-                        )}
+                  {/* Header */}
+                  <div className="flex items-center justify-between gap-4 p-4 border-b bg-muted/20">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Shield className="h-6 w-6 text-primary" />
                       </div>
-                    </div>
-                    
-                    {plan.quality_rating?.available && (
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground mb-1">Quality Rating</p>
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i < (plan.quality_rating.global_rating || 0)
-                                  ? 'fill-yellow-400 text-yellow-400'
-                                  : 'fill-gray-200 text-gray-200'
-                              }`}
-                            />
-                          ))}
-                          <span className="text-sm font-medium ml-1">
-                            {plan.quality_rating.global_rating}/5
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Key Features */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <Heart className="h-3 w-3" />
-                        Primary Care Visit
-                      </p>
-                      <p className="text-sm font-medium">
-                        {plan.copay_primary ? formatCurrency(plan.copay_primary) : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <Activity className="h-3 w-3" />
-                        Specialist Visit
-                      </p>
-                      <p className="text-sm font-medium">
-                        {plan.copay_specialist ? formatCurrency(plan.copay_specialist) : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <CreditCard className="h-3 w-3" />
-                        Out of Pocket Max
-                      </p>
-                      <p className="text-sm font-medium">
-                        {plan.out_of_pocket_limit ? formatCurrency(plan.out_of_pocket_limit) : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <Info className="h-3 w-3" />
-                        HSA Eligible
-                      </p>
-                      <p className="text-sm font-medium">
-                        {plan.hsa_eligible ? (
-                          <Check className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <X className="h-4 w-4 text-gray-400" />
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Benefits */}
-                  {plan.benefits && plan.benefits.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {plan.benefits.slice(0, 5).map((benefit: any, i: number) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {benefit.name || benefit}
-                        </Badge>
-                      ))}
-                      {plan.benefits.length > 5 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{plan.benefits.length - 5} more
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Pricing Section */}
-                <div className="bg-muted/30 p-6 lg:w-80 border-t lg:border-t-0 lg:border-l">
-                  <div className="space-y-4">
-                    {/* Monthly Premium */}
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Monthly Premium (Before APTC)</p>
-                      <p className="text-3xl font-bold">{formatCurrency(plan.premium)}</p>
-                      
-                      {/* Show premium with credit if it exists, regardless of household_aptc value */}
-                      {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && (
-                        <div className="mt-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200 dark:border-green-800">
-                          <p className="text-xs text-green-700 dark:text-green-400 mb-1 font-semibold">
-                            After APTC Tax Credit
-                          </p>
-                          <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                            {formatCurrency(plan.premium_w_credit)}/mo
-                          </p>
-                          <div className="space-y-1 mt-2 pt-2 border-t border-green-200 dark:border-green-800">
-                            <p className="text-xs text-green-600 dark:text-green-500">
-                              Monthly Savings: <span className="font-semibold">{formatCurrency(plan.premium - plan.premium_w_credit)}</span>
-                            </p>
-                            <p className="text-xs text-green-600 dark:text-green-500">
-                              Annual Savings: <span className="font-semibold">{formatCurrency((plan.premium - plan.premium_w_credit) * 12)}</span>
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* If no premium_w_credit but household has APTC, show message */}
-                      {!plan.premium_w_credit && marketplacePlans.household_aptc > 0 && (
-                        <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-md">
-                          <p className="text-xs text-amber-700 dark:text-amber-400">
-                            APTC not available for this plan
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Deductible */}
-                    {plan.deductibles && plan.deductibles.length > 0 && (
                       <div>
-                        <p className="text-sm text-muted-foreground mb-1">Annual Deductible</p>
-                        {plan.deductibles.map((deductible: any, i: number) => (
-                          <div key={i} className="text-lg font-semibold">
-                            {deductible.family ? 'Family: ' : 'Individual: '}
-                            {formatCurrency(deductible.amount)}
-                          </div>
-                        ))}
+                        <h3 className="font-semibold text-sm">{plan.issuer?.name || 'Insurance Provider'}</h3>
+                        <p className="text-xs text-muted-foreground">Plan ID: {plan.id?.substring(0, 12) || 'N/A'}</p>
                       </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="pt-4 space-y-2">
+                    </div>
+                    <div className="flex items-center gap-2">
                       <Button 
-                        className="w-full" 
-                        variant="default"
-                        data-testid={`button-select-plan-${index}`}
-                      >
-                        Select This Plan
-                      </Button>
-                      <Button 
-                        className="w-full" 
-                        variant="outline"
+                        variant="outline" 
+                        size="sm"
                         data-testid={`button-view-details-${index}`}
                       >
-                        View Full Details
+                        <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                        Plan details
+                      </Button>
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        data-testid={`button-select-plan-${index}`}
+                      >
+                        <Check className="h-3.5 w-3.5 mr-1" />
+                        Select plan
                       </Button>
                     </div>
                   </div>
-                </div>
-              </div>
-            </Card>
-          ))}
+
+                  {/* Plan Title & Badges */}
+                  <div className="p-6 pb-4">
+                    <h4 className="text-base font-semibold mb-3 text-primary">{plan.name}</h4>
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      <Badge className={getMetalLevelColor(plan.metal_level)}>
+                        {plan.metal_level}
+                      </Badge>
+                      {plan.plan_type && (
+                        <Badge variant="outline">{plan.plan_type}</Badge>
+                      )}
+                      {plan.quality_rating?.available && (
+                        <Badge variant="outline">
+                          Rating: {plan.quality_rating.global_rating > 0 
+                            ? `${plan.quality_rating.global_rating}/5` 
+                            : 'New-Ineligible for Scoring'}
+                        </Badge>
+                      )}
+                      {plan.has_dental_adult_coverage && (
+                        <Badge variant="secondary">
+                          Dental Adult: {plan.has_dental_adult_coverage ? '✓' : '✗'}
+                        </Badge>
+                      )}
+                      {plan.has_dental_child_coverage && (
+                        <Badge variant="secondary">
+                          Dental Child: {plan.has_dental_child_coverage ? '✓' : '✗'}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* 3-Column Grid: Premium, Deductible, Out-of-pocket */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                      {/* Premium */}
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Premium</p>
+                        <p className="text-3xl font-bold mb-1">
+                          {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
+                            ? formatCurrency(plan.premium_w_credit)
+                            : formatCurrency(plan.premium)}
+                        </p>
+                        {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && (
+                          <>
+                            <p className="text-xs text-green-600 dark:text-green-500">
+                              Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Plan was {formatCurrency(plan.premium)}
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Deductible */}
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Deductible</p>
+                        {plan.deductibles && plan.deductibles.length > 0 ? (
+                          plan.deductibles.map((deductible: any, i: number) => (
+                            <div key={i}>
+                              <p className="text-3xl font-bold mb-1">
+                                {formatCurrency(deductible.amount)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {deductible.family ? 'Family total' : 'Individual total'}
+                              </p>
+                              {!deductible.family && (
+                                <p className="text-xs text-muted-foreground">
+                                  {formatCurrency(deductible.amount)} per person
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Health & drug combined
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-3xl font-bold mb-1">N/A</p>
+                        )}
+                      </div>
+
+                      {/* Out-of-pocket max */}
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Out-of-pocket max</p>
+                        <p className="text-3xl font-bold mb-1">
+                          {plan.out_of_pocket_limit ? formatCurrency(plan.out_of_pocket_limit) : 'N/A'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Individual total</p>
+                        <p className="text-xs text-muted-foreground">
+                          Maximum for Medical and Drug EHB Benefits
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Benefits Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <p className="text-xs font-medium mb-1">Primary Doctor visits</p>
+                        <p className="text-xs text-muted-foreground">
+                          {plan.copay_primary ? formatCurrency(plan.copay_primary) : 'No Charge After Deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-1">Specialist Visits</p>
+                        <p className="text-xs text-muted-foreground">
+                          {plan.copay_specialist ? formatCurrency(plan.copay_specialist) : 'No Charge After Deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-1">Urgent care</p>
+                        <p className="text-xs text-muted-foreground">
+                          {plan.copay_urgent_care ? formatCurrency(plan.copay_urgent_care) : 'No Charge After Deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-1">Emergencies</p>
+                        <p className="text-xs text-muted-foreground">
+                          {plan.copay_emergency ? formatCurrency(plan.copay_emergency) : 'No Charge After Deductible'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-1">Mental health</p>
+                        <p className="text-xs text-muted-foreground">No Charge After Deductible</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-1">Generic drugs</p>
+                        <p className="text-xs text-muted-foreground">No Charge After Deductible</p>
+                      </div>
+                    </div>
+
+                    {/* Compare Button */}
+                    <div className="pt-4 border-t">
+                      <Button variant="ghost" size="sm" className="text-primary">
+                        <Check className="h-4 w-4 mr-1" />
+                        Compare
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
 
               {filteredPlans.length === 0 && (
                 <Card>
