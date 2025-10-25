@@ -568,7 +568,7 @@ export default function MarketplacePlansPage() {
                 {/* Header Row */}
                 <div className="grid grid-cols-2 gap-4 pb-2 border-b text-xs font-medium text-muted-foreground">
                   <div>Household size</div>
-                  <div className="text-right">100% Poverty Guidelines</div>
+                  <div className="text-right whitespace-nowrap">100% Poverty Guidelines</div>
                 </div>
 
                 {/* Poverty Guidelines Data */}
