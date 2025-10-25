@@ -2778,16 +2778,6 @@ export default function QuotesPage() {
   // Delete address dialog state
   const [deletingAddress, setDeletingAddress] = useState<'mailing' | 'billing' | null>(null);
   
-  // Validation dialog state
-  const [missingDataDialog, setMissingDataDialog] = useState<{open: boolean; missingFields: string[]}>({open: false, missingFields: []});
-  
-  // Log when dialog state changes with useEffect
-  useEffect(() => {
-    console.log('[DIALOG STATE - useEffect]', missingDataDialog);
-    if (missingDataDialog.open) {
-      console.log('[DIALOG] Dialog should be visible now!', missingDataDialog.missingFields);
-    }
-  }, [missingDataDialog]);
   
   // Advanced filters state
   const [filters, setFilters] = useState({
@@ -4693,46 +4683,38 @@ export default function QuotesPage() {
 
     // Validate data required for CMS Marketplace API
     const validateMarketplaceData = () => {
-      console.log('[VALIDATION] Starting validation...');
-      console.log('[VALIDATION] County:', viewingQuote.physical_county);
-      console.log('[VALIDATION] householdIncomeData:', householdIncomeData);
-      console.log('[VALIDATION] quoteDetail:', quoteDetail);
-      console.log('[VALIDATION] Client DOB:', viewingQuote.clientDateOfBirth);
-      
       const missing: string[] = [];
       
       // Check county (required for FIPS code)
       if (!viewingQuote.physical_county) {
-        missing.push("County information (Physical Address)");
+        missing.push("Información del condado (Dirección física)");
       }
       
       // Check if at least one member has income data
       const hasIncome = (householdIncomeData as any)?.totalIncome > 0;
-      console.log('[VALIDATION] hasIncome:', hasIncome);
       if (!hasIncome) {
-        missing.push("Household income information");
+        missing.push("Información de ingresos del hogar");
       }
       
       // Check if primary client has date of birth
       if (!viewingQuote.clientDateOfBirth) {
-        missing.push("Primary applicant date of birth");
+        missing.push("Fecha de nacimiento del solicitante principal");
       }
       
       // Check if all applicant spouses have DOB
       const spousesWithoutDOB = (viewingQuoteWithMembers.spouses || [])
         .filter((s: any) => s.isApplicant && !s.dateOfBirth);
       if (spousesWithoutDOB.length > 0) {
-        missing.push(`Date of birth for ${spousesWithoutDOB.length} spouse(s)`);
+        missing.push(`Fecha de nacimiento de ${spousesWithoutDOB.length} cónyuge(s)`);
       }
       
       // Check if all applicant dependents have DOB
       const dependentsWithoutDOB = (viewingQuoteWithMembers.dependents || [])
         .filter((d: any) => d.isApplicant && !d.dateOfBirth);
       if (dependentsWithoutDOB.length > 0) {
-        missing.push(`Date of birth for ${dependentsWithoutDOB.length} dependent(s)`);
+        missing.push(`Fecha de nacimiento de ${dependentsWithoutDOB.length} dependiente(s)`);
       }
       
-      console.log('[VALIDATION] Missing fields:', missing);
       return missing;
     };
 
@@ -4911,14 +4893,23 @@ export default function QuotesPage() {
                         size="sm" 
                         data-testid="button-search-plans"
                         onClick={() => {
-                          console.log('[BUTTON] Search plans clicked');
                           const missingFields = validateMarketplaceData();
-                          console.log('[BUTTON] Missing fields:', missingFields);
                           if (missingFields.length > 0) {
-                            console.log('[BUTTON] Setting dialog state to open');
-                            setMissingDataDialog({open: true, missingFields});
+                            toast({
+                              title: "Datos Faltantes",
+                              description: (
+                                <div>
+                                  <p className="mb-2">No se puede buscar planes porque faltan los siguientes datos requeridos:</p>
+                                  <ul className="list-disc pl-4 space-y-1">
+                                    {missingFields.map((field, index) => (
+                                      <li key={index}>{field}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ),
+                              variant: "destructive",
+                            });
                           } else {
-                            console.log('[BUTTON] Navigating to marketplace plans');
                             setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`);
                           }
                         }}
@@ -7504,29 +7495,6 @@ export default function QuotesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Missing Data Validation Dialog */}
-      <AlertDialog open={missingDataDialog.open} onOpenChange={(open) => setMissingDataDialog({...missingDataDialog, open})}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Datos Faltantes</AlertDialogTitle>
-            <AlertDialogDescription>
-              No se puede buscar planes porque faltan los siguientes datos requeridos:
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="my-4">
-            <ul className="list-disc pl-6 space-y-2">
-              {missingDataDialog.missingFields.map((field, index) => (
-                <li key={index} className="text-sm text-foreground">{field}</li>
-              ))}
-            </ul>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setMissingDataDialog({open: false, missingFields: []})}>
-              Entendido
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
