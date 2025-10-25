@@ -636,6 +636,9 @@ export default function MarketplacePlansPage() {
 
                   {/* Main Content Grid */}
                   <div className="p-6 pt-4">
+                    {/* Plan Name */}
+                    <h4 className="text-base font-medium mb-4 text-primary">{plan.name}</h4>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6 mb-6">
                       {/* Left: Prima mensual */}
                       <div>
