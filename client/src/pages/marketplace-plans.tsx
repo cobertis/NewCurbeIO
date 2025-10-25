@@ -266,14 +266,8 @@ export default function MarketplacePlansPage() {
   }
 
   const quote = (quoteData as any)?.quote;
-  const totalApplicants = (quote?.members || []).filter((m: any) => m.isApplicant).length + (quote?.clientIsApplicant ? 1 : 0);
-  
-  // Debug: Log quote address data
-  console.log('[DEBUG] Quote address data:', {
-    physical_county: quote?.physical_county,
-    physical_state: quote?.physical_state,
-    physical_postal_code: quote?.physical_postal_code
-  });
+  const totalApplicants = ((quote?.members || []).filter((m: any) => m.isApplicant).length) + (quote?.clientIsApplicant !== false ? 1 : 0);
+  const totalMembers = (quote?.members?.length || 0) + 1; // +1 for client
 
   return (
     <div className="p-4 sm:p-6">
@@ -338,15 +332,11 @@ export default function MarketplacePlansPage() {
                   <div className="grid grid-cols-2 gap-4 mb-3">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Applicants</p>
-                      <p className="text-2xl font-bold">
-                        {((quoteData as any)?.quote?.members?.filter((m: any) => m.isApplicant).length || 0) + (quote.clientIsApplicant !== false ? 1 : 0)}
-                      </p>
+                      <p className="text-2xl font-bold">{totalApplicants}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Members</p>
-                      <p className="text-2xl font-bold">
-                        {((quoteData as any)?.quote?.members?.length || 0) + 1}
-                      </p>
+                      <p className="text-2xl font-bold">{totalMembers}</p>
                     </div>
                   </div>
 
