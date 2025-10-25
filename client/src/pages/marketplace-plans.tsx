@@ -889,14 +889,14 @@ export default function MarketplacePlansPage() {
               </Card>
             )}
 
-            <Card>
+            <Card className="sticky top-4">
               <CardHeader className="pb-3">
                 <Button variant="default" className="w-full" data-testid="button-filter-plans">
                   <Filter className="h-4 w-4 mr-2" />
                   Filter plans
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <CardContent className="space-y-4">
                 {/* Monthly premium max */}
                 <div>
                   <Label htmlFor="monthly-premium-max" className="text-sm font-medium">Monthly premium max</Label>
@@ -1128,7 +1128,7 @@ export default function MarketplacePlansPage() {
                     <Label className="text-sm font-medium cursor-pointer">Disease programs</Label>
                     <ChevronDown className="h-4 w-4" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 mt-2 max-h-48 overflow-y-auto">
+                  <CollapsibleContent className="space-y-2 mt-2">
                     {[
                       'Asthma',
                       'Heart Disease',
