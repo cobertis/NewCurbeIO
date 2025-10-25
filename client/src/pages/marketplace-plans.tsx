@@ -1566,256 +1566,303 @@ export default function MarketplacePlansPage() {
       {/* Plan Comparison Dialog */}
       <Dialog open={isComparisonOpen} onOpenChange={setIsComparisonOpen}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="px-6 py-4 border-b">
-            <DialogTitle>
+          <DialogHeader className="px-6 py-5 border-b bg-muted/30">
+            <DialogTitle className="text-xl">
               Compare Plans ({selectedPlansForComparison.size})
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               Side-by-side comparison of selected health insurance plans
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 overflow-x-auto overflow-y-auto">
-            <table className="w-full border-collapse">
-              <thead className="sticky top-0 bg-background z-10">
-                <tr>
-                  <th className="text-left py-3 px-4 font-semibold text-sm bg-muted border-b min-w-[200px]">Plan Details</th>
-                  {selectedPlansData.map((plan: any) => (
-                    <th key={plan.id} className="py-3 px-4 border-b min-w-[250px]">
-                      <div className="flex flex-col items-start gap-2">
-                        <div className="flex items-center gap-2 w-full justify-between">
-                          <p className="font-semibold text-sm text-left">{plan.issuer?.name}</p>
-                          <button
-                            onClick={() => removePlanFromComparison(plan.id)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <p className="text-xs text-muted-foreground text-left">{plan.name}</p>
-                        <Button variant="default" size="sm" className="w-full">
-                          Select Plan
-                        </Button>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+          <div className="flex-1 overflow-x-auto overflow-y-auto p-6">
+            {/* Plan Headers with Cards */}
+            <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: `200px repeat(${selectedPlansForComparison.size}, 1fr)` }}>
+              <div></div>
+              {selectedPlansData.map((plan: any) => (
+                <Card key={plan.id} className="relative">
+                  <button
+                    onClick={() => removePlanFromComparison(plan.id)}
+                    className="absolute top-3 right-3 text-muted-foreground hover:text-destructive z-10"
+                    data-testid={`button-remove-comparison-header-${plan.id}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <CardContent className="p-4">
+                    <div className="mb-3">
+                      <p className="font-semibold text-sm mb-1">{plan.issuer?.name || 'Unknown Carrier'}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{plan.name}</p>
+                    </div>
+                    <Button variant="default" size="sm" className="w-full" data-testid={`button-select-plan-${plan.id}`}>
+                      Select Plan
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Main Costs Section */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Main Costs</h3>
+              <div className="grid gap-3" style={{ gridTemplateColumns: `200px repeat(${selectedPlansForComparison.size}, 1fr)` }}>
                 {/* Premium */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Premium</td>
-                  {selectedPlansData.map((plan: any) => (
-                    <td key={plan.id} className="py-3 px-4 text-center">
-                      <p className="text-2xl font-bold">
+                <div className="flex items-center h-20 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Premium</p>
+                </div>
+                {selectedPlansData.map((plan: any) => (
+                  <Card key={plan.id}>
+                    <CardContent className="p-4 h-20 flex flex-col justify-center">
+                      <p className="text-2xl font-bold text-center">
                         {formatCurrency(plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium)}
                       </p>
                       {plan.premium_w_credit !== undefined && plan.premium > plan.premium_w_credit && (
-                        <p className="text-xs text-green-600 dark:text-green-500">
+                        <p className="text-xs text-center text-green-600 dark:text-green-500 mt-1">
                           Save {formatCurrency(plan.premium - plan.premium_w_credit)}
                         </p>
                       )}
-                    </td>
-                  ))}
-                </tr>
+                    </CardContent>
+                  </Card>
+                ))}
 
                 {/* Deductible */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Deductible</td>
-                  {selectedPlansData.map((plan: any) => {
-                    const mainDeductible = plan.deductibles?.find((d: any) => !d.family) || plan.deductibles?.[0];
-                    return (
-                      <td key={plan.id} className="py-3 px-4 text-center">
-                        <p className="text-xl font-bold">{mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}</p>
-                      </td>
-                    );
-                  })}
-                </tr>
+                <div className="flex items-center h-16 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Deductible</p>
+                </div>
+                {selectedPlansData.map((plan: any) => {
+                  const mainDeductible = plan.deductibles?.find((d: any) => !d.family) || plan.deductibles?.[0];
+                  return (
+                    <Card key={plan.id}>
+                      <CardContent className="p-4 h-16 flex items-center justify-center">
+                        <p className="text-lg font-semibold">
+                          {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
 
                 {/* Out-of-pocket max */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Out-of-pocket max</td>
-                  {selectedPlansData.map((plan: any) => {
-                    const individualMoop = plan.moops?.find((m: any) => !m.family);
-                    const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
-                    return (
-                      <td key={plan.id} className="py-3 px-4 text-center">
-                        <p className="text-xl font-bold">{outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}</p>
-                      </td>
-                    );
-                  })}
-                </tr>
+                <div className="flex items-center h-16 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Out-of-pocket max</p>
+                </div>
+                {selectedPlansData.map((plan: any) => {
+                  const individualMoop = plan.moops?.find((m: any) => !m.family);
+                  const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
+                  return (
+                    <Card key={plan.id}>
+                      <CardContent className="p-4 h-16 flex items-center justify-center">
+                        <p className="text-lg font-semibold">
+                          {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
 
+            {/* Plan Details Section */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Plan Details</h3>
+              <div className="grid gap-3" style={{ gridTemplateColumns: `200px repeat(${selectedPlansForComparison.size}, 1fr)` }}>
                 {/* Metal Level */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Metal</td>
-                  {selectedPlansData.map((plan: any) => (
-                    <td key={plan.id} className="py-3 px-4 text-center">
-                      <Badge variant="outline">{plan.metal_level || 'N/A'}</Badge>
-                    </td>
-                  ))}
-                </tr>
+                <div className="flex items-center h-12 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Metal Level</p>
+                </div>
+                {selectedPlansData.map((plan: any) => (
+                  <Card key={plan.id}>
+                    <CardContent className="p-3 h-12 flex items-center justify-center">
+                      <Badge variant="outline" className="text-xs">
+                        {plan.metal_level || 'N/A'}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                ))}
 
                 {/* Network */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Network</td>
-                  {selectedPlansData.map((plan: any) => (
-                    <td key={plan.id} className="py-3 px-4 text-center">
-                      <Badge variant="outline">{plan.type || 'N/A'}</Badge>
-                    </td>
-                  ))}
-                </tr>
+                <div className="flex items-center h-12 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Network Type</p>
+                </div>
+                {selectedPlansData.map((plan: any) => (
+                  <Card key={plan.id}>
+                    <CardContent className="p-3 h-12 flex items-center justify-center">
+                      <Badge variant="outline" className="text-xs">
+                        {plan.type || 'N/A'}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                ))}
 
                 {/* Rating */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Rating</td>
-                  {selectedPlansData.map((plan: any) => (
-                    <td key={plan.id} className="py-3 px-4 text-center">
-                      {plan.quality_rating?.available ? (
-                        <span className="text-sm">
-                          {plan.quality_rating.global_rating > 0 
+                <div className="flex items-center h-12 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Quality Rating</p>
+                </div>
+                {selectedPlansData.map((plan: any) => (
+                  <Card key={plan.id}>
+                    <CardContent className="p-3 h-12 flex items-center justify-center">
+                      <p className="text-sm font-medium">
+                        {plan.quality_rating?.available ? (
+                          plan.quality_rating.global_rating > 0 
                             ? `${plan.quality_rating.global_rating}/5` 
-                            : 'New/Ineligible'}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">N/A</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
+                            : 'Not Rated'
+                        ) : (
+                          'N/A'
+                        )}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
 
+            {/* Benefits Section */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Benefits & Services</h3>
+              <div className="grid gap-3" style={{ gridTemplateColumns: `200px repeat(${selectedPlansForComparison.size}, 1fr)` }}>
                 {/* Primary Doctor visits */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Primary Doctor visits</td>
-                  {selectedPlansData.map((plan: any) => {
-                    const getBenefitCost = (benefitName: string) => {
-                      const benefit = plan.benefits?.find((b: any) => 
-                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
-                      );
-                      if (!benefit) return null;
-                      const costSharing = benefit.cost_sharings?.[0];
-                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
-                    };
-                    const cost = getBenefitCost('Primary Care') || (plan.copay_primary ? formatCurrency(plan.copay_primary) : null);
-                    return (
-                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
-                        {cost || 'No Charge After Deductible'}
-                      </td>
+                <div className="flex items-center h-14 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Primary Doctor</p>
+                </div>
+                {selectedPlansData.map((plan: any) => {
+                  const getBenefitCost = (benefitName: string) => {
+                    const benefit = plan.benefits?.find((b: any) => 
+                      b.name?.toLowerCase().includes(benefitName.toLowerCase())
                     );
-                  })}
-                </tr>
+                    if (!benefit) return null;
+                    const costSharing = benefit.cost_sharings?.[0];
+                    return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                  };
+                  const cost = getBenefitCost('Primary Care') || (plan.copay_primary ? formatCurrency(plan.copay_primary) : null);
+                  return (
+                    <Card key={plan.id}>
+                      <CardContent className="p-3 h-14 flex items-center justify-center">
+                        <p className="text-sm text-center">{cost || '$0'}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
 
                 {/* Specialist Visits */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Specialist Visits</td>
-                  {selectedPlansData.map((plan: any) => {
-                    const getBenefitCost = (benefitName: string) => {
-                      const benefit = plan.benefits?.find((b: any) => 
-                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
-                      );
-                      if (!benefit) return null;
-                      const costSharing = benefit.cost_sharings?.[0];
-                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
-                    };
-                    const cost = getBenefitCost('Specialist') || (plan.copay_specialist ? formatCurrency(plan.copay_specialist) : null);
-                    return (
-                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
-                        {cost || 'No Charge After Deductible'}
-                      </td>
+                <div className="flex items-center h-14 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Specialist</p>
+                </div>
+                {selectedPlansData.map((plan: any) => {
+                  const getBenefitCost = (benefitName: string) => {
+                    const benefit = plan.benefits?.find((b: any) => 
+                      b.name?.toLowerCase().includes(benefitName.toLowerCase())
                     );
-                  })}
-                </tr>
+                    if (!benefit) return null;
+                    const costSharing = benefit.cost_sharings?.[0];
+                    return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                  };
+                  const cost = getBenefitCost('Specialist') || (plan.copay_specialist ? formatCurrency(plan.copay_specialist) : null);
+                  return (
+                    <Card key={plan.id}>
+                      <CardContent className="p-3 h-14 flex items-center justify-center">
+                        <p className="text-sm text-center">{cost || '$0'}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
 
                 {/* Urgent care */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Urgent care</td>
-                  {selectedPlansData.map((plan: any) => {
-                    const getBenefitCost = (benefitName: string) => {
-                      const benefit = plan.benefits?.find((b: any) => 
-                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
-                      );
-                      if (!benefit) return null;
-                      const costSharing = benefit.cost_sharings?.[0];
-                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
-                    };
-                    const cost = getBenefitCost('Urgent Care') || (plan.copay_urgent_care ? formatCurrency(plan.copay_urgent_care) : null);
-                    return (
-                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
-                        {cost || 'No Charge After Deductible'}
-                      </td>
+                <div className="flex items-center h-14 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Urgent Care</p>
+                </div>
+                {selectedPlansData.map((plan: any) => {
+                  const getBenefitCost = (benefitName: string) => {
+                    const benefit = plan.benefits?.find((b: any) => 
+                      b.name?.toLowerCase().includes(benefitName.toLowerCase())
                     );
-                  })}
-                </tr>
+                    if (!benefit) return null;
+                    const costSharing = benefit.cost_sharings?.[0];
+                    return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                  };
+                  const cost = getBenefitCost('Urgent Care') || (plan.copay_urgent_care ? formatCurrency(plan.copay_urgent_care) : null);
+                  return (
+                    <Card key={plan.id}>
+                      <CardContent className="p-3 h-14 flex items-center justify-center">
+                        <p className="text-sm text-center">{cost || '$75'}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
 
                 {/* Emergencies */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Emergencies</td>
-                  {selectedPlansData.map((plan: any) => {
-                    const getBenefitCost = (benefitName: string) => {
-                      const benefit = plan.benefits?.find((b: any) => 
-                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
-                      );
-                      if (!benefit) return null;
-                      const costSharing = benefit.cost_sharings?.[0];
-                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
-                    };
-                    const cost = getBenefitCost('Emergency') || (plan.copay_emergency ? formatCurrency(plan.copay_emergency) : null);
-                    return (
-                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
-                        {cost || '40% Coinsurance after deductible'}
-                      </td>
+                <div className="flex items-center h-14 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Emergency</p>
+                </div>
+                {selectedPlansData.map((plan: any) => {
+                  const getBenefitCost = (benefitName: string) => {
+                    const benefit = plan.benefits?.find((b: any) => 
+                      b.name?.toLowerCase().includes(benefitName.toLowerCase())
                     );
-                  })}
-                </tr>
+                    if (!benefit) return null;
+                    const costSharing = benefit.cost_sharings?.[0];
+                    return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                  };
+                  const cost = getBenefitCost('Emergency') || (plan.copay_emergency ? formatCurrency(plan.copay_emergency) : null);
+                  return (
+                    <Card key={plan.id}>
+                      <CardContent className="p-3 h-14 flex items-center justify-center">
+                        <p className="text-sm text-center">{cost || '50% after deductible'}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
 
                 {/* Mental health */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Mental health</td>
-                  {selectedPlansData.map((plan: any) => {
-                    const getBenefitCost = (benefitName: string) => {
-                      const benefit = plan.benefits?.find((b: any) => 
-                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
-                      );
-                      if (!benefit) return null;
-                      const costSharing = benefit.cost_sharings?.[0];
-                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
-                    };
-                    const cost = getBenefitCost('Mental');
-                    return (
-                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
-                        {cost || 'No Charge After Deductible'}
-                      </td>
+                <div className="flex items-center h-14 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Mental Health</p>
+                </div>
+                {selectedPlansData.map((plan: any) => {
+                  const getBenefitCost = (benefitName: string) => {
+                    const benefit = plan.benefits?.find((b: any) => 
+                      b.name?.toLowerCase().includes(benefitName.toLowerCase())
                     );
-                  })}
-                </tr>
+                    if (!benefit) return null;
+                    const costSharing = benefit.cost_sharings?.[0];
+                    return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                  };
+                  const cost = getBenefitCost('Mental');
+                  return (
+                    <Card key={plan.id}>
+                      <CardContent className="p-3 h-14 flex items-center justify-center">
+                        <p className="text-sm text-center">{cost || '$50'}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
 
                 {/* Generic drugs */}
-                <tr className="border-b hover-elevate">
-                  <td className="py-3 px-4 font-medium text-sm">Generic drugs</td>
-                  {selectedPlansData.map((plan: any) => {
-                    const getBenefitCost = (benefitName: string) => {
-                      const benefit = plan.benefits?.find((b: any) => 
-                        b.name?.toLowerCase().includes(benefitName.toLowerCase())
-                      );
-                      if (!benefit) return null;
-                      const costSharing = benefit.cost_sharings?.[0];
-                      return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
-                    };
-                    const cost = getBenefitCost('Generic Drugs');
-                    return (
-                      <td key={plan.id} className="py-3 px-4 text-center text-sm">
-                        {cost || 'No Charge After Deductible'}
-                      </td>
+                <div className="flex items-center h-14 px-3 bg-muted/20 rounded-md">
+                  <p className="font-medium text-sm">Generic Drugs</p>
+                </div>
+                {selectedPlansData.map((plan: any) => {
+                  const getBenefitCost = (benefitName: string) => {
+                    const benefit = plan.benefits?.find((b: any) => 
+                      b.name?.toLowerCase().includes(benefitName.toLowerCase())
                     );
-                  })}
-                </tr>
-              </tbody>
-            </table>
+                    if (!benefit) return null;
+                    const costSharing = benefit.cost_sharings?.[0];
+                    return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                  };
+                  const cost = getBenefitCost('Generic Drugs');
+                  return (
+                    <Card key={plan.id}>
+                      <CardContent className="p-3 h-14 flex items-center justify-center">
+                        <p className="text-sm text-center">{cost || '$25'}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          <div className="px-6 py-4 border-t flex justify-between">
-            <Button variant="outline" onClick={() => setIsComparisonOpen(false)}>
-              Back to list
+          <div className="px-6 py-4 border-t bg-muted/10 flex justify-end">
+            <Button variant="outline" onClick={() => setIsComparisonOpen(false)} data-testid="button-close-comparison">
+              Close Comparison
             </Button>
           </div>
         </DialogContent>
