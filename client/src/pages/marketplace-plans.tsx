@@ -267,6 +267,13 @@ export default function MarketplacePlansPage() {
 
   const quote = (quoteData as any)?.quote;
   const totalApplicants = (quote?.members || []).filter((m: any) => m.isApplicant).length + (quote?.clientIsApplicant ? 1 : 0);
+  
+  // Debug: Log quote address data
+  console.log('[DEBUG] Quote address data:', {
+    physical_county: quote?.physical_county,
+    physical_state: quote?.physical_state,
+    physical_postal_code: quote?.physical_postal_code
+  });
 
   return (
     <div className="p-4 sm:p-6">
