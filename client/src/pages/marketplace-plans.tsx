@@ -317,9 +317,9 @@ export default function MarketplacePlansPage() {
                       <MapPin className="h-3 w-3" />
                       Address
                     </p>
-                    <p className="text-sm">‣ {quote.county}</p>
-                    <p className="text-sm">‣ {quote.state}</p>
-                    <p className="text-sm">‣ {quote.zipCode}</p>
+                    <p className="text-sm">‣ {quote.physical_county || 'N/A'}</p>
+                    <p className="text-sm">‣ {quote.physical_state || 'N/A'}</p>
+                    <p className="text-sm">‣ {quote.physical_postal_code || 'N/A'}</p>
                   </div>
                 </div>
 
