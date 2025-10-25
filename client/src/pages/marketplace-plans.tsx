@@ -78,7 +78,15 @@ export default function MarketplacePlansPage() {
   const [metalLevelFilter, setMetalLevelFilter] = useState<string>("all");
   const [planTypeFilter, setPlanTypeFilter] = useState<string>("all");
   const [maxPremium, setMaxPremium] = useState<string>("");
+  const [maxDeductible, setMaxDeductible] = useState<string>("");
   const [sortBy, setSortBy] = useState<string>("premium_asc");
+  
+  // New comprehensive filters
+  const [selectedCarriers, setSelectedCarriers] = useState<Set<string>>(new Set());
+  const [selectedMetals, setSelectedMetals] = useState<Set<string>>(new Set());
+  const [selectedNetworks, setSelectedNetworks] = useState<Set<string>>(new Set());
+  const [selectedPlanFeatures, setSelectedPlanFeatures] = useState<Set<string>>(new Set());
+  const [selectedDiseasePrograms, setSelectedDiseasePrograms] = useState<Set<string>>(new Set());
 
   // Fetch quote details
   const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
@@ -205,17 +213,91 @@ export default function MarketplacePlansPage() {
     return 'bg-blue-500 text-white';
   };
 
+  // Extract unique carriers with counts
+  const carrierCounts = marketplacePlans?.plans?.reduce((acc: Record<string, number>, plan: any) => {
+    const carrierName = plan.issuer?.name || 'Unknown';
+    acc[carrierName] = (acc[carrierName] || 0) + 1;
+    return acc;
+  }, {}) || {};
+  
+  const carriers = Object.entries(carrierCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   // Filter and sort all plans
   const allFilteredPlans = marketplacePlans?.plans?.filter((plan: any) => {
+    // Legacy filters (for backwards compatibility)
     if (metalLevelFilter !== "all" && !plan.metal_level?.toLowerCase().includes(metalLevelFilter)) {
       return false;
     }
     if (planTypeFilter !== "all" && plan.plan_type !== planTypeFilter) {
       return false;
     }
+    
+    // Premium filter
     if (maxPremium && plan.premium > parseFloat(maxPremium)) {
       return false;
     }
+    
+    // Deductible filter
+    if (maxDeductible) {
+      const mainDeductible = plan.deductibles?.find((d: any) => 
+        d.type?.toLowerCase().includes('individual') || 
+        d.type?.toLowerCase().includes('medical')
+      );
+      if (mainDeductible && mainDeductible.amount > parseFloat(maxDeductible)) {
+        return false;
+      }
+    }
+    
+    // Carrier filter
+    if (selectedCarriers.size > 0) {
+      const carrierName = plan.issuer?.name || 'Unknown';
+      if (!selectedCarriers.has(carrierName)) {
+        return false;
+      }
+    }
+    
+    // Metal level filter (checkbox)
+    if (selectedMetals.size > 0) {
+      const metalLevel = plan.metal_level?.toLowerCase();
+      const hasMatch = Array.from(selectedMetals).some(m => metalLevel?.includes(m.toLowerCase()));
+      if (!hasMatch) {
+        return false;
+      }
+    }
+    
+    // Network filter (checkbox)
+    if (selectedNetworks.size > 0) {
+      if (!selectedNetworks.has(plan.plan_type)) {
+        return false;
+      }
+    }
+    
+    // Plan features filter
+    if (selectedPlanFeatures.size > 0) {
+      if (selectedPlanFeatures.has('dental_child') && !plan.has_dental_child_coverage) {
+        return false;
+      }
+      if (selectedPlanFeatures.has('dental_adult') && !plan.has_dental_adult_coverage) {
+        return false;
+      }
+      if (selectedPlanFeatures.has('simple_choice') && !plan.simple_choice) {
+        return false;
+      }
+    }
+    
+    // Disease programs filter
+    if (selectedDiseasePrograms.size > 0) {
+      const planPrograms = plan.disease_mgmt_programs || [];
+      const hasMatch = Array.from(selectedDiseasePrograms).some(program => 
+        planPrograms.some((p: string) => p.toLowerCase().includes(program.toLowerCase()))
+      );
+      if (!hasMatch) {
+        return false;
+      }
+    }
+    
     return true;
   }).sort((a: any, b: any) => {
     switch (sortBy) {
@@ -814,13 +896,14 @@ export default function MarketplacePlansPage() {
                   Filter plans
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                {/* Monthly premium max */}
                 <div>
                   <Label htmlFor="monthly-premium-max" className="text-sm font-medium">Monthly premium max</Label>
                   <Input
                     id="monthly-premium-max"
                     type="number"
-                    placeholder="No limit"
+                    placeholder="2000"
                     value={maxPremium}
                     onChange={(e) => {
                       setMaxPremium(e.target.value);
@@ -831,68 +914,285 @@ export default function MarketplacePlansPage() {
                   />
                 </div>
 
+                {/* Deductible max */}
                 <div>
                   <Label htmlFor="deductible-max" className="text-sm font-medium">Deductible max</Label>
                   <Input
                     id="deductible-max"
                     type="number"
                     placeholder="9200"
+                    value={maxDeductible}
+                    onChange={(e) => {
+                      setMaxDeductible(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     data-testid="filter-deductible-max"
                     className="mt-2"
                   />
                 </div>
 
-                <div>
-                  <Label className="text-sm font-medium">Metal Level</Label>
-                  <Select value={metalLevelFilter} onValueChange={(value) => {
-                    setMetalLevelFilter(value);
-                    setCurrentPage(1);
-                  }}>
-                    <SelectTrigger className="mt-2" data-testid="filter-metal-level-right">
-                      <SelectValue placeholder="All levels" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Levels</SelectItem>
-                      <SelectItem value="bronze">Bronze</SelectItem>
-                      <SelectItem value="silver">Silver</SelectItem>
-                      <SelectItem value="gold">Gold</SelectItem>
-                      <SelectItem value="platinum">Platinum</SelectItem>
-                      <SelectItem value="catastrophic">Catastrophic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Carriers */}
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
+                    <Label className="text-sm font-medium cursor-pointer">Carriers</Label>
+                    <ChevronDown className="h-4 w-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 mt-2 max-h-48 overflow-y-auto">
+                    {carriers.map((carrier) => (
+                      <div key={carrier.name} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`carrier-${carrier.name}`}
+                          checked={selectedCarriers.has(carrier.name)}
+                          onChange={(e) => {
+                            const newSelected = new Set(selectedCarriers);
+                            if (e.target.checked) {
+                              newSelected.add(carrier.name);
+                            } else {
+                              newSelected.delete(carrier.name);
+                            }
+                            setSelectedCarriers(newSelected);
+                            setCurrentPage(1);
+                          }}
+                          className="h-4 w-4"
+                        />
+                        <label
+                          htmlFor={`carrier-${carrier.name}`}
+                          className="text-sm cursor-pointer flex-1"
+                        >
+                          {carrier.name} ({carrier.count})
+                        </label>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
 
-                <div>
-                  <Label className="text-sm font-medium">Plan Type</Label>
-                  <Select value={planTypeFilter} onValueChange={(value) => {
-                    setPlanTypeFilter(value);
-                    setCurrentPage(1);
-                  }}>
-                    <SelectTrigger className="mt-2" data-testid="filter-plan-type-right">
-                      <SelectValue placeholder="All types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="HMO">HMO</SelectItem>
-                      <SelectItem value="PPO">PPO</SelectItem>
-                      <SelectItem value="EPO">EPO</SelectItem>
-                      <SelectItem value="POS">POS</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Metal */}
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
+                    <Label className="text-sm font-medium cursor-pointer">Metal</Label>
+                    <ChevronDown className="h-4 w-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 mt-2">
+                    {['Bronze', 'Silver', 'Gold', 'Platinum'].map((metal) => {
+                      const count = marketplacePlans?.plans?.filter((p: any) => 
+                        p.metal_level?.toLowerCase().includes(metal.toLowerCase())
+                      ).length || 0;
+                      return (
+                        <div key={metal} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`metal-${metal}`}
+                            checked={selectedMetals.has(metal)}
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedMetals);
+                              if (e.target.checked) {
+                                newSelected.add(metal);
+                              } else {
+                                newSelected.delete(metal);
+                              }
+                              setSelectedMetals(newSelected);
+                              setCurrentPage(1);
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <label
+                            htmlFor={`metal-${metal}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {metal} ({count})
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
 
-                {(metalLevelFilter !== "all" || planTypeFilter !== "all" || maxPremium) && (
+                {/* Networks */}
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
+                    <Label className="text-sm font-medium cursor-pointer">Networks</Label>
+                    <ChevronDown className="h-4 w-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 mt-2">
+                    {['PPO', 'HMO', 'POS', 'EPO'].map((network) => {
+                      const count = marketplacePlans?.plans?.filter((p: any) => 
+                        p.plan_type === network
+                      ).length || 0;
+                      return (
+                        <div key={network} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`network-${network}`}
+                            checked={selectedNetworks.has(network)}
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedNetworks);
+                              if (e.target.checked) {
+                                newSelected.add(network);
+                              } else {
+                                newSelected.delete(network);
+                              }
+                              setSelectedNetworks(newSelected);
+                              setCurrentPage(1);
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <label
+                            htmlFor={`network-${network}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {network} ({count})
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Plan features */}
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
+                    <Label className="text-sm font-medium cursor-pointer">Plan features</Label>
+                    <ChevronDown className="h-4 w-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 mt-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="feature-dental-child"
+                        checked={selectedPlanFeatures.has('dental_child')}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedPlanFeatures);
+                          if (e.target.checked) {
+                            newSelected.add('dental_child');
+                          } else {
+                            newSelected.delete('dental_child');
+                          }
+                          setSelectedPlanFeatures(newSelected);
+                          setCurrentPage(1);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="feature-dental-child" className="text-sm cursor-pointer">
+                        Dental coverage Children
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="feature-dental-adult"
+                        checked={selectedPlanFeatures.has('dental_adult')}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedPlanFeatures);
+                          if (e.target.checked) {
+                            newSelected.add('dental_adult');
+                          } else {
+                            newSelected.delete('dental_adult');
+                          }
+                          setSelectedPlanFeatures(newSelected);
+                          setCurrentPage(1);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="feature-dental-adult" className="text-sm cursor-pointer">
+                        Dental coverage Adult
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="feature-simple-choice"
+                        checked={selectedPlanFeatures.has('simple_choice')}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedPlanFeatures);
+                          if (e.target.checked) {
+                            newSelected.add('simple_choice');
+                          } else {
+                            newSelected.delete('simple_choice');
+                          }
+                          setSelectedPlanFeatures(newSelected);
+                          setCurrentPage(1);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="feature-simple-choice" className="text-sm cursor-pointer">
+                        Simple choice
+                      </label>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Disease programs */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
+                    <Label className="text-sm font-medium cursor-pointer">Disease programs</Label>
+                    <ChevronDown className="h-4 w-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 mt-2 max-h-48 overflow-y-auto">
+                    {[
+                      'Asthma',
+                      'Heart Disease',
+                      'Depression',
+                      'Diabetes',
+                      'High Blood Pressure',
+                      'Low Back Pain',
+                      'Maternity',
+                      'Pregnancy',
+                      'Weight Loss Programs'
+                    ].map((program) => {
+                      const count = marketplacePlans?.plans?.filter((p: any) => 
+                        p.disease_mgmt_programs?.some((d: string) => d.toLowerCase().includes(program.toLowerCase()))
+                      ).length || 0;
+                      return (
+                        <div key={program} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`disease-${program}`}
+                            checked={selectedDiseasePrograms.has(program)}
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedDiseasePrograms);
+                              if (e.target.checked) {
+                                newSelected.add(program);
+                              } else {
+                                newSelected.delete(program);
+                              }
+                              setSelectedDiseasePrograms(newSelected);
+                              setCurrentPage(1);
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <label
+                            htmlFor={`disease-${program}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {program} ({count})
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Clear all filters */}
+                {(selectedCarriers.size > 0 || selectedMetals.size > 0 || selectedNetworks.size > 0 || 
+                  selectedPlanFeatures.size > 0 || selectedDiseasePrograms.size > 0 || maxPremium || maxDeductible) && (
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full mt-4"
                     onClick={() => {
+                      setSelectedCarriers(new Set());
+                      setSelectedMetals(new Set());
+                      setSelectedNetworks(new Set());
+                      setSelectedPlanFeatures(new Set());
+                      setSelectedDiseasePrograms(new Set());
                       setMetalLevelFilter("all");
                       setPlanTypeFilter("all");
                       setMaxPremium("");
+                      setMaxDeductible("");
                       setCurrentPage(1);
                     }}
-                    data-testid="button-clear-filters-right"
+                    data-testid="button-clear-all-filters"
                   >
                     Clear All Filters
                   </Button>
