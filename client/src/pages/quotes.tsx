@@ -795,9 +795,15 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       console.log('[MemberData Build] Primary member data built:', data);
       return data;
     } else if (memberType === 'spouse' && memberIndex !== undefined) {
-      // Get from normalized members data instead of old quote.spouses array
+      // Try to get from normalized members data first, fallback to JSONB if not found
       const spouses = membersData.members.filter(m => m.role === 'spouse');
-      const spouse = spouses[memberIndex];
+      let spouse = spouses[memberIndex];
+      
+      // If not found in normalized table, try JSONB data
+      if (!spouse && quote.spouses && quote.spouses[memberIndex]) {
+        spouse = quote.spouses[memberIndex];
+      }
+      
       return spouse ? {
         firstName: spouse.firstName || '',
         middleName: spouse.middleName || '',
@@ -831,9 +837,15 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         immigrationStatusCategory: immigration.immigrationStatusCategory || '',
       } : null;
     } else if (memberType === 'dependent' && memberIndex !== undefined) {
-      // Get from normalized members data instead of old quote.dependents array
+      // Try to get from normalized members data first, fallback to JSONB if not found
       const dependents = membersData.members.filter(m => m.role === 'dependent');
-      const dependent = dependents[memberIndex];
+      let dependent = dependents[memberIndex];
+      
+      // If not found in normalized table, try JSONB data
+      if (!dependent && quote.dependents && quote.dependents[memberIndex]) {
+        dependent = quote.dependents[memberIndex];
+      }
+      
       return dependent ? {
         firstName: dependent.firstName || '',
         middleName: dependent.middleName || '',
