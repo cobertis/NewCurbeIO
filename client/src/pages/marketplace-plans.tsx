@@ -688,15 +688,15 @@ export default function MarketplacePlansPage() {
                       </label>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Button variant="link" size="sm" className="text-primary p-0 h-auto">
+                      <button className="text-sm text-primary hover:underline">
                         Medicamentos
-                      </Button>
-                      <Button variant="link" size="sm" className="text-primary p-0 h-auto">
+                      </button>
+                      <button className="text-sm text-primary hover:underline">
                         Doctores
-                      </Button>
-                      <Button variant="link" size="sm" className="text-primary p-0 h-auto">
+                      </button>
+                      <button className="text-sm text-primary hover:underline">
                         Beneficios
-                      </Button>
+                      </button>
                       <Button 
                         variant="outline" 
                         size="sm"
