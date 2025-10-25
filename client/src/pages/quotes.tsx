@@ -4685,6 +4685,12 @@ export default function QuotesPage() {
 
     // Validate data required for CMS Marketplace API
     const validateMarketplaceData = () => {
+      console.log('[VALIDATION] Starting validation...');
+      console.log('[VALIDATION] County:', viewingQuote.physical_county);
+      console.log('[VALIDATION] householdIncomeData:', householdIncomeData);
+      console.log('[VALIDATION] quoteDetail:', quoteDetail);
+      console.log('[VALIDATION] Client DOB:', viewingQuote.clientDateOfBirth);
+      
       const missing: string[] = [];
       
       // Check county (required for FIPS code)
@@ -4694,6 +4700,7 @@ export default function QuotesPage() {
       
       // Check if at least one member has income data
       const hasIncome = (householdIncomeData as any)?.totalIncome > 0;
+      console.log('[VALIDATION] hasIncome:', hasIncome);
       if (!hasIncome) {
         missing.push("Household income information");
       }
@@ -4717,6 +4724,7 @@ export default function QuotesPage() {
         missing.push(`Date of birth for ${dependentsWithoutDOB.length} dependent(s)`);
       }
       
+      console.log('[VALIDATION] Missing fields:', missing);
       return missing;
     };
 
