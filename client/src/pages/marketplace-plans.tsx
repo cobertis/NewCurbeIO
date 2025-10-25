@@ -502,9 +502,9 @@ export default function MarketplacePlansPage() {
                       <MapPin className="h-3 w-3" />
                       Address
                     </p>
-                    <p className="text-sm whitespace-nowrap">‣ {quote.physical_county || 'N/A'}</p>
-                    <p className="text-sm whitespace-nowrap">‣ {quote.physical_state || 'N/A'}</p>
-                    <p className="text-sm whitespace-nowrap">‣ {quote.physical_postal_code || 'N/A'}</p>
+                    <p className="text-sm break-words">‣ {quote.physical_county || 'N/A'}</p>
+                    <p className="text-sm">‣ {quote.physical_state || 'N/A'}</p>
+                    <p className="text-sm">‣ {quote.physical_postal_code || 'N/A'}</p>
                   </div>
                 </div>
 
@@ -588,7 +588,7 @@ export default function MarketplacePlansPage() {
                 {/* Header Row */}
                 <div className="grid grid-cols-2 gap-4 pb-2 border-b text-xs font-medium text-muted-foreground">
                   <div>Household size</div>
-                  <div className="text-right whitespace-nowrap">100% Poverty Guidelines</div>
+                  <div className="text-right">100% Poverty Guidelines</div>
                 </div>
 
                 {/* Poverty Guidelines Data */}
