@@ -1018,13 +1018,13 @@ export default function MarketplacePlansPage() {
           {/* Right Sidebar: Filters */}
           <div className="space-y-4">
             <Card className="sticky top-4 max-h-[calc(100vh-2rem)] flex flex-col">
-              <CardHeader className="pb-3 flex-shrink-0">
+              <CardHeader className="pb-2 flex-shrink-0">
                 <h3 className="font-semibold text-sm">Filters</h3>
               </CardHeader>
-              <CardContent className="space-y-4 overflow-y-auto flex-1">
+              <CardContent className="space-y-3 overflow-y-auto flex-1">
                 {/* Monthly premium max */}
                 <div>
-                  <Label htmlFor="monthly-premium-max" className="text-sm font-medium">Monthly premium max</Label>
+                  <Label htmlFor="monthly-premium-max" className="text-xs font-medium">Monthly premium max</Label>
                   <Input
                     id="monthly-premium-max"
                     type="number"
@@ -1035,13 +1035,13 @@ export default function MarketplacePlansPage() {
                       setCurrentPage(1);
                     }}
                     data-testid="filter-monthly-premium-max"
-                    className="mt-2"
+                    className="mt-1 h-8"
                   />
                 </div>
 
                 {/* Deductible max */}
                 <div>
-                  <Label htmlFor="deductible-max" className="text-sm font-medium">Deductible max</Label>
+                  <Label htmlFor="deductible-max" className="text-xs font-medium">Deductible max</Label>
                   <Input
                     id="deductible-max"
                     type="number"
@@ -1052,17 +1052,17 @@ export default function MarketplacePlansPage() {
                       setCurrentPage(1);
                     }}
                     data-testid="filter-deductible-max"
-                    className="mt-2"
+                    className="mt-1 h-8"
                   />
                 </div>
 
                 {/* Carriers */}
                 <Collapsible defaultOpen>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
-                    <Label className="text-sm font-medium cursor-pointer">Carriers</Label>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5">
+                    <Label className="text-xs font-medium cursor-pointer">Carriers</Label>
                     <ChevronDown className="h-4 w-4" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 mt-2">
+                  <CollapsibleContent className="space-y-1.5 mt-1.5">
                     {carriers.map((carrier) => (
                       <div key={carrier.name} className="flex items-center space-x-2">
                         <input
@@ -1079,11 +1079,11 @@ export default function MarketplacePlansPage() {
                             setSelectedCarriers(newSelected);
                             setCurrentPage(1);
                           }}
-                          className="h-4 w-4"
+                          className="h-3.5 w-3.5"
                         />
                         <label
                           htmlFor={`carrier-${carrier.name}`}
-                          className="text-sm cursor-pointer flex-1"
+                          className="text-xs cursor-pointer flex-1"
                         >
                           {carrier.name} ({carrier.count})
                         </label>
@@ -1094,11 +1094,11 @@ export default function MarketplacePlansPage() {
 
                 {/* Metal */}
                 <Collapsible defaultOpen>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
-                    <Label className="text-sm font-medium cursor-pointer">Metal</Label>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5">
+                    <Label className="text-xs font-medium cursor-pointer">Metal</Label>
                     <ChevronDown className="h-4 w-4" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 mt-2">
+                  <CollapsibleContent className="space-y-1.5 mt-1.5">
                     {['Bronze', 'Silver', 'Gold', 'Platinum'].map((metal) => {
                       const count = marketplacePlans?.plans?.filter((p: any) => 
                         p.metal_level?.toLowerCase().includes(metal.toLowerCase())
@@ -1119,11 +1119,11 @@ export default function MarketplacePlansPage() {
                               setSelectedMetals(newSelected);
                               setCurrentPage(1);
                             }}
-                            className="h-4 w-4"
+                            className="h-3.5 w-3.5"
                           />
                           <label
                             htmlFor={`metal-${metal}`}
-                            className="text-sm cursor-pointer flex-1"
+                            className="text-xs cursor-pointer flex-1"
                           >
                             {metal} ({count})
                           </label>
@@ -1135,11 +1135,11 @@ export default function MarketplacePlansPage() {
 
                 {/* Networks */}
                 <Collapsible defaultOpen>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
-                    <Label className="text-sm font-medium cursor-pointer">Networks</Label>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5">
+                    <Label className="text-xs font-medium cursor-pointer">Networks</Label>
                     <ChevronDown className="h-4 w-4" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 mt-2">
+                  <CollapsibleContent className="space-y-1.5 mt-1.5">
                     {['PPO', 'HMO', 'POS', 'EPO'].map((network) => {
                       const count = marketplacePlans?.plans?.filter((p: any) => 
                         p.type === network
@@ -1160,11 +1160,11 @@ export default function MarketplacePlansPage() {
                               setSelectedNetworks(newSelected);
                               setCurrentPage(1);
                             }}
-                            className="h-4 w-4"
+                            className="h-3.5 w-3.5"
                           />
                           <label
                             htmlFor={`network-${network}`}
-                            className="text-sm cursor-pointer flex-1"
+                            className="text-xs cursor-pointer flex-1"
                           >
                             {network} ({count})
                           </label>
@@ -1176,11 +1176,11 @@ export default function MarketplacePlansPage() {
 
                 {/* Plan features */}
                 <Collapsible defaultOpen>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
-                    <Label className="text-sm font-medium cursor-pointer">Plan features</Label>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5">
+                    <Label className="text-xs font-medium cursor-pointer">Plan features</Label>
                     <ChevronDown className="h-4 w-4" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 mt-2">
+                  <CollapsibleContent className="space-y-1.5 mt-1.5">
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -1196,9 +1196,9 @@ export default function MarketplacePlansPage() {
                           setSelectedPlanFeatures(newSelected);
                           setCurrentPage(1);
                         }}
-                        className="h-4 w-4"
+                        className="h-3.5 w-3.5"
                       />
-                      <label htmlFor="feature-dental-child" className="text-sm cursor-pointer flex-1">
+                      <label htmlFor="feature-dental-child" className="text-xs cursor-pointer flex-1">
                         Dental coverage Children ({marketplacePlans?.plans?.filter((p: any) => p.has_dental_child_coverage).length || 0})
                       </label>
                     </div>
@@ -1217,9 +1217,9 @@ export default function MarketplacePlansPage() {
                           setSelectedPlanFeatures(newSelected);
                           setCurrentPage(1);
                         }}
-                        className="h-4 w-4"
+                        className="h-3.5 w-3.5"
                       />
-                      <label htmlFor="feature-dental-adult" className="text-sm cursor-pointer flex-1">
+                      <label htmlFor="feature-dental-adult" className="text-xs cursor-pointer flex-1">
                         Dental coverage Adult ({marketplacePlans?.plans?.filter((p: any) => p.has_dental_adult_coverage).length || 0})
                       </label>
                     </div>
@@ -1238,9 +1238,9 @@ export default function MarketplacePlansPage() {
                           setSelectedPlanFeatures(newSelected);
                           setCurrentPage(1);
                         }}
-                        className="h-4 w-4"
+                        className="h-3.5 w-3.5"
                       />
-                      <label htmlFor="feature-hsa-eligible" className="text-sm cursor-pointer flex-1">
+                      <label htmlFor="feature-hsa-eligible" className="text-xs cursor-pointer flex-1">
                         HSA qualified ({marketplacePlans?.plans?.filter((p: any) => p.hsa_eligible).length || 0})
                       </label>
                     </div>
@@ -1259,9 +1259,9 @@ export default function MarketplacePlansPage() {
                           setSelectedPlanFeatures(newSelected);
                           setCurrentPage(1);
                         }}
-                        className="h-4 w-4"
+                        className="h-3.5 w-3.5"
                       />
-                      <label htmlFor="feature-simple-choice" className="text-sm cursor-pointer flex-1">
+                      <label htmlFor="feature-simple-choice" className="text-xs cursor-pointer flex-1">
                         Simple choice ({marketplacePlans?.plans?.filter((p: any) => p.simple_choice).length || 0})
                       </label>
                     </div>
@@ -1270,11 +1270,11 @@ export default function MarketplacePlansPage() {
 
                 {/* Disease programs */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
-                    <Label className="text-sm font-medium cursor-pointer">Disease programs</Label>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5">
+                    <Label className="text-xs font-medium cursor-pointer">Disease programs</Label>
                     <ChevronDown className="h-4 w-4" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 mt-2">
+                  <CollapsibleContent className="space-y-1.5 mt-1.5">
                     {[
                       'Asthma',
                       'Heart Disease',
@@ -1305,11 +1305,11 @@ export default function MarketplacePlansPage() {
                               setSelectedDiseasePrograms(newSelected);
                               setCurrentPage(1);
                             }}
-                            className="h-4 w-4"
+                            className="h-3.5 w-3.5"
                           />
                           <label
                             htmlFor={`disease-${program}`}
-                            className="text-sm cursor-pointer flex-1"
+                            className="text-xs cursor-pointer flex-1"
                           >
                             {program} ({count})
                           </label>
@@ -1325,7 +1325,7 @@ export default function MarketplacePlansPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full mt-4"
+                    className="w-full mt-2"
                     onClick={() => {
                       setSelectedCarriers(new Set());
                       setSelectedMetals(new Set());
