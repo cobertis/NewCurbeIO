@@ -86,6 +86,12 @@ export default function MarketplacePlansPage() {
     enabled: !!quoteId,
   });
 
+  // CRITICAL FIX: Load REAL family members from quote_members table (same as quotes.tsx)
+  const { data: membersDetailsData } = useQuery<{ members: any[] }>({
+    queryKey: ['/api/quotes', quoteId, 'members'],
+    enabled: !!quoteId,
+  });
+
   // State for marketplace plans and pagination
   const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
@@ -267,43 +273,19 @@ export default function MarketplacePlansPage() {
 
   const quote = (quoteData as any)?.quote;
   
-  // Parse JSONB fields - they might come as strings or objects depending on ORM
-  const parseJsonbField = (field: any): any[] => {
-    if (!field) return [];
-    if (Array.isArray(field)) return field;
-    if (typeof field === 'string') {
-      try {
-        const parsed = JSON.parse(field);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
+  // PERMANENT FIX: Show ALL family members from quote_members table (exclude only 'client')
+  // This matches the EXACT same logic as quotes.tsx - loads REAL data from BD
+  const allFamilyMembersFromDB = membersDetailsData?.members?.filter(m => m.role !== 'client') || [];
   
-  const spouses = parseJsonbField(quote?.spouses);
-  const dependents = parseJsonbField(quote?.dependents);
-  
-  // Build family members list from JSONB fields (spouses and dependents)
-  const allFamilyMembers = [
-    ...spouses.map((s: any) => ({
-      firstName: s.firstName,
-      lastName: s.lastName,
-      dateOfBirth: s.dateOfBirth,
-      gender: s.gender,
-      role: 'spouse',
-      isApplicant: s.isApplicant !== false, // Default to true if not specified
-    })),
-    ...dependents.map((d: any) => ({
-      firstName: d.firstName,
-      lastName: d.lastName,
-      dateOfBirth: d.dateOfBirth,
-      gender: d.gender,
-      role: d.relation || 'dependent',
-      isApplicant: d.isApplicant === true, // Dependents are typically not applicants
-    })),
-  ];
+  // Build family members list from REAL DATABASE (NOT JSONB fields)
+  const allFamilyMembers = allFamilyMembersFromDB.map((member: any) => ({
+    firstName: member.firstName,
+    lastName: member.lastName,
+    dateOfBirth: member.dateOfBirth,
+    gender: member.gender,
+    role: member.role,
+    isApplicant: member.isApplicant !== false,
+  }));
   
   // Count applicants: primary client (if applicant) + family members with isApplicant=true
   const clientIsApplicant = quote?.clientIsApplicant !== false;
