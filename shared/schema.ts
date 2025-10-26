@@ -1232,6 +1232,9 @@ export const quoteNotes = pgTable("quote_notes", {
   quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }), // The quote this note is about
   note: text("note").notNull(), // The actual note content
   isUrgent: boolean("is_urgent").notNull().default(false), // Whether this is an urgent note
+  category: text("category").notNull().default("general"), // Category: general, important, follow_up, decision, issue
+  isPinned: boolean("is_pinned").notNull().default(false), // Whether this note is pinned to the top
+  isResolved: boolean("is_resolved").notNull().default(false), // Whether this note is resolved/completed
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }), // Multi-tenant reference
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who created the note
   createdAt: timestamp("created_at").notNull().defaultNow(),

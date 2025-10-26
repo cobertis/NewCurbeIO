@@ -35,8 +35,11 @@ import {
   updateQuoteMemberImmigrationSchema,
   insertQuoteMemberDocumentSchema,
   insertPaymentMethodSchema,
-  updatePaymentMethodSchema
+  updatePaymentMethodSchema,
+  quoteNotes
 } from "@shared/schema";
+import { db } from "./db";
+import { and, eq } from "drizzle-orm";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -9698,7 +9701,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      const { note, isUrgent } = req.body;
+      const { note, isUrgent, category, isPinned, isResolved } = req.body;
       
       if (!note || note.trim() === "") {
         return res.status(400).json({ message: "Note content is required" });
@@ -9708,6 +9711,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         quoteId,
         note: note.trim(),
         isUrgent: isUrgent || false,
+        category: category || 'general',
+        isPinned: isPinned || false,
+        isResolved: isResolved || false,
         companyId: quote.companyId,
         createdBy: currentUser.id,
       });
@@ -9755,6 +9761,65 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error fetching quote notes:", error);
       res.status(500).json({ message: "Failed to fetch quote notes" });
+    }
+  });
+  
+  // Update a quote note
+  app.patch("/api/quotes/:quoteId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, noteId } = req.params;
+    const { note, isUrgent, category, isPinned, isResolved } = req.body;
+    
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Build update object with only provided fields
+      const updateData: any = {};
+      if (note !== undefined) updateData.note = note.trim();
+      if (isUrgent !== undefined) updateData.isUrgent = isUrgent;
+      if (category !== undefined) updateData.category = category;
+      if (isPinned !== undefined) updateData.isPinned = isPinned;
+      if (isResolved !== undefined) updateData.isResolved = isResolved;
+      
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
+      }
+      
+      // Update the note
+      await db.update(quoteNotes)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(and(
+          eq(quoteNotes.id, noteId),
+          eq(quoteNotes.quoteId, quoteId),
+          eq(quoteNotes.companyId, quote.companyId)
+        ));
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_note",
+        entityId: noteId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          updatedBy: currentUser.email,
+          updates: Object.keys(updateData),
+        },
+      });
+      
+      res.json({ message: "Quote note updated successfully" });
+    } catch (error: any) {
+      console.error("Error updating quote note:", error);
+      res.status(500).json({ message: "Failed to update quote note" });
     }
   });
   
