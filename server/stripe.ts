@@ -3,22 +3,39 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import type { InsertInvoice, InsertInvoiceItem, InsertPayment, InsertSubscription } from "@shared/schema";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+// Check if Stripe is configured
+const STRIPE_CONFIGURED = !!process.env.STRIPE_SECRET_KEY;
+
+if (!STRIPE_CONFIGURED) {
+  console.log('⚠️  Stripe credentials not configured. Billing features will not be available.');
 }
 
-// Log which Stripe mode we're using
-const stripeKey = process.env.STRIPE_SECRET_KEY;
-const stripeMode = stripeKey.startsWith('sk_test_') ? 'TEST MODE' : 
-                   stripeKey.startsWith('sk_live_') ? 'LIVE/PRODUCTION MODE' : 'UNKNOWN';
-console.log('==========================================');
-console.log(`🔑 STRIPE INITIALIZED: ${stripeMode}`);
-console.log(`🔑 Key prefix: ${stripeKey.substring(0, 12)}...`);
-console.log('==========================================');
+// Initialize Stripe only if configured
+let stripe: Stripe | null = null;
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-09-30.clover",
-});
+if (STRIPE_CONFIGURED) {
+  const stripeKey = process.env.STRIPE_SECRET_KEY!;
+  const stripeMode = stripeKey.startsWith('sk_test_') ? 'TEST MODE' : 
+                     stripeKey.startsWith('sk_live_') ? 'LIVE/PRODUCTION MODE' : 'UNKNOWN';
+  console.log('==========================================');
+  console.log(`🔑 STRIPE INITIALIZED: ${stripeMode}`);
+  console.log(`🔑 Key prefix: ${stripeKey.substring(0, 12)}...`);
+  console.log('==========================================');
+
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: "2025-09-30.clover",
+  });
+}
+
+export { stripe };
+
+// Helper to ensure Stripe is configured
+function ensureStripeConfigured(): Stripe {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please add STRIPE_SECRET_KEY to your environment variables.');
+  }
+  return stripe;
+}
 
 // =====================================================
 // PRICE & PRODUCT MANAGEMENT
@@ -28,7 +45,8 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
  * List all prices from Stripe (for syncing with database)
  */
 export async function listAllStripePrices() {
-  const prices = await stripe.prices.list({
+  const stripeClient = ensureStripeConfigured();
+  const prices = await stripeClient.prices.list({
     limit: 100,
     expand: ['data.product'],
   });
@@ -55,7 +73,7 @@ export async function listAllStripePrices() {
  */
 export async function validateStripePrice(priceId: string): Promise<boolean> {
   try {
-    await stripe.prices.retrieve(priceId);
+    await ensureStripeConfigured().prices.retrieve(priceId);
     return true;
   } catch (error) {
     return false;
@@ -85,7 +103,7 @@ export async function syncProductsFromStripe() {
     let startingAfter: string | undefined = undefined;
 
     while (hasMore) {
-      const productsPage: Stripe.ApiList<Stripe.Product> = await stripe.products.list({
+      const productsPage: Stripe.ApiList<Stripe.Product> = await ensureStripeConfigured().products.list({
         active: true,
         limit: 100,
         starting_after: startingAfter,
@@ -112,7 +130,7 @@ export async function syncProductsFromStripe() {
         let pricesStartingAfter: string | undefined = undefined;
 
         while (pricesHasMore) {
-          const pricesPage: Stripe.ApiList<Stripe.Price> = await stripe.prices.list({
+          const pricesPage: Stripe.ApiList<Stripe.Price> = await ensureStripeConfigured().prices.list({
             product: product.id,
             active: true,
             limit: 100,
@@ -307,7 +325,7 @@ export async function createStripeCustomer(company: {
     hasAddress: !!customerData.address,
   });
 
-  const customer = await stripe.customers.create(customerData);
+  const customer = await ensureStripeConfigured().customers.create(customerData);
   
   console.log('[STRIPE] Customer created successfully:', customer.id);
   
@@ -322,7 +340,7 @@ export async function updateStripeCustomer(customerId: string, data: {
   metadata?: Stripe.MetadataParam;
 }) {
   console.log('[STRIPE] Updating customer:', customerId, data);
-  const updated = await stripe.customers.update(customerId, data);
+  const updated = await ensureStripeConfigured().customers.update(customerId, data);
   console.log('[STRIPE] Customer updated successfully');
   return updated;
 }
@@ -330,7 +348,7 @@ export async function updateStripeCustomer(customerId: string, data: {
 export async function deleteStripeCustomer(customerId: string) {
   try {
     console.log('[STRIPE] Deleting customer:', customerId);
-    const deleted = await stripe.customers.del(customerId);
+    const deleted = await ensureStripeConfigured().customers.del(customerId);
     console.log('[STRIPE] Customer deleted successfully:', deleted.id);
     return deleted;
   } catch (error: any) {
@@ -411,7 +429,7 @@ export async function createSubscriptionCheckout(
     };
   }
 
-  const session = await stripe.checkout.sessions.create(sessionParams);
+  const session = await ensureStripeConfigured().checkout.sessions.create(sessionParams);
   return session;
 }
 
@@ -462,7 +480,7 @@ export async function createStripeSubscription(
     subscriptionData.trial_period_days = trialDays;
   }
 
-  const subscription = await stripe.subscriptions.create(subscriptionData);
+  const subscription = await ensureStripeConfigured().subscriptions.create(subscriptionData);
   
   console.log('[STRIPE] Subscription created:', subscription.id);
   console.log('[STRIPE] Status:', subscription.status);
@@ -472,7 +490,7 @@ export async function createStripeSubscription(
 
 export async function cancelStripeSubscription(stripeSubscriptionId: string, cancelAtPeriodEnd: boolean = false) {
   // First, retrieve the subscription with schedule to check if there's an active schedule
-  const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+  const subscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId, {
     expand: ['schedule'],
   });
   
@@ -484,17 +502,17 @@ export async function cancelStripeSubscription(stripeSubscriptionId: string, can
       : subscription.schedule.id;
     
     // Release the schedule (which returns control to the subscription)
-    await stripe.subscriptionSchedules.release(scheduleId);
+    await ensureStripeConfigured().subscriptionSchedules.release(scheduleId);
     console.log('[STRIPE] Schedule released:', scheduleId);
   }
   
   // Now cancel the subscription
   if (cancelAtPeriodEnd) {
-    return await stripe.subscriptions.update(stripeSubscriptionId, {
+    return await ensureStripeConfigured().subscriptions.update(stripeSubscriptionId, {
       cancel_at_period_end: true,
     });
   } else {
-    return await stripe.subscriptions.cancel(stripeSubscriptionId);
+    return await ensureStripeConfigured().subscriptions.cancel(stripeSubscriptionId);
   }
 }
 
@@ -503,7 +521,7 @@ export async function cancelStripeSubscription(stripeSubscriptionId: string, can
 // =====================================================
 
 export async function syncInvoiceFromStripe(stripeInvoiceId: string) {
-  const stripeInvoice = await stripe.invoices.retrieve(stripeInvoiceId, {
+  const stripeInvoice = await ensureStripeConfigured().invoices.retrieve(stripeInvoiceId, {
     expand: ['lines', 'subscription']
   }) as any;
   
@@ -658,6 +676,7 @@ export async function recordPayment(
 // =====================================================
 
 export function verifyWebhookSignature(payload: string | Buffer, signature: string): Stripe.Event {
+  const stripeClient = ensureStripeConfigured();
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   
   if (!webhookSecret) {
@@ -665,7 +684,7 @@ export function verifyWebhookSignature(payload: string | Buffer, signature: stri
   }
 
   try {
-    return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    return stripeClient.webhooks.constructEvent(payload, signature, webhookSecret);
   } catch (err) {
     throw new Error(`Webhook signature verification failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
   }
@@ -846,7 +865,7 @@ function mapStripeSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): 
 // =====================================================
 
 export async function createCustomerPortalSession(customerId: string, returnUrl: string) {
-  const session = await stripe.billingPortal.sessions.create({
+  const session = await ensureStripeConfigured().billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
   });
@@ -858,7 +877,7 @@ export async function createCustomerPortalSession(customerId: string, returnUrl:
 // =====================================================
 
 export async function getInvoicesForCustomer(customerId: string, limit: number = 10) {
-  const invoices = await stripe.invoices.list({
+  const invoices = await ensureStripeConfigured().invoices.list({
     customer: customerId,
     limit,
   });
@@ -866,7 +885,7 @@ export async function getInvoicesForCustomer(customerId: string, limit: number =
 }
 
 export async function getSubscriptionDetails(stripeSubscriptionId: string) {
-  const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+  const subscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId, {
     expand: ['default_payment_method', 'latest_invoice']
   });
   return subscription;
@@ -917,10 +936,10 @@ export async function syncPlanWithStripe(plan: {
       console.log('[STRIPE SYNC] Updating existing product:', plan.stripeProductId);
       try {
         // Verify product exists before updating
-        product = await stripe.products.retrieve(plan.stripeProductId);
+        product = await ensureStripeConfigured().products.retrieve(plan.stripeProductId);
         
         // Update existing product
-        product = await stripe.products.update(plan.stripeProductId, {
+        product = await ensureStripeConfigured().products.update(plan.stripeProductId, {
           name: plan.name,
           description: plan.description || undefined,
           active: true,
@@ -933,7 +952,7 @@ export async function syncPlanWithStripe(plan: {
         if (error.code === 'resource_missing') {
           console.log('[STRIPE SYNC] Product not found in Stripe, creating new one');
           // Product doesn't exist, create new one
-          product = await stripe.products.create({
+          product = await ensureStripeConfigured().products.create({
             name: plan.name,
             description: plan.description || undefined,
             metadata: {
@@ -948,7 +967,7 @@ export async function syncPlanWithStripe(plan: {
     } else {
       console.log('[STRIPE SYNC] Creating new product for:', plan.name);
       // Create new product
-      product = await stripe.products.create({
+      product = await ensureStripeConfigured().products.create({
         name: plan.name,
         description: plan.description || undefined,
         metadata: {
@@ -966,14 +985,14 @@ export async function syncPlanWithStripe(plan: {
       try {
         // Note: Stripe prices are immutable, so we need to create a new one if amount changed
         // First, get the existing price to check if it needs to be replaced
-        const existingPrice = await stripe.prices.retrieve(plan.stripePriceId);
+        const existingPrice = await ensureStripeConfigured().prices.retrieve(plan.stripePriceId);
         
         if (existingPrice.unit_amount !== plan.price) {
           console.log('[STRIPE SYNC] Price amount changed, creating new price');
           // Deactivate old price and create new one
-          await stripe.prices.update(plan.stripePriceId, { active: false });
+          await ensureStripeConfigured().prices.update(plan.stripePriceId, { active: false });
           
-          recurringPrice = await stripe.prices.create({
+          recurringPrice = await ensureStripeConfigured().prices.create({
             product: product.id,
             unit_amount: plan.price,
             currency: plan.currency,
@@ -993,7 +1012,7 @@ export async function syncPlanWithStripe(plan: {
         if (error.code === 'resource_missing') {
           console.log('[STRIPE SYNC] Price not found in Stripe, creating new one');
           // Price doesn't exist, create new one
-          recurringPrice = await stripe.prices.create({
+          recurringPrice = await ensureStripeConfigured().prices.create({
             product: product.id,
             unit_amount: plan.price,
             currency: plan.currency,
@@ -1012,7 +1031,7 @@ export async function syncPlanWithStripe(plan: {
     } else {
       console.log('[STRIPE SYNC] Creating new recurring price');
       // Create new recurring price
-      recurringPrice = await stripe.prices.create({
+      recurringPrice = await ensureStripeConfigured().prices.create({
         product: product.id,
         unit_amount: plan.price,
         currency: plan.currency,
@@ -1034,14 +1053,14 @@ export async function syncPlanWithStripe(plan: {
         console.log('[STRIPE SYNC] Checking existing setup fee price:', plan.stripeSetupFeePriceId);
         try {
           // Check if amount changed
-          const existingSetupPrice = await stripe.prices.retrieve(plan.stripeSetupFeePriceId);
+          const existingSetupPrice = await ensureStripeConfigured().prices.retrieve(plan.stripeSetupFeePriceId);
           
           if (existingSetupPrice.unit_amount !== plan.setupFee) {
             console.log('[STRIPE SYNC] Setup fee changed, creating new price');
             // Deactivate old price and create new one
-            await stripe.prices.update(plan.stripeSetupFeePriceId, { active: false });
+            await ensureStripeConfigured().prices.update(plan.stripeSetupFeePriceId, { active: false });
             
-            setupFeePrice = await stripe.prices.create({
+            setupFeePrice = await ensureStripeConfigured().prices.create({
               product: product.id,
               unit_amount: plan.setupFee,
               currency: plan.currency,
@@ -1059,7 +1078,7 @@ export async function syncPlanWithStripe(plan: {
           if (error.code === 'resource_missing') {
             console.log('[STRIPE SYNC] Setup fee price not found, creating new one');
             // Price doesn't exist, create new one
-            setupFeePrice = await stripe.prices.create({
+            setupFeePrice = await ensureStripeConfigured().prices.create({
               product: product.id,
               unit_amount: plan.setupFee,
               currency: plan.currency,
@@ -1076,7 +1095,7 @@ export async function syncPlanWithStripe(plan: {
       } else {
         console.log('[STRIPE SYNC] Creating new setup fee price');
         // Create new setup fee price
-        setupFeePrice = await stripe.prices.create({
+        setupFeePrice = await ensureStripeConfigured().prices.create({
           product: product.id,
           unit_amount: plan.setupFee,
           currency: plan.currency,
@@ -1109,7 +1128,7 @@ export async function skipTrial(stripeSubscriptionId: string) {
     console.log('[STRIPE] Skipping trial for subscription:', stripeSubscriptionId);
     
     // CRITICAL: Get current subscription to find the trial invoice
-    const currentSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const currentSubscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId);
     
     // If there's a latest invoice from the trial, void it before ending trial
     if (currentSubscription.latest_invoice) {
@@ -1117,18 +1136,18 @@ export async function skipTrial(stripeSubscriptionId: string) {
         ? currentSubscription.latest_invoice 
         : currentSubscription.latest_invoice.id;
       
-      const invoice = await stripe.invoices.retrieve(invoiceId);
+      const invoice = await ensureStripeConfigured().invoices.retrieve(invoiceId);
       
       // Only void if it's the $0.00 trial invoice that's still open/draft
       if (invoice.total === 0 && (invoice.status === 'open' || invoice.status === 'draft')) {
         console.log('[STRIPE] Voiding trial invoice:', invoice.id);
-        await stripe.invoices.voidInvoice(invoice.id);
+        await ensureStripeConfigured().invoices.voidInvoice(invoice.id);
         console.log('[STRIPE] Trial invoice voided successfully');
       }
     }
     
     // Now end the trial - this will create a new invoice for the actual charge
-    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+    const subscription = await ensureStripeConfigured().subscriptions.update(stripeSubscriptionId, {
       trial_end: 'now',
     });
     
@@ -1156,7 +1175,7 @@ export async function changePlan(
     console.log('[STRIPE] New price ID:', newStripePriceId);
     
     // Retrieve current subscription with all items
-    const currentSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+    const currentSubscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId, {
       expand: ['items.data', 'discounts', 'schedule'],
     });
     
@@ -1242,7 +1261,7 @@ export async function changePlan(
         }
       }
       
-      const updatedSubscription = await stripe.subscriptions.update(
+      const updatedSubscription = await ensureStripeConfigured().subscriptions.update(
         stripeSubscriptionId,
         updateData
       );
@@ -1252,7 +1271,7 @@ export async function changePlan(
       // CRITICAL: Create and pay invoice immediately for immediate upgrades
       // Without this, prorated items are added to the next regular invoice
       console.log('[STRIPE] Creating immediate invoice for upgrade...');
-      const invoice = await stripe.invoices.create({
+      const invoice = await ensureStripeConfigured().invoices.create({
         customer: stripeCustomerId,
         subscription: stripeSubscriptionId,
         auto_advance: true, // Automatically finalize and attempt payment
@@ -1261,13 +1280,13 @@ export async function changePlan(
       console.log('[STRIPE] Invoice created:', invoice.id);
       
       // Finalize and pay the invoice immediately
-      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+      const finalizedInvoice = await ensureStripeConfigured().invoices.finalizeInvoice(invoice.id);
       console.log('[STRIPE] Invoice finalized:', finalizedInvoice.id);
       
       // Pay the invoice if it's not already paid
       if (finalizedInvoice.status === 'open') {
         console.log('[STRIPE] Paying invoice immediately...');
-        const paidInvoice = await stripe.invoices.pay(invoice.id);
+        const paidInvoice = await ensureStripeConfigured().invoices.pay(invoice.id);
         console.log('[STRIPE] Invoice paid successfully:', paidInvoice.id);
       }
       
@@ -1302,14 +1321,14 @@ export async function changePlan(
       const scheduleId = typeof currentSubscription.schedule === 'string'
         ? currentSubscription.schedule
         : currentSubscription.schedule.id;
-      await stripe.subscriptionSchedules.release(scheduleId);
+      await ensureStripeConfigured().subscriptionSchedules.release(scheduleId);
     }
     
     // Step 1: Create subscription schedule FROM the existing subscription
     // Note: When using from_subscription, Stripe creates the first phase automatically
     // Cannot set end_behavior when using from_subscription
     console.log('[STRIPE] Step 1: Creating subscription schedule from existing subscription...');
-    const schedule = await stripe.subscriptionSchedules.create({
+    const schedule = await ensureStripeConfigured().subscriptionSchedules.create({
       from_subscription: stripeSubscriptionId,
     });
     
@@ -1361,7 +1380,7 @@ export async function changePlan(
     
     // Update the schedule with both phases
     // Set end_behavior to 'release' so after phases complete, subscription continues normally
-    const updatedSchedule = await stripe.subscriptionSchedules.update(
+    const updatedSchedule = await ensureStripeConfigured().subscriptionSchedules.update(
       schedule.id,
       { 
         phases: phases,
@@ -1373,7 +1392,7 @@ export async function changePlan(
     console.log('[STRIPE] Plan will change on:', new Date(periodEndTimestamp * 1000).toISOString());
     
     // Retrieve the updated subscription
-    const updatedSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const updatedSubscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId);
     
     return updatedSubscription;
   } catch (error) {
@@ -1388,7 +1407,7 @@ export async function applyCoupon(stripeSubscriptionId: string, promoCode: strin
     console.log('[STRIPE] Promo code:', promoCode);
     
     // First, try to find the promotion code in Stripe
-    const promotionCodes = await stripe.promotionCodes.list({
+    const promotionCodes = await ensureStripeConfigured().promotionCodes.list({
       code: promoCode,
       limit: 1,
       expand: ['data.coupon'],
@@ -1406,7 +1425,7 @@ export async function applyCoupon(stripeSubscriptionId: string, promoCode: strin
       // No promotion code found, assume it's a direct coupon ID
       // Verify the coupon exists
       try {
-        const coupon = await stripe.coupons.retrieve(promoCode);
+        const coupon = await ensureStripeConfigured().coupons.retrieve(promoCode);
         couponId = coupon.id;
         console.log('[STRIPE] Using direct coupon ID:', couponId);
       } catch (error: any) {
@@ -1417,7 +1436,7 @@ export async function applyCoupon(stripeSubscriptionId: string, promoCode: strin
       }
     }
     
-    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+    const subscription = await ensureStripeConfigured().subscriptions.update(stripeSubscriptionId, {
       discounts: [{ coupon: couponId }],
     });
     
@@ -1433,7 +1452,7 @@ export async function getPaymentMethods(customerId: string) {
   try {
     console.log('[STRIPE] Retrieving payment methods for customer:', customerId);
     
-    const paymentMethods = await stripe.paymentMethods.list({
+    const paymentMethods = await ensureStripeConfigured().paymentMethods.list({
       customer: customerId,
       type: 'card',
     });
@@ -1462,7 +1481,7 @@ export async function createTemporaryDiscountCoupon(
     
     const couponId = `DISCOUNT_${percentOff}_${durationInMonths}M_${Date.now()}`;
     
-    const coupon = await stripe.coupons.create({
+    const coupon = await ensureStripeConfigured().coupons.create({
       id: couponId,
       percent_off: percentOff,
       duration: 'repeating',
@@ -1490,7 +1509,7 @@ export async function applyTemporaryDiscount(
     console.log('[STRIPE] Applying temporary discount to subscription:', stripeSubscriptionId);
     console.log('[STRIPE] Coupon ID:', couponId);
     
-    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+    const subscription = await ensureStripeConfigured().subscriptions.update(stripeSubscriptionId, {
       discounts: [{ coupon: couponId }],
     });
     
@@ -1507,10 +1526,10 @@ export async function removeDiscount(stripeSubscriptionId: string): Promise<Stri
     console.log('[STRIPE] Removing discount from subscription:', stripeSubscriptionId);
     
     // First, delete the discount using the proper Stripe method
-    await stripe.subscriptions.deleteDiscount(stripeSubscriptionId);
+    await ensureStripeConfigured().subscriptions.deleteDiscount(stripeSubscriptionId);
     
     // Then retrieve the updated subscription
-    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const subscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId);
     
     console.log('[STRIPE] Discount removed successfully');
     return subscription;
@@ -1526,7 +1545,7 @@ export async function getSubscriptionDiscount(
   try {
     console.log('[STRIPE] Getting discount for subscription:', stripeSubscriptionId);
     
-    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+    const subscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId, {
       expand: ['discounts'],
     });
     
@@ -1557,7 +1576,7 @@ export async function getSubscriptionDiscount(
         // Fetch and attach the full coupon object
         if (couponId) {
           console.log('[STRIPE] Fetching coupon details for:', couponId);
-          const coupon = await stripe.coupons.retrieve(couponId);
+          const coupon = await ensureStripeConfigured().coupons.retrieve(couponId);
           expandedDiscount.coupon = coupon;
           return expandedDiscount as Stripe.Discount;
         }
