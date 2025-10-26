@@ -6159,50 +6159,197 @@ export default function QuotesPage() {
               </AlertDialogContent>
             </AlertDialog>
 
-            {/* Notes Sheet - Enhanced Professional Design */}
+            {/* Notes Sheet - Professional Corporate Design */}
             {console.log('[NOTES SHEET] Rendering in viewingQuote return, open state:', notesSheetOpen)}
             <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
-              <SheetContent className="w-full sm:max-w-6xl p-0 flex flex-col h-full z-[100]" side="left" data-testid="sheet-notes">
+              <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full z-[100]" side="left" data-testid="sheet-notes">
                 {/* Header */}
-                <div className="px-8 py-5 border-b bg-gradient-to-r from-background to-muted/20">
-                  <SheetTitle className="text-2xl font-semibold">Notes & Comments</SheetTitle>
-                  <SheetDescription className="mt-1.5 text-base">
+                <div className="px-6 py-4 border-b">
+                  <SheetTitle className="text-lg font-medium">Notes & Comments</SheetTitle>
+                  <SheetDescription className="mt-1 text-sm">
                     Internal notes for quote {viewingQuote?.id} - {quoteNotesCount} total
                   </SheetDescription>
                 </div>
 
-                {/* Main Content - Grid Layout */}
-                <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3 gap-0">
-                  {/* Left Panel - Create/Edit Note Form */}
-                  <div className="lg:col-span-1 border-r bg-muted/10 px-6 py-6 overflow-y-auto">
-                    <div className="space-y-5">
-                      <div>
-                        <h3 className="text-lg font-semibold mb-1">
-                          {editingNoteId ? 'Edit Note' : 'New Note'}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {editingNoteId ? 'Update your note details' : 'Add a new internal note'}
+                {/* Main Content */}
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  {/* Search and Filter Toolbar */}
+                  <div className="px-6 py-3 border-b bg-muted/5 space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search notes..."
+                        value={searchNotes}
+                        onChange={(e) => setSearchNotes(e.target.value)}
+                        className="pl-9 h-9"
+                        data-testid="input-search-notes"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                      <Button
+                        variant={filterCategory === 'all' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 px-2.5"
+                        onClick={() => setFilterCategory('all')}
+                      >
+                        All
+                      </Button>
+                      <Button
+                        variant={filterCategory === 'pinned' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 px-2.5"
+                        onClick={() => setFilterCategory('pinned')}
+                      >
+                        Pinned
+                      </Button>
+                      <Button
+                        variant={filterCategory === 'urgent' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 px-2.5"
+                        onClick={() => setFilterCategory('urgent')}
+                      >
+                        Urgent
+                      </Button>
+                      <Button
+                        variant={filterCategory === 'unresolved' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 px-2.5"
+                        onClick={() => setFilterCategory('unresolved')}
+                      >
+                        Unresolved
+                      </Button>
+                      <Button
+                        variant={filterCategory === 'resolved' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 px-2.5"
+                        onClick={() => setFilterCategory('resolved')}
+                      >
+                        Resolved
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Notes List - Scrollable */}
+                  <div className="flex-1 overflow-y-auto px-6 py-4">
+                    {isLoadingNotes ? (
+                      <div className="flex items-center justify-center py-20">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : filteredNotes.length === 0 ? (
+                      <div className="text-center py-16 text-muted-foreground">
+                        <StickyNote className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p className="text-sm font-medium mb-1">
+                          {searchNotes || filterCategory !== 'all' ? 'No notes match your filters' : 'No notes yet'}
+                        </p>
+                        <p className="text-xs">
+                          {searchNotes || filterCategory !== 'all' ? 'Try adjusting your search or filters' : 'Create your first note to get started'}
                         </p>
                       </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {filteredNotes.map((note: any) => (
+                          <div
+                            key={note.id}
+                            className="group relative border rounded-lg p-4 bg-card hover:border-muted-foreground/20 transition-colors"
+                            data-testid={`note-${note.id}`}
+                          >
+                            {/* Note Header */}
+                            <div className="flex items-start justify-between gap-3 mb-2.5">
+                              <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground">
+                                {note.isPinned && (
+                                  <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                    <Bell className="h-3 w-3" />
+                                    Pinned
+                                  </span>
+                                )}
+                                {note.isUrgent && (
+                                  <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Urgent
+                                  </span>
+                                )}
+                                {note.isResolved && (
+                                  <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                    <Check className="h-3 w-3" />
+                                    Resolved
+                                  </span>
+                                )}
+                                <span className="border rounded px-1.5 py-0.5 capitalize">
+                                  {note.category?.replace('_', ' ') || 'general'}
+                                </span>
+                                <span className="text-muted-foreground/60">
+                                  {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
+                                </span>
+                              </div>
 
-                      <div className="space-y-4">
-                        {/* Note Content */}
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Note Content</label>
-                          <Textarea
-                            placeholder="Type your note here..."
-                            value={newNoteText}
-                            onChange={(e) => setNewNoteText(e.target.value)}
-                            className="min-h-[180px] resize-none text-sm"
-                            data-testid="textarea-note"
-                          />
-                        </div>
+                              {/* Action Buttons */}
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => {
+                                    setEditingNoteId(note.id);
+                                    setNewNoteText(note.note);
+                                    setIsUrgent(note.isUrgent);
+                                    setNoteCategory(note.category || 'general');
+                                    setNotePinned(note.isPinned);
+                                    setNoteResolved(note.isResolved);
+                                  }}
+                                  data-testid={`button-edit-note-${note.id}`}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => {
+                                    if (confirm('Delete this note? This action cannot be undone.')) {
+                                      deleteNoteMutation.mutate(note.id);
+                                    }
+                                  }}
+                                  disabled={deleteNoteMutation.isPending}
+                                  data-testid={`button-delete-note-${note.id}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
 
-                        {/* Category Selector */}
+                            {/* Note Content */}
+                            <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                              note.isResolved ? 'line-through text-muted-foreground/60' : ''
+                            }`}>
+                              {note.note}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Create/Edit Note Form - Fixed at bottom */}
+                  <div className="border-t bg-muted/5 px-6 py-4">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                          {editingNoteId ? 'Edit note' : 'New note'}
+                        </label>
+                        <Textarea
+                          placeholder="Type your note here..."
+                          value={newNoteText}
+                          onChange={(e) => setNewNoteText(e.target.value)}
+                          className="min-h-[80px] resize-none text-sm"
+                          data-testid="textarea-note"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-sm font-medium mb-2 block">Category</label>
+                          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Category</label>
                           <Select value={noteCategory} onValueChange={setNoteCategory}>
-                            <SelectTrigger data-testid="select-category">
+                            <SelectTrigger className="h-9" data-testid="select-category">
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                             <SelectContent>
@@ -6214,276 +6361,79 @@ export default function QuotesPage() {
                             </SelectContent>
                           </Select>
                         </div>
-
-                        {/* Checkboxes */}
-                        <div className="space-y-3 pt-2">
-                          <div className="flex items-center gap-3">
+                        <div className="flex flex-col justify-end gap-1.5">
+                          <div className="flex items-center gap-2">
                             <Checkbox
                               id="urgent-note-new"
                               checked={isUrgent}
                               onCheckedChange={(checked) => setIsUrgent(!!checked)}
                               data-testid="checkbox-urgent"
                             />
-                            <label htmlFor="urgent-note-new" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4 text-destructive" />
-                              Mark as Urgent
+                            <label htmlFor="urgent-note-new" className="text-xs cursor-pointer">
+                              Urgent
                             </label>
                           </div>
-
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <Checkbox
                               id="pinned-note"
                               checked={notePinned}
                               onCheckedChange={(checked) => setNotePinned(!!checked)}
                               data-testid="checkbox-pinned"
                             />
-                            <label htmlFor="pinned-note" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-                              <Bell className="h-4 w-4" />
-                              Pin to Top
-                            </label>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <Checkbox
-                              id="resolved-note"
-                              checked={noteResolved}
-                              onCheckedChange={(checked) => setNoteResolved(!!checked)}
-                              data-testid="checkbox-resolved"
-                            />
-                            <label htmlFor="resolved-note" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-                              <Check className="h-4 w-4 text-green-600" />
-                              Mark as Resolved
+                            <label htmlFor="pinned-note" className="text-xs cursor-pointer">
+                              Pin
                             </label>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 pt-4">
-                          {editingNoteId ? (
-                            <>
-                              <Button
-                                onClick={() => updateNoteMutation.mutate()}
-                                disabled={!newNoteText.trim() || updateNoteMutation.isPending}
-                                className="flex-1"
-                                data-testid="button-update-note"
-                              >
-                                {updateNoteMutation.isPending ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Updating...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Check className="h-4 w-4 mr-2" />
-                                    Update Note
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  setEditingNoteId(null);
-                                  setNewNoteText("");
-                                  setIsUrgent(false);
-                                  setNoteCategory("general");
-                                  setNotePinned(false);
-                                  setNoteResolved(false);
-                                }}
-                                data-testid="button-cancel-edit"
-                              >
-                                Cancel
-                              </Button>
-                            </>
-                          ) : (
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        {editingNoteId ? (
+                          <>
                             <Button
-                              onClick={() => createNoteMutation.mutate()}
-                              disabled={!newNoteText.trim() || createNoteMutation.isPending}
-                              className="w-full"
-                              data-testid="button-send-note"
+                              onClick={() => updateNoteMutation.mutate()}
+                              disabled={!newNoteText.trim() || updateNoteMutation.isPending}
+                              className="flex-1 h-9"
+                              variant="secondary"
+                              data-testid="button-update-note"
                             >
-                              {createNoteMutation.isPending ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Creating...
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Create Note
-                                </>
-                              )}
+                              {updateNoteMutation.isPending ? 'Updating...' : 'Update Note'}
                             </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Panel - Notes List */}
-                  <div className="lg:col-span-2 flex flex-col overflow-hidden">
-                    {/* Search and Filter Bar */}
-                    <div className="px-6 py-4 border-b bg-background space-y-4">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search notes..."
-                          value={searchNotes}
-                          onChange={(e) => setSearchNotes(e.target.value)}
-                          className="pl-9"
-                          data-testid="input-search-notes"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Button
-                          variant={filterCategory === 'all' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setFilterCategory('all')}
-                        >
-                          All ({quoteNotesCount})
-                        </Button>
-                        <Button
-                          variant={filterCategory === 'pinned' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setFilterCategory('pinned')}
-                        >
-                          <Bell className="h-3.5 w-3.5 mr-1" />
-                          Pinned
-                        </Button>
-                        <Button
-                          variant={filterCategory === 'urgent' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setFilterCategory('urgent')}
-                        >
-                          <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                          Urgent
-                        </Button>
-                        <Button
-                          variant={filterCategory === 'unresolved' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setFilterCategory('unresolved')}
-                        >
-                          Unresolved
-                        </Button>
-                        <Button
-                          variant={filterCategory === 'resolved' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setFilterCategory('resolved')}
-                        >
-                          <Check className="h-3.5 w-3.5 mr-1" />
-                          Resolved
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Notes List - Scrollable */}
-                    <div className="flex-1 overflow-y-auto px-6 py-4">
-                      {isLoadingNotes ? (
-                        <div className="flex items-center justify-center py-20">
-                          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                        </div>
-                      ) : filteredNotes.length === 0 ? (
-                        <div className="text-center py-20 text-muted-foreground">
-                          <StickyNote className="h-16 w-16 mx-auto mb-4 opacity-40" />
-                          <p className="text-base font-medium mb-1">
-                            {searchNotes || filterCategory !== 'all' ? 'No notes match your filters' : 'No notes yet'}
-                          </p>
-                          <p className="text-sm">
-                            {searchNotes || filterCategory !== 'all' ? 'Try adjusting your search or filters' : 'Create your first note to get started'}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {filteredNotes.map((note: any) => (
-                            <div
-                              key={note.id}
-                              className={`group relative border rounded-xl p-5 transition-all hover:shadow-md ${
-                                note.isUrgent ? "border-destructive/50 bg-destructive/5" :
-                                note.isPinned ? "border-primary/30 bg-primary/5" :
-                                note.isResolved ? "border-border bg-muted/30 opacity-75" :
-                                "bg-card hover:border-primary/20"
-                              }`}
-                              data-testid={`note-${note.id}`}
+                            <Button
+                              variant="ghost"
+                              className="h-9"
+                              onClick={() => {
+                                setEditingNoteId(null);
+                                setNewNoteText("");
+                                setIsUrgent(false);
+                                setNoteCategory("general");
+                                setNotePinned(false);
+                                setNoteResolved(false);
+                              }}
+                              data-testid="button-cancel-edit"
                             >
-                              {/* Note Header */}
-                              <div className="flex items-start justify-between gap-3 mb-3">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {note.isPinned && (
-                                    <Badge variant="outline" className="text-xs px-2 py-0.5 border-primary/50 bg-primary/10">
-                                      <Bell className="h-3 w-3 mr-1" />
-                                      Pinned
-                                    </Badge>
-                                  )}
-                                  {note.isUrgent && (
-                                    <Badge variant="destructive" className="text-xs px-2 py-0.5">
-                                      <AlertCircle className="h-3 w-3 mr-1" />
-                                      Urgent
-                                    </Badge>
-                                  )}
-                                  {note.isResolved && (
-                                    <Badge variant="outline" className="text-xs px-2 py-0.5 border-green-500/50 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300">
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Resolved
-                                    </Badge>
-                                  )}
-                                  <Badge variant="secondary" className="text-xs px-2 py-0.5 capitalize">
-                                    {note.category?.replace('_', ' ') || 'general'}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
-                                  </span>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0"
-                                    onClick={() => {
-                                      setEditingNoteId(note.id);
-                                      setNewNoteText(note.note);
-                                      setIsUrgent(note.isUrgent);
-                                      setNoteCategory(note.category || 'general');
-                                      setNotePinned(note.isPinned);
-                                      setNoteResolved(note.isResolved);
-                                    }}
-                                    data-testid={`button-edit-note-${note.id}`}
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-destructive"
-                                    onClick={() => {
-                                      if (confirm('Delete this note? This action cannot be undone.')) {
-                                        deleteNoteMutation.mutate(note.id);
-                                      }
-                                    }}
-                                    disabled={deleteNoteMutation.isPending}
-                                    data-testid={`button-delete-note-${note.id}`}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {/* Note Content */}
-                              <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                                note.isResolved ? 'line-through text-muted-foreground' : ''
-                              }`}>
-                                {note.note}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            onClick={() => createNoteMutation.mutate()}
+                            disabled={!newNoteText.trim() || createNoteMutation.isPending}
+                            className="w-full h-9"
+                            variant="secondary"
+                            data-testid="button-send-note"
+                          >
+                            {createNoteMutation.isPending ? 'Creating...' : 'Create Note'}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Footer */}
-                <div className="px-8 py-4 border-t bg-muted/20 flex items-center justify-between">
+                <div className="px-6 py-3 border-t flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
                     {filteredNotes.length} of {quoteNotesCount} notes shown
                   </p>
