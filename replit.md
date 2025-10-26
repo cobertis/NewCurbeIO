@@ -66,15 +66,22 @@ The quote detail view displays family members (spouses/dependents) from two data
 - Members from JSONB columns may not have IDs and show "-" for income/immigration fields until detailed records are created
 
 **Quote Notes System:**
-Internal notes system for tracking client communications and important information on quotes. Accessible via Notes button in quote detail sidebar. Features include:
-- Create text notes with optional urgent flag (displayed with destructive Badge)
-- Real-time note creation and deletion via REST API
-- Notes display with relative timestamps (e.g., "2 minutes ago") using date-fns formatDistanceToNow
+Professional internal notes system for tracking client communications and important information on quotes. Accessible via Notes button in quote detail sidebar. Features a clean, corporate design following professional aesthetic principles. Features include:
+- **Professional UI Design:** Clean single-column layout (sm:max-w-2xl) with search toolbar, notes list, and form section at bottom. Uses neutral gray palette, subtle borders, and professional typography consistent with corporate design standards
+- **Categorization:** Five professional categories (General, Important, Follow Up, Decision, Issue) with subtle bordered labels
+- **Advanced Features:** Pin notes to top, mark as urgent, mark as resolved with professional visual indicators
+- **Search & Filtering:** Real-time search and filter buttons (All, Pinned, Urgent, Unresolved, Resolved) with secondary/ghost variants
+- **Note Management:** Create, edit, delete notes with professional button styling and smooth transitions
+- **Smart Sorting:** Pinned notes always appear first, then sorted by creation date (newest first)
+- **Visual Design:** Neutral cards with subtle hover states, bordered status indicators, no bright colors or gradients
+- **Real-time Updates:** REST API with TanStack Query for instant updates and cache invalidation
+- Notes display with relative timestamps using date-fns formatDistanceToNow
 - Sheet/Drawer UI pattern opening from left side for professional CRM-style interaction
 - Multi-tenant isolation with companyId enforcement
-- Database table: `quote_notes` (id, quoteId, note, isUrgent, createdAt, createdBy)
-- API endpoints: GET/POST /api/quotes/:id/notes, DELETE /api/quotes/:id/notes/:noteId
+- Database table: `quote_notes` (id, quoteId, note, category, isUrgent, isPinned, isResolved, createdAt, createdBy)
+- API endpoints: GET/POST /api/quotes/:id/notes, PATCH /api/quotes/:id/notes/:noteId, DELETE /api/quotes/:id/notes/:noteId
 - Badge counter on Notes button shows total note count for quick reference
+- All interactions follow professional corporate design standards with muted icons and consistent spacing
 
 ## External Dependencies
 
