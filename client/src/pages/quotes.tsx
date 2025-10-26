@@ -5032,7 +5032,10 @@ export default function QuotesPage() {
               </button>
 
               <button
-                onClick={() => setNotesSheetOpen(true)}
+                onClick={() => {
+                  console.log('[NOTES] Button clicked, opening sheet...');
+                  setNotesSheetOpen(true);
+                }}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
                 data-testid="button-notes"
               >
