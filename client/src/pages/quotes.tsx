@@ -2990,6 +2990,7 @@ export default function QuotesPage() {
 
   // Determine if we're viewing a specific quote
   const isViewingQuote = params?.id && params.id !== 'new';
+  console.log('[DEBUG] isViewingQuote:', isViewingQuote, 'params:', params);
   
   // UNIFIED QUOTE DETAIL QUERY - Fetches ALL related data in one request
   const { data: quoteDetail, isLoading: isLoadingQuoteDetail } = useQuery<{
