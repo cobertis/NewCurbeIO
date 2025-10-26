@@ -6067,6 +6067,147 @@ export default function QuotesPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            {/* Notes Sheet - Modern Design */}
+            {console.log('[NOTES SHEET] Rendering in viewingQuote return, open state:', notesSheetOpen)}
+            <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
+              <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full z-[100]" side="left" data-testid="sheet-notes">
+                {/* Header */}
+                <div className="px-6 py-4 border-b">
+                  <SheetTitle className="text-xl font-semibold">Notes</SheetTitle>
+                  <SheetDescription className="mt-1">Manage internal notes for this quote</SheetDescription>
+                </div>
+
+                {/* Content - Scrollable */}
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+                  {/* Add New Note */}
+                  <div className="space-y-3">
+                    <div className="border rounded-lg overflow-hidden bg-card">
+                      <Textarea
+                        placeholder="Type your note here..."
+                        value={newNoteText}
+                        onChange={(e) => setNewNoteText(e.target.value)}
+                        className="min-h-[150px] resize-none border-0 focus-visible:ring-0 text-sm"
+                        data-testid="textarea-note"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="urgent-note"
+                        checked={isUrgent}
+                        onCheckedChange={(checked) => setIsUrgent(!!checked)}
+                        data-testid="checkbox-urgent"
+                      />
+                      <label
+                        htmlFor="urgent-note"
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        Mark as urgent
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Notes List */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                        Previous Notes ({quoteNotesCount})
+                      </h3>
+                    </div>
+
+                    {isLoadingNotes ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : quoteNotes.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground border rounded-lg bg-muted/20">
+                        <StickyNote className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm font-medium">No notes yet</p>
+                        <p className="text-xs mt-1">Create your first note above</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {quoteNotes.map((note: any) => (
+                          <div
+                            key={note.id}
+                            className={`group relative border rounded-lg p-4 hover-elevate transition-all ${
+                              note.isUrgent ? "border-destructive/50 bg-destructive/5" : "bg-card"
+                            }`}
+                            data-testid={`note-${note.id}`}
+                          >
+                            {note.isUrgent && (
+                              <div className="absolute top-0 left-0 w-1 h-full bg-destructive rounded-l-lg" />
+                            )}
+                            <div className="flex items-start gap-3">
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  {note.isUrgent && (
+                                    <Badge variant="destructive" className="text-xs px-2 py-0.5">
+                                      Urgent
+                                    </Badge>
+                                  )}
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
+                                  </span>
+                                </div>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{note.note}</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  if (confirm('Delete this note?')) {
+                                    deleteNoteMutation.mutate(note.id);
+                                  }
+                                }}
+                                disabled={deleteNoteMutation.isPending}
+                                data-testid={`button-delete-note-${note.id}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer - Fixed Bottom */}
+                <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNotesSheetOpen(false);
+                      setNewNoteText("");
+                      setIsUrgent(false);
+                    }}
+                    data-testid="button-close-notes"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => createNoteMutation.mutate()}
+                    disabled={!newNoteText.trim() || createNoteMutation.isPending}
+                    data-testid="button-send-note"
+                  >
+                    {createNoteMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <StickyNote className="h-4 w-4 mr-2" />
+                        Send Note
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
       </div>
     );
   }
@@ -7805,8 +7946,9 @@ export default function QuotesPage() {
       />
 
       {/* Notes Sheet - Modern Design */}
+      {console.log('[NOTES SHEET] Rendering, open state:', notesSheetOpen)}
       <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
-        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full" side="left" data-testid="sheet-notes">
+        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full z-[100]" side="left" data-testid="sheet-notes">
           {/* Header */}
           <div className="px-6 py-4 border-b">
             <SheetTitle className="text-xl font-semibold">Notes</SheetTitle>
