@@ -7806,7 +7806,7 @@ export default function QuotesPage() {
 
       {/* Notes Sheet - Modern Design */}
       <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
-        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col" side="left" data-testid="sheet-notes">
+        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full" side="left" data-testid="sheet-notes">
           {/* Header */}
           <div className="px-6 py-4 border-b">
             <SheetTitle className="text-xl font-semibold">Notes</SheetTitle>
