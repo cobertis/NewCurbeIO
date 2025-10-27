@@ -6498,17 +6498,23 @@ export default function QuotesPage() {
                             {noteAttachments.map((img, idx) => (
                               <div
                                 key={idx}
-                                className="relative group/preview"
+                                className="relative group/preview cursor-pointer"
                                 data-testid={`preview-image-${idx}`}
+                                onClick={() => {
+                                  setViewingImages(noteAttachments);
+                                  setCurrentImageIndex(idx);
+                                  setImageViewerOpen(true);
+                                }}
                               >
                                 <img
                                   src={img}
                                   alt={`Preview ${idx + 1}`}
-                                  className="h-16 w-16 object-cover rounded border"
+                                  className="h-16 w-16 object-cover rounded border hover:border-primary transition-colors"
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setNoteAttachments(prev => prev.filter((_, i) => i !== idx));
                                   }}
                                   className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity"
