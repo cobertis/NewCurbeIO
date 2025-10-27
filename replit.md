@@ -69,17 +69,27 @@ The quote detail view displays family members (spouses/dependents) from two data
 Professional internal notes system for tracking client communications and important information on quotes. Accessible via Notes button in quote detail sidebar. Features a clean, corporate design following professional aesthetic principles. Features include:
 - **Professional UI Design:** Clean single-column layout (sm:max-w-2xl) with search toolbar, notes list, and form section at bottom. Uses neutral gray palette, subtle borders, and professional typography consistent with corporate design standards
 - **Categorization:** Five professional categories (General, Important, Follow Up, Decision, Issue) with subtle bordered labels
-- **Advanced Features:** Pin notes to top, mark as urgent, mark as resolved with professional visual indicators
+- **Advanced Features:** Pin notes to top, mark as urgent (with visual orange left border indicator), mark as resolved with professional visual indicators
 - **Search & Filtering:** Real-time search and filter buttons (All, Pinned, Urgent, Unresolved, Resolved) with secondary/ghost variants
 - **Note Management:** Create, edit, delete notes with professional button styling and smooth transitions
+- **User Attribution:** Each note displays creator's full name and exact timestamp (MMM dd, yyyy • h:mm a format) for clear accountability
+- **Permission-Based Access:** Edit and delete buttons only visible to note creator (or superadmins), ensuring data integrity
+- **Image Attachments:** Full support for attaching images to notes via file upload or paste functionality:
+  * Drag-and-drop or click to select images
+  * Paste images directly from clipboard (Ctrl+V / Cmd+V)
+  * Preview thumbnails with remove capability before submission
+  * Image file validation (JPEG, PNG, GIF, WebP only, max 5MB per image)
+  * Professional fullscreen image viewer modal with navigation for multiple images
+  * Attached images stored in `uploads/notes_attachments/` directory
 - **Smart Sorting:** Pinned notes always appear first, then sorted by creation date (newest first)
-- **Visual Design:** Neutral cards with subtle hover states, bordered status indicators, no bright colors or gradients
+- **Visual Design:** Neutral cards with subtle hover states, bordered status indicators, no bright colors or gradients. Urgent notes feature orange left border (border-l-4 border-l-orange-500/60) for immediate visual identification
 - **Real-time Updates:** REST API with TanStack Query for instant updates and cache invalidation
-- Notes display with relative timestamps using date-fns formatDistanceToNow
 - Sheet/Drawer UI pattern opening from left side for professional CRM-style interaction
 - Multi-tenant isolation with companyId enforcement
-- Database table: `quote_notes` (id, quoteId, note, category, isUrgent, isPinned, isResolved, createdAt, createdBy)
-- API endpoints: GET/POST /api/quotes/:id/notes, PATCH /api/quotes/:id/notes/:noteId, DELETE /api/quotes/:id/notes/:noteId
+- Database table: `quote_notes` (id, quoteId, note, attachments[], category, isUrgent, isPinned, isResolved, createdAt, createdBy)
+- API endpoints: GET/POST /api/quotes/:id/notes, POST /api/quotes/:id/notes/upload, PATCH /api/quotes/:id/notes/:noteId, DELETE /api/quotes/:id/notes/:noteId
+- Backend JOIN with users table to fetch and return creator name (firstName + lastName)
+- Permission checks on PATCH and DELETE endpoints (403 Forbidden if not creator or superadmin)
 - Badge counter on Notes button shows total note count for quick reference
 - All interactions follow professional corporate design standards with muted icons and consistent spacing
 
