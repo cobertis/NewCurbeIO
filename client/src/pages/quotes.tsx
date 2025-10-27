@@ -6349,6 +6349,7 @@ export default function QuotesPage() {
                                     key={idx}
                                     className="relative group/img cursor-pointer"
                                     onClick={() => {
+                                      console.log('[IMAGE CLICK] Opening viewer for saved note image', idx);
                                       setViewingImages(note.attachments);
                                       setCurrentImageIndex(idx);
                                       setImageViewerOpen(true);
@@ -6501,6 +6502,7 @@ export default function QuotesPage() {
                                 className="relative group/preview cursor-pointer"
                                 data-testid={`preview-image-${idx}`}
                                 onClick={() => {
+                                  console.log('[IMAGE CLICK] Opening viewer for preview image', idx);
                                   setViewingImages(noteAttachments);
                                   setCurrentImageIndex(idx);
                                   setImageViewerOpen(true);
