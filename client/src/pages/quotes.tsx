@@ -2956,6 +2956,10 @@ export default function QuotesPage() {
   const [filterCategory, setFilterCategory] = useState<'all' | 'pinned' | 'urgent' | 'unresolved' | 'resolved'>('all');
   const noteEditorRef = useRef<HTMLDivElement>(null);
   
+  // Delete note dialog state
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
   // Image attachment states
   const [noteAttachments, setNoteAttachments] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -3128,6 +3132,8 @@ export default function QuotesPage() {
       if (params?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'notes'] });
       }
+      setNoteToDelete(null);
+      setShowDeleteDialog(false);
       toast({
         title: "Note deleted",
         description: "The note has been removed successfully.",
@@ -6316,9 +6322,8 @@ export default function QuotesPage() {
                                     size="sm"
                                     className="h-7 w-7 p-0"
                                     onClick={() => {
-                                      if (confirm('Delete this note? This action cannot be undone.')) {
-                                        deleteNoteMutation.mutate(note.id);
-                                      }
+                                      setNoteToDelete(note.id);
+                                      setShowDeleteDialog(true);
                                     }}
                                     disabled={deleteNoteMutation.isPending}
                                     data-testid={`button-delete-note-${note.id}`}
@@ -8534,9 +8539,8 @@ export default function QuotesPage() {
                           size="sm"
                           className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                           onClick={() => {
-                            if (confirm('Delete this note?')) {
-                              deleteNoteMutation.mutate(note.id);
-                            }
+                            setNoteToDelete(note.id);
+                            setShowDeleteDialog(true);
                           }}
                           disabled={deleteNoteMutation.isPending}
                           data-testid={`button-delete-note-${note.id}`}
@@ -8584,6 +8588,40 @@ export default function QuotesPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Note Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
+        setShowDeleteDialog(open);
+        if (!open) {
+          setNoteToDelete(null);
+        }
+      }}>
+        <AlertDialogContent data-testid="dialog-delete-note">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Note</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this note? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-note">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (noteToDelete) {
+                  deleteNoteMutation.mutate(noteToDelete);
+                }
+              }}
+              disabled={deleteNoteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-note"
+            >
+              {deleteNoteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Quote Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
