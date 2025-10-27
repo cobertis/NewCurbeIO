@@ -71,7 +71,7 @@ Professional internal notes system for tracking client communications and import
 - **Categorization:** Five professional categories (General, Important, Follow Up, Decision, Issue) with subtle bordered labels
 - **Advanced Features:** Pin notes to top, mark as urgent (with visual orange left border indicator), mark as resolved with professional visual indicators
 - **Search & Filtering:** Real-time search and filter buttons (All, Pinned, Urgent, Unresolved, Resolved) with secondary/ghost variants
-- **Note Management:** Create, edit, delete notes with professional button styling and smooth transitions
+- **Note Management:** Create, edit, delete notes with professional button styling and smooth transitions. Delete confirmation uses professional AlertDialog component (Shadcn) instead of native browser confirm() for better UX in Replit iframe environment
 - **User Attribution:** Each note displays creator's full name and exact timestamp (MMM dd, yyyy • h:mm a format) for clear accountability
 - **Permission-Based Access:** Edit and delete buttons only visible to note creator (or superadmins), ensuring data integrity
 - **Image Attachments:** Full support for attaching images to notes via file upload or paste functionality:
@@ -81,6 +81,8 @@ Professional internal notes system for tracking client communications and import
   * Image file validation (JPEG, PNG, GIF, WebP only, max 5MB per image)
   * Professional fullscreen image viewer modal with navigation for multiple images
   * Attached images stored in `uploads/notes_attachments/` directory
+  * Static file serving configured with Express middleware (`app.use('/uploads', express.static('uploads'))` in `server/index.ts`)
+  * Vite catch-all handler excludes `/uploads/*` routes to allow proper static file serving in development (`server/vite.ts`)
 - **Smart Sorting:** Pinned notes always appear first, then sorted by creation date (newest first)
 - **Visual Design:** Neutral cards with subtle hover states, bordered status indicators, no bright colors or gradients. Urgent notes feature orange left border (border-l-4 border-l-orange-500/60) for immediate visual identification
 - **Real-time Updates:** REST API with TanStack Query for instant updates and cache invalidation
