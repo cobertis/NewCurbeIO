@@ -78,6 +78,7 @@ Professional internal notes system for tracking client communications and import
   * Drag-and-drop or click to select images
   * Paste images directly from clipboard (Ctrl+V / Cmd+V)
   * Preview thumbnails with remove capability before submission
+  * Click on any image (preview or saved) to open fullscreen viewer modal
   * Image file validation (JPEG, PNG, GIF, WebP only, max 5MB per image)
   * Professional fullscreen image viewer modal with navigation for multiple images
   * Attached images stored in `uploads/notes_attachments/` directory
