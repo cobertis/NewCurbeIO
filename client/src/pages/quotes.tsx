@@ -3036,18 +3036,12 @@ export default function QuotesPage() {
     mutationFn: async () => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
       if (!newNoteText.trim()) throw new Error("Note content is required");
-      return apiRequest('/api/quotes/' + viewingQuote.id + '/notes', {
-        method: 'POST',
-        body: JSON.stringify({
-          note: newNoteText.trim(),
-          isUrgent: isUrgent,
-          category: noteCategory,
-          isPinned: notePinned,
-          isResolved: noteResolved,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      return apiRequest('POST', `/api/quotes/${viewingQuote.id}/notes`, {
+        note: newNoteText.trim(),
+        isUrgent: isUrgent,
+        category: noteCategory,
+        isPinned: notePinned,
+        isResolved: noteResolved,
       });
     },
     onSuccess: () => {
@@ -3079,18 +3073,12 @@ export default function QuotesPage() {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
       if (!editingNoteId) throw new Error("Note ID not found");
       if (!newNoteText.trim()) throw new Error("Note content is required");
-      return apiRequest(`/api/quotes/${viewingQuote.id}/notes/${editingNoteId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          note: newNoteText.trim(),
-          isUrgent: isUrgent,
-          category: noteCategory,
-          isPinned: notePinned,
-          isResolved: noteResolved,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      return apiRequest('PATCH', `/api/quotes/${viewingQuote.id}/notes/${editingNoteId}`, {
+        note: newNoteText.trim(),
+        isUrgent: isUrgent,
+        category: noteCategory,
+        isPinned: notePinned,
+        isResolved: noteResolved,
       });
     },
     onSuccess: () => {
