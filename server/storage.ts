@@ -2211,13 +2211,47 @@ export class DbStorage implements IStorage {
     return result[0];
   }
   
-  async getQuoteNotes(quoteId: string, companyId: string): Promise<QuoteNote[]> {
-    return db.select().from(quoteNotes)
+  async getQuoteNotes(quoteId: string, companyId: string): Promise<(QuoteNote & { creatorName: string })[]> {
+    const results = await db
+      .select({
+        id: quoteNotes.id,
+        quoteId: quoteNotes.quoteId,
+        note: quoteNotes.note,
+        attachments: quoteNotes.attachments,
+        isUrgent: quoteNotes.isUrgent,
+        category: quoteNotes.category,
+        isPinned: quoteNotes.isPinned,
+        isResolved: quoteNotes.isResolved,
+        companyId: quoteNotes.companyId,
+        createdBy: quoteNotes.createdBy,
+        createdAt: quoteNotes.createdAt,
+        updatedAt: quoteNotes.updatedAt,
+        creatorFirstName: users.firstName,
+        creatorLastName: users.lastName,
+      })
+      .from(quoteNotes)
+      .innerJoin(users, eq(quoteNotes.createdBy, users.id))
       .where(and(
         eq(quoteNotes.quoteId, quoteId),
         eq(quoteNotes.companyId, companyId)
       ))
       .orderBy(desc(quoteNotes.createdAt));
+    
+    return results.map(row => ({
+      id: row.id,
+      quoteId: row.quoteId,
+      note: row.note,
+      attachments: row.attachments,
+      isUrgent: row.isUrgent,
+      category: row.category,
+      isPinned: row.isPinned,
+      isResolved: row.isResolved,
+      companyId: row.companyId,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      creatorName: `${row.creatorFirstName || ''} ${row.creatorLastName || ''}`.trim() || 'Unknown User',
+    }));
   }
   
   async deleteQuoteNote(id: string, companyId?: string): Promise<void> {

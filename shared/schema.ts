@@ -1231,6 +1231,7 @@ export const quoteNotes = pgTable("quote_notes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }), // The quote this note is about
   note: text("note").notNull(), // The actual note content
+  attachments: text("attachments").array(), // Array of image URLs/paths attached to this note
   isUrgent: boolean("is_urgent").notNull().default(false), // Whether this is an urgent note
   category: text("category").notNull().default("general"), // Category: general, important, follow_up, decision, issue
   isPinned: boolean("is_pinned").notNull().default(false), // Whether this note is pinned to the top

@@ -45,11 +45,16 @@ import { and, eq } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import multer from "multer";
 import "./types";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+// Security constants for note image uploads
+const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize logging service
@@ -9701,7 +9706,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      const { note, isUrgent, category, isPinned, isResolved } = req.body;
+      const { note, isUrgent, category, isPinned, isResolved, attachments } = req.body;
       
       if (!note || note.trim() === "") {
         return res.status(400).json({ message: "Note content is required" });
@@ -9714,6 +9719,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         category: category || 'general',
         isPinned: isPinned || false,
         isResolved: isResolved || false,
+        attachments: attachments || null,
         companyId: quote.companyId,
         createdBy: currentUser.id,
       });
@@ -9728,6 +9734,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quoteId,
           isUrgent: newNote.isUrgent,
           createdBy: currentUser.email,
+          hasAttachments: !!attachments && attachments.length > 0,
         },
       });
       
@@ -9768,7 +9775,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.patch("/api/quotes/:quoteId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { quoteId, noteId } = req.params;
-    const { note, isUrgent, category, isPinned, isResolved } = req.body;
+    const { note, isUrgent, category, isPinned, isResolved, attachments } = req.body;
     
     try {
       // Get quote to verify access
@@ -9782,6 +9789,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
+      // Get the note to check permissions
+      const [existingNote] = await db
+        .select()
+        .from(quoteNotes)
+        .where(and(
+          eq(quoteNotes.id, noteId),
+          eq(quoteNotes.quoteId, quoteId),
+          eq(quoteNotes.companyId, quote.companyId)
+        ));
+      
+      if (!existingNote) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      // Permission check: only creator can edit (unless superadmin)
+      if (currentUser.role !== "superadmin" && existingNote.createdBy !== currentUser.id) {
+        return res.status(403).json({ message: "Forbidden - only the note creator can edit this note" });
+      }
+      
       // Build update object with only provided fields
       const updateData: any = {};
       if (note !== undefined) updateData.note = note.trim();
@@ -9789,6 +9815,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (category !== undefined) updateData.category = category;
       if (isPinned !== undefined) updateData.isPinned = isPinned;
       if (isResolved !== undefined) updateData.isResolved = isResolved;
+      if (attachments !== undefined) updateData.attachments = attachments;
       
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No fields to update" });
@@ -9840,6 +9867,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
+      // Get the note to check permissions
+      const [existingNote] = await db
+        .select()
+        .from(quoteNotes)
+        .where(and(
+          eq(quoteNotes.id, noteId),
+          eq(quoteNotes.quoteId, quoteId),
+          eq(quoteNotes.companyId, quote.companyId)
+        ));
+      
+      if (!existingNote) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      // Permission check: only creator can delete (unless superadmin)
+      if (currentUser.role !== "superadmin" && existingNote.createdBy !== currentUser.id) {
+        return res.status(403).json({ message: "Forbidden - only the note creator can delete this note" });
+      }
+      
       // Delete the note (storage method handles company ID filtering)
       await storage.deleteQuoteNote(noteId, currentUser.role === "superadmin" ? undefined : quote.companyId);
       
@@ -9859,6 +9905,101 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting quote note:", error);
       res.status(500).json({ message: "Failed to delete quote note" });
+    }
+  });
+  
+  // Upload image attachment for quote notes
+  app.post("/api/quotes/:quoteId/notes/upload", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Set up multer for file upload
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'notes_attachments');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      const storage_config = multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, uploadsDir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `note_${uniqueSuffix}${ext}`);
+        },
+      });
+      
+      const upload = multer({
+        storage: storage_config,
+        limits: { fileSize: MAX_IMAGE_SIZE },
+        fileFilter: (req, file, cb) => {
+          if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'));
+          }
+          cb(null, true);
+        },
+      }).single('image');
+      
+      // Handle upload with promisified multer
+      await new Promise<void>((resolve, reject) => {
+        upload(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 5MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+      
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Return the file URL/path
+      const fileUrl = `/uploads/notes_attachments/${req.file.filename}`;
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_note_attachment",
+        entityId: req.file.filename,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          uploadedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ 
+        url: fileUrl,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      });
+    } catch (error: any) {
+      console.error("Error uploading note attachment:", error);
+      res.status(500).json({ message: error.message || "Failed to upload attachment" });
     }
   });
 

@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -2955,6 +2956,14 @@ export default function QuotesPage() {
   const [filterCategory, setFilterCategory] = useState<'all' | 'pinned' | 'urgent' | 'unresolved' | 'resolved'>('all');
   const noteEditorRef = useRef<HTMLDivElement>(null);
   
+  // Image attachment states
+  const [noteAttachments, setNoteAttachments] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [viewingImages, setViewingImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -3042,6 +3051,7 @@ export default function QuotesPage() {
         category: noteCategory,
         isPinned: notePinned,
         isResolved: noteResolved,
+        attachments: noteAttachments.length > 0 ? noteAttachments : null,
       });
     },
     onSuccess: () => {
@@ -3053,6 +3063,7 @@ export default function QuotesPage() {
       setNoteCategory("general");
       setNotePinned(false);
       setNoteResolved(false);
+      setNoteAttachments([]);
       toast({
         title: "Note created",
         description: "Your note has been saved successfully.",
@@ -3079,6 +3090,7 @@ export default function QuotesPage() {
         category: noteCategory,
         isPinned: notePinned,
         isResolved: noteResolved,
+        attachments: noteAttachments,
       });
     },
     onSuccess: () => {
@@ -3091,6 +3103,7 @@ export default function QuotesPage() {
       setNoteCategory("general");
       setNotePinned(false);
       setNoteResolved(false);
+      setNoteAttachments([]);
       toast({
         title: "Note updated",
         description: "Your note has been updated successfully.",
@@ -6238,71 +6251,82 @@ export default function QuotesPage() {
                         {filteredNotes.map((note: any) => (
                           <div
                             key={note.id}
-                            className="group relative border rounded-lg p-4 bg-card hover:border-muted-foreground/20 transition-colors"
+                            className={`group relative border rounded-lg p-4 bg-card hover:border-muted-foreground/20 transition-colors ${
+                              note.isUrgent ? 'border-l-4 border-l-orange-500/60' : ''
+                            }`}
                             data-testid={`note-${note.id}`}
                           >
                             {/* Note Header */}
                             <div className="flex items-start justify-between gap-3 mb-2.5">
-                              <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground">
-                                {note.isPinned && (
-                                  <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
-                                    <Bell className="h-3 w-3" />
-                                    Pinned
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                                  <span className="font-medium text-foreground">{note.creatorName || 'Unknown User'}</span>
+                                  <span className="text-muted-foreground/60">•</span>
+                                  <span className="text-muted-foreground/60">
+                                    {format(new Date(note.createdAt), 'MMM dd, yyyy • h:mm a')}
                                   </span>
-                                )}
-                                {note.isUrgent && (
-                                  <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
-                                    <AlertCircle className="h-3 w-3" />
-                                    Urgent
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground">
+                                  {note.isPinned && (
+                                    <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                      <Bell className="h-3 w-3" />
+                                      Pinned
+                                    </span>
+                                  )}
+                                  {note.isUrgent && (
+                                    <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                      <AlertCircle className="h-3 w-3" />
+                                      Urgent
+                                    </span>
+                                  )}
+                                  {note.isResolved && (
+                                    <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                      <Check className="h-3 w-3" />
+                                      Resolved
+                                    </span>
+                                  )}
+                                  <span className="border rounded px-1.5 py-0.5 capitalize">
+                                    {note.category?.replace('_', ' ') || 'general'}
                                   </span>
-                                )}
-                                {note.isResolved && (
-                                  <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
-                                    <Check className="h-3 w-3" />
-                                    Resolved
-                                  </span>
-                                )}
-                                <span className="border rounded px-1.5 py-0.5 capitalize">
-                                  {note.category?.replace('_', ' ') || 'general'}
-                                </span>
-                                <span className="text-muted-foreground/60">
-                                  {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
-                                </span>
+                                </div>
                               </div>
 
-                              {/* Action Buttons */}
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => {
-                                    setEditingNoteId(note.id);
-                                    setNewNoteText(note.note);
-                                    setIsUrgent(note.isUrgent);
-                                    setNoteCategory(note.category || 'general');
-                                    setNotePinned(note.isPinned);
-                                    setNoteResolved(note.isResolved);
-                                  }}
-                                  data-testid={`button-edit-note-${note.id}`}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => {
-                                    if (confirm('Delete this note? This action cannot be undone.')) {
-                                      deleteNoteMutation.mutate(note.id);
-                                    }
-                                  }}
-                                  disabled={deleteNoteMutation.isPending}
-                                  data-testid={`button-delete-note-${note.id}`}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
+                              {/* Action Buttons - Only show if current user is the creator */}
+                              {userData?.user && note.createdBy === userData.user.id && (
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => {
+                                      setEditingNoteId(note.id);
+                                      setNewNoteText(note.note);
+                                      setIsUrgent(note.isUrgent);
+                                      setNoteCategory(note.category || 'general');
+                                      setNotePinned(note.isPinned);
+                                      setNoteResolved(note.isResolved);
+                                      setNoteAttachments(note.attachments || []);
+                                    }}
+                                    data-testid={`button-edit-note-${note.id}`}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => {
+                                      if (confirm('Delete this note? This action cannot be undone.')) {
+                                        deleteNoteMutation.mutate(note.id);
+                                      }
+                                    }}
+                                    disabled={deleteNoteMutation.isPending}
+                                    data-testid={`button-delete-note-${note.id}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
 
                             {/* Note Content */}
@@ -6311,6 +6335,30 @@ export default function QuotesPage() {
                             }`}>
                               {note.note}
                             </p>
+                            
+                            {/* Image Attachments */}
+                            {note.attachments && note.attachments.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {note.attachments.map((img: string, idx: number) => (
+                                  <div
+                                    key={idx}
+                                    className="relative group/img cursor-pointer"
+                                    onClick={() => {
+                                      setViewingImages(note.attachments);
+                                      setCurrentImageIndex(idx);
+                                      setImageViewerOpen(true);
+                                    }}
+                                    data-testid={`image-attachment-${idx}`}
+                                  >
+                                    <img
+                                      src={img}
+                                      alt={`Attachment ${idx + 1}`}
+                                      className="h-20 w-20 object-cover rounded border hover:border-primary transition-colors"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -6328,9 +6376,164 @@ export default function QuotesPage() {
                           placeholder="Type your note here..."
                           value={newNoteText}
                           onChange={(e) => setNewNoteText(e.target.value)}
+                          onPaste={async (e) => {
+                            const items = e.clipboardData?.items;
+                            if (!items) return;
+                            
+                            for (const item of Array.from(items)) {
+                              if (item.type.indexOf('image') !== -1) {
+                                e.preventDefault();
+                                const file = item.getAsFile();
+                                if (!file) continue;
+                                
+                                if (file.size > 5 * 1024 * 1024) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "File too large",
+                                    description: "Image must be less than 5MB",
+                                  });
+                                  continue;
+                                }
+                                
+                                setUploadingImages(true);
+                                try {
+                                  const formData = new FormData();
+                                  formData.append('image', file);
+                                  
+                                  const response = await fetch(`/api/quotes/${viewingQuote?.id}/notes/upload`, {
+                                    method: 'POST',
+                                    body: formData,
+                                  });
+                                  
+                                  if (!response.ok) throw new Error('Upload failed');
+                                  
+                                  const data = await response.json();
+                                  setNoteAttachments(prev => [...prev, data.url]);
+                                  
+                                  toast({
+                                    title: "Image attached",
+                                    description: "Image uploaded successfully",
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "Upload failed",
+                                    description: "Failed to upload image",
+                                  });
+                                } finally {
+                                  setUploadingImages(false);
+                                }
+                              }
+                            }
+                          }}
                           className="min-h-[80px] resize-none text-sm"
                           data-testid="textarea-note"
                         />
+                        
+                        {/* Image Attachments Preview */}
+                        {noteAttachments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {noteAttachments.map((img, idx) => (
+                              <div
+                                key={idx}
+                                className="relative group/preview"
+                                data-testid={`preview-image-${idx}`}
+                              >
+                                <img
+                                  src={img}
+                                  alt={`Preview ${idx + 1}`}
+                                  className="h-16 w-16 object-cover rounded border"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setNoteAttachments(prev => prev.filter((_, i) => i !== idx));
+                                  }}
+                                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity"
+                                  data-testid={`button-remove-image-${idx}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* File Input (Hidden) */}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                          multiple
+                          className="hidden"
+                          onChange={async (e) => {
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
+                            
+                            setUploadingImages(true);
+                            try {
+                              for (const file of Array.from(files)) {
+                                if (file.size > 5 * 1024 * 1024) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "File too large",
+                                    description: `${file.name} is larger than 5MB`,
+                                  });
+                                  continue;
+                                }
+                                
+                                const formData = new FormData();
+                                formData.append('image', file);
+                                
+                                const response = await fetch(`/api/quotes/${viewingQuote?.id}/notes/upload`, {
+                                  method: 'POST',
+                                  body: formData,
+                                });
+                                
+                                if (!response.ok) throw new Error('Upload failed');
+                                
+                                const data = await response.json();
+                                setNoteAttachments(prev => [...prev, data.url]);
+                              }
+                              
+                              toast({
+                                title: "Images attached",
+                                description: `${files.length} image(s) uploaded successfully`,
+                              });
+                            } catch (error) {
+                              toast({
+                                variant: "destructive",
+                                title: "Upload failed",
+                                description: "Failed to upload one or more images",
+                              });
+                            } finally {
+                              setUploadingImages(false);
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = '';
+                              }
+                            }
+                          }}
+                          data-testid="input-file"
+                        />
+                        
+                        {/* Attachment Button */}
+                        <div className="flex items-center gap-2 mt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingImages}
+                            className="h-8"
+                            data-testid="button-attach-image"
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            {uploadingImages ? 'Uploading...' : 'Attach Image'}
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            or paste images directly (max 5MB each)
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
@@ -6398,6 +6601,7 @@ export default function QuotesPage() {
                                 setNoteCategory("general");
                                 setNotePinned(false);
                                 setNoteResolved(false);
+                                setNoteAttachments([]);
                               }}
                               data-testid="button-cancel-edit"
                             >
@@ -6437,6 +6641,7 @@ export default function QuotesPage() {
                       setEditingNoteId(null);
                       setSearchNotes("");
                       setFilterCategory("all");
+                      setNoteAttachments([]);
                     }}
                     data-testid="button-close-notes"
                   >
@@ -8368,6 +8573,57 @@ export default function QuotesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image Viewer Modal */}
+      <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen}>
+        <DialogContent className="max-w-5xl w-full p-0 bg-black/95 border-0" data-testid="dialog-image-viewer">
+          <div className="relative flex items-center justify-center min-h-[500px] max-h-[90vh]">
+            {/* Close Button */}
+            <button
+              onClick={() => setImageViewerOpen(false)}
+              className="absolute top-4 right-4 z-50 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+              data-testid="button-close-viewer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            
+            {/* Image */}
+            {viewingImages.length > 0 && (
+              <img
+                src={viewingImages[currentImageIndex]}
+                alt={`Image ${currentImageIndex + 1}`}
+                className="max-w-full max-h-[85vh] object-contain"
+                data-testid="viewer-image"
+              />
+            )}
+            
+            {/* Navigation Buttons - Only show if multiple images */}
+            {viewingImages.length > 1 && (
+              <>
+                <button
+                  onClick={() => setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : viewingImages.length - 1))}
+                  className="absolute left-4 rounded-full bg-black/50 p-3 text-white hover:bg-black/70 transition-colors disabled:opacity-30"
+                  data-testid="button-prev-image"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  onClick={() => setCurrentImageIndex(prev => (prev < viewingImages.length - 1 ? prev + 1 : 0))}
+                  className="absolute right-4 rounded-full bg-black/50 p-3 text-white hover:bg-black/70 transition-colors disabled:opacity-30"
+                  data-testid="button-next-image"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+                
+                {/* Image Counter */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+                  {currentImageIndex + 1} / {viewingImages.length}
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
