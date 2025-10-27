@@ -6426,6 +6426,63 @@ export default function QuotesPage() {
                               }
                             }
                           }}
+                          onDrop={async (e) => {
+                            e.preventDefault();
+                            const files = e.dataTransfer?.files;
+                            if (!files || files.length === 0) return;
+                            
+                            setUploadingImages(true);
+                            try {
+                              for (const file of Array.from(files)) {
+                                if (!file.type.startsWith('image/')) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "Invalid file type",
+                                    description: "Please drop only image files",
+                                  });
+                                  continue;
+                                }
+                                
+                                if (file.size > 5 * 1024 * 1024) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "File too large",
+                                    description: `${file.name} is larger than 5MB`,
+                                  });
+                                  continue;
+                                }
+                                
+                                const formData = new FormData();
+                                formData.append('image', file);
+                                
+                                const response = await fetch(`/api/quotes/${viewingQuote?.id}/notes/upload`, {
+                                  method: 'POST',
+                                  body: formData,
+                                });
+                                
+                                if (!response.ok) throw new Error('Upload failed');
+                                
+                                const data = await response.json();
+                                setNoteAttachments(prev => [...prev, data.url]);
+                              }
+                              
+                              toast({
+                                title: "Images attached",
+                                description: `${files.length} image(s) uploaded successfully`,
+                              });
+                            } catch (error) {
+                              toast({
+                                variant: "destructive",
+                                title: "Upload failed",
+                                description: "Failed to upload one or more images",
+                              });
+                            } finally {
+                              setUploadingImages(false);
+                            }
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                          }}
                           className="min-h-[80px] resize-none text-sm"
                           data-testid="textarea-note"
                         />
@@ -6531,7 +6588,7 @@ export default function QuotesPage() {
                             {uploadingImages ? 'Uploading...' : 'Attach Image'}
                           </Button>
                           <span className="text-xs text-muted-foreground">
-                            or paste images directly (max 5MB each)
+                            or paste/drag images directly (max 5MB each)
                           </span>
                         </div>
                       </div>

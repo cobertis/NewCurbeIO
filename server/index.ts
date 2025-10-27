@@ -24,6 +24,9 @@ app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser()); // Required to read cookies like 'trusted_device'
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
+
 // Configure PostgreSQL session store for persistent sessions
 const PgStore = connectPgSimple(session);
 
