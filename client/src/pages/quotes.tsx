@@ -3193,15 +3193,22 @@ export default function QuotesPage() {
 
   // Auto-scroll to bottom when notes sheet opens or notes change
   useEffect(() => {
-    if (notesSheetOpen && notesListRef.current && filteredNotes.length > 0) {
-      // Use requestAnimationFrame to ensure DOM is ready, then scroll after animation
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          if (notesListRef.current) {
-            notesListRef.current.scrollTop = notesListRef.current.scrollHeight;
-          }
-        }, 600); // Increased timeout to account for Sheet animation
-      });
+    if (notesSheetOpen && filteredNotes.length > 0) {
+      // Multiple attempts to ensure scroll happens after Sheet animation
+      const scrollToBottom = () => {
+        if (notesListRef.current) {
+          notesListRef.current.scrollTop = notesListRef.current.scrollHeight;
+        }
+      };
+
+      // Attempt scroll multiple times to catch the sheet after animation
+      const timeouts = [100, 300, 600, 800].map(delay => 
+        setTimeout(scrollToBottom, delay)
+      );
+
+      return () => {
+        timeouts.forEach(timeout => clearTimeout(timeout));
+      };
     }
   }, [notesSheetOpen, filteredNotes.length]);
 
