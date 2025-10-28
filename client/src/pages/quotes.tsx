@@ -6264,14 +6264,25 @@ export default function QuotesPage() {
                           >
                             {/* Note Header */}
                             <div className="flex items-start justify-between gap-3 mb-2.5">
-                              <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                                  <span className="font-medium text-foreground">{note.creatorName || 'Unknown User'}</span>
-                                  <span className="text-muted-foreground/60">•</span>
-                                  <span className="text-muted-foreground/60">
-                                    {format(new Date(note.createdAt), 'MMM dd, yyyy • h:mm a')}
-                                  </span>
-                                </div>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-7 w-7">
+                                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                    {(note.creatorName || 'Unknown User')
+                                      .split(' ')
+                                      .map((n: string) => n[0])
+                                      .join('')
+                                      .toUpperCase()
+                                      .slice(0, 2)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                                    <span className="font-medium text-foreground">{note.creatorName || 'Unknown User'}</span>
+                                    <span className="text-muted-foreground/60">•</span>
+                                    <span className="text-muted-foreground/60">
+                                      {format(new Date(note.createdAt), 'MMM dd, yyyy • h:mm a')}
+                                    </span>
+                                  </div>
                                 <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground">
                                   {note.isPinned && (
                                     <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
@@ -6294,6 +6305,7 @@ export default function QuotesPage() {
                                   <span className="border rounded px-1.5 py-0.5 capitalize">
                                     {note.category?.replace('_', ' ') || 'general'}
                                   </span>
+                                </div>
                                 </div>
                               </div>
 
@@ -6349,7 +6361,6 @@ export default function QuotesPage() {
                                     key={idx}
                                     className="relative group/img cursor-pointer"
                                     onClick={() => {
-                                      console.log('[IMAGE CLICK] Opening viewer for saved note image', idx);
                                       setViewingImages(note.attachments);
                                       setCurrentImageIndex(idx);
                                       setImageViewerOpen(true);
@@ -6502,7 +6513,6 @@ export default function QuotesPage() {
                                 className="relative group/preview cursor-pointer"
                                 data-testid={`preview-image-${idx}`}
                                 onClick={() => {
-                                  console.log('[IMAGE CLICK] Opening viewer for preview image', idx);
                                   setViewingImages(noteAttachments);
                                   setCurrentImageIndex(idx);
                                   setImageViewerOpen(true);
@@ -8678,7 +8688,7 @@ export default function QuotesPage() {
       </AlertDialog>
 
       {/* Image Viewer Modal */}
-      <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen}>
+      <Dialog modal={false} open={imageViewerOpen} onOpenChange={setImageViewerOpen}>
         <DialogContent className="max-w-5xl w-full p-0 bg-black/95 border-0" data-testid="dialog-image-viewer">
           <div className="relative flex items-center justify-center min-h-[500px] max-h-[90vh]">
             {/* Close Button */}
