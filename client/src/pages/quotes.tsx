@@ -6271,43 +6271,6 @@ export default function QuotesPage() {
                                 </div>
                                 </div>
                               </div>
-
-                              {/* Action Buttons - Only show if current user is the creator or superadmin */}
-                              {userData?.user && (note.createdBy === userData.user.id || userData.user.role === 'superadmin') && (
-                                <div className="flex items-center gap-0.5">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0"
-                                    onClick={() => {
-                                      setEditingNoteId(note.id);
-                                      setNewNoteText(note.note);
-                                      setIsImportant(note.isImportant);
-                                      setNotePinned(note.isPinned);
-                                      setNoteResolved(note.isResolved);
-                                      setNoteAttachments(note.attachments || []);
-                                    }}
-                                    data-testid={`button-edit-note-${note.id}`}
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0"
-                                    onClick={() => {
-                                      console.log('[DELETE BUTTON] Clicked, noteId:', note.id);
-                                      setNoteToDelete(note.id);
-                                      setShowDeleteDialog(true);
-                                      console.log('[DELETE BUTTON] State updated');
-                                    }}
-                                    disabled={deleteNoteMutation.isPending}
-                                    data-testid={`button-delete-note-${note.id}`}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              )}
                             </div>
 
                             {/* Note Content */}
@@ -6359,7 +6322,7 @@ export default function QuotesPage() {
                     <div className="space-y-3">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                          {editingNoteId ? 'Edit note' : 'New note'}
+                          New note
                         </label>
                         <Textarea
                           placeholder="Type your note here..."
@@ -6615,44 +6578,15 @@ export default function QuotesPage() {
 
                       {/* Action Buttons */}
                       <div className="flex gap-2">
-                        {editingNoteId ? (
-                          <>
-                            <Button
-                              onClick={() => updateNoteMutation.mutate()}
-                              disabled={!newNoteText.trim() || updateNoteMutation.isPending}
-                              className="flex-1 h-9"
-                              variant="secondary"
-                              data-testid="button-update-note"
-                            >
-                              {updateNoteMutation.isPending ? 'Updating...' : 'Update Note'}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="h-9"
-                              onClick={() => {
-                                setEditingNoteId(null);
-                                setNewNoteText("");
-                                setIsImportant(false);
-                                setNotePinned(false);
-                                setNoteResolved(false);
-                                setNoteAttachments([]);
-                              }}
-                              data-testid="button-cancel-edit"
-                            >
-                              Cancel
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            onClick={() => createNoteMutation.mutate()}
-                            disabled={!newNoteText.trim() || createNoteMutation.isPending}
-                            className="w-full h-9"
-                            variant="secondary"
-                            data-testid="button-send-note"
-                          >
-                            {createNoteMutation.isPending ? 'Creating...' : 'Create Note'}
-                          </Button>
-                        )}
+                        <Button
+                          onClick={() => createNoteMutation.mutate()}
+                          disabled={!newNoteText.trim() || createNoteMutation.isPending}
+                          className="w-full h-9"
+                          variant="secondary"
+                          data-testid="button-send-note"
+                        >
+                          {createNoteMutation.isPending ? 'Creating...' : 'Create Note'}
+                        </Button>
                       </div>
                     </div>
                   </div>
