@@ -6267,7 +6267,7 @@ export default function QuotesPage() {
 
                               {/* Action Buttons - Only show if current user is the creator or superadmin */}
                               {userData?.user && (note.createdBy === userData.user.id || userData.user.role === 'superadmin') && (
-                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-0.5">
                                   <Button
                                     variant="ghost"
                                     size="sm"
