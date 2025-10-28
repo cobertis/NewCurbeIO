@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system integrating iMessage/SMS/RCS, designed to provide an enterprise-grade messaging experience. The admin dashboard enables superadmins to manage multiple companies (tenants) and their users with role-based access. Key features include multi-tenant management, Stripe-based billing, custom SMTP email notifications, and a scalable full-stack architecture, positioning it as a robust platform for enterprise messaging and customer relationship management.
+Curbe is a multi-tenant CRM system with integrated iMessage/SMS/RCS capabilities, designed for enterprise messaging and customer relationship management. The admin dashboard provides superadmins with tools to manage companies (tenants) and their users, featuring role-based access, Stripe billing, custom SMTP notifications, and a scalable full-stack architecture.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,7 +9,6 @@ Design style: Extremely professional corporate design - NO bright colors, NO emo
 
 **Toast Notifications:**
 - All toast notifications auto-dismiss after 3 seconds
-- Auto-dismiss timeout configured in `client/src/hooks/use-toast.ts` (TOAST_REMOVE_DELAY: 1000ms, auto-dismiss: 3000ms)
 - Users can still manually dismiss toasts before the timeout
 
 **Loading State Pattern (MANDATORY):**
@@ -37,64 +36,40 @@ if (isLoading || !data) {
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend utilizes React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, featuring a custom theming system (light/dark modes). It employs a mobile-first responsive design, adapting layouts and element visibility across devices. Navigation is primarily handled by a sidebar, and the SMS chat application uses a dynamic three-column layout. All mobile interactions are optimized for a smooth user experience.
+The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, supporting custom theming (light/dark modes). It features a mobile-first responsive design, with primary navigation via a sidebar and a dynamic three-column layout for the SMS chat application. All interactions are optimized for mobile.
 
 ### Technical Implementations
-The frontend uses Wouter for routing and TanStack Query for state management. The backend is built with Express.js and TypeScript, providing a RESTful API with session-based authentication and role-based access control (RBAC).
+The frontend uses Wouter for routing and TanStack Query for state management. The backend is built with Express.js and TypeScript, offering a RESTful API with session-based authentication and role-based access control.
 
 **Key Features:**
--   **User & Company Management:** Comprehensive CRUD operations for users and companies, including role-based access, 2FA, profile management, email activation, and account status tracking. Features Google Places Business Autocomplete and industry-specific fields. Team management allows company admins to add new members with specific roles (Admin/Member/Viewer).
--   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session-based authentication, password reset with token validation and complexity checks, and active session management.
--   **Multi-tenancy:** Strict data isolation using `companyId` for non-superadmin access, with superadmins having cross-company oversight.
--   **Email System:** Global SMTP configuration, database-driven templates, and automated sending for system events.
--   **Modular Feature System:** Superadmins can define and assign features to companies.
+-   **User & Company Management:** Comprehensive CRUD for users and companies, including RBAC, 2FA, profile management, and team features.
+-   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session management, and password resets.
+-   **Multi-tenancy:** Strict data isolation per company, with superadmin oversight.
+-   **Email System:** Global SMTP configuration and database-driven templates for system notifications.
+-   **Modular Feature System:** Superadmins can assign features to companies.
 -   **Audit Logging:** Centralized service for tracking critical actions.
--   **Campaign System:** Unified interface for managing Email and SMS Campaigns, and Contact Lists, with reports and analytics.
--   **Real-Time Notifications:** Production-grade WebSocket-based system for instant updates, including sound alerts and superadmin broadcast capabilities.
--   **SMS Chat Application:** Bidirectional, real-time SMS chat with a three-column layout, WebSocket updates, contact integration, conversation management, and internal notes. Includes SMS subscription management.
--   **Billing & Stripe Integration:** Automated customer and subscription creation, webhook processing for Stripe events, and a professional billing dashboard for subscription and payment management. Includes a Superadmin Billing Dashboard for company oversight.
--   **Quotes Management System:** A comprehensive insurance quote management system with a streamlined 3-step wizard interface for creating and managing client quotes across 11 insurance product types. Features visual step indicators, automated effective date defaults, integrated Google Places Address Autocomplete with automatic county detection, and multi-tenant isolation. Uses 8-character short IDs for better usability. Includes a normalized data model with 5 tables (`quote_members`, `quote_member_income`, `quote_member_immigration`, `quote_member_documents`, `quote_payment_methods`). **CRITICAL: ALL sensitive data including SSN, income, immigration documents, and payment methods (credit cards, bank accounts) is stored in PLAIN TEXT without encryption or masking per explicit user requirement.** Secure REST API endpoints for all CRUD operations on quote members, income, immigration, documents, and payment methods, with multi-tenant authorization and file upload validation. Payment methods system features **professional credit card validation** including Luhn algorithm verification, automatic card type detection (Visa/Mastercard/Amex/Discover), dynamic formatting with proper spacing (4-4-4-4 for most cards, 4-6-5 for Amex), CVV length validation based on card type (3 digits for most, 4 for Amex), real-time type detection with visual badges, and expiration date validation. All validation utilities are centralized in `shared/creditCardUtils.ts` and integrated into Zod schemas for backend validation and React Hook Form for frontend validation. **CMS Marketplace API Integration:** Real-time health insurance plan quotation from healthcare.gov using CMS Marketplace API. The system calculates household information (size, total income, member ages) from quote data and retrieves available plans with pricing, deductibles, metal levels, quality ratings, and tax credit eligibility. Backend service (`server/cms-marketplace.ts`) handles API communication, age calculations, and data transformation. Frontend displays plans in a professional card-based interface with metal level badges (Bronze/Silver/Gold/Platinum), premium pricing (with/without tax credits), deductibles, quality ratings, and expandable view for all available plans. API key managed via Replit Secrets as `CMS_MARKETPLACE_API_KEY`. **HHS Poverty Guidelines Integration:** Year-aware poverty guidelines system with official HHS data for APTC eligibility calculations. Backend service (`server/hhs-poverty-guidelines.ts`) maintains static repository of official HHS Poverty Guidelines data with support for 48 contiguous states, Alaska, and Hawaii. System validates year requests and throws clear errors when data is unavailable. Frontend displays poverty guidelines in compact card view with detailed modal dialog featuring professional HTML table with horizontal scroll support. REST API endpoint (`/api/hhs/poverty-guidelines`) accepts year and state query parameters. Frontend properly constructs requests using URLSearchParams and handles loading/error states with user-friendly messaging. System automatically highlights current household size and dynamically calculates all percentage breakdowns (50%, 75%, 100%, 125%, 133%, 135%, 138%, 150%, 175%, 180%, 185%) based on HHS base values. Data must be manually updated annually when HHS publishes new guidelines (typically in January). **Plan Comparison Feature:** Comprehensive side-by-side plan comparison system allowing users to select up to 5 health insurance plans from marketplace results. Users select plans via "Compare" checkboxes on plan cards, triggering a sticky bottom bar displaying selected plan chips (carrier name, premium, individual remove buttons). "Compare" button (requires ≥2 plans) opens full-screen dialog with professional comparison table showing premiums (with APTC savings highlighted), deductibles, out-of-pocket maximums, metal levels, network types, quality ratings, and detailed benefits breakdown (primary care, specialist visits, urgent care, emergencies, mental health, generic drugs). State managed using Set with enforced 5-plan maximum and toast notifications for limit warnings. Implementation in `client/src/pages/marketplace-plans.tsx` with data-testid attributes for all interactive elements.
+-   **Campaign System:** Unified interface for managing Email/SMS Campaigns and Contact Lists.
+-   **Real-Time Notifications:** WebSocket-based system for instant updates and superadmin broadcasts.
+-   **SMS Chat Application:** Bidirectional, real-time SMS chat with conversation management and internal notes.
+-   **Billing & Stripe Integration:** Automated customer/subscription management and a professional billing dashboard.
+-   **Quotes Management System:** A comprehensive insurance quote management system with a 3-step wizard interface across 11 product types. Features Google Places Autocomplete, multi-tenant isolation, and 8-character short IDs. **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.** Includes professional credit card validation (Luhn algorithm, type detection, dynamic formatting, CVV/expiration validation).
+    -   **CMS Marketplace API Integration:** Real-time health insurance plan quotation from healthcare.gov, calculating household data and retrieving plans with pricing, deductibles, metal levels, and tax credit eligibility.
+    -   **HHS Poverty Guidelines Integration:** Year-aware system using official HHS data for APTC eligibility calculations, displaying guidelines with dynamic percentage breakdowns.
+    -   **Plan Comparison Feature:** Side-by-side comparison for up to 5 health insurance plans, showing premiums, deductibles, metal levels, and benefits in a professional table.
+-   **Quote Notes System:** Internal notes system for quotes with professional UI, categorization, pinning, urgent/resolved statuses, search/filtering, user attribution, and image attachments.
+-   **Quote Documents System:** Professional document management system for quotes, supporting upload, preview, download, and deletion of various file types with categorization, search, and secure storage.
 
 ### System Design Choices
-The system uses PostgreSQL with Drizzle ORM for data management and enforces strict multi-tenancy. Security features include robust password management, account activation, and 2FA. The modular feature system ensures flexibility and extensibility. All dates throughout the system are handled as `yyyy-MM-dd` strings to prevent timezone conversion issues, storing pure dates without time components in the database (PostgreSQL `date` type).
+The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management, account activation, and 2FA. Dates are handled as `yyyy-MM-dd` strings (PostgreSQL `date` type) to prevent timezone issues.
 
 **Quote Family Members Display Logic:**
-The quote detail view displays family members (spouses/dependents) from two data sources:
-- `quote_members` table: Normalized records with full income/immigration data (created when adding members after quote creation)
-- JSONB columns (`quotes.spouses`, `quotes.dependents`): Basic member data stored when creating quotes via the wizard form
-- The UI merges both sources using `viewingQuoteWithMembers` object, displaying members from either storage method
-- Members from JSONB columns may not have IDs and show "-" for income/immigration fields until detailed records are created
+Displays merged family member data from `quote_members` (normalized) and JSONB columns (`quotes.spouses`, `quotes.dependents`), showing full details for normalized records and basic data for JSONB entries.
 
 **Quote Notes System:**
-Professional internal notes system for tracking client communications and important information on quotes. Accessible via Notes button in quote detail sidebar. Features a clean, corporate design following professional aesthetic principles. Features include:
-- **Professional UI Design:** Clean single-column layout (sm:max-w-2xl) with search toolbar, notes list, and form section at bottom. Uses neutral gray palette, subtle borders, and professional typography consistent with corporate design standards
-- **Categorization:** Five professional categories (General, Important, Follow Up, Decision, Issue) with subtle bordered labels
-- **Advanced Features:** Pin notes to top, mark as urgent (with visual orange left border indicator), mark as resolved with professional visual indicators
-- **Search & Filtering:** Real-time search and filter buttons (All, Pinned, Urgent, Unresolved, Resolved) with secondary/ghost variants
-- **Note Management:** Create, edit, delete notes with professional button styling and smooth transitions. Delete confirmation uses professional AlertDialog component (Shadcn) instead of native browser confirm() for better UX in Replit iframe environment
-- **User Attribution:** Each note displays creator's avatar (profile photo if available, otherwise initials fallback) alongside full name and exact timestamp (MMM dd, yyyy • h:mm a format) for clear accountability
-- **Permission-Based Access:** Edit and delete buttons only visible to note creator (or superadmins), ensuring data integrity
-- **Image Attachments:** Full support for attaching images to notes via file upload or paste functionality:
-  * Drag-and-drop or click to select images
-  * Paste images directly from clipboard (Ctrl+V / Cmd+V)
-  * Preview thumbnails with remove capability before submission
-  * Hover over images to reveal eye icon overlay for viewing in fullscreen
-  * Professional fullscreen image viewer modal with navigation for multiple images (Dialog with `modal={false}` to work alongside Sheet components)
-  * Image file validation (JPEG, PNG, GIF, WebP only, max 5MB per image)
-  * Attached images stored in `uploads/notes_attachments/` directory
-  * Static file serving configured with Express middleware (`app.use('/uploads', express.static('uploads'))` in `server/index.ts`)
-  * Vite catch-all handler excludes `/uploads/*` routes to allow proper static file serving in development (`server/vite.ts`)
-- **Smart Sorting:** Pinned notes always appear first, then sorted by creation date (newest first)
-- **Visual Design:** Neutral cards with subtle hover states, bordered status indicators, no bright colors or gradients. Urgent notes feature orange left border (border-l-4 border-l-orange-500/60) for immediate visual identification
-- **Real-time Updates:** REST API with TanStack Query for instant updates and cache invalidation
-- Sheet/Drawer UI pattern opening from left side for professional CRM-style interaction
-- Multi-tenant isolation with companyId enforcement
-- Database table: `quote_notes` (id, quoteId, note, attachments[], category, isUrgent, isPinned, isResolved, createdAt, createdBy)
-- API endpoints: GET/POST /api/quotes/:id/notes, POST /api/quotes/:id/notes/upload, PATCH /api/quotes/:id/notes/:noteId, DELETE /api/quotes/:id/notes/:noteId
-- Backend JOIN with users table to fetch and return creator name (firstName + lastName)
-- Permission checks on PATCH and DELETE endpoints (403 Forbidden if not creator or superadmin)
-- Badge counter on Notes button shows total note count for quick reference
-- All interactions follow professional corporate design standards with muted icons and consistent spacing
+Features a clean, corporate design with a single-column layout, search toolbar, and categorized notes (General, Important, Follow Up, Decision, Issue). Includes pin, urgent, and resolved statuses, real-time search, CRUD operations, user attribution, and image attachment support (drag-and-drop, paste, validation). Pinned notes are sorted first, then by creation date (newest first).
+
+**Quote Documents System:**
+Provides a wide Sheet layout with a professional table for documents, supporting uploads, previews, downloads, and deletions. Categories include ID, Proof of Income, Insurance Card, Immigration, Medical, Tax, Other, General. Features real-time search, filter by category, and robust security measures.
 
 ## External Dependencies
 
