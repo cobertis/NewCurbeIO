@@ -6959,6 +6959,7 @@ export default function QuotesPage() {
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>File Name</TableHead>
                             <TableHead>Category</TableHead>
+                            <TableHead>Belongs To</TableHead>
                             <TableHead>Size</TableHead>
                             <TableHead>Uploaded By</TableHead>
                             <TableHead className="w-[100px]">Actions</TableHead>
@@ -7030,6 +7031,16 @@ export default function QuotesPage() {
                                     {getCategoryLabel(doc.category)}
                                   </Badge>
                                 </TableCell>
+                                <TableCell className="text-sm">
+                                  {doc.belongsToMember ? (
+                                    <span className="text-muted-foreground">
+                                      {doc.belongsToMember.firstName} {doc.belongsToMember.lastName}
+                                      <span className="ml-1 text-xs">({doc.belongsToMember.role})</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground italic">None</span>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
                                   {formatFileSize(doc.fileSize || 0)}
                                 </TableCell>
@@ -7055,10 +7066,10 @@ export default function QuotesPage() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => window.open(`/api/quotes/${viewingQuote.id}/documents/${doc.id}/download`, '_blank')}
-                                      data-testid={`button-download-${doc.id}`}
+                                      onClick={() => setPreviewDocument(doc)}
+                                      data-testid={`button-preview-${doc.id}`}
                                     >
-                                      <Download className="h-4 w-4" />
+                                      <Eye className="h-4 w-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"
@@ -7176,6 +7187,26 @@ export default function QuotesPage() {
                         <SelectItem value="work_permit">Work Permit</SelectItem>
                         <SelectItem value="i94">I-94</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Belongs To (optional)</label>
+                    <Select name="belongsTo">
+                      <SelectTrigger data-testid="select-belongs-to">
+                        <SelectValue placeholder="Select family member" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {(quoteDetail?.members || []).map((item: any) => {
+                          const member = item.member || item;
+                          return (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.firstName} {member.lastName} ({member.role})
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

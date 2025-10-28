@@ -10110,12 +10110,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      // Get category and description from body
-      const { category, description } = req.body;
+      // Get category, description, and belongsTo from body
+      const { category, description, belongsTo } = req.body;
 
       // Validate category if provided
-      const validCategories = ['id', 'proof_of_income', 'insurance_card', 'immigration', 'medical', 'tax', 'other', 'general'];
-      const documentCategory = category && validCategories.includes(category) ? category : 'general';
+      const validCategories = ['passport', 'drivers_license', 'state_id', 'birth_certificate', 'parole', 'permanent_residence', 'work_permit', 'i94', 'other'];
+      const documentCategory = category && validCategories.includes(category) ? category : 'other';
 
       // Create database record
       const document = await storage.createQuoteDocument({
@@ -10126,6 +10126,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         fileSize: req.file.size,
         category: documentCategory,
         description: description || null,
+        belongsTo: belongsTo || null,
         companyId: quote.companyId,
         uploadedBy: currentUser.id
       });

@@ -481,7 +481,7 @@ export interface IStorage {
   setDefaultPaymentMethod(paymentMethodId: string, quoteId: string, companyId: string): Promise<void>;
   
   // Quote Documents
-  listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<QuoteDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null }>>;
+  listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<QuoteDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null; belongsToMember: { firstName: string; lastName: string; role: string } | null }>>;
   createQuoteDocument(document: InsertQuoteDocument): Promise<QuoteDocument>;
   getQuoteDocument(id: string, companyId: string): Promise<QuoteDocument | null>;
   deleteQuoteDocument(id: string, companyId: string): Promise<boolean>;
@@ -3096,15 +3096,19 @@ export class DbStorage implements IStorage {
   
   // ==================== QUOTE DOCUMENTS ====================
   
-  async listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<QuoteDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null }>> {
+  async listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<QuoteDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null; belongsToMember: { firstName: string; lastName: string; role: string } | null }>> {
     let query = db
       .select({
         document: quoteDocuments,
         uploaderFirstName: users.firstName,
         uploaderLastName: users.lastName,
+        memberFirstName: quoteMembers.firstName,
+        memberLastName: quoteMembers.lastName,
+        memberRole: quoteMembers.role,
       })
       .from(quoteDocuments)
       .leftJoin(users, eq(quoteDocuments.uploadedBy, users.id))
+      .leftJoin(quoteMembers, eq(quoteDocuments.belongsTo, quoteMembers.id))
       .where(
         and(
           eq(quoteDocuments.quoteId, quoteId),
@@ -3141,6 +3145,9 @@ export class DbStorage implements IStorage {
       ...r.document,
       uploadedBy: r.uploaderFirstName || r.uploaderLastName
         ? { firstName: r.uploaderFirstName, lastName: r.uploaderLastName }
+        : null,
+      belongsToMember: r.memberFirstName && r.memberLastName && r.memberRole
+        ? { firstName: r.memberFirstName, lastName: r.memberLastName, role: r.memberRole }
         : null
     }));
   }
