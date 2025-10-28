@@ -3179,6 +3179,20 @@ export default function QuotesPage() {
   // Fetch quote documents
   const { data: quoteDocumentsData, isLoading: isLoadingDocuments } = useQuery<{ documents: any[] }>({
     queryKey: ['/api/quotes', params?.id, 'documents', selectedCategory, searchDocuments],
+    queryFn: async () => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      const params_obj = new URLSearchParams();
+      if (selectedCategory && selectedCategory !== 'all') {
+        params_obj.append('category', selectedCategory);
+      }
+      if (searchDocuments) {
+        params_obj.append('q', searchDocuments);
+      }
+      const url = `/api/quotes/${params.id}/documents${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch documents');
+      return response.json();
+    },
     enabled: !!params?.id && params?.id !== 'new',
   });
 
