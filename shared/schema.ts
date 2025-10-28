@@ -1261,7 +1261,7 @@ export const quoteDocuments = pgTable("quote_documents", {
   fileUrl: text("file_url").notNull(), // Path/URL to the uploaded file
   fileType: text("file_type").notNull(), // MIME type (e.g., application/pdf, image/jpeg)
   fileSize: integer("file_size").notNull(), // File size in bytes
-  category: text("category").notNull().default("general"), // Document category: id, proof_of_income, insurance_card, immigration, medical, tax, other, general
+  category: text("category").notNull().default("other"), // Document category: passport, drivers_license, state_id, birth_certificate, parole, permanent_residence, work_permit, i94, other
   description: text("description"), // Optional description of the document
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }), // Multi-tenant reference
   uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who uploaded the document

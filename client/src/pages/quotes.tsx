@@ -3189,7 +3189,7 @@ export default function QuotesPage() {
   const uploadDocumentMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      const response = await fetch(`/api/quotes/${viewingQuote.id}/documents`, {
+      const response = await fetch(`/api/quotes/${viewingQuote.id}/documents/upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -6909,14 +6909,15 @@ export default function QuotesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="id">ID</SelectItem>
-                        <SelectItem value="proof_of_income">Proof of Income</SelectItem>
-                        <SelectItem value="insurance_card">Insurance Card</SelectItem>
-                        <SelectItem value="immigration">Immigration</SelectItem>
-                        <SelectItem value="medical">Medical</SelectItem>
-                        <SelectItem value="tax">Tax</SelectItem>
+                        <SelectItem value="passport">Passport</SelectItem>
+                        <SelectItem value="drivers_license">Driver's License</SelectItem>
+                        <SelectItem value="state_id">State ID</SelectItem>
+                        <SelectItem value="birth_certificate">Birth Certificate</SelectItem>
+                        <SelectItem value="parole">Parole</SelectItem>
+                        <SelectItem value="permanent_residence">Permanent Residence</SelectItem>
+                        <SelectItem value="work_permit">Work Permit</SelectItem>
+                        <SelectItem value="i94">I-94</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
-                        <SelectItem value="general">General</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -6959,28 +6960,30 @@ export default function QuotesPage() {
                             // Category badge colors
                             const getCategoryColor = (category: string) => {
                               switch (category) {
-                                case 'id': return 'border-blue-200 bg-blue-50 text-blue-700';
-                                case 'proof_of_income': return 'border-green-200 bg-green-50 text-green-700';
-                                case 'insurance_card': return 'border-purple-200 bg-purple-50 text-purple-700';
-                                case 'immigration': return 'border-orange-200 bg-orange-50 text-orange-700';
-                                case 'medical': return 'border-red-200 bg-red-50 text-red-700';
-                                case 'tax': return 'border-yellow-200 bg-yellow-50 text-yellow-700';
+                                case 'passport': return 'border-blue-200 bg-blue-50 text-blue-700';
+                                case 'drivers_license': return 'border-green-200 bg-green-50 text-green-700';
+                                case 'state_id': return 'border-purple-200 bg-purple-50 text-purple-700';
+                                case 'birth_certificate': return 'border-orange-200 bg-orange-50 text-orange-700';
+                                case 'parole': return 'border-red-200 bg-red-50 text-red-700';
+                                case 'permanent_residence': return 'border-yellow-200 bg-yellow-50 text-yellow-700';
+                                case 'work_permit': return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+                                case 'i94': return 'border-pink-200 bg-pink-50 text-pink-700';
                                 case 'other': return 'border-gray-200 bg-gray-50 text-gray-700';
-                                case 'general': return 'border-slate-200 bg-slate-50 text-slate-700';
                                 default: return 'border-gray-200 bg-gray-50 text-gray-700';
                               }
                             };
 
                             const getCategoryLabel = (category: string) => {
                               switch (category) {
-                                case 'id': return 'ID';
-                                case 'proof_of_income': return 'Proof of Income';
-                                case 'insurance_card': return 'Insurance Card';
-                                case 'immigration': return 'Immigration';
-                                case 'medical': return 'Medical';
-                                case 'tax': return 'Tax';
+                                case 'passport': return 'Passport';
+                                case 'drivers_license': return "Driver's License";
+                                case 'state_id': return 'State ID';
+                                case 'birth_certificate': return 'Birth Certificate';
+                                case 'parole': return 'Parole';
+                                case 'permanent_residence': return 'Permanent Residence';
+                                case 'work_permit': return 'Work Permit';
+                                case 'i94': return 'I-94';
                                 case 'other': return 'Other';
-                                case 'general': return 'General';
                                 default: return category;
                               }
                             };
@@ -7149,14 +7152,15 @@ export default function QuotesPage() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="id">ID</SelectItem>
-                        <SelectItem value="proof_of_income">Proof of Income</SelectItem>
-                        <SelectItem value="insurance_card">Insurance Card</SelectItem>
-                        <SelectItem value="immigration">Immigration</SelectItem>
-                        <SelectItem value="medical">Medical</SelectItem>
-                        <SelectItem value="tax">Tax</SelectItem>
+                        <SelectItem value="passport">Passport</SelectItem>
+                        <SelectItem value="drivers_license">Driver's License</SelectItem>
+                        <SelectItem value="state_id">State ID</SelectItem>
+                        <SelectItem value="birth_certificate">Birth Certificate</SelectItem>
+                        <SelectItem value="parole">Parole</SelectItem>
+                        <SelectItem value="permanent_residence">Permanent Residence</SelectItem>
+                        <SelectItem value="work_permit">Work Permit</SelectItem>
+                        <SelectItem value="i94">I-94</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
-                        <SelectItem value="general">General</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

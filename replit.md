@@ -69,7 +69,7 @@ Displays merged family member data from `quote_members` (normalized) and JSONB c
 Features a clean, corporate design with a single-column layout, search toolbar, and categorized notes (General, Important, Follow Up, Decision, Issue). Includes pin, urgent, and resolved statuses, real-time search, CRUD operations, user attribution, and image attachment support (drag-and-drop, paste, validation). Pinned notes are sorted first, then by creation date (newest first).
 
 **Quote Documents System:**
-Provides a wide Sheet layout with a professional table for documents, supporting uploads, previews, downloads, and deletions. Categories include ID, Proof of Income, Insurance Card, Immigration, Medical, Tax, Other, General. Features real-time search, filter by category, and robust security measures.
+Provides a wide Sheet layout with a professional table for documents, supporting uploads, previews, downloads, and deletions. Categories include Passport, Driver's License, State ID, Birth Certificate, Parole, Permanent Residence, Work Permit, I-94, and Other. Features real-time search, filter by category, and robust security measures.
 
 ## External Dependencies
 
