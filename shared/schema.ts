@@ -1251,6 +1251,34 @@ export type QuoteNote = typeof quoteNotes.$inferSelect;
 export type InsertQuoteNote = z.infer<typeof insertQuoteNoteSchema>;
 
 // =====================================================
+// QUOTE DOCUMENTS (Document management for insurance quotes)
+// =====================================================
+
+export const quoteDocuments = pgTable("quote_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }), // The quote this document belongs to
+  fileName: text("file_name").notNull(), // Original file name
+  fileUrl: text("file_url").notNull(), // Path/URL to the uploaded file
+  fileType: text("file_type").notNull(), // MIME type (e.g., application/pdf, image/jpeg)
+  fileSize: integer("file_size").notNull(), // File size in bytes
+  category: text("category").notNull().default("general"), // Document category: id, proof_of_income, insurance_card, immigration, medical, tax, other, general
+  description: text("description"), // Optional description of the document
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }), // Multi-tenant reference
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who uploaded the document
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertQuoteDocumentSchema = createInsertSchema(quoteDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type QuoteDocument = typeof quoteDocuments.$inferSelect;
+export type InsertQuoteDocument = z.infer<typeof insertQuoteDocumentSchema>;
+
+// =====================================================
 // FINANCIAL SUPPORT TICKETS
 // =====================================================
 
