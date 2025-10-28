@@ -78,9 +78,9 @@ Professional internal notes system for tracking client communications and import
   * Drag-and-drop or click to select images
   * Paste images directly from clipboard (Ctrl+V / Cmd+V)
   * Preview thumbnails with remove capability before submission
-  * Click on any image (preview or saved) to open fullscreen viewer modal
-  * Image file validation (JPEG, PNG, GIF, WebP only, max 5MB per image)
+  * Hover over images to reveal eye icon overlay for viewing in fullscreen
   * Professional fullscreen image viewer modal with navigation for multiple images (Dialog with `modal={false}` to work alongside Sheet components)
+  * Image file validation (JPEG, PNG, GIF, WebP only, max 5MB per image)
   * Attached images stored in `uploads/notes_attachments/` directory
   * Static file serving configured with Express middleware (`app.use('/uploads', express.static('uploads'))` in `server/index.ts`)
   * Vite catch-all handler excludes `/uploads/*` routes to allow proper static file serving in development (`server/vite.ts`)

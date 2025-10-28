@@ -16,7 +16,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -6362,19 +6362,27 @@ export default function QuotesPage() {
                                 {note.attachments.map((img: string, idx: number) => (
                                   <div
                                     key={idx}
-                                    className="relative group/img cursor-pointer"
-                                    onClick={() => {
-                                      setViewingImages(note.attachments);
-                                      setCurrentImageIndex(idx);
-                                      setImageViewerOpen(true);
-                                    }}
+                                    className="relative group/img"
                                     data-testid={`image-attachment-${idx}`}
                                   >
                                     <img
                                       src={img}
                                       alt={`Attachment ${idx + 1}`}
-                                      className="h-20 w-20 object-cover rounded border hover:border-primary transition-colors"
+                                      className="h-20 w-20 object-cover rounded border"
                                     />
+                                    {/* Eye button overlay */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setViewingImages(note.attachments);
+                                        setCurrentImageIndex(idx);
+                                        setImageViewerOpen(true);
+                                      }}
+                                      className="absolute inset-0 bg-black/60 rounded flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                      data-testid={`button-view-image-${idx}`}
+                                    >
+                                      <Eye className="h-6 w-6 text-white" />
+                                    </button>
                                   </div>
                                 ))}
                               </div>
@@ -6513,26 +6521,35 @@ export default function QuotesPage() {
                             {noteAttachments.map((img, idx) => (
                               <div
                                 key={idx}
-                                className="relative group/preview cursor-pointer"
+                                className="relative group/preview"
                                 data-testid={`preview-image-${idx}`}
-                                onClick={() => {
-                                  setViewingImages(noteAttachments);
-                                  setCurrentImageIndex(idx);
-                                  setImageViewerOpen(true);
-                                }}
                               >
                                 <img
                                   src={img}
                                   alt={`Preview ${idx + 1}`}
-                                  className="h-16 w-16 object-cover rounded border hover:border-primary transition-colors"
+                                  className="h-16 w-16 object-cover rounded border"
                                 />
+                                {/* Eye button overlay */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setViewingImages(noteAttachments);
+                                    setCurrentImageIndex(idx);
+                                    setImageViewerOpen(true);
+                                  }}
+                                  className="absolute inset-0 bg-black/60 rounded flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity z-10"
+                                  data-testid={`button-view-preview-${idx}`}
+                                >
+                                  <Eye className="h-5 w-5 text-white" />
+                                </button>
+                                {/* Delete button */}
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setNoteAttachments(prev => prev.filter((_, i) => i !== idx));
                                   }}
-                                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity"
+                                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity z-20"
                                   data-testid={`button-remove-image-${idx}`}
                                 >
                                   <X className="h-3 w-3" />
