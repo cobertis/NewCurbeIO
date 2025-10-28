@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -2947,13 +2947,12 @@ export default function QuotesPage() {
   // Notes sheet state
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
-  const [isUrgent, setIsUrgent] = useState(false);
+  const [isImportant, setIsImportant] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [noteCategory, setNoteCategory] = useState("general");
   const [notePinned, setNotePinned] = useState(false);
   const [noteResolved, setNoteResolved] = useState(false);
   const [searchNotes, setSearchNotes] = useState("");
-  const [filterCategory, setFilterCategory] = useState<'all' | 'pinned' | 'urgent' | 'unresolved' | 'resolved'>('all');
+  const [filterCategory, setFilterCategory] = useState<'all' | 'pinned' | 'important' | 'unresolved' | 'resolved'>('all');
   const noteEditorRef = useRef<HTMLDivElement>(null);
   
   // Delete note dialog state
@@ -3051,8 +3050,7 @@ export default function QuotesPage() {
       if (!newNoteText.trim()) throw new Error("Note content is required");
       return apiRequest('POST', `/api/quotes/${viewingQuote.id}/notes`, {
         note: newNoteText.trim(),
-        isUrgent: isUrgent,
-        category: noteCategory,
+        isImportant: isImportant,
         isPinned: notePinned,
         isResolved: noteResolved,
         attachments: noteAttachments.length > 0 ? noteAttachments : null,
@@ -3063,8 +3061,7 @@ export default function QuotesPage() {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'notes'] });
       }
       setNewNoteText("");
-      setIsUrgent(false);
-      setNoteCategory("general");
+      setIsImportant(false);
       setNotePinned(false);
       setNoteResolved(false);
       setNoteAttachments([]);
@@ -3090,8 +3087,7 @@ export default function QuotesPage() {
       if (!newNoteText.trim()) throw new Error("Note content is required");
       return apiRequest('PATCH', `/api/quotes/${viewingQuote.id}/notes/${editingNoteId}`, {
         note: newNoteText.trim(),
-        isUrgent: isUrgent,
-        category: noteCategory,
+        isImportant: isImportant,
         isPinned: notePinned,
         isResolved: noteResolved,
         attachments: noteAttachments,
@@ -3103,8 +3099,7 @@ export default function QuotesPage() {
       }
       setEditingNoteId(null);
       setNewNoteText("");
-      setIsUrgent(false);
-      setNoteCategory("general");
+      setIsImportant(false);
       setNotePinned(false);
       setNoteResolved(false);
       setNoteAttachments([]);
@@ -3155,8 +3150,8 @@ export default function QuotesPage() {
     // Apply filters
     if (filterCategory === 'pinned') {
       filtered = filtered.filter(note => note.isPinned);
-    } else if (filterCategory === 'urgent') {
-      filtered = filtered.filter(note => note.isUrgent);
+    } else if (filterCategory === 'important') {
+      filtered = filtered.filter(note => note.isImportant);
     } else if (filterCategory === 'resolved') {
       filtered = filtered.filter(note => note.isResolved);
     } else if (filterCategory === 'unresolved') {
@@ -6216,7 +6211,7 @@ export default function QuotesPage() {
                           <div
                             key={note.id}
                             className={`group relative border rounded-lg p-4 bg-card hover:border-muted-foreground/20 transition-colors ${
-                              note.isUrgent ? 'border-l-4 border-l-red-600' : ''
+                              note.isImportant ? 'border-l-4 border-l-red-600' : ''
                             }`}
                             data-testid={`note-${note.id}`}
                           >
@@ -6251,10 +6246,10 @@ export default function QuotesPage() {
                                       Pinned
                                     </span>
                                   )}
-                                  {note.isUrgent && (
+                                  {note.isImportant && (
                                     <span className="inline-flex items-center gap-1 border border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400 rounded px-1.5 py-0.5">
                                       <AlertCircle className="h-3 w-3" />
-                                      Urgent
+                                      Important
                                     </span>
                                   )}
                                   {note.isResolved && (
@@ -6280,8 +6275,7 @@ export default function QuotesPage() {
                                     onClick={() => {
                                       setEditingNoteId(note.id);
                                       setNewNoteText(note.note);
-                                      setIsUrgent(note.isUrgent);
-                                      setNoteCategory(note.category || 'general');
+                                      setIsImportant(note.isImportant);
                                       setNotePinned(note.isPinned);
                                       setNoteResolved(note.isResolved);
                                       setNoteAttachments(note.attachments || []);
@@ -6574,23 +6568,39 @@ export default function QuotesPage() {
                           data-testid="input-file"
                         />
                         
-                        {/* Attachment Button */}
-                        <div className="flex items-center gap-2 mt-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploadingImages}
-                            className="h-8"
-                            data-testid="button-attach-image"
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            {uploadingImages ? 'Uploading...' : 'Attach Image'}
-                          </Button>
-                          <span className="text-xs text-muted-foreground">
-                            or paste/drag images directly (max 5MB each)
-                          </span>
+                        {/* Attachment Button and Important Checkbox */}
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={uploadingImages}
+                              className="h-8"
+                              data-testid="button-attach-image"
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              {uploadingImages ? 'Uploading...' : 'Attach Image'}
+                            </Button>
+                            <span className="text-xs text-muted-foreground">
+                              or paste/drag images directly (max 5MB each)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="important-note"
+                              checked={isImportant}
+                              onCheckedChange={(checked) => setIsImportant(!!checked)}
+                              data-testid="checkbox-important"
+                            />
+                            <label
+                              htmlFor="important-note"
+                              className="text-xs font-medium cursor-pointer select-none"
+                            >
+                              Mark as Important
+                            </label>
+                          </div>
                         </div>
                       </div>
 
@@ -6613,8 +6623,7 @@ export default function QuotesPage() {
                               onClick={() => {
                                 setEditingNoteId(null);
                                 setNewNoteText("");
-                                setIsUrgent(false);
-                                setNoteCategory("general");
+                                setIsImportant(false);
                                 setNotePinned(false);
                                 setNoteResolved(false);
                                 setNoteAttachments([]);
@@ -6644,10 +6653,12 @@ export default function QuotesPage() {
 
             {/* Image Viewer Dialog - Fullscreen */}
             <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen} modal={false}>
-              <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none z-[100] [&>button]:hidden">
+              <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none z-[100] [&>button[type='button']:first-of-type]:hidden">
+                <DialogTitle className="sr-only">Image Viewer</DialogTitle>
+                <DialogDescription className="sr-only">Viewing attached image in fullscreen</DialogDescription>
                 <button
                   onClick={() => setImageViewerOpen(false)}
-                  className="absolute top-4 right-4 z-50 rounded-full bg-white/10 hover:bg-white/20 p-2 transition-colors"
+                  className="absolute top-4 right-4 z-[60] rounded-full bg-white/10 hover:bg-white/20 p-2 transition-colors"
                   data-testid="button-close-viewer"
                 >
                   <X className="h-6 w-6 text-white" />
@@ -8453,15 +8464,15 @@ export default function QuotesPage() {
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="urgent-note"
-                  checked={isUrgent}
-                  onCheckedChange={(checked) => setIsUrgent(!!checked)}
+                  checked={isImportant}
+                  onCheckedChange={(checked) => setIsImportant(!!checked)}
                   data-testid="checkbox-urgent"
                 />
                 <label
                   htmlFor="urgent-note"
                   className="text-sm font-medium leading-none cursor-pointer"
                 >
-                  Mark as urgent
+                  Mark as Important
                 </label>
               </div>
             </div>
@@ -8490,19 +8501,19 @@ export default function QuotesPage() {
                     <div
                       key={note.id}
                       className={`group relative border rounded-lg p-4 hover-elevate transition-all ${
-                        note.isUrgent ? "border-destructive/50 bg-destructive/5" : "bg-card"
+                        note.isImportant ? "border-destructive/50 bg-destructive/5" : "bg-card"
                       }`}
                       data-testid={`note-${note.id}`}
                     >
-                      {note.isUrgent && (
+                      {note.isImportant && (
                         <div className="absolute top-0 left-0 w-1 h-full bg-destructive rounded-l-lg" />
                       )}
                       <div className="flex items-start gap-3">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
-                            {note.isUrgent && (
+                            {note.isImportant && (
                               <Badge variant="destructive" className="text-xs px-2 py-0.5">
-                                Urgent
+                                Important
                               </Badge>
                             )}
                             <span className="text-xs text-muted-foreground">
