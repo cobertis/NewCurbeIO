@@ -2954,6 +2954,7 @@ export default function QuotesPage() {
   const [searchNotes, setSearchNotes] = useState("");
   const [filterCategory, setFilterCategory] = useState<'all' | 'pinned' | 'important' | 'unresolved' | 'resolved'>('all');
   const noteEditorRef = useRef<HTMLDivElement>(null);
+  const notesListRef = useRef<HTMLDivElement>(null);
   
   // Delete note dialog state
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
@@ -3069,6 +3070,12 @@ export default function QuotesPage() {
         title: "Note created",
         description: "Your note has been saved successfully.",
       });
+      // Auto-scroll to bottom after note is created
+      setTimeout(() => {
+        if (notesListRef.current) {
+          notesListRef.current.scrollTop = notesListRef.current.scrollHeight;
+        }
+      }, 100);
     },
     onError: (error: any) => {
       toast({
@@ -3174,11 +3181,11 @@ export default function QuotesPage() {
       );
     }
 
-    // Sort: pinned first, then by creation date (newest first)
+    // Sort: pinned first, then by creation date (oldest first, newest last)
     filtered.sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 
     return filtered;
@@ -6197,7 +6204,7 @@ export default function QuotesPage() {
                   </div>
 
                   {/* Notes List - Scrollable */}
-                  <div className="flex-1 overflow-y-auto px-6 py-4">
+                  <div ref={notesListRef} className="flex-1 overflow-y-auto px-6 py-4">
                     {isLoadingNotes ? (
                       <div className="flex items-center justify-center py-20">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
