@@ -72,7 +72,7 @@ Professional internal notes system for tracking client communications and import
 - **Advanced Features:** Pin notes to top, mark as urgent (with visual orange left border indicator), mark as resolved with professional visual indicators
 - **Search & Filtering:** Real-time search and filter buttons (All, Pinned, Urgent, Unresolved, Resolved) with secondary/ghost variants
 - **Note Management:** Create, edit, delete notes with professional button styling and smooth transitions. Delete confirmation uses professional AlertDialog component (Shadcn) instead of native browser confirm() for better UX in Replit iframe environment
-- **User Attribution:** Each note displays creator's avatar (with initials fallback) alongside full name and exact timestamp (MMM dd, yyyy • h:mm a format) for clear accountability
+- **User Attribution:** Each note displays creator's avatar (profile photo if available, otherwise initials fallback) alongside full name and exact timestamp (MMM dd, yyyy • h:mm a format) for clear accountability
 - **Permission-Based Access:** Edit and delete buttons only visible to note creator (or superadmins), ensuring data integrity
 - **Image Attachments:** Full support for attaching images to notes via file upload or paste functionality:
   * Drag-and-drop or click to select images

@@ -6266,6 +6266,9 @@ export default function QuotesPage() {
                             <div className="flex items-start justify-between gap-3 mb-2.5">
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-7 w-7">
+                                  {note.creatorAvatar && (
+                                    <AvatarImage src={note.creatorAvatar} alt={note.creatorName || 'User'} />
+                                  )}
                                   <AvatarFallback className="text-xs bg-primary/10 text-primary">
                                     {(note.creatorName || 'Unknown User')
                                       .split(' ')

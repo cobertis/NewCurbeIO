@@ -2211,7 +2211,7 @@ export class DbStorage implements IStorage {
     return result[0];
   }
   
-  async getQuoteNotes(quoteId: string, companyId: string): Promise<(QuoteNote & { creatorName: string })[]> {
+  async getQuoteNotes(quoteId: string, companyId: string): Promise<(QuoteNote & { creatorName: string; creatorAvatar: string | null })[]> {
     const results = await db
       .select({
         id: quoteNotes.id,
@@ -2228,6 +2228,7 @@ export class DbStorage implements IStorage {
         updatedAt: quoteNotes.updatedAt,
         creatorFirstName: users.firstName,
         creatorLastName: users.lastName,
+        creatorAvatar: users.avatar,
       })
       .from(quoteNotes)
       .innerJoin(users, eq(quoteNotes.createdBy, users.id))
@@ -2251,6 +2252,7 @@ export class DbStorage implements IStorage {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       creatorName: `${row.creatorFirstName || ''} ${row.creatorLastName || ''}`.trim() || 'Unknown User',
+      creatorAvatar: row.creatorAvatar,
     }));
   }
   
