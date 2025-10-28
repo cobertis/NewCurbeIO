@@ -7059,7 +7059,7 @@ export default function QuotesPage() {
                                     </div>
                                   </div>
                                 </TooltipTrigger>
-                                <TooltipContent side="right" sideOffset={5} align="center" className="p-3">
+                                <TooltipContent side="top" sideOffset={8} align="start" className="p-3">
                                   <div>
                                     <div className="font-semibold text-sm mb-2 text-center">Client information</div>
                                     <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
