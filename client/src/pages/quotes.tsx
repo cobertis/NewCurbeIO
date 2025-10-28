@@ -3120,10 +3120,16 @@ export default function QuotesPage() {
   // Delete note mutation
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
+      console.log('[DELETE MUTATION] Starting with noteId:', noteId, 'quoteId:', viewingQuote?.id);
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/notes/${noteId}`);
+      const url = `/api/quotes/${viewingQuote.id}/notes/${noteId}`;
+      console.log('[DELETE MUTATION] Calling DELETE to:', url);
+      const result = await apiRequest('DELETE', url);
+      console.log('[DELETE MUTATION] Success:', result);
+      return result;
     },
     onSuccess: () => {
+      console.log('[DELETE MUTATION] onSuccess triggered');
       if (params?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'notes'] });
       }
@@ -3135,6 +3141,7 @@ export default function QuotesPage() {
       });
     },
     onError: (error: any) => {
+      console.error('[DELETE MUTATION] onError:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete note",
@@ -6289,8 +6296,10 @@ export default function QuotesPage() {
                                     size="sm"
                                     className="h-7 w-7 p-0"
                                     onClick={() => {
+                                      console.log('[DELETE BUTTON] Clicked, noteId:', note.id);
                                       setNoteToDelete(note.id);
                                       setShowDeleteDialog(true);
+                                      console.log('[DELETE BUTTON] State updated');
                                     }}
                                     disabled={deleteNoteMutation.isPending}
                                     data-testid={`button-delete-note-${note.id}`}
@@ -8597,8 +8606,12 @@ export default function QuotesPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
+                console.log('[CONFIRM DELETE] Clicked, noteToDelete:', noteToDelete);
                 if (noteToDelete) {
+                  console.log('[CONFIRM DELETE] Calling mutation with:', noteToDelete);
                   deleteNoteMutation.mutate(noteToDelete);
+                } else {
+                  console.error('[CONFIRM DELETE] noteToDelete is null/undefined!');
                 }
               }}
               disabled={deleteNoteMutation.isPending}
