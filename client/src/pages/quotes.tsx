@@ -6271,6 +6271,37 @@ export default function QuotesPage() {
                                 </div>
                                 </div>
                               </div>
+
+                              {/* Delete Button - Only show if current user is the creator or superadmin */}
+                              {userData?.user && (note.createdBy === userData.user.id || userData.user.role === 'superadmin') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={async () => {
+                                    if (confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
+                                      if (!viewingQuote?.id) return;
+                                      try {
+                                        await apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/notes/${note.id}`);
+                                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'notes'] });
+                                        toast({
+                                          title: "Note deleted",
+                                          description: "The note has been removed successfully.",
+                                        });
+                                      } catch (error: any) {
+                                        toast({
+                                          title: "Error",
+                                          description: error.message || "Failed to delete note",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }
+                                  }}
+                                  data-testid={`button-delete-note-${note.id}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                             </div>
 
                             {/* Note Content */}
