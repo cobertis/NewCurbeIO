@@ -3191,6 +3191,17 @@ export default function QuotesPage() {
     return filtered;
   }, [quoteNotes, filterCategory, searchNotes]);
 
+  // Auto-scroll to bottom when notes sheet opens or notes change
+  useEffect(() => {
+    if (notesSheetOpen && notesListRef.current && filteredNotes.length > 0) {
+      setTimeout(() => {
+        if (notesListRef.current) {
+          notesListRef.current.scrollTop = notesListRef.current.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [notesSheetOpen, filteredNotes.length]);
+
   // Delete payment method mutation
   const deletePaymentMethodMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
