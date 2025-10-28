@@ -6594,48 +6594,6 @@ export default function QuotesPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Category</label>
-                          <Select value={noteCategory} onValueChange={setNoteCategory}>
-                            <SelectTrigger className="h-9" data-testid="select-category">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="general">General</SelectItem>
-                              <SelectItem value="important">Important</SelectItem>
-                              <SelectItem value="follow_up">Follow Up</SelectItem>
-                              <SelectItem value="decision">Decision</SelectItem>
-                              <SelectItem value="issue">Issue</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex flex-col justify-end gap-1.5">
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id="urgent-note-new"
-                              checked={isUrgent}
-                              onCheckedChange={(checked) => setIsUrgent(!!checked)}
-                              data-testid="checkbox-urgent"
-                            />
-                            <label htmlFor="urgent-note-new" className="text-xs cursor-pointer">
-                              Urgent
-                            </label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id="pinned-note"
-                              checked={notePinned}
-                              onCheckedChange={(checked) => setNotePinned(!!checked)}
-                              data-testid="checkbox-pinned"
-                            />
-                            <label htmlFor="pinned-note" className="text-xs cursor-pointer">
-                              Pin
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-
                       {/* Action Buttons */}
                       <div className="flex gap-2">
                         {editingNoteId ? (
@@ -6683,6 +6641,54 @@ export default function QuotesPage() {
                 </div>
               </SheetContent>
             </Sheet>
+
+            {/* Image Viewer Dialog - Fullscreen */}
+            <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen} modal={false}>
+              <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none">
+                <button
+                  onClick={() => setImageViewerOpen(false)}
+                  className="absolute top-4 right-4 z-50 rounded-full bg-white/10 hover:bg-white/20 p-2 transition-colors"
+                  data-testid="button-close-viewer"
+                >
+                  <X className="h-6 w-6 text-white" />
+                </button>
+                
+                {viewingImages.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-center h-full p-8">
+                      <img
+                        src={viewingImages[currentImageIndex]}
+                        alt={`Image ${currentImageIndex + 1}`}
+                        className="max-w-full max-h-full object-contain"
+                        data-testid="image-fullscreen"
+                      />
+                    </div>
+                    
+                    {viewingImages.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentImageIndex(prev => (prev - 1 + viewingImages.length) % viewingImages.length)}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 p-3 transition-colors"
+                          data-testid="button-prev-image"
+                        >
+                          <ChevronLeftIcon className="h-8 w-8 text-white" />
+                        </button>
+                        <button
+                          onClick={() => setCurrentImageIndex(prev => (prev + 1) % viewingImages.length)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 p-3 transition-colors"
+                          data-testid="button-next-image"
+                        >
+                          <ChevronRightIcon className="h-8 w-8 text-white" />
+                        </button>
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/10 rounded-full px-4 py-2 text-white text-sm">
+                          {currentImageIndex + 1} / {viewingImages.length}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </DialogContent>
+            </Dialog>
       </div>
     );
   }
