@@ -84,6 +84,8 @@ import {
   type UpdateQuoteMemberImmigration,
   type QuoteMemberDocument,
   type InsertQuoteMemberDocument,
+  type QuoteDocument,
+  type InsertQuoteDocument,
   type QuotePaymentMethod,
   type InsertPaymentMethod,
   type UpdatePaymentMethod
@@ -131,6 +133,7 @@ import {
   quoteMemberIncome,
   quoteMemberImmigration,
   quoteMemberDocuments,
+  quoteDocuments,
   quotePaymentMethods
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -476,6 +479,12 @@ export interface IStorage {
   updateQuotePaymentMethod(paymentMethodId: string, data: UpdatePaymentMethod, companyId: string): Promise<QuotePaymentMethod | null>;
   deleteQuotePaymentMethod(paymentMethodId: string, companyId: string): Promise<boolean>;
   setDefaultPaymentMethod(paymentMethodId: string, quoteId: string, companyId: string): Promise<void>;
+  
+  // Quote Documents
+  listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<QuoteDocument & { uploaderName: string }>>;
+  createQuoteDocument(document: InsertQuoteDocument): Promise<QuoteDocument>;
+  getQuoteDocument(id: string, companyId: string): Promise<QuoteDocument | null>;
+  deleteQuoteDocument(id: string, companyId: string): Promise<boolean>;
   
   // Unified Quote Detail - Gets all related data in one call
   getQuoteDetail(quoteId: string, companyId: string): Promise<{
@@ -3083,6 +3092,91 @@ export class DbStorage implements IStorage {
           eq(quotePaymentMethods.companyId, companyId)
         )
       );
+  }
+  
+  // ==================== QUOTE DOCUMENTS ====================
+  
+  async listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<QuoteDocument & { uploaderName: string }>> {
+    let query = db
+      .select({
+        document: quoteDocuments,
+        uploaderFirstName: users.firstName,
+        uploaderLastName: users.lastName,
+      })
+      .from(quoteDocuments)
+      .leftJoin(users, eq(quoteDocuments.uploadedBy, users.id))
+      .where(
+        and(
+          eq(quoteDocuments.quoteId, quoteId),
+          eq(quoteDocuments.companyId, companyId)
+        )
+      )
+      .$dynamic();
+
+    // Apply category filter if provided
+    if (filters?.category) {
+      query = query.where(
+        and(
+          eq(quoteDocuments.quoteId, quoteId),
+          eq(quoteDocuments.companyId, companyId),
+          eq(quoteDocuments.category, filters.category)
+        )
+      );
+    }
+
+    // Apply search filter if provided (case-insensitive search on fileName)
+    if (filters?.search) {
+      query = query.where(
+        and(
+          eq(quoteDocuments.quoteId, quoteId),
+          eq(quoteDocuments.companyId, companyId),
+          sql`${quoteDocuments.fileName} ILIKE ${`%${filters.search}%`}`
+        )
+      );
+    }
+
+    const results = await query.orderBy(desc(quoteDocuments.createdAt));
+
+    return results.map(r => ({
+      ...r.document,
+      uploaderName: r.uploaderFirstName && r.uploaderLastName 
+        ? `${r.uploaderFirstName} ${r.uploaderLastName}` 
+        : r.uploaderFirstName || r.uploaderLastName || 'Unknown'
+    }));
+  }
+
+  async createQuoteDocument(document: InsertQuoteDocument): Promise<QuoteDocument> {
+    const [created] = await db
+      .insert(quoteDocuments)
+      .values(document)
+      .returning();
+    return created;
+  }
+
+  async getQuoteDocument(id: string, companyId: string): Promise<QuoteDocument | null> {
+    const [document] = await db
+      .select()
+      .from(quoteDocuments)
+      .where(
+        and(
+          eq(quoteDocuments.id, id),
+          eq(quoteDocuments.companyId, companyId)
+        )
+      );
+    return document || null;
+  }
+
+  async deleteQuoteDocument(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(quoteDocuments)
+      .where(
+        and(
+          eq(quoteDocuments.id, id),
+          eq(quoteDocuments.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
   }
   
   // ==================== UNIFIED QUOTE DETAIL ====================

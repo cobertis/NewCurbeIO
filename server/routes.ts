@@ -34,6 +34,7 @@ import {
   insertQuoteMemberImmigrationSchema,
   updateQuoteMemberImmigrationSchema,
   insertQuoteMemberDocumentSchema,
+  insertQuoteDocumentSchema,
   insertPaymentMethodSchema,
   updatePaymentMethodSchema,
   quoteNotes
@@ -9998,6 +9999,297 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error uploading note attachment:", error);
       res.status(500).json({ message: error.message || "Failed to upload attachment" });
+    }
+  });
+
+  // ==================== QUOTE DOCUMENTS ENDPOINTS ====================
+  
+  // Multer configuration for quote documents
+  const documentStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const quoteId = req.params.quoteId;
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(7);
+      const ext = path.extname(file.originalname);
+      cb(null, `${quoteId}_${timestamp}_${randomString}${ext}`);
+    }
+  });
+
+  const documentUpload = multer({
+    storage: documentStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      ];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Allowed types: PDF, images (JPEG, PNG, GIF, WebP), and Office documents (DOCX, XLSX, PPTX).'));
+      }
+    }
+  });
+
+  // GET /api/quotes/:quoteId/documents - List all documents for a quote
+  app.get("/api/quotes/:quoteId/documents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    const { category, q } = req.query;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // List documents with optional filters
+      const documents = await storage.listQuoteDocuments(quoteId, quote.companyId, {
+        category: category as string | undefined,
+        search: q as string | undefined
+      });
+
+      res.json({ documents });
+    } catch (error: any) {
+      console.error("Error listing quote documents:", error);
+      res.status(500).json({ message: "Failed to list documents" });
+    }
+  });
+
+  // POST /api/quotes/:quoteId/documents/upload - Upload a new document
+  app.post("/api/quotes/:quoteId/documents/upload", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Handle upload with promisified multer
+      await new Promise<void>((resolve, reject) => {
+        documentUpload.single('file')(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 10MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Get category and description from body
+      const { category, description } = req.body;
+
+      // Validate category if provided
+      const validCategories = ['id', 'proof_of_income', 'insurance_card', 'immigration', 'medical', 'tax', 'other', 'general'];
+      const documentCategory = category && validCategories.includes(category) ? category : 'general';
+
+      // Create database record
+      const document = await storage.createQuoteDocument({
+        quoteId,
+        fileName: req.file.originalname,
+        fileUrl: `/uploads/documents/${req.file.filename}`,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        category: documentCategory,
+        description: description || null,
+        companyId: quote.companyId,
+        uploadedBy: currentUser.id
+      });
+
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_document",
+        entityId: document.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          category: documentCategory,
+          uploadedBy: currentUser.email,
+        },
+      });
+
+      res.status(201).json({ document });
+    } catch (error: any) {
+      console.error("Error uploading document:", error);
+      res.status(500).json({ message: error.message || "Failed to upload document" });
+    }
+  });
+
+  // GET /api/quotes/:quoteId/documents/:documentId/download - Download a document
+  app.get("/api/quotes/:quoteId/documents/:documentId/download", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, documentId } = req.params;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Get document
+      const document = await storage.getQuoteDocument(documentId, quote.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Verify document belongs to quote
+      if (document.quoteId !== quoteId) {
+        return res.status(403).json({ message: "Document does not belong to this quote" });
+      }
+
+      // Extract filename from fileUrl
+      const filename = path.basename(document.fileUrl);
+      const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
+
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`File not found at path: ${filePath}`);
+        return res.status(404).json({ message: "File not found on server" });
+      }
+
+      // Prevent path traversal attacks
+      const realPath = fs.realpathSync(filePath);
+      const uploadsDir = fs.realpathSync(path.join(process.cwd(), 'uploads', 'documents'));
+      if (!realPath.startsWith(uploadsDir)) {
+        console.error(`Path traversal attempt detected: ${realPath}`);
+        return res.status(403).json({ message: "Invalid file path" });
+      }
+
+      // Set proper headers and stream file
+      res.setHeader('Content-Type', document.fileType);
+      res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+      res.download(filePath, document.fileName);
+
+      await logger.logCrud({
+        req,
+        operation: "read",
+        entity: "quote_document",
+        entityId: documentId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          fileName: document.fileName,
+          downloadedBy: currentUser.email,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
+  // DELETE /api/quotes/:quoteId/documents/:documentId - Delete a document
+  app.delete("/api/quotes/:quoteId/documents/:documentId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, documentId } = req.params;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Get document
+      const document = await storage.getQuoteDocument(documentId, quote.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Verify document belongs to quote
+      if (document.quoteId !== quoteId) {
+        return res.status(403).json({ message: "Document does not belong to this quote" });
+      }
+
+      // Delete from database first
+      const deleted = await storage.deleteQuoteDocument(documentId, quote.companyId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete document from database" });
+      }
+
+      // Extract filename from fileUrl and delete physical file
+      const filename = path.basename(document.fileUrl);
+      const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
+
+      // Prevent path traversal attacks
+      const realPath = fs.existsSync(filePath) ? fs.realpathSync(filePath) : null;
+      const uploadsDir = fs.realpathSync(path.join(process.cwd(), 'uploads', 'documents'));
+
+      if (realPath && realPath.startsWith(uploadsDir)) {
+        // Delete physical file
+        try {
+          fs.unlinkSync(filePath);
+        } catch (fileError) {
+          console.error(`Error deleting file ${filePath}:`, fileError);
+          // Don't fail the request if file deletion fails - db record is already gone
+        }
+      }
+
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_document",
+        entityId: documentId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          fileName: document.fileName,
+          deletedBy: currentUser.email,
+        },
+      });
+
+      res.json({ message: "Document deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
     }
   });
 

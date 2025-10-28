@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -194,6 +194,15 @@ const formatPhoneNumber = (value: string) => {
   } else {
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
   }
+};
+
+// Format file size from bytes to human-readable format
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 };
 
 // US States for dropdown
@@ -2968,6 +2977,16 @@ export default function QuotesPage() {
   const [viewingImages, setViewingImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Documents sheet state
+  const [documentsSheetOpen, setDocumentsSheetOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchDocuments, setSearchDocuments] = useState("");
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<any | null>(null);
+  const documentFileInputRef = useRef<HTMLInputElement>(null);
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -3157,6 +3176,74 @@ export default function QuotesPage() {
     },
   });
 
+  // Fetch quote documents
+  const { data: quoteDocumentsData, isLoading: isLoadingDocuments } = useQuery<{ documents: any[] }>({
+    queryKey: ['/api/quotes', params?.id, 'documents', selectedCategory, searchDocuments],
+    enabled: !!params?.id && params?.id !== 'new',
+  });
+
+  const quoteDocuments = quoteDocumentsData?.documents || [];
+  const quoteDocumentsCount = quoteDocuments.length || 0;
+
+  // Upload document mutation
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      const response = await fetch(`/api/quotes/${viewingQuote.id}/documents`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to upload document');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'documents'] });
+      }
+      setUploadDialogOpen(false);
+      toast({
+        title: "Document uploaded",
+        description: "Your document has been uploaded successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload document",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete document mutation
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/documents/${documentId}`);
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'documents'] });
+      }
+      setDocumentToDelete(null);
+      toast({
+        title: "Document deleted",
+        description: "The document has been removed successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete document",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Filter and sort notes
   const filteredNotes = useMemo(() => {
     let filtered = [...quoteNotes];
@@ -3190,6 +3277,32 @@ export default function QuotesPage() {
 
     return filtered;
   }, [quoteNotes, filterCategory, searchNotes]);
+
+  // Filter documents based on category and search
+  const filteredDocuments = useMemo(() => {
+    let filtered = [...quoteDocuments];
+
+    // Apply category filter
+    if (selectedCategory && selectedCategory !== 'all') {
+      filtered = filtered.filter(doc => doc.category === selectedCategory);
+    }
+
+    // Apply search
+    if (searchDocuments.trim()) {
+      const search = searchDocuments.toLowerCase();
+      filtered = filtered.filter(doc => 
+        doc.fileName?.toLowerCase().includes(search) ||
+        doc.description?.toLowerCase().includes(search)
+      );
+    }
+
+    // Sort by upload date (newest first)
+    filtered.sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return filtered;
+  }, [quoteDocuments, selectedCategory, searchDocuments]);
 
   // Auto-scroll to bottom when notes sheet opens or notes change
   useEffect(() => {
@@ -5148,7 +5261,7 @@ export default function QuotesPage() {
             {/* Policy Actions */}
             <div className="space-y-2 pt-4 border-t">
               <button
-                onClick={() => {}}
+                onClick={() => setDocumentsSheetOpen(true)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
                 data-testid="button-documents"
               >
@@ -5156,7 +5269,12 @@ export default function QuotesPage() {
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Documents</span>
                 </div>
-                <Badge variant="secondary" className="text-xs h-5 px-1.5">12</Badge>
+                <Badge 
+                  variant="secondary" 
+                  className="text-xs h-5 px-1.5 border border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400"
+                >
+                  {quoteDocumentsCount}
+                </Badge>
               </button>
 
               <button
@@ -5171,7 +5289,12 @@ export default function QuotesPage() {
                   <StickyNote className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Notes</span>
                 </div>
-                <Badge variant="secondary" className="text-xs h-5 px-1.5">{quoteNotesCount}</Badge>
+                <Badge 
+                  variant="secondary" 
+                  className="text-xs h-5 px-1.5 border border-slate-500/50 bg-slate-500/10 text-slate-700 dark:text-slate-400"
+                >
+                  {quoteNotesCount}
+                </Badge>
               </button>
 
               <button
@@ -5183,7 +5306,12 @@ export default function QuotesPage() {
                   <Bell className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Reminders</span>
                 </div>
-                <Badge variant="secondary" className="text-xs h-5 px-1.5">1</Badge>
+                <Badge 
+                  variant="secondary" 
+                  className="text-xs h-5 px-1.5 border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                >
+                  1
+                </Badge>
               </button>
 
               <button
@@ -5195,7 +5323,12 @@ export default function QuotesPage() {
                   <FileSignature className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Signature Forms</span>
                 </div>
-                <Badge variant="secondary" className="text-xs h-5 px-1.5">1</Badge>
+                <Badge 
+                  variant="secondary" 
+                  className="text-xs h-5 px-1.5 border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
+                >
+                  1
+                </Badge>
               </button>
 
               <button
@@ -6727,6 +6860,421 @@ export default function QuotesPage() {
                     )}
                   </>
                 )}
+              </DialogContent>
+            </Dialog>
+
+            {/* Documents Sheet */}
+            <Sheet open={documentsSheetOpen} onOpenChange={setDocumentsSheetOpen}>
+              <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right">
+                <SheetHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <SheetTitle>Documents</SheetTitle>
+                      <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-documents-count">
+                        {quoteDocumentsCount}
+                      </Badge>
+                    </div>
+                  </div>
+                  <SheetDescription>
+                    Manage documents for this quote
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="space-y-4 py-6">
+                  {/* Upload Section */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => setUploadDialogOpen(true)}
+                      className="flex-shrink-0"
+                      data-testid="button-upload-document"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Document
+                    </Button>
+                  </div>
+
+                  {/* Search and Category Filter */}
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Search documents..."
+                        value={searchDocuments}
+                        onChange={(e) => setSearchDocuments(e.target.value)}
+                        data-testid="input-search-documents"
+                      />
+                    </div>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-[180px]" data-testid="select-category">
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        <SelectItem value="id">ID</SelectItem>
+                        <SelectItem value="proof_of_income">Proof of Income</SelectItem>
+                        <SelectItem value="insurance_card">Insurance Card</SelectItem>
+                        <SelectItem value="immigration">Immigration</SelectItem>
+                        <SelectItem value="medical">Medical</SelectItem>
+                        <SelectItem value="tax">Tax</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="general">General</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Documents Table */}
+                  {isLoadingDocuments ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : filteredDocuments.length === 0 ? (
+                    <div className="text-center py-12 border rounded-lg">
+                      <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No documents found</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {searchDocuments || selectedCategory !== 'all' 
+                          ? 'Try adjusting your search or filters' 
+                          : 'Upload your first document to get started'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead>File Name</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Uploaded By</TableHead>
+                            <TableHead>Upload Date</TableHead>
+                            <TableHead className="w-[100px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredDocuments.map((doc: any) => {
+                            const fileExt = doc.fileName?.split('.').pop()?.toLowerCase();
+                            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt || '');
+                            const isPdf = fileExt === 'pdf';
+                            
+                            // Category badge colors
+                            const getCategoryColor = (category: string) => {
+                              switch (category) {
+                                case 'id': return 'border-blue-200 bg-blue-50 text-blue-700';
+                                case 'proof_of_income': return 'border-green-200 bg-green-50 text-green-700';
+                                case 'insurance_card': return 'border-purple-200 bg-purple-50 text-purple-700';
+                                case 'immigration': return 'border-orange-200 bg-orange-50 text-orange-700';
+                                case 'medical': return 'border-red-200 bg-red-50 text-red-700';
+                                case 'tax': return 'border-yellow-200 bg-yellow-50 text-yellow-700';
+                                case 'other': return 'border-gray-200 bg-gray-50 text-gray-700';
+                                case 'general': return 'border-slate-200 bg-slate-50 text-slate-700';
+                                default: return 'border-gray-200 bg-gray-50 text-gray-700';
+                              }
+                            };
+
+                            const getCategoryLabel = (category: string) => {
+                              switch (category) {
+                                case 'id': return 'ID';
+                                case 'proof_of_income': return 'Proof of Income';
+                                case 'insurance_card': return 'Insurance Card';
+                                case 'immigration': return 'Immigration';
+                                case 'medical': return 'Medical';
+                                case 'tax': return 'Tax';
+                                case 'other': return 'Other';
+                                case 'general': return 'General';
+                                default: return category;
+                              }
+                            };
+
+                            return (
+                              <TableRow key={doc.id} className="hover:bg-muted/30">
+                                <TableCell>
+                                  {isImage ? (
+                                    <Image className="h-5 w-5 text-muted-foreground" />
+                                  ) : isPdf ? (
+                                    <FileText className="h-5 w-5 text-muted-foreground" />
+                                  ) : (
+                                    <File className="h-5 w-5 text-muted-foreground" />
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <button
+                                    onClick={() => setPreviewDocument(doc)}
+                                    className="text-sm font-medium hover:underline text-left"
+                                    data-testid={`button-preview-${doc.id}`}
+                                  >
+                                    {doc.fileName}
+                                  </button>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs border ${getCategoryColor(doc.category)}`}
+                                    data-testid={`badge-category-${doc.id}`}
+                                  >
+                                    {getCategoryLabel(doc.category)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {formatFileSize(doc.fileSize || 0)}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                        {doc.uploadedBy?.firstName?.[0] || 'U'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm">
+                                      {doc.uploadedBy?.firstName || 'Unknown'} {doc.uploadedBy?.lastName || ''}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {format(new Date(doc.createdAt), "MMM dd, yyyy • h:mm a")}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => window.open(`/api/quotes/${viewingQuote.id}/documents/${doc.id}/download`, '_blank')}
+                                      data-testid={`button-download-${doc.id}`}
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setDocumentToDelete(doc.id)}
+                                      data-testid={`button-delete-${doc.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Upload Document Dialog */}
+            <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+              <DialogContent className="sm:max-w-[500px]" data-testid="dialog-upload-document">
+                <DialogTitle>Upload Document</DialogTitle>
+                <DialogDescription>
+                  Upload a document for this quote. Accepted formats: PDF, Images, Word, Excel, PowerPoint (max 10MB)
+                </DialogDescription>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const file = formData.get('file') as File;
+                  const category = formData.get('category') as string;
+
+                  if (!file) {
+                    toast({
+                      title: "Error",
+                      description: "Please select a file to upload",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  if (!category) {
+                    toast({
+                      title: "Error",
+                      description: "Please select a category",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  // Validate file size (10MB max)
+                  if (file.size > 10 * 1024 * 1024) {
+                    toast({
+                      title: "Error",
+                      description: "File size must be less than 10MB",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  // Validate file type
+                  const allowedTypes = [
+                    'application/pdf',
+                    'image/jpeg',
+                    'image/jpg',
+                    'image/png',
+                    'image/gif',
+                    'image/webp',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                  ];
+
+                  if (!allowedTypes.includes(file.type)) {
+                    toast({
+                      title: "Error",
+                      description: "Invalid file type. Please upload a PDF, image, or Office document.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  setUploadingDocument(true);
+                  uploadDocumentMutation.mutate(formData, {
+                    onSettled: () => setUploadingDocument(false),
+                  });
+                }} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">File *</label>
+                    <Input
+                      type="file"
+                      name="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.docx,.xlsx,.pptx"
+                      required
+                      data-testid="input-file"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Category *</label>
+                    <Select name="category" required>
+                      <SelectTrigger data-testid="select-upload-category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="id">ID</SelectItem>
+                        <SelectItem value="proof_of_income">Proof of Income</SelectItem>
+                        <SelectItem value="insurance_card">Insurance Card</SelectItem>
+                        <SelectItem value="immigration">Immigration</SelectItem>
+                        <SelectItem value="medical">Medical</SelectItem>
+                        <SelectItem value="tax">Tax</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="general">General</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Description (optional)</label>
+                    <Textarea
+                      name="description"
+                      placeholder="Add a description..."
+                      rows={3}
+                      data-testid="textarea-description"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setUploadDialogOpen(false)}
+                      disabled={uploadingDocument}
+                      data-testid="button-cancel-upload"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={uploadingDocument}
+                      data-testid="button-confirm-upload"
+                    >
+                      {uploadingDocument ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        'Upload'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Delete Document Confirmation */}
+            <AlertDialog open={!!documentToDelete} onOpenChange={(open) => !open && setDocumentToDelete(null)}>
+              <AlertDialogContent className="z-[9999]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Document</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this document? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-delete-document">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (documentToDelete) {
+                        deleteDocumentMutation.mutate(documentToDelete);
+                      }
+                    }}
+                    className="bg-destructive hover:bg-destructive/90"
+                    data-testid="button-confirm-delete-document"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Preview Document Dialog */}
+            <Dialog open={!!previewDocument} onOpenChange={(open) => !open && setPreviewDocument(null)}>
+              <DialogContent className="max-w-4xl w-full h-[90vh]" data-testid="dialog-preview-document">
+                <DialogTitle>{previewDocument?.fileName}</DialogTitle>
+                <DialogDescription>
+                  Document preview
+                </DialogDescription>
+                <div className="flex-1 overflow-auto">
+                  {previewDocument && (() => {
+                    const fileExt = previewDocument.fileName?.split('.').pop()?.toLowerCase();
+                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt || '');
+                    const isPdf = fileExt === 'pdf';
+
+                    if (isImage) {
+                      return (
+                        <img
+                          src={`/api/quotes/${viewingQuote.id}/documents/${previewDocument.id}/download`}
+                          alt={previewDocument.fileName}
+                          className="max-w-full h-auto"
+                          data-testid="preview-image"
+                        />
+                      );
+                    } else if (isPdf) {
+                      return (
+                        <iframe
+                          src={`/api/quotes/${viewingQuote.id}/documents/${previewDocument.id}/download`}
+                          className="w-full h-full border-0"
+                          data-testid="preview-pdf"
+                        />
+                      );
+                    } else {
+                      return (
+                        <div className="text-center py-12">
+                          <File className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground mb-4">
+                            Preview not available for this file type
+                          </p>
+                          <Button
+                            onClick={() => window.open(`/api/quotes/${viewingQuote.id}/documents/${previewDocument.id}/download`, '_blank')}
+                            data-testid="button-download-preview"
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download File
+                          </Button>
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
               </DialogContent>
             </Dialog>
       </div>
