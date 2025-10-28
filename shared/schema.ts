@@ -1263,6 +1263,7 @@ export const quoteDocuments = pgTable("quote_documents", {
   fileSize: integer("file_size").notNull(), // File size in bytes
   category: text("category").notNull().default("other"), // Document category: passport, drivers_license, state_id, birth_certificate, parole, permanent_residence, work_permit, i94, other
   description: text("description"), // Optional description of the document
+  belongsTo: varchar("belongs_to").references(() => quoteMembers.id, { onDelete: "cascade" }), // Optional: Which family member this document belongs to
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }), // Multi-tenant reference
   uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who uploaded the document
   createdAt: timestamp("created_at").notNull().defaultNow(),

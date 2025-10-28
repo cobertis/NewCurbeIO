@@ -481,7 +481,7 @@ export interface IStorage {
   setDefaultPaymentMethod(paymentMethodId: string, quoteId: string, companyId: string): Promise<void>;
   
   // Quote Documents
-  listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<QuoteDocument & { uploaderName: string }>>;
+  listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<QuoteDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null }>>;
   createQuoteDocument(document: InsertQuoteDocument): Promise<QuoteDocument>;
   getQuoteDocument(id: string, companyId: string): Promise<QuoteDocument | null>;
   deleteQuoteDocument(id: string, companyId: string): Promise<boolean>;
@@ -3096,7 +3096,7 @@ export class DbStorage implements IStorage {
   
   // ==================== QUOTE DOCUMENTS ====================
   
-  async listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<QuoteDocument & { uploaderName: string }>> {
+  async listQuoteDocuments(quoteId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<QuoteDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null }>> {
     let query = db
       .select({
         document: quoteDocuments,
@@ -3139,9 +3139,9 @@ export class DbStorage implements IStorage {
 
     return results.map(r => ({
       ...r.document,
-      uploaderName: r.uploaderFirstName && r.uploaderLastName 
-        ? `${r.uploaderFirstName} ${r.uploaderLastName}` 
-        : r.uploaderFirstName || r.uploaderLastName || 'Unknown'
+      uploadedBy: r.uploaderFirstName || r.uploaderLastName
+        ? { firstName: r.uploaderFirstName, lastName: r.uploaderLastName }
+        : null
     }));
   }
 
