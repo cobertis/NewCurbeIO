@@ -9706,7 +9706,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      const { note, isUrgent, category, isPinned, isResolved, attachments } = req.body;
+      const { note, isImportant, isPinned, isResolved, attachments } = req.body;
       
       if (!note || note.trim() === "") {
         return res.status(400).json({ message: "Note content is required" });
@@ -9715,8 +9715,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const newNote = await storage.createQuoteNote({
         quoteId,
         note: note.trim(),
-        isUrgent: isUrgent || false,
-        category: category || 'general',
+        isImportant: isImportant || false,
         isPinned: isPinned || false,
         isResolved: isResolved || false,
         attachments: attachments || null,
@@ -9732,7 +9731,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId: currentUser.companyId || undefined,
         metadata: {
           quoteId,
-          isUrgent: newNote.isUrgent,
+          isImportant: newNote.isImportant,
           createdBy: currentUser.email,
           hasAttachments: !!attachments && attachments.length > 0,
         },
@@ -9775,7 +9774,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.patch("/api/quotes/:quoteId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { quoteId, noteId } = req.params;
-    const { note, isUrgent, category, isPinned, isResolved, attachments } = req.body;
+    const { note, isImportant, isPinned, isResolved, attachments } = req.body;
     
     try {
       // Get quote to verify access
@@ -9811,8 +9810,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Build update object with only provided fields
       const updateData: any = {};
       if (note !== undefined) updateData.note = note.trim();
-      if (isUrgent !== undefined) updateData.isUrgent = isUrgent;
-      if (category !== undefined) updateData.category = category;
+      if (isImportant !== undefined) updateData.isImportant = isImportant;
       if (isPinned !== undefined) updateData.isPinned = isPinned;
       if (isResolved !== undefined) updateData.isResolved = isResolved;
       if (attachments !== undefined) updateData.attachments = attachments;
