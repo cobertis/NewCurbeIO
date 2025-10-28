@@ -6961,7 +6961,6 @@ export default function QuotesPage() {
                             <TableHead>Category</TableHead>
                             <TableHead>Size</TableHead>
                             <TableHead>Uploaded By</TableHead>
-                            <TableHead>Upload Date</TableHead>
                             <TableHead className="w-[100px]">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -7035,19 +7034,21 @@ export default function QuotesPage() {
                                   {formatFileSize(doc.fileSize || 0)}
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                        {doc.uploadedBy?.firstName?.[0] || 'U'}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-sm">
-                                      {doc.uploadedBy?.firstName || 'Unknown'} {doc.uploadedBy?.lastName || ''}
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                      <Avatar className="h-6 w-6">
+                                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                          {doc.uploadedBy?.firstName?.[0] || 'U'}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-sm font-medium">
+                                        {doc.uploadedBy?.firstName || 'Unknown'} {doc.uploadedBy?.lastName || ''}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground ml-8">
+                                      {format(new Date(doc.createdAt), "MMM dd, yyyy • h:mm a")}
                                     </span>
                                   </div>
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {format(new Date(doc.createdAt), "MMM dd, yyyy • h:mm a")}
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
