@@ -6278,24 +6278,9 @@ export default function QuotesPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="h-7 w-7 p-0"
-                                  onClick={async () => {
-                                    if (confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
-                                      if (!viewingQuote?.id) return;
-                                      try {
-                                        await apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/notes/${note.id}`);
-                                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'notes'] });
-                                        toast({
-                                          title: "Note deleted",
-                                          description: "The note has been removed successfully.",
-                                        });
-                                      } catch (error: any) {
-                                        toast({
-                                          title: "Error",
-                                          description: error.message || "Failed to delete note",
-                                          variant: "destructive",
-                                        });
-                                      }
-                                    }
+                                  onClick={() => {
+                                    setNoteToDelete(note.id);
+                                    setShowDeleteDialog(true);
                                   }}
                                   data-testid={`button-delete-note-${note.id}`}
                                 >
@@ -6624,6 +6609,48 @@ export default function QuotesPage() {
                 </div>
               </SheetContent>
             </Sheet>
+
+            {/* Delete Note Confirmation Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogContent className="z-[9999]" data-testid="dialog-delete-note">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Note?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this note? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setNoteToDelete(null)} data-testid="button-cancel-delete-note">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      if (!noteToDelete || !viewingQuote?.id) return;
+                      try {
+                        await apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/notes/${noteToDelete}`);
+                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'notes'] });
+                        setShowDeleteDialog(false);
+                        setNoteToDelete(null);
+                        toast({
+                          title: "Note deleted",
+                          description: "The note has been removed successfully.",
+                        });
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to delete note",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-delete-note"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* Image Viewer Dialog - Fullscreen */}
             <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen} modal={false}>
