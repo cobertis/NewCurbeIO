@@ -8588,12 +8588,13 @@ export default function QuotesPage() {
 
       {/* Delete Note Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
+        console.log('[ALERT DIALOG] onOpenChange called with:', open);
         setShowDeleteDialog(open);
         if (!open) {
           setNoteToDelete(null);
         }
       }}>
-        <AlertDialogContent data-testid="dialog-delete-note">
+        <AlertDialogContent className="z-[9999]" data-testid="dialog-delete-note">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Note?</AlertDialogTitle>
             <AlertDialogDescription>
