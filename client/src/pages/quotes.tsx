@@ -6644,7 +6644,7 @@ export default function QuotesPage() {
 
             {/* Image Viewer Dialog - Fullscreen */}
             <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen} modal={false}>
-              <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none z-[100]">
+              <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none z-[100] [&>button]:hidden">
                 <button
                   onClick={() => setImageViewerOpen(false)}
                   className="absolute top-4 right-4 z-50 rounded-full bg-white/10 hover:bg-white/20 p-2 transition-colors"
@@ -8575,9 +8575,9 @@ export default function QuotesPage() {
       }}>
         <AlertDialogContent data-testid="dialog-delete-note">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Note</AlertDialogTitle>
+            <AlertDialogTitle>Delete Note?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this note? This action cannot be undone.
+              Are you sure you want to permanently delete this note? This action cannot be undone and the note will be lost forever.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
