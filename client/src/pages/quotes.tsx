@@ -6169,7 +6169,7 @@ export default function QuotesPage() {
             {/* Notes Sheet - Professional Corporate Design */}
             {console.log('[NOTES SHEET] Rendering in viewingQuote return, open state:', notesSheetOpen)}
             <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
-              <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full z-[100]" side="left" data-testid="sheet-notes">
+              <SheetContent className="w-full sm:max-w-3xl p-0 flex flex-col h-full z-[100]" side="left" data-testid="sheet-notes">
                 {/* Header */}
                 <div className="px-6 py-4 border-b">
                   <SheetTitle className="text-lg font-medium">Notes & Comments</SheetTitle>
@@ -6180,8 +6180,8 @@ export default function QuotesPage() {
 
                 {/* Main Content */}
                 <div className="flex-1 overflow-hidden flex flex-col">
-                  {/* Search and Filter Toolbar */}
-                  <div className="px-6 py-3 border-b bg-muted/5 space-y-3">
+                  {/* Search Toolbar */}
+                  <div className="px-6 py-3 border-b bg-muted/5">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -6191,48 +6191,6 @@ export default function QuotesPage() {
                         className="pl-9 h-9"
                         data-testid="input-search-notes"
                       />
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                      <Button
-                        variant={filterCategory === 'all' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setFilterCategory('all')}
-                      >
-                        All
-                      </Button>
-                      <Button
-                        variant={filterCategory === 'pinned' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setFilterCategory('pinned')}
-                      >
-                        Pinned
-                      </Button>
-                      <Button
-                        variant={filterCategory === 'urgent' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setFilterCategory('urgent')}
-                      >
-                        Urgent
-                      </Button>
-                      <Button
-                        variant={filterCategory === 'unresolved' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setFilterCategory('unresolved')}
-                      >
-                        Unresolved
-                      </Button>
-                      <Button
-                        variant={filterCategory === 'resolved' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setFilterCategory('resolved')}
-                      >
-                        Resolved
-                      </Button>
                     </div>
                   </div>
 
@@ -6258,7 +6216,7 @@ export default function QuotesPage() {
                           <div
                             key={note.id}
                             className={`group relative border rounded-lg p-4 bg-card hover:border-muted-foreground/20 transition-colors ${
-                              note.isUrgent ? 'border-l-4 border-l-orange-500/60' : ''
+                              note.isUrgent ? 'border-l-4 border-l-red-600' : ''
                             }`}
                             data-testid={`note-${note.id}`}
                           >
@@ -6286,26 +6244,26 @@ export default function QuotesPage() {
                                       {format(new Date(note.createdAt), 'MMM dd, yyyy • h:mm a')}
                                     </span>
                                   </div>
-                                <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1.5 flex-wrap text-xs">
                                   {note.isPinned && (
-                                    <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                    <span className="inline-flex items-center gap-1 border border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded px-1.5 py-0.5">
                                       <Bell className="h-3 w-3" />
                                       Pinned
                                     </span>
                                   )}
                                   {note.isUrgent && (
-                                    <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                    <span className="inline-flex items-center gap-1 border border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400 rounded px-1.5 py-0.5">
                                       <AlertCircle className="h-3 w-3" />
                                       Urgent
                                     </span>
                                   )}
                                   {note.isResolved && (
-                                    <span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5">
+                                    <span className="inline-flex items-center gap-1 border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400 rounded px-1.5 py-0.5">
                                       <Check className="h-3 w-3" />
                                       Resolved
                                     </span>
                                   )}
-                                  <span className="border rounded px-1.5 py-0.5 capitalize">
+                                  <span className="border rounded px-1.5 py-0.5 capitalize text-muted-foreground">
                                     {note.category?.replace('_', ' ') || 'general'}
                                   </span>
                                 </div>
@@ -6722,31 +6680,6 @@ export default function QuotesPage() {
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 py-3 border-t flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    {filteredNotes.length} of {quoteNotesCount} notes shown
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setNotesSheetOpen(false);
-                      setNewNoteText("");
-                      setIsUrgent(false);
-                      setNoteCategory("general");
-                      setNotePinned(false);
-                      setNoteResolved(false);
-                      setEditingNoteId(null);
-                      setSearchNotes("");
-                      setFilterCategory("all");
-                      setNoteAttachments([]);
-                    }}
-                    data-testid="button-close-notes"
-                  >
-                    Close
-                  </Button>
                 </div>
               </SheetContent>
             </Sheet>
