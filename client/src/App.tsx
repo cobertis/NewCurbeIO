@@ -55,6 +55,7 @@ import EmailConfiguration from "@/pages/email-configuration";
 import Quotes from "@/pages/quotes";
 import MarketplacePlans from "@/pages/marketplace-plans";
 import PublicConsentPage from "@/pages/public-consent";
+import Calendar from "@/pages/calendar";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -69,6 +70,7 @@ const getPageTitle = (path: string): string => {
     '/features': 'Features',
     '/quotes': 'Quotes',
     '/quotes/new': 'New Quote',
+    '/calendar': 'Calendar',
     '/invoices': 'Invoices',
     '/settings': 'Settings',
     '/settings/profile': 'Settings - Profile',
@@ -956,6 +958,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <MarketplacePlans />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/calendar">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Calendar />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

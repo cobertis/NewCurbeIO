@@ -17,7 +17,8 @@ import {
   Settings,
   Ticket,
   MessageSquare,
-  AlertTriangle
+  AlertTriangle,
+  Calendar
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -80,6 +81,11 @@ const superadminMenuItems = [
     icon: CreditCard,
   },
   {
+    title: "Calendar",
+    url: "/calendar",
+    icon: Calendar,
+  },
+  {
     title: "Quotes",
     url: "/quotes",
     icon: ClipboardList,
@@ -137,6 +143,11 @@ const regularUserMenuItems = [
     title: "Dashboard",
     url: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Calendar",
+    url: "/calendar",
+    icon: Calendar,
   },
   {
     title: "Quotes",
