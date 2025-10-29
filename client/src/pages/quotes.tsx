@@ -3660,7 +3660,22 @@ export default function QuotesPage() {
     },
   });
 
-  // Fetch quote reminders
+  // Fetch quote reminders count (always enabled for badge)
+  const { data: remindersCountData } = useQuery<{ reminders: QuoteReminder[] }>({
+    queryKey: ['/api/quotes', params?.id, 'reminders', 'pending'],
+    queryFn: async () => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      const url = `/api/quotes/${params.id}/reminders?status=pending`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch reminders count');
+      return response.json();
+    },
+    enabled: !!params?.id && params?.id !== 'new',
+  });
+
+  const pendingRemindersCount = remindersCountData?.reminders?.length || 0;
+
+  // Fetch quote reminders (only when sheet is open)
   const { data: quoteRemindersData, isLoading: isLoadingReminders } = useQuery<{ reminders: QuoteReminder[] }>({
     queryKey: ['/api/quotes', params?.id, 'reminders', filterReminderStatus, filterReminderPriority, searchReminders],
     queryFn: async () => {
@@ -3684,7 +3699,6 @@ export default function QuotesPage() {
   });
 
   const quoteReminders = quoteRemindersData?.reminders || [];
-  const pendingRemindersCount = quoteReminders.filter(r => r.status === 'pending').length || 0;
 
   // Create reminder mutation
   const createReminderMutation = useMutation({
@@ -3695,6 +3709,7 @@ export default function QuotesPage() {
     onSuccess: () => {
       if (params?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders', 'pending'] });
       }
       setReminderFormOpen(false);
       setSelectedReminder(null);
@@ -3723,6 +3738,7 @@ export default function QuotesPage() {
     onSuccess: () => {
       if (params?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders', 'pending'] });
       }
       setReminderFormOpen(false);
       setSelectedReminder(null);
@@ -3751,6 +3767,7 @@ export default function QuotesPage() {
     onSuccess: () => {
       if (params?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders', 'pending'] });
       }
       toast({
         title: "Reminder completed",
@@ -3777,6 +3794,7 @@ export default function QuotesPage() {
     onSuccess: () => {
       if (params?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders', 'pending'] });
       }
       setSnoozeDialogOpen(false);
       setSnoozeReminderId(null);
@@ -3805,6 +3823,7 @@ export default function QuotesPage() {
     onSuccess: () => {
       if (params?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders', 'pending'] });
       }
       setReminderToDelete(null);
       toast({
@@ -7936,7 +7955,7 @@ export default function QuotesPage() {
                             <TableHead>Status</TableHead>
                             <TableHead>Due Date</TableHead>
                             <TableHead>Created By</TableHead>
-                            <TableHead className="w-[120px]">Actions</TableHead>
+                            <TableHead className="w-[80px]">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -8020,62 +8039,68 @@ export default function QuotesPage() {
                                   )}
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
-                                  {reminder.createdByUser ? (
-                                    <>{reminder.createdByUser.firstName} {reminder.createdByUser.lastName}</>
+                                  {(reminder as any).creator?.firstName ? (
+                                    <>{(reminder as any).creator.firstName} {(reminder as any).creator.lastName}</>
                                   ) : (
                                     'Unknown'
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex items-center gap-1">
-                                    {reminder.status === 'pending' && (
-                                      <>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 px-2"
-                                          onClick={() => completeReminderMutation.mutate(reminder.id)}
-                                          disabled={completeReminderMutation.isPending}
-                                          data-testid={`button-complete-${reminder.id}`}
-                                        >
-                                          <CheckCircle2 className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 px-2"
-                                          onClick={() => {
-                                            setSnoozeReminderId(reminder.id);
-                                            setSnoozeDialogOpen(true);
-                                          }}
-                                          data-testid={`button-snooze-${reminder.id}`}
-                                        >
-                                          <Clock className="h-4 w-4" />
-                                        </Button>
-                                      </>
-                                    )}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 px-2"
-                                      onClick={() => {
-                                        setSelectedReminder(reminder);
-                                        setReminderFormOpen(true);
-                                      }}
-                                      data-testid={`button-edit-${reminder.id}`}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 px-2"
-                                      onClick={() => setReminderToDelete(reminder.id)}
-                                      data-testid={`button-delete-${reminder.id}`}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 px-2 text-xs"
+                                        data-testid={`button-actions-${reminder.id}`}
+                                      >
+                                        Actions
+                                        <ChevronDown className="h-3 w-3 ml-1" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      {reminder.status === 'pending' && (
+                                        <>
+                                          <DropdownMenuItem
+                                            onClick={() => completeReminderMutation.mutate(reminder.id)}
+                                            disabled={completeReminderMutation.isPending}
+                                            data-testid={`menu-complete-${reminder.id}`}
+                                          >
+                                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                                            Mark Complete
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              setSnoozeReminderId(reminder.id);
+                                              setSnoozeDialogOpen(true);
+                                            }}
+                                            data-testid={`menu-snooze-${reminder.id}`}
+                                          >
+                                            <Clock className="h-4 w-4 mr-2" />
+                                            Snooze
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setSelectedReminder(reminder);
+                                          setReminderFormOpen(true);
+                                        }}
+                                        data-testid={`menu-edit-${reminder.id}`}
+                                      >
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => setReminderToDelete(reminder.id)}
+                                        className="text-destructive focus:text-destructive"
+                                        data-testid={`menu-delete-${reminder.id}`}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </TableCell>
                               </TableRow>
                             );
