@@ -10880,11 +10880,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         
         // Get consent email template from database (same system as OTP)
+        console.log('[CONSENT EMAIL] Fetching template from database...');
         const template = await storage.getEmailTemplateBySlug("consent-document");
         if (!template) {
+          console.error('[CONSENT EMAIL] Template not found in database');
           await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'Consent email template not found' }, currentUser.id);
           return res.status(500).json({ message: "Consent email template not found" });
         }
+        console.log('[CONSENT EMAIL] Template found:', template.subject);
         
         // Replace variables in template
         let htmlContent = template.htmlContent
@@ -10896,12 +10899,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ?.replace(/\{\{companyName\}\}/g, company.name)
           ?.replace(/\{\{consentUrl\}\}/g, consentUrl);
         
+        console.log('[CONSENT EMAIL] Sending to:', target);
+        console.log('[CONSENT EMAIL] Subject:', template.subject);
         const sent = await emailService.sendEmail({
           to: target,
           subject: template.subject,
           html: htmlContent,
           text: textContent,
         });
+        console.log('[CONSENT EMAIL] Send result:', sent);
         
         if (!sent) {
           await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'Email delivery failed' }, currentUser.id);
