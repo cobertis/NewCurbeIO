@@ -1796,3 +1796,67 @@ export const updatePaymentMethodSchema = basePaymentMethodSchema.partial().omit(
 export type QuotePaymentMethod = typeof quotePaymentMethods.$inferSelect;
 export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;
 export type UpdatePaymentMethod = z.infer<typeof updatePaymentMethodSchema>;
+
+// =====================================================
+// QUOTE REMINDERS
+// =====================================================
+
+export const quoteReminders = pgTable("quote_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  // Reminder Details
+  dueDate: date("due_date").notNull(), // yyyy-MM-dd format
+  dueTime: text("due_time").notNull(), // HH:mm format (24-hour)
+  timezone: text("timezone").notNull().default("America/New_York"),
+  
+  // Notification Settings
+  reminderBefore: text("reminder_before"), // e.g., "15min", "1hour", "1day", "1week"
+  reminderType: text("reminder_type").notNull(), // e.g., "follow_up", "document_request", "payment_due", "policy_renewal", "other"
+  notifyUsers: text("notify_users").array(), // Array of user IDs to notify
+  
+  // Content
+  title: text("title"), // Short title/summary
+  description: text("description"), // Detailed description
+  
+  // Privacy & Status
+  isPrivate: boolean("is_private").default(false), // Only visible to creator if true
+  status: text("status").notNull().default("pending"), // "pending", "completed", "snoozed", "cancelled"
+  priority: text("priority").default("medium"), // "low", "medium", "high", "urgent"
+  
+  // Completion & Snooze
+  completedAt: timestamp("completed_at"),
+  completedBy: varchar("completed_by").references(() => users.id),
+  snoozedUntil: timestamp("snoozed_until"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Reminder Insert Schema
+export const insertQuoteReminderSchema = createInsertSchema(quoteReminders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  completedBy: true,
+}).extend({
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  dueTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Time must be in HH:mm format (24-hour)"),
+  reminderType: z.enum(["follow_up", "document_request", "payment_due", "policy_renewal", "call_client", "send_email", "review_application", "other"]),
+  status: z.enum(["pending", "completed", "snoozed", "cancelled"]).default("pending"),
+  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  notifyUsers: z.array(z.string()).optional(),
+});
+
+export const updateQuoteReminderSchema = insertQuoteReminderSchema.partial().omit({
+  companyId: true,
+  quoteId: true,
+  createdBy: true,
+});
+
+export type QuoteReminder = typeof quoteReminders.$inferSelect;
+export type InsertQuoteReminder = z.infer<typeof insertQuoteReminderSchema>;
+export type UpdateQuoteReminder = z.infer<typeof updateQuoteReminderSchema>;

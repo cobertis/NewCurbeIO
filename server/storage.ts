@@ -88,7 +88,10 @@ import {
   type InsertQuoteDocument,
   type QuotePaymentMethod,
   type InsertPaymentMethod,
-  type UpdatePaymentMethod
+  type UpdatePaymentMethod,
+  type QuoteReminder,
+  type InsertQuoteReminder,
+  type UpdateQuoteReminder
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -134,7 +137,8 @@ import {
   quoteMemberImmigration,
   quoteMemberDocuments,
   quoteDocuments,
-  quotePaymentMethods
+  quotePaymentMethods,
+  quoteReminders
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -501,6 +505,15 @@ export interface IStorage {
     paymentMethods: QuotePaymentMethod[];
     totalHouseholdIncome: number;
   }>;
+  
+  // Quote Reminders
+  listQuoteReminders(quoteId: string, companyId: string, filters?: { status?: string; priority?: string; userId?: string }): Promise<Array<QuoteReminder & { creator: { firstName: string | null; lastName: string | null } }>>;
+  getQuoteReminder(id: string, companyId: string): Promise<QuoteReminder | null>;
+  createQuoteReminder(data: InsertQuoteReminder): Promise<QuoteReminder>;
+  updateQuoteReminder(id: string, companyId: string, data: UpdateQuoteReminder): Promise<QuoteReminder | null>;
+  deleteQuoteReminder(id: string, companyId: string): Promise<boolean>;
+  completeQuoteReminder(id: string, companyId: string, userId: string): Promise<QuoteReminder | null>;
+  snoozeQuoteReminder(id: string, companyId: string, until: Date): Promise<QuoteReminder | null>;
 }
 
 export class DbStorage implements IStorage {
@@ -3288,6 +3301,110 @@ export class DbStorage implements IStorage {
       paymentMethods,
       totalHouseholdIncome
     };
+  }
+  
+  // ==================== QUOTE REMINDERS ====================
+  
+  async listQuoteReminders(quoteId: string, companyId: string, filters?: { status?: string; priority?: string; userId?: string }): Promise<Array<QuoteReminder & { creator: { firstName: string | null; lastName: string | null } }>> {
+    let conditions = [
+      eq(quoteReminders.quoteId, quoteId),
+      eq(quoteReminders.companyId, companyId)
+    ];
+    
+    // Apply filters
+    if (filters?.status) {
+      conditions.push(eq(quoteReminders.status, filters.status));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(quoteReminders.priority, filters.priority));
+    }
+    if (filters?.userId) {
+      // Show reminders created by this user OR where this user is notified
+      conditions.push(eq(quoteReminders.createdBy, filters.userId));
+    }
+    
+    const results = await db
+      .select({
+        reminder: quoteReminders,
+        creator: {
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }
+      })
+      .from(quoteReminders)
+      .leftJoin(users, eq(quoteReminders.createdBy, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(quoteReminders.dueDate), desc(quoteReminders.dueTime));
+    
+    return results.map(r => ({
+      ...r.reminder,
+      creator: r.creator
+    }));
+  }
+  
+  async getQuoteReminder(id: string, companyId: string): Promise<QuoteReminder | null> {
+    const result = await db
+      .select()
+      .from(quoteReminders)
+      .where(and(eq(quoteReminders.id, id), eq(quoteReminders.companyId, companyId)));
+    
+    return result[0] || null;
+  }
+  
+  async createQuoteReminder(data: InsertQuoteReminder): Promise<QuoteReminder> {
+    const result = await db
+      .insert(quoteReminders)
+      .values(data as any)
+      .returning();
+    
+    return result[0];
+  }
+  
+  async updateQuoteReminder(id: string, companyId: string, data: UpdateQuoteReminder): Promise<QuoteReminder | null> {
+    const result = await db
+      .update(quoteReminders)
+      .set({ ...data, updatedAt: new Date() } as any)
+      .where(and(eq(quoteReminders.id, id), eq(quoteReminders.companyId, companyId)))
+      .returning();
+    
+    return result[0] || null;
+  }
+  
+  async deleteQuoteReminder(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(quoteReminders)
+      .where(and(eq(quoteReminders.id, id), eq(quoteReminders.companyId, companyId)));
+    
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+  
+  async completeQuoteReminder(id: string, companyId: string, userId: string): Promise<QuoteReminder | null> {
+    const result = await db
+      .update(quoteReminders)
+      .set({ 
+        status: 'completed', 
+        completedAt: new Date(),
+        completedBy: userId,
+        updatedAt: new Date()
+      })
+      .where(and(eq(quoteReminders.id, id), eq(quoteReminders.companyId, companyId)))
+      .returning();
+    
+    return result[0] || null;
+  }
+  
+  async snoozeQuoteReminder(id: string, companyId: string, until: Date): Promise<QuoteReminder | null> {
+    const result = await db
+      .update(quoteReminders)
+      .set({ 
+        status: 'snoozed', 
+        snoozedUntil: until,
+        updatedAt: new Date()
+      })
+      .where(and(eq(quoteReminders.id, id), eq(quoteReminders.companyId, companyId)))
+      .returning();
+    
+    return result[0] || null;
   }
 }
 
