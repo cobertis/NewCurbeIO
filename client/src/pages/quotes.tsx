@@ -17,7 +17,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -3400,6 +3400,9 @@ export default function QuotesPage() {
   // Consent modal state
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   
+  // Consents sheet state
+  const [consentsSheetOpen, setConsentsSheetOpen] = useState(false);
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -5940,7 +5943,7 @@ export default function QuotesPage() {
               </button>
 
               <button
-                onClick={() => {}}
+                onClick={() => setConsentsSheetOpen(true)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
                 data-testid="button-signature-forms"
               >
@@ -5948,12 +5951,14 @@ export default function QuotesPage() {
                   <FileSignature className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Signature Forms</span>
                 </div>
-                <Badge 
-                  variant="secondary" 
-                  className="text-xs h-5 px-1.5 border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
-                >
-                  1
-                </Badge>
+                {consents.length > 0 && (
+                  <Badge 
+                    variant="secondary" 
+                    className="text-xs h-5 px-1.5 border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
+                  >
+                    {consents.length}
+                  </Badge>
+                )}
               </button>
 
               <button
@@ -8136,6 +8141,173 @@ export default function QuotesPage() {
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Delete
                                       </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Consents Sheet */}
+            <Sheet open={consentsSheetOpen} onOpenChange={setConsentsSheetOpen}>
+              <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right" data-testid="sheet-consents">
+                <SheetHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <SheetTitle>Signature Forms</SheetTitle>
+                      <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-consents-count">
+                        {consents.length}
+                      </Badge>
+                    </div>
+                  </div>
+                  <SheetDescription>
+                    Manage consent documents for this quote
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="space-y-4 py-6">
+                  {/* Create Button */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        setConsentsSheetOpen(false);
+                        setConsentModalOpen(true);
+                      }}
+                      className="flex-shrink-0"
+                      data-testid="button-create-consent"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Send Consent Form
+                    </Button>
+                  </div>
+
+                  {/* Consents List */}
+                  {isLoadingConsents ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+                      <p className="text-sm text-muted-foreground">Loading consent documents...</p>
+                    </div>
+                  ) : consents.length === 0 ? (
+                    <div className="text-center py-12 border rounded-lg">
+                      <FileSignature className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No consent documents found</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Create your first consent document to get started
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Status</TableHead>
+                            <TableHead>Delivery Method</TableHead>
+                            <TableHead>Sent To</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead>Signed</TableHead>
+                            <TableHead className="w-[100px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {consents.map((consent: any) => {
+                            const getStatusBadgeClasses = (status: string) => {
+                              switch (status) {
+                                case 'signed':
+                                  return 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400';
+                                case 'viewed':
+                                  return 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400';
+                                case 'sent':
+                                  return 'border-yellow-500/50 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
+                                case 'draft':
+                                  return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
+                                case 'void':
+                                  return 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400';
+                                default:
+                                  return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
+                              }
+                            };
+
+                            const getDeliveryMethodLabel = (method: string | null) => {
+                              if (!method) return '-';
+                              switch (method) {
+                                case 'email': return 'Email';
+                                case 'sms': return 'SMS';
+                                case 'link': return 'Link';
+                                default: return method;
+                              }
+                            };
+
+                            return (
+                              <TableRow key={consent.id} className="hover:bg-muted/50">
+                                <TableCell>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs h-5 px-2 ${getStatusBadgeClasses(consent.status)}`}
+                                  >
+                                    {consent.status.charAt(0).toUpperCase() + consent.status.slice(1)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {getDeliveryMethodLabel(consent.deliveryChannel)}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {consent.deliveryTarget || '-'}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {consent.createdAt ? formatDateForDisplay(new Date(consent.createdAt).toISOString().split('T')[0], "MMM dd, yyyy") : '-'}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {consent.signedAt ? formatDateForDisplay(new Date(consent.signedAt).toISOString().split('T')[0], "MMM dd, yyyy HH:mm") : '-'}
+                                </TableCell>
+                                <TableCell>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" data-testid={`menu-consent-${consent.id}`}>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      {consent.deliveryChannel === 'link' && consent.status !== 'signed' && (
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            const url = `${window.location.origin}/consent/${consent.token}`;
+                                            navigator.clipboard.writeText(url);
+                                            toast({
+                                              title: "Link copied",
+                                              description: "Consent form link copied to clipboard",
+                                            });
+                                            setTimeout(() => toast({ description: "" }), 3000);
+                                          }}
+                                          data-testid={`menu-copy-link-${consent.id}`}
+                                        >
+                                          <Copy className="h-4 w-4 mr-2" />
+                                          Copy Link
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          window.open(`/consent/${consent.token}`, '_blank');
+                                        }}
+                                        data-testid={`menu-view-${consent.id}`}
+                                      >
+                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                        View Form
+                                      </DropdownMenuItem>
+                                      {consent.status === 'signed' && (
+                                        <DropdownMenuItem
+                                          data-testid={`menu-download-${consent.id}`}
+                                        >
+                                          <Download className="h-4 w-4 mr-2" />
+                                          Download Signed
+                                        </DropdownMenuItem>
+                                      )}
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </TableCell>
