@@ -10879,48 +10879,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(400).json({ message: "Email address is required for email delivery" });
         }
         
-        const emailHtml = `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: #2563eb; color: white; padding: 30px; text-align: center; }
-                .content { background: #f9f9f9; padding: 30px; }
-                .button { display: inline-block; padding: 12px 30px; background: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-                .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>Health Insurance Consent Form</h1>
-                </div>
-                <div class="content">
-                  <h2>Hello ${quote.clientFirstName},</h2>
-                  <p>You have been sent a consent form from <strong>${company.name}</strong>.</p>
-                  <p>Please review and sign the consent form to authorize us to assist you with your health insurance enrollment.</p>
-                  <p style="text-align: center;">
-                    <a href="${consentUrl}" class="button">Sign Consent Form</a>
-                  </p>
-                  <p>Or copy and paste this link into your browser:</p>
-                  <p style="word-break: break-all; background: #fff; padding: 10px; border: 1px solid #ddd;">${consentUrl}</p>
-                  <p><strong>This link will expire in 30 days.</strong></p>
-                </div>
-                <div class="footer">
-                  <p>This is an automated message from ${company.name}.</p>
-                  <p>&copy; ${new Date().getFullYear()} ${company.name}. All rights reserved.</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `;
+        // Get consent email template from database (same system as OTP)
+        const template = await storage.getEmailTemplateBySlug("consent-document");
+        if (!template) {
+          await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'Consent email template not found' }, currentUser.id);
+          return res.status(500).json({ message: "Consent email template not found" });
+        }
+        
+        // Replace variables in template
+        let htmlContent = template.htmlContent
+          .replace(/\{\{clientFirstName\}\}/g, quote.clientFirstName || 'there')
+          .replace(/\{\{companyName\}\}/g, company.name)
+          .replace(/\{\{consentUrl\}\}/g, consentUrl);
+        let textContent = template.textContent
+          ?.replace(/\{\{clientFirstName\}\}/g, quote.clientFirstName || 'there')
+          ?.replace(/\{\{companyName\}\}/g, company.name)
+          ?.replace(/\{\{consentUrl\}\}/g, consentUrl);
         
         const sent = await emailService.sendEmail({
           to: target,
-          subject: "Sign Your Health Insurance Consent Form",
-          html: emailHtml,
+          subject: template.subject,
+          html: htmlContent,
+          text: textContent,
         });
         
         if (!sent) {
