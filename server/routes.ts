@@ -10633,26 +10633,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const snoozedReminder = await storage.snoozeQuoteReminder(reminderId, quote.companyId, snoozeDate);
 
-      // Create a notification to remind the user when snooze time is up
-      const durationText = duration.replace(/(\d+)(min|hour|hours|day|days|week)s?/, (_, num, unit) => {
-        const unitMap: Record<string, string> = {
-          'min': num === '1' ? 'minuto' : 'minutos',
-          'hour': num === '1' ? 'hora' : 'horas',
-          'hours': 'horas',
-          'day': num === '1' ? 'día' : 'días',
-          'days': 'días',
-          'week': num === '1' ? 'semana' : 'semanas'
-        };
-        return `${num} ${unitMap[unit] || unit}`;
-      });
-
-      await storage.createNotification({
-        userId: currentUser.id,
-        type: 'warning',
-        title: 'Reminder Pendiente',
-        message: `Recordatorio sobre "${existingReminder.title || 'Sin título'}" para el quote ${quoteId}. Este recordatorio está pendiente y se te notificará en ${durationText}.`,
-        link: `/quotes/${quoteId}`,
-      });
+      // The reminder scheduler will automatically create a notification when the snooze time expires
 
       await logger.logCrud({
         req,

@@ -5,6 +5,7 @@ import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import "./stripe"; // Force Stripe initialization to show which mode we're using
+import { startReminderScheduler } from "./reminder-scheduler";
 
 const app = express();
 
@@ -120,5 +121,8 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start the reminder scheduler for snoozed reminders
+    startReminderScheduler();
   });
 })();

@@ -71,6 +71,9 @@ Features a clean, corporate design with a single-column layout, search toolbar, 
 **Quote Documents System:**
 Provides a wide Sheet layout with a professional table for documents, supporting uploads, previews, and deletions. Categories include Passport, Driver's License, State ID, Birth Certificate, Parole, Permanent Residence, Work Permit, I-94, and Other. Features real-time search, filter by category, and robust security measures. Documents can be linked to specific family members via the "Belongs To" field, which displays the member's name and role in the documents table. Clicking the Eye icon opens a preview dialog for viewing documents directly instead of downloading them. The upload form includes an optional dropdown to select which family member the document belongs to, populated from the quote's family members list.
 
+**Quote Reminders System:**
+Comprehensive reminder management with scheduled notifications powered by node-cron. When a reminder is snoozed, a background scheduler running every minute automatically creates notifications when the snooze period expires. Features include pending reminders counter badge, compact Actions dropdown menu, and automatic state management from "snoozed" back to "pending" after notification is sent. Background service runs in `server/reminder-scheduler.ts` and starts automatically with the server.
+
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL, Drizzle ORM.
@@ -81,4 +84,5 @@ Provides a wide Sheet layout with a professional table for documents, supporting
 -   **Form Management & Validation:** React Hook Form, Zod.
 -   **Session Management:** `express-session`, `connect-pg-simple`.
 -   **Security:** Bcrypt.
--   **Utilities:** `date-fns`.
+-   **Utilities:** `date-fns`, `node-cron`.
+-   **Background Jobs:** Node-cron for scheduled tasks.
