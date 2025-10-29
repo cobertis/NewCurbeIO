@@ -10126,7 +10126,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         fileSize: req.file.size,
         category: documentCategory,
         description: description || null,
-        belongsTo: belongsTo || null,
+        belongsTo: (belongsTo && belongsTo !== 'none') ? belongsTo : null,
         companyId: quote.companyId,
         uploadedBy: currentUser.id
       });

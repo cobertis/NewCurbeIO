@@ -7148,20 +7148,15 @@ export default function QuotesPage() {
                         <SelectValue placeholder="Select family member" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
-                        {(() => {
-                          console.log('[UPLOAD DIALOG] quoteDetail:', quoteDetail);
-                          console.log('[UPLOAD DIALOG] members:', quoteDetail?.members);
-                          return (quoteDetail?.members || []).map((item: any) => {
-                            const member = item.member || item;
-                            console.log('[UPLOAD DIALOG] member:', member);
-                            return (
-                              <SelectItem key={member.id} value={member.id}>
-                                {member.firstName} {member.lastName} ({member.role})
-                              </SelectItem>
-                            );
-                          });
-                        })()}
+                        <SelectItem value="none">None</SelectItem>
+                        {(quoteDetail?.members || []).map((item: any) => {
+                          const member = item.member || item;
+                          return (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.firstName} {member.lastName} ({member.role})
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
