@@ -74,6 +74,17 @@ Provides a wide Sheet layout with a professional table for documents, supporting
 **Quote Reminders System:**
 Comprehensive reminder management with scheduled notifications powered by node-cron. When a reminder is snoozed, a background scheduler running every minute automatically creates notifications when the snooze period expires. Features include pending reminders counter badge, compact Actions dropdown menu, and automatic state management from "snoozed" back to "pending" after notification is sent. Background service runs in `server/reminder-scheduler.ts` and starts automatically with the server.
 
+**Consent Document System:**
+Legal consent document generation and electronic signature system with full audit trail compliance. Features include:
+- Document generation with company logo and data (agent name, NPN, company name)
+- Three delivery methods: Email (SMTP), SMS (Twilio), or shareable Link
+- Public signature page at `/consent/:token` (no authentication required)
+- Comprehensive digital audit trail: IP address, timezone, platform, browser, user agent, geolocation, signature timestamp
+- Status tracking: draft → sent → viewed → signed
+- Event logging for all consent lifecycle events
+- Secure token-based access with 30-day expiration
+- Uses existing email (Nodemailer) and SMS (Twilio) services
+
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL, Drizzle ORM.

@@ -91,7 +91,11 @@ import {
   type UpdatePaymentMethod,
   type QuoteReminder,
   type InsertQuoteReminder,
-  type UpdateQuoteReminder
+  type UpdateQuoteReminder,
+  type ConsentDocument,
+  type InsertConsentDocument,
+  type ConsentSignatureEvent,
+  type InsertConsentEvent
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -138,7 +142,9 @@ import {
   quoteMemberDocuments,
   quoteDocuments,
   quotePaymentMethods,
-  quoteReminders
+  quoteReminders,
+  consentDocuments,
+  consentSignatureEvents
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -514,6 +520,28 @@ export interface IStorage {
   deleteQuoteReminder(id: string, companyId: string): Promise<boolean>;
   completeQuoteReminder(id: string, companyId: string, userId: string): Promise<QuoteReminder | null>;
   snoozeQuoteReminder(id: string, companyId: string, until: Date): Promise<QuoteReminder | null>;
+  
+  // Consent Documents
+  createConsentDocument(quoteId: string, companyId: string, userId: string): Promise<ConsentDocument>;
+  getConsentById(id: string, companyId: string): Promise<ConsentDocument | null>;
+  getConsentByToken(token: string): Promise<ConsentDocument | null>;
+  listQuoteConsents(quoteId: string, companyId: string): Promise<ConsentDocument[]>;
+  updateConsentDocument(id: string, data: Partial<InsertConsentDocument>): Promise<ConsentDocument | null>;
+  signConsent(token: string, signatureData: {
+    signedByName: string;
+    signedByEmail?: string;
+    signedByPhone?: string;
+    signerIp?: string;
+    signerUserAgent?: string;
+    signerTimezone?: string;
+    signerLocation?: string;
+    signerPlatform?: string;
+    signerBrowser?: string;
+  }): Promise<ConsentDocument | null>;
+  
+  // Consent Signature Events
+  createConsentEvent(consentDocumentId: string, eventType: string, payload?: Record<string, any>, actorId?: string): Promise<ConsentSignatureEvent>;
+  getConsentEvents(consentDocumentId: string): Promise<ConsentSignatureEvent[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -3405,6 +3433,158 @@ export class DbStorage implements IStorage {
       .returning();
     
     return result[0] || null;
+  }
+  
+  // ==================== CONSENT DOCUMENTS ====================
+  
+  async createConsentDocument(quoteId: string, companyId: string, userId: string): Promise<ConsentDocument> {
+    const { randomBytes } = await import('crypto');
+    
+    // Generate secure random token
+    const token = randomBytes(32).toString('hex');
+    
+    // Set expiration to 30 days from now
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    
+    const result = await db
+      .insert(consentDocuments)
+      .values({
+        quoteId,
+        companyId,
+        token,
+        expiresAt,
+        createdBy: userId,
+        status: 'draft'
+      })
+      .returning();
+    
+    // Create 'generated' event
+    await this.createConsentEvent(result[0].id, 'generated', { quoteId }, userId);
+    
+    return result[0];
+  }
+  
+  async getConsentById(id: string, companyId: string): Promise<ConsentDocument | null> {
+    const result = await db
+      .select()
+      .from(consentDocuments)
+      .where(and(eq(consentDocuments.id, id), eq(consentDocuments.companyId, companyId)));
+    
+    return result[0] || null;
+  }
+  
+  async getConsentByToken(token: string): Promise<ConsentDocument | null> {
+    const result = await db
+      .select()
+      .from(consentDocuments)
+      .where(eq(consentDocuments.token, token));
+    
+    return result[0] || null;
+  }
+  
+  async listQuoteConsents(quoteId: string, companyId: string): Promise<ConsentDocument[]> {
+    const result = await db
+      .select()
+      .from(consentDocuments)
+      .where(and(
+        eq(consentDocuments.quoteId, quoteId),
+        eq(consentDocuments.companyId, companyId)
+      ))
+      .orderBy(desc(consentDocuments.createdAt));
+    
+    return result;
+  }
+  
+  async updateConsentDocument(id: string, data: Partial<InsertConsentDocument>): Promise<ConsentDocument | null> {
+    const result = await db
+      .update(consentDocuments)
+      .set(data)
+      .where(eq(consentDocuments.id, id))
+      .returning();
+    
+    return result[0] || null;
+  }
+  
+  async signConsent(token: string, signatureData: {
+    signedByName: string;
+    signedByEmail?: string;
+    signedByPhone?: string;
+    signerIp?: string;
+    signerUserAgent?: string;
+    signerTimezone?: string;
+    signerLocation?: string;
+    signerPlatform?: string;
+    signerBrowser?: string;
+  }): Promise<ConsentDocument | null> {
+    const consent = await this.getConsentByToken(token);
+    if (!consent) {
+      return null;
+    }
+    
+    // Check if already signed
+    if (consent.status === 'signed') {
+      return consent;
+    }
+    
+    // Check if expired
+    if (consent.expiresAt && new Date(consent.expiresAt) < new Date()) {
+      return null;
+    }
+    
+    const result = await db
+      .update(consentDocuments)
+      .set({
+        status: 'signed',
+        signedAt: new Date(),
+        signedByName: signatureData.signedByName,
+        signedByEmail: signatureData.signedByEmail,
+        signedByPhone: signatureData.signedByPhone,
+        signerIp: signatureData.signerIp,
+        signerUserAgent: signatureData.signerUserAgent,
+        signerTimezone: signatureData.signerTimezone,
+        signerLocation: signatureData.signerLocation,
+        signerPlatform: signatureData.signerPlatform,
+        signerBrowser: signatureData.signerBrowser,
+      })
+      .where(eq(consentDocuments.token, token))
+      .returning();
+    
+    // Create 'signed' event
+    await this.createConsentEvent(consent.id, 'signed', signatureData);
+    
+    return result[0] || null;
+  }
+  
+  // ==================== CONSENT SIGNATURE EVENTS ====================
+  
+  async createConsentEvent(
+    consentDocumentId: string,
+    eventType: string,
+    payload?: Record<string, any>,
+    actorId?: string
+  ): Promise<ConsentSignatureEvent> {
+    const result = await db
+      .insert(consentSignatureEvents)
+      .values({
+        consentDocumentId,
+        eventType,
+        payload: payload || {},
+        actorId,
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async getConsentEvents(consentDocumentId: string): Promise<ConsentSignatureEvent[]> {
+    const result = await db
+      .select()
+      .from(consentSignatureEvents)
+      .where(eq(consentSignatureEvents.consentDocumentId, consentDocumentId))
+      .orderBy(desc(consentSignatureEvents.occurredAt));
+    
+    return result;
   }
 }
 

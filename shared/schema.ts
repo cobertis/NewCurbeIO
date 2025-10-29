@@ -1860,3 +1860,88 @@ export const updateQuoteReminderSchema = insertQuoteReminderSchema.partial().omi
 export type QuoteReminder = typeof quoteReminders.$inferSelect;
 export type InsertQuoteReminder = z.infer<typeof insertQuoteReminderSchema>;
 export type UpdateQuoteReminder = z.infer<typeof updateQuoteReminderSchema>;
+
+// =====================================================
+// CONSENT DOCUMENTS (Legal consent forms for quotes)
+// =====================================================
+
+export const consentDocuments = pgTable("consent_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteId: varchar("quoteId", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }),
+  companyId: varchar("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Status and delivery
+  status: text("status").notNull().default("draft"), // draft, sent, viewed, signed, void
+  deliveryChannel: text("deliveryChannel"), // email, sms, link
+  deliveryTarget: text("deliveryTarget"), // email address, phone number, or null for link
+  
+  // Security token for public access
+  token: varchar("token").notNull().unique(), // Secure random token for public access URL
+  
+  // Signature information
+  signedByName: text("signedByName"),
+  signedByEmail: text("signedByEmail"),
+  signedByPhone: text("signedByPhone"),
+  
+  // Digital audit trail
+  signerIp: varchar("signerIp"),
+  signerUserAgent: text("signerUserAgent"),
+  signerTimezone: varchar("signerTimezone"),
+  signerLocation: varchar("signerLocation"), // Lat/long coordinates
+  signerPlatform: varchar("signerPlatform"), // Desktop/Mobile/Tablet
+  signerBrowser: varchar("signerBrowser"), // Chrome, Firefox, Safari, etc.
+  
+  // Timestamps
+  sentAt: timestamp("sentAt"),
+  viewedAt: timestamp("viewedAt"),
+  signedAt: timestamp("signedAt"),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdBy: varchar("createdBy").notNull().references(() => users.id),
+});
+
+// =====================================================
+// CONSENT SIGNATURE EVENTS (Audit trail for consent documents)
+// =====================================================
+
+export const consentSignatureEvents = pgTable("consent_signature_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consentDocumentId: varchar("consentDocumentId").notNull().references(() => consentDocuments.id, { onDelete: "cascade" }),
+  
+  // Event details
+  eventType: text("eventType").notNull(), // generated, sent, delivered, viewed, signed, failed
+  payload: jsonb("payload").default({}), // Event-specific data
+  
+  // Timestamps and actor
+  occurredAt: timestamp("occurredAt").notNull().defaultNow(),
+  actorId: varchar("actorId").references(() => users.id), // User who triggered the event (nullable for public actions)
+});
+
+// =====================================================
+// CONSENT DOCUMENT SCHEMAS
+// =====================================================
+
+export const insertConsentDocumentSchema = createInsertSchema(consentDocuments).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+  viewedAt: true,
+  signedAt: true,
+}).extend({
+  status: z.enum(["draft", "sent", "viewed", "signed", "void"]).default("draft"),
+  deliveryChannel: z.enum(["email", "sms", "link"]).optional(),
+});
+
+export const insertConsentEventSchema = createInsertSchema(consentSignatureEvents).omit({
+  id: true,
+  occurredAt: true,
+}).extend({
+  eventType: z.enum(["generated", "sent", "delivered", "viewed", "signed", "failed"]),
+  payload: z.record(z.any()).optional(),
+});
+
+export type ConsentDocument = typeof consentDocuments.$inferSelect;
+export type InsertConsentDocument = z.infer<typeof insertConsentDocumentSchema>;
+
+export type ConsentSignatureEvent = typeof consentSignatureEvents.$inferSelect;
+export type InsertConsentEvent = z.infer<typeof insertConsentEventSchema>;

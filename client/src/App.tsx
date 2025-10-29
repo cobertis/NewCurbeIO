@@ -54,6 +54,7 @@ import Tickets from "@/pages/tickets";
 import EmailConfiguration from "@/pages/email-configuration";
 import Quotes from "@/pages/quotes";
 import MarketplacePlans from "@/pages/marketplace-plans";
+import PublicConsentPage from "@/pages/public-consent";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -1124,6 +1125,7 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/consent/:token" component={PublicConsentPage} />
       <Route path="/unsubscribe" component={Unsubscribe} />
       <Route component={NotFound} />
     </Switch>

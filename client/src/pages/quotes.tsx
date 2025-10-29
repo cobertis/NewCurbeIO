@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -3397,6 +3397,9 @@ export default function QuotesPage() {
   const [snoozeReminderId, setSnoozeReminderId] = useState<string | null>(null);
   const [snoozeDuration, setSnoozeDuration] = useState<string>("1hour");
   
+  // Consent modal state
+  const [consentModalOpen, setConsentModalOpen] = useState(false);
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -3707,6 +3710,21 @@ export default function QuotesPage() {
   });
 
   const quoteReminders = quoteRemindersData?.reminders || [];
+
+  // Fetch consent documents for quote
+  const { data: consentsData, isLoading: isLoadingConsents } = useQuery<{ consents: any[] }>({
+    queryKey: ['/api/quotes', params?.id, 'consents'],
+    queryFn: async () => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      const response = await fetch(`/api/quotes/${params.id}/consents`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch consents');
+      return response.json();
+    },
+    enabled: !!params?.id && params?.id !== 'new',
+  });
+
+  const consents = consentsData?.consents || [];
+  const latestConsent = consents[0]; // Most recent consent
 
   // Create reminder mutation
   const createReminderMutation = useMutation({
@@ -5946,6 +5964,17 @@ export default function QuotesPage() {
                 <div className="flex items-center gap-2.5">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Commissions</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setConsentModalOpen(true)}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                data-testid="button-send-consent"
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileSignature className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Send Consent</span>
                 </div>
               </button>
 
@@ -10232,6 +10261,198 @@ export default function QuotesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Send Consent Modal */}
+      <Dialog open={consentModalOpen} onOpenChange={setConsentModalOpen}>
+        <DialogContent className="max-w-lg" data-testid="dialog-send-consent">
+          <DialogHeader>
+            <DialogTitle>Send Consent Form</DialogTitle>
+            <DialogDescription>
+              Choose how to send the consent form to {viewingQuote?.clientFirstName}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <SendConsentModalContent 
+            quoteId={viewingQuote?.id || ''} 
+            clientEmail={viewingQuote?.clientEmail || ''}
+            clientPhone={viewingQuote?.clientPhone || ''}
+            onClose={() => setConsentModalOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+    </div>
+  );
+}
+
+// SendConsentModal Component
+function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }: { 
+  quoteId: string; 
+  clientEmail: string;
+  clientPhone: string;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [channel, setChannel] = useState<'email' | 'sms' | 'link'>('email');
+  const [target, setTarget] = useState(clientEmail || '');
+  const [sending, setSending] = useState(false);
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (channel === 'email') {
+      setTarget(clientEmail || '');
+    } else if (channel === 'sms') {
+      setTarget(clientPhone || '');
+    } else {
+      setTarget('');
+    }
+  }, [channel, clientEmail, clientPhone]);
+
+  const handleSend = async () => {
+    try {
+      setSending(true);
+      
+      // First generate the consent document
+      const generateResponse = await fetch(`/api/quotes/${quoteId}/consents/generate`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (!generateResponse.ok) {
+        throw new Error('Failed to generate consent document');
+      }
+      
+      const { consent } = await generateResponse.json();
+      
+      // Then send it via the selected channel
+      const sendResponse = await fetch(`/api/consents/${consent.id}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          channel,
+          target: channel === 'link' ? undefined : target,
+        }),
+      });
+      
+      if (!sendResponse.ok) {
+        throw new Error('Failed to send consent');
+      }
+      
+      const result = await sendResponse.json();
+      
+      if (channel === 'link') {
+        setGeneratedUrl(result.url);
+        toast({
+          title: "Link Generated",
+          description: "Copy the link below to share with the client",
+        });
+      } else {
+        toast({
+          title: "Consent Sent",
+          description: `Consent form sent successfully via ${channel}`,
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId, 'consents'] });
+        setTimeout(() => onClose(), 1500);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send consent",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (generatedUrl) {
+    return (
+      <div className="space-y-4">
+        <div className="p-4 bg-muted rounded-lg">
+          <p className="text-sm font-medium mb-2">Consent Link:</p>
+          <div className="flex items-center gap-2">
+            <Input 
+              value={generatedUrl} 
+              readOnly 
+              className="flex-1"
+              data-testid="input-consent-url"
+            />
+            <Button
+              onClick={() => {
+                navigator.clipboard.writeText(generatedUrl);
+                toast({ description: "Link copied to clipboard" });
+              }}
+              variant="outline"
+              size="sm"
+              data-testid="button-copy-url"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <Button onClick={onClose} className="w-full" data-testid="button-close-consent">
+          Close
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Delivery Method</Label>
+        <RadioGroup value={channel} onValueChange={(v) => setChannel(v as any)}>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="email" id="email" data-testid="radio-email" />
+            <Label htmlFor="email">Email</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="sms" id="sms" data-testid="radio-sms" />
+            <Label htmlFor="sms">SMS</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="link" id="link" data-testid="radio-link" />
+            <Label htmlFor="link">Generate Link</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {(channel === 'email' || channel === 'sms') && (
+        <div>
+          <Label htmlFor="target">
+            {channel === 'email' ? 'Email Address' : 'Phone Number'}
+          </Label>
+          <Input
+            id="target"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder={channel === 'email' ? 'client@example.com' : '(555) 123-4567'}
+            data-testid="input-target"
+          />
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button 
+          onClick={onClose} 
+          variant="outline" 
+          className="flex-1"
+          data-testid="button-cancel-consent"
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleSend} 
+          disabled={sending || (channel !== 'link' && !target.trim())}
+          className="flex-1"
+          data-testid="button-send-consent"
+        >
+          {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {channel === 'link' ? 'Generate Link' : 'Send Consent'}
+        </Button>
+      </div>
     </div>
   );
 }

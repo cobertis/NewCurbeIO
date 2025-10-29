@@ -10656,6 +10656,321 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== CONSENT DOCUMENTS ====================
+  
+  // POST /api/quotes/:id/consents/generate - Generate new consent document
+  app.post("/api/quotes/:id/consents/generate", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: quoteId } = req.params;
+    
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Create consent document
+      const consent = await storage.createConsentDocument(quoteId, quote.companyId, currentUser.id);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "consent_document",
+        entityId: consent.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          token: consent.token,
+        },
+      });
+      
+      res.json({ consent });
+    } catch (error: any) {
+      console.error("Error generating consent document:", error);
+      res.status(500).json({ message: "Failed to generate consent document" });
+    }
+  });
+  
+  // POST /api/consents/:id/send - Send consent via email/sms/link
+  app.post("/api/consents/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: consentId } = req.params;
+    const { channel, target } = req.body;
+    
+    try {
+      // Validate channel
+      if (!channel || !['email', 'sms', 'link'].includes(channel)) {
+        return res.status(400).json({ message: "Invalid channel. Must be 'email', 'sms', or 'link'" });
+      }
+      
+      // Get consent document
+      const consent = await storage.getConsentById(consentId, currentUser.companyId!);
+      if (!consent) {
+        return res.status(404).json({ message: "Consent document not found" });
+      }
+      
+      // Get quote and company details
+      const quote = await storage.getQuote(consent.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      const company = await storage.getCompany(consent.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Generate consent URL
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.APP_URL || 'http://localhost:5000';
+      const consentUrl = `${baseUrl}/consent/${consent.token}`;
+      
+      let deliveryTarget = target;
+      let sentAt = new Date();
+      
+      // Send based on channel
+      if (channel === 'email') {
+        if (!target) {
+          return res.status(400).json({ message: "Email address is required for email delivery" });
+        }
+        
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #2563eb; color: white; padding: 30px; text-align: center; }
+                .content { background: #f9f9f9; padding: 30px; }
+                .button { display: inline-block; padding: 12px 30px; background: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>Health Insurance Consent Form</h1>
+                </div>
+                <div class="content">
+                  <h2>Hello ${quote.clientFirstName},</h2>
+                  <p>You have been sent a consent form from <strong>${company.name}</strong>.</p>
+                  <p>Please review and sign the consent form to authorize us to assist you with your health insurance enrollment.</p>
+                  <p style="text-align: center;">
+                    <a href="${consentUrl}" class="button">Sign Consent Form</a>
+                  </p>
+                  <p>Or copy and paste this link into your browser:</p>
+                  <p style="word-break: break-all; background: #fff; padding: 10px; border: 1px solid #ddd;">${consentUrl}</p>
+                  <p><strong>This link will expire in 30 days.</strong></p>
+                </div>
+                <div class="footer">
+                  <p>This is an automated message from ${company.name}.</p>
+                  <p>&copy; ${new Date().getFullYear()} ${company.name}. All rights reserved.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+        
+        const sent = await emailService.sendEmail({
+          to: target,
+          subject: "Sign Your Health Insurance Consent Form",
+          html: emailHtml,
+        });
+        
+        if (!sent) {
+          await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'Email delivery failed' }, currentUser.id);
+          return res.status(500).json({ message: "Failed to send email" });
+        }
+        
+        await storage.createConsentEvent(consentId, 'sent', { channel, target }, currentUser.id);
+        await storage.createConsentEvent(consentId, 'delivered', { channel, target }, currentUser.id);
+        
+      } else if (channel === 'sms') {
+        if (!target) {
+          return res.status(400).json({ message: "Phone number is required for SMS delivery" });
+        }
+        
+        const smsMessage = `Hello ${quote.clientFirstName}, please sign your health insurance consent form: ${consentUrl}\n\nThis link expires in 30 days.\n\n- ${company.name}`;
+        
+        try {
+          const result = await twilioService.sendSMS(target, smsMessage);
+          
+          if (!result) {
+            await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'SMS delivery failed' }, currentUser.id);
+            return res.status(500).json({ message: "Failed to send SMS" });
+          }
+          
+          await storage.createConsentEvent(consentId, 'sent', { channel, target, sid: result.sid }, currentUser.id);
+          await storage.createConsentEvent(consentId, 'delivered', { channel, target, sid: result.sid }, currentUser.id);
+          
+        } catch (error: any) {
+          await storage.createConsentEvent(consentId, 'failed', { channel, target, error: error.message }, currentUser.id);
+          return res.status(500).json({ message: "Failed to send SMS" });
+        }
+        
+      } else if (channel === 'link') {
+        // For link channel, just return the URL
+        deliveryTarget = null;
+        sentAt = new Date();
+        
+        await storage.createConsentEvent(consentId, 'sent', { channel, url: consentUrl }, currentUser.id);
+      }
+      
+      // Update consent document with delivery info
+      const updatedConsent = await storage.updateConsentDocument(consentId, {
+        status: 'sent',
+        deliveryChannel: channel,
+        deliveryTarget,
+        sentAt,
+      });
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "consent_document",
+        entityId: consentId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          channel,
+          target,
+          action: "sent",
+        },
+      });
+      
+      res.json({ consent: updatedConsent, url: channel === 'link' ? consentUrl : undefined });
+    } catch (error: any) {
+      console.error("Error sending consent:", error);
+      res.status(500).json({ message: "Failed to send consent document" });
+    }
+  });
+  
+  // GET /api/quotes/:id/consents - List all consents for a quote
+  app.get("/api/quotes/:id/consents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: quoteId } = req.params;
+    
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const consents = await storage.listQuoteConsents(quoteId, quote.companyId);
+      
+      res.json({ consents });
+    } catch (error: any) {
+      console.error("Error listing consents:", error);
+      res.status(500).json({ message: "Failed to list consents" });
+    }
+  });
+  
+  // GET /consent/:token - Public endpoint to view consent (no auth required)
+  app.get("/consent/:token", async (req: Request, res: Response) => {
+    const { token } = req.params;
+    
+    try {
+      const consent = await storage.getConsentByToken(token);
+      if (!consent) {
+        return res.status(404).json({ message: "Consent document not found" });
+      }
+      
+      // Check if expired
+      if (consent.expiresAt && new Date(consent.expiresAt) < new Date()) {
+        return res.status(410).json({ message: "Consent document has expired" });
+      }
+      
+      // Get quote and company details
+      const quote = await storage.getQuote(consent.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      const company = await storage.getCompany(consent.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Get agent (creator) details
+      const agent = await storage.getUser(consent.createdBy);
+      
+      // Mark as viewed if first time
+      if (consent.status === 'sent' && !consent.viewedAt) {
+        await storage.updateConsentDocument(consent.id, {
+          status: 'viewed',
+          viewedAt: new Date(),
+        });
+        await storage.createConsentEvent(consent.id, 'viewed', {});
+      }
+      
+      res.json({
+        consent,
+        quote,
+        company,
+        agent: agent ? {
+          firstName: agent.firstName,
+          lastName: agent.lastName,
+          nationalProducerNumber: agent.nationalProducerNumber,
+        } : null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching consent:", error);
+      res.status(500).json({ message: "Failed to fetch consent document" });
+    }
+  });
+  
+  // POST /consent/:token/sign - Public endpoint to sign consent (no auth required)
+  app.post("/consent/:token/sign", async (req: Request, res: Response) => {
+    const { token } = req.params;
+    const { signedByName, signedByEmail, signedByPhone, timezone, location, platform, browser, userAgent } = req.body;
+    
+    try {
+      if (!signedByName) {
+        return res.status(400).json({ message: "Signature name is required" });
+      }
+      
+      // Get IP address from request (server-side - cannot be spoofed)
+      const signerIp = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
+      // Use header user-agent (more reliable) or fallback to body if needed
+      const signerUserAgent = req.headers['user-agent'] || userAgent || '';
+      
+      // Sign the consent
+      const signedConsent = await storage.signConsent(token, {
+        signedByName,
+        signedByEmail,
+        signedByPhone,
+        signerIp,
+        signerUserAgent,
+        signerTimezone: timezone,
+        signerLocation: location,
+        signerPlatform: platform,
+        signerBrowser: browser,
+      });
+      
+      if (!signedConsent) {
+        return res.status(404).json({ message: "Consent document not found or expired" });
+      }
+      
+      res.json({ consent: signedConsent, message: "Consent signed successfully" });
+    } catch (error: any) {
+      console.error("Error signing consent:", error);
+      res.status(500).json({ message: "Failed to sign consent document" });
+    }
+  });
+
   // ==================== CMS MARKETPLACE API ====================
   
   // Import CMS Marketplace service
