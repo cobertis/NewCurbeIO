@@ -10883,8 +10883,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Rate limiting for consent endpoints to prevent brute force attacks
+  const consentRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+  const CONSENT_RATE_LIMIT = 10; // max 10 requests
+  const CONSENT_RATE_WINDOW = 60 * 1000; // per 60 seconds
+  
+  const consentRateLimiter = (req: Request, res: Response, next: Function) => {
+    const clientIp = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    
+    const record = consentRateLimitMap.get(clientIp);
+    
+    if (!record || now > record.resetAt) {
+      consentRateLimitMap.set(clientIp, { count: 1, resetAt: now + CONSENT_RATE_WINDOW });
+      return next();
+    }
+    
+    if (record.count >= CONSENT_RATE_LIMIT) {
+      const retryAfterSeconds = Math.ceil((record.resetAt - now) / 1000);
+      res.setHeader('Retry-After', retryAfterSeconds.toString());
+      return res.status(429).json({ 
+        message: "Too many requests. Please try again later.",
+        retryAfter: retryAfterSeconds
+      });
+    }
+    
+    record.count++;
+    next();
+  };
+  
+  // Clean up old rate limit records every 5 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, record] of consentRateLimitMap.entries()) {
+      if (now > record.resetAt) {
+        consentRateLimitMap.delete(ip);
+      }
+    }
+  }, 5 * 60 * 1000);
+  
   // GET /consent/:token - Public endpoint to view consent (no auth required)
-  app.get("/consent/:token", async (req: Request, res: Response) => {
+  app.get("/consent/:token", consentRateLimiter, async (req: Request, res: Response) => {
     const { token } = req.params;
     
     try {
@@ -10938,7 +10977,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // POST /consent/:token/sign - Public endpoint to sign consent (no auth required)
-  app.post("/consent/:token/sign", async (req: Request, res: Response) => {
+  app.post("/consent/:token/sign", consentRateLimiter, async (req: Request, res: Response) => {
     const { token } = req.params;
     const { signedByName, signedByEmail, signedByPhone, timezone, location, platform, browser, userAgent } = req.body;
     

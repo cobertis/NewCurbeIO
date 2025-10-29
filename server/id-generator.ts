@@ -1,14 +1,22 @@
+import { webcrypto } from "crypto";
+
 /**
- * Generate a unique 8-character alphanumeric ID
+ * Generate a cryptographically secure 12-character alphanumeric ID
  * Format: Uppercase letters and numbers (excluding similar looking characters)
+ * Uses crypto.getRandomValues for cryptographic security
  */
 export function generateShortId(): string {
   // Use base32-like character set (excludes 0, O, I, L, 1 to avoid confusion)
   const chars = '234567889ABCDEFGHJKMNPQRSTUVWXYZ';
+  const charLength = chars.length;
   let id = '';
   
-  for (let i = 0; i < 8; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  // Generate 12 cryptographically random characters
+  const randomValues = new Uint8Array(12);
+  webcrypto.getRandomValues(randomValues);
+  
+  for (let i = 0; i < 12; i++) {
+    id += chars.charAt(randomValues[i] % charLength);
   }
   
   return id;
