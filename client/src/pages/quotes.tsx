@@ -8248,31 +8248,20 @@ export default function QuotesPage() {
                     </div>
                     {/* Action Buttons for Viewing Consent */}
                     {viewingConsent && (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const iframe = document.getElementById('consent-preview-iframe') as HTMLIFrameElement;
-                            if (iframe?.contentWindow) {
-                              iframe.contentWindow.print();
-                            }
-                          }}
-                          data-testid="button-print-consent"
-                        >
-                          <Printer className="h-4 w-4 mr-2" />
-                          Print / Save as PDF
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(`/consent/${viewingConsent.token}`, '_blank')}
-                          data-testid="button-open-consent-tab"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open in New Tab
-                        </Button>
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const iframe = document.getElementById('consent-preview-iframe') as HTMLIFrameElement;
+                          if (iframe?.contentWindow) {
+                            iframe.contentWindow.print();
+                          }
+                        }}
+                        data-testid="button-print-consent"
+                      >
+                        <Printer className="h-4 w-4 mr-2" />
+                        Print / Save as PDF
+                      </Button>
                     )}
                   </div>
                   <SheetDescription>
