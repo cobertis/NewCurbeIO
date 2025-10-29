@@ -8257,6 +8257,7 @@ export default function QuotesPage() {
                             iframe.contentWindow.print();
                           }
                         }}
+                        className="mr-8"
                         data-testid="button-print-consent"
                       >
                         <Printer className="h-4 w-4 mr-2" />
