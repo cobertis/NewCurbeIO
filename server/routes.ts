@@ -683,13 +683,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/consent/:token/sign - Public endpoint to sign consent (no auth required)
   app.post("/api/consent/:token/sign", consentRateLimiter, async (req: Request, res: Response) => {
     const { token } = req.params;
-    const { signedByName, signedByEmail, signedByPhone, signatureImage, timezone, location, platform, browser, userAgent } = req.body;
+    const { signatureImage, timezone, location, platform, browser, userAgent } = req.body;
     
     try {
-      if (!signedByName) {
-        return res.status(400).json({ message: "Signature name is required" });
-      }
-      
       if (!signatureImage) {
         return res.status(400).json({ message: "Signature image is required" });
       }
@@ -701,9 +697,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Sign the consent
       const signedConsent = await storage.signConsent(token, {
-        signedByName,
-        signedByEmail,
-        signedByPhone,
         signatureImage,
         signerIp,
         signerUserAgent,

@@ -20,9 +20,6 @@ export default function PublicConsentPage() {
   const [signed, setSigned] = useState(false);
   
   // Form fields
-  const [signedByName, setSignedByName] = useState("");
-  const [signedByEmail, setSignedByEmail] = useState("");
-  const [signedByPhone, setSignedByPhone] = useState("");
   const [agreeChecked, setAgreeChecked] = useState(false);
   const [signing, setSigning] = useState(false);
   
@@ -120,16 +117,6 @@ export default function PublicConsentPage() {
     // Get language for error messages
     const isSpanish = consentData?.quote?.clientPreferredLanguage === 'spanish' || consentData?.quote?.clientPreferredLanguage === 'es';
     
-    if (!signedByName.trim()) {
-      toast({
-        title: isSpanish ? "Nombre requerido" : "Name required",
-        description: isSpanish ? "Por favor ingrese su nombre completo" : "Please enter your full name to sign",
-        variant: "destructive",
-        duration: 3000,
-      });
-      return;
-    }
-    
     // Validate signature pad has content
     if (signaturePadRef.current?.isEmpty()) {
       toast({
@@ -163,9 +150,6 @@ export default function PublicConsentPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          signedByName,
-          signedByEmail: signedByEmail || undefined,
-          signedByPhone: signedByPhone || undefined,
           signatureImage,
           timezone: auditData.timezone,
           platform: auditData.platform,
@@ -443,56 +427,12 @@ export default function PublicConsentPage() {
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 {language === 'es' 
-                  ? 'Proporcione su información para firmar electrónicamente este consentimiento'
-                  : 'Please provide your information to electronically sign this consent'
+                  ? 'Firme electrónicamente este consentimiento usando su dedo o mouse'
+                  : 'Electronically sign this consent using your finger or mouse'
                 }
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="signedByName" className="text-sm" data-testid="label-signature-name">
-                  {language === 'es' ? 'Nombre Completo' : 'Full Name'} <span className="text-red-600">*</span>
-                </Label>
-                <Input
-                  id="signedByName"
-                  value={signedByName}
-                  onChange={(e) => setSignedByName(e.target.value)}
-                  placeholder={language === 'es' ? 'Ingrese su nombre legal completo' : 'Enter your full legal name'}
-                  className="text-base"
-                  data-testid="input-signature-name"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="signedByEmail" className="text-sm" data-testid="label-signature-email">
-                  {language === 'es' ? 'Correo Electrónico (Opcional)' : 'Email (Optional)'}
-                </Label>
-                <Input
-                  id="signedByEmail"
-                  type="email"
-                  value={signedByEmail}
-                  onChange={(e) => setSignedByEmail(e.target.value)}
-                  placeholder={language === 'es' ? 'su.correo@ejemplo.com' : 'your.email@example.com'}
-                  className="text-base"
-                  data-testid="input-signature-email"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="signedByPhone" className="text-sm" data-testid="label-signature-phone">
-                  {language === 'es' ? 'Teléfono (Opcional)' : 'Phone (Optional)'}
-                </Label>
-                <Input
-                  id="signedByPhone"
-                  type="tel"
-                  value={signedByPhone}
-                  onChange={(e) => setSignedByPhone(e.target.value)}
-                  placeholder="(555) 123-4567"
-                  className="text-base"
-                  data-testid="input-signature-phone"
-                />
-              </div>
-              
               {/* Signature Pad */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -550,7 +490,7 @@ export default function PublicConsentPage() {
               
               <Button
                 onClick={handleSign}
-                disabled={signing || !signedByName.trim() || !agreeChecked}
+                disabled={signing || !agreeChecked}
                 className="w-full h-11 sm:h-12 text-base bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900"
                 data-testid="button-sign"
               >
@@ -577,31 +517,6 @@ export default function PublicConsentPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                  {language === 'es' ? 'Firmado Por:' : 'Signed By:'}
-                </p>
-                <p className="text-base sm:text-lg text-gray-900 dark:text-gray-100">{consent.signedByName}</p>
-              </div>
-              
-              {consent.signedByEmail && (
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    {language === 'es' ? 'Correo Electrónico:' : 'Email:'}
-                  </p>
-                  <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100">{consent.signedByEmail}</p>
-                </div>
-              )}
-              
-              {consent.signedByPhone && (
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    {language === 'es' ? 'Teléfono:' : 'Phone:'}
-                  </p>
-                  <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100">{consent.signedByPhone}</p>
-                </div>
-              )}
-              
               {/* Display captured signature */}
               {consent.signatureImage && (
                 <div>

@@ -529,10 +529,7 @@ export interface IStorage {
   updateConsentDocument(id: string, data: Partial<InsertConsentDocument>): Promise<ConsentDocument | null>;
   deleteConsentDocument(id: string, companyId: string): Promise<boolean>;
   signConsent(token: string, signatureData: {
-    signedByName: string;
-    signedByEmail?: string;
-    signedByPhone?: string;
-    signatureImage?: string;
+    signatureImage: string;
     signerIp?: string;
     signerUserAgent?: string;
     signerTimezone?: string;
@@ -3539,10 +3536,7 @@ export class DbStorage implements IStorage {
   }
   
   async signConsent(token: string, signatureData: {
-    signedByName: string;
-    signedByEmail?: string;
-    signedByPhone?: string;
-    signatureImage?: string;
+    signatureImage: string;
     signerIp?: string;
     signerUserAgent?: string;
     signerTimezone?: string;
@@ -3570,9 +3564,6 @@ export class DbStorage implements IStorage {
       .set({
         status: 'signed',
         signedAt: new Date(),
-        signedByName: signatureData.signedByName,
-        signedByEmail: signatureData.signedByEmail,
-        signedByPhone: signatureData.signedByPhone,
         signatureImage: signatureData.signatureImage,
         signerIp: signatureData.signerIp,
         signerUserAgent: signatureData.signerUserAgent,
