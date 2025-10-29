@@ -8246,20 +8246,12 @@ export default function QuotesPage() {
                         </Badge>
                       )}
                     </div>
-                  </div>
-                  <SheetDescription>
-                    {viewingConsent ? 'Preview of the signed consent document' : showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this quote'}
-                  </SheetDescription>
-                </SheetHeader>
-
-                <div className="space-y-4 py-6">
-                  {viewingConsent ? (
-                    /* Consent Preview View */
-                    <div className="space-y-4">
-                      {/* Action Buttons */}
+                    {/* Action Buttons for Viewing Consent */}
+                    {viewingConsent && (
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
+                          size="sm"
                           onClick={() => {
                             const printWindow = window.open(`/consent/${viewingConsent.token}`, '_blank');
                             if (printWindow) {
@@ -8275,6 +8267,7 @@ export default function QuotesPage() {
                         </Button>
                         <Button
                           variant="outline"
+                          size="sm"
                           onClick={() => window.open(`/consent/${viewingConsent.token}`, '_blank')}
                           data-testid="button-open-consent-tab"
                         >
@@ -8282,11 +8275,21 @@ export default function QuotesPage() {
                           Open in New Tab
                         </Button>
                       </div>
-                      
+                    )}
+                  </div>
+                  <SheetDescription>
+                    {viewingConsent ? 'Preview of the signed consent document' : showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this quote'}
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="space-y-4 py-6">
+                  {viewingConsent ? (
+                    /* Consent Preview View */
+                    <div className="space-y-4">
                       {/* Preview Iframe */}
                       <iframe
                         src={`/consent/${viewingConsent.token}`}
-                        className="w-full h-[calc(100vh-280px)] border rounded-lg"
+                        className="w-full h-[calc(100vh-200px)] border rounded-lg"
                         title="Consent Document Preview"
                       />
                     </div>

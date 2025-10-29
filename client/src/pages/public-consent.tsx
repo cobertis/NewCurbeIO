@@ -224,12 +224,69 @@ export default function PublicConsentPage() {
   const clientName = quote ? `${quote.clientFirstName || ''} ${quote.clientLastName || ''}`.trim() : 'Client';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-3xl mx-auto px-4 py-6 sm:py-12">
+    <>
+      {/* Print Styles */}
+      <style>{`
+        @media print {
+          @page {
+            size: letter;
+            margin: 0.5in;
+          }
+          
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+          
+          .no-print {
+            display: none !important;
+          }
+          
+          .print-page {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          
+          .print-content {
+            padding: 0.25in !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background: white !important;
+          }
+          
+          /* Ensure text is black for printing */
+          * {
+            color: black !important;
+            background: transparent !important;
+          }
+          
+          h1, h2, h3, h4, h5, h6, strong, .font-bold {
+            font-weight: bold !important;
+          }
+          
+          /* Keep borders and lines visible */
+          .border, .border-b, .border-t {
+            border-color: #d1d5db !important;
+          }
+          
+          /* Signature section */
+          .signature-section {
+            border: 1px solid #d1d5db !important;
+            padding: 0.5rem !important;
+          }
+        }
+      `}</style>
+      
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 print-page">
+        <div className="max-w-3xl mx-auto px-4 py-6 sm:py-12">
         
         {/* Status Badge */}
         {signed && (
-          <div className="mb-6">
+          <div className="mb-6 no-print">
             <div className="p-4 bg-gray-900 dark:bg-gray-800 text-white rounded-lg flex items-start gap-3">
               <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
@@ -245,7 +302,7 @@ export default function PublicConsentPage() {
         )}
 
         {/* Consent Document - EXACT COPY FROM PREVIEW */}
-        <div className="border rounded-lg p-6 bg-white dark:bg-gray-900 mb-6">
+        <div className="border rounded-lg p-6 bg-white dark:bg-gray-900 mb-6 print-content">
           {/* Company Header */}
           <div className="text-center mb-8 pb-6 border-b">
             {company?.logo ? (
@@ -614,5 +671,6 @@ export default function PublicConsentPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
