@@ -3404,6 +3404,7 @@ export default function QuotesPage() {
   // Consents sheet state
   const [consentsSheetOpen, setConsentsSheetOpen] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false); // Track if we're in form view
+  const [viewingConsent, setViewingConsent] = useState<any | null>(null); // Track if we're viewing a consent
   
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
@@ -8210,17 +8211,23 @@ export default function QuotesPage() {
             {/* Consents Sheet */}
             <Sheet open={consentsSheetOpen} onOpenChange={(open) => {
               setConsentsSheetOpen(open);
-              if (!open) setShowConsentForm(false); // Reset form view when closing
+              if (!open) {
+                setShowConsentForm(false);
+                setViewingConsent(null);
+              }
             }}>
               <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right" data-testid="sheet-consents">
                 <SheetHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {showConsentForm && (
+                      {(showConsentForm || viewingConsent) && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setShowConsentForm(false)}
+                          onClick={() => {
+                            setShowConsentForm(false);
+                            setViewingConsent(null);
+                          }}
                           className="mr-2"
                           data-testid="button-back-to-list"
                         >
@@ -8228,8 +8235,10 @@ export default function QuotesPage() {
                           Back
                         </Button>
                       )}
-                      <SheetTitle>{showConsentForm ? 'Send Consent Form' : 'Signature Forms'}</SheetTitle>
-                      {!showConsentForm && (
+                      <SheetTitle>
+                        {viewingConsent ? 'View Consent Document' : showConsentForm ? 'Send Consent Form' : 'Signature Forms'}
+                      </SheetTitle>
+                      {!showConsentForm && !viewingConsent && (
                         <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-consents-count">
                           {consents.length}
                         </Badge>
@@ -8237,12 +8246,21 @@ export default function QuotesPage() {
                     </div>
                   </div>
                   <SheetDescription>
-                    {showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this quote'}
+                    {viewingConsent ? 'Preview of the signed consent document' : showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this quote'}
                   </SheetDescription>
                 </SheetHeader>
 
                 <div className="space-y-4 py-6">
-                  {!showConsentForm ? (
+                  {viewingConsent ? (
+                    /* Consent Preview View */
+                    <div className="space-y-6">
+                      <iframe
+                        src={`/consent/${viewingConsent.token}`}
+                        className="w-full h-[calc(100vh-200px)] border rounded-lg"
+                        title="Consent Document Preview"
+                      />
+                    </div>
+                  ) : !showConsentForm ? (
                     <>
                       {/* Create Button */}
                       <div className="flex gap-2">
@@ -8339,7 +8357,7 @@ export default function QuotesPage() {
                                     <Button 
                                       variant="ghost" 
                                       size="sm"
-                                      onClick={() => window.open(`/consent/${consent.token}`, '_blank')}
+                                      onClick={() => setViewingConsent(consent)}
                                       data-testid={`button-view-consent-${consent.id}`}
                                       title="View consent form"
                                     >

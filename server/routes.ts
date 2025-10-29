@@ -691,7 +691,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Get IP address from request (server-side - cannot be spoofed)
-      const signerIp = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
+      // Extract first IP from x-forwarded-for header (client's real IP when behind proxy)
+      const signerIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
       // Use header user-agent (more reliable) or fallback to body if needed
       const signerUserAgent = req.headers['user-agent'] || userAgent || '';
       

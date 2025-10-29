@@ -9,6 +9,9 @@ import { startReminderScheduler } from "./reminder-scheduler";
 
 const app = express();
 
+// Trust proxy to get real client IP (required when behind Replit proxy)
+app.set('trust proxy', true);
+
 // Stripe webhook needs raw body for signature verification
 // We parse all other routes as JSON
 app.use((req, res, next) => {
