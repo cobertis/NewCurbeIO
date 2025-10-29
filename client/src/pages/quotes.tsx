@@ -2181,9 +2181,6 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
                           }}
                           disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                           fromDate={new Date()}
-                          captionLayout="dropdown-buttons"
-                          fromYear={new Date().getFullYear()}
-                          toYear={new Date().getFullYear() + 10}
                           initialFocus
                         />
                       </PopoverContent>
