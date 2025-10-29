@@ -646,7 +646,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       })));
       
       const agents = allUsers
-        .filter(user => user.nationalProducerNumber && user.nationalProducerNumber.trim() !== '') // Only include users with valid NPN
+        .filter(user => {
+          // Only include users with valid NPN (not null, not undefined, not empty string)
+          const npn = user.nationalProducerNumber;
+          return npn && npn.trim() !== '';
+        })
         .map(user => ({
           firstName: user.firstName,
           lastName: user.lastName,
@@ -3341,20 +3345,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
     try {
       // Only allow updating own profile fields (not role, companyId, password, etc.)
-      // Convert empty strings to null for optional fields
+      // Convert empty strings to "" for Zod validation (schema expects "" not null)
       const allowedFields = {
         firstName: req.body.firstName,
         lastName: req.body.lastName,
         email: req.body.email,
-        phone: req.body.phone || null,
+        phone: req.body.phone?.trim() || "",
         avatar: req.body.avatar,
         dateOfBirth: req.body.dateOfBirth,
         preferredLanguage: req.body.preferredLanguage,
-        agentInternalCode: req.body.agentInternalCode || null,
+        agentInternalCode: req.body.agentInternalCode?.trim() || "",
         instructionLevel: req.body.instructionLevel,
-        nationalProducerNumber: req.body.nationalProducerNumber?.trim() || null,
+        nationalProducerNumber: req.body.nationalProducerNumber?.trim() || "",
         federallyFacilitatedMarketplace: req.body.federallyFacilitatedMarketplace,
-        referredBy: req.body.referredBy || null,
+        referredBy: req.body.referredBy?.trim() || "",
       };
 
       // Validate using updateUserSchema (validates phone E.164 format, email, etc.)
