@@ -6956,9 +6956,7 @@ export default function QuotesPage() {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
-                            <TableHead className="w-[50px]"></TableHead>
-                            <TableHead>File Name</TableHead>
-                            <TableHead>Category</TableHead>
+                            <TableHead>Document Type</TableHead>
                             <TableHead>Belongs To</TableHead>
                             <TableHead>Size</TableHead>
                             <TableHead>Uploaded By</TableHead>
@@ -6967,26 +6965,6 @@ export default function QuotesPage() {
                         </TableHeader>
                         <TableBody>
                           {filteredDocuments.map((doc: any) => {
-                            const fileExt = doc.fileName?.split('.').pop()?.toLowerCase();
-                            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt || '');
-                            const isPdf = fileExt === 'pdf';
-                            
-                            // Category badge colors
-                            const getCategoryColor = (category: string) => {
-                              switch (category) {
-                                case 'passport': return 'border-blue-200 bg-blue-50 text-blue-700';
-                                case 'drivers_license': return 'border-green-200 bg-green-50 text-green-700';
-                                case 'state_id': return 'border-purple-200 bg-purple-50 text-purple-700';
-                                case 'birth_certificate': return 'border-orange-200 bg-orange-50 text-orange-700';
-                                case 'parole': return 'border-red-200 bg-red-50 text-red-700';
-                                case 'permanent_residence': return 'border-yellow-200 bg-yellow-50 text-yellow-700';
-                                case 'work_permit': return 'border-indigo-200 bg-indigo-50 text-indigo-700';
-                                case 'i94': return 'border-pink-200 bg-pink-50 text-pink-700';
-                                case 'other': return 'border-gray-200 bg-gray-50 text-gray-700';
-                                default: return 'border-gray-200 bg-gray-50 text-gray-700';
-                              }
-                            };
-
                             const getCategoryLabel = (category: string) => {
                               switch (category) {
                                 case 'passport': return 'Passport';
@@ -7003,62 +6981,34 @@ export default function QuotesPage() {
                             };
 
                             return (
-                              <TableRow key={doc.id} className="hover:bg-muted/30">
-                                <TableCell>
-                                  {isImage ? (
-                                    <Image className="h-5 w-5 text-muted-foreground" />
-                                  ) : isPdf ? (
-                                    <FileText className="h-5 w-5 text-muted-foreground" />
-                                  ) : (
-                                    <File className="h-5 w-5 text-muted-foreground" />
-                                  )}
-                                </TableCell>
+                              <TableRow key={doc.id} className="hover:bg-muted/50">
                                 <TableCell>
                                   <button
                                     onClick={() => setPreviewDocument(doc)}
                                     className="text-sm font-medium hover:underline text-left"
                                     data-testid={`button-preview-${doc.id}`}
                                   >
-                                    {doc.fileName}
-                                  </button>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs border ${getCategoryColor(doc.category)}`}
-                                    data-testid={`badge-category-${doc.id}`}
-                                  >
                                     {getCategoryLabel(doc.category)}
-                                  </Badge>
+                                  </button>
+                                  <div className="text-xs text-muted-foreground mt-0.5">{doc.fileName}</div>
                                 </TableCell>
-                                <TableCell className="text-sm">
+                                <TableCell className="text-sm text-muted-foreground">
                                   {doc.belongsToMember ? (
-                                    <span className="text-muted-foreground">
+                                    <>
                                       {doc.belongsToMember.firstName} {doc.belongsToMember.lastName}
-                                      <span className="ml-1 text-xs">({doc.belongsToMember.role})</span>
-                                    </span>
+                                      <span className="text-xs ml-1">({doc.belongsToMember.role})</span>
+                                    </>
                                   ) : (
-                                    <span className="text-muted-foreground italic">None</span>
+                                    '-'
                                   )}
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
                                   {formatFileSize(doc.fileSize || 0)}
                                 </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                      <Avatar className="h-6 w-6">
-                                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                          {doc.uploadedBy?.firstName?.[0] || 'U'}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <span className="text-sm font-medium">
-                                        {doc.uploadedBy?.firstName || 'Unknown'} {doc.uploadedBy?.lastName || ''}
-                                      </span>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground ml-8">
-                                      {format(new Date(doc.createdAt), "MMM dd, yyyy • h:mm a")}
-                                    </span>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {doc.uploadedBy?.firstName || 'Unknown'} {doc.uploadedBy?.lastName || ''}
+                                  <div className="text-xs text-muted-foreground/70">
+                                    {format(new Date(doc.createdAt), "MMM dd, yyyy • h:mm a")}
                                   </div>
                                 </TableCell>
                                 <TableCell>
@@ -7199,14 +7149,19 @@ export default function QuotesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">None</SelectItem>
-                        {(quoteDetail?.members || []).map((item: any) => {
-                          const member = item.member || item;
-                          return (
-                            <SelectItem key={member.id} value={member.id}>
-                              {member.firstName} {member.lastName} ({member.role})
-                            </SelectItem>
-                          );
-                        })}
+                        {(() => {
+                          console.log('[UPLOAD DIALOG] quoteDetail:', quoteDetail);
+                          console.log('[UPLOAD DIALOG] members:', quoteDetail?.members);
+                          return (quoteDetail?.members || []).map((item: any) => {
+                            const member = item.member || item;
+                            console.log('[UPLOAD DIALOG] member:', member);
+                            return (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.firstName} {member.lastName} ({member.role})
+                              </SelectItem>
+                            );
+                          });
+                        })()}
                       </SelectContent>
                     </Select>
                   </div>
