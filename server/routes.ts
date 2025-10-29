@@ -10920,11 +10920,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ? 'Firme su Formulario de Consentimiento de Seguro de Salud' 
           : 'Sign Your Health Insurance Consent Form';
         
+        // Convert logo path to full URL if it's a relative path
+        let logoUrl = company.logo;
+        if (logoUrl && !logoUrl.startsWith('http') && !logoUrl.startsWith('data:')) {
+          // It's a relative path, convert to absolute URL
+          logoUrl = `${baseUrl}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
+        }
+        
         // Simple email with just notification message and button (no full document)
         const htmlContent = `
         <div style="max-width: 600px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #24292e; background: #ffffff; padding: 40px 24px;">
           <div style="text-align: center; margin-bottom: 32px;">
-            ${company.logo ? `<img src="${company.logo}" alt="${company.name}" style="height: 64px; margin: 0 auto 16px; display: block;">` : `<h2 style="font-size: 24px; font-weight: 700; margin: 0 0 16px; color: #24292e;">${company.name}</h2>`}
+            ${logoUrl ? `<img src="${logoUrl}" alt="${company.name}" style="height: 64px; margin: 0 auto 16px; display: block;">` : `<h2 style="font-size: 24px; font-weight: 700; margin: 0 0 16px; color: #24292e;">${company.name}</h2>`}
           </div>
           
           <div style="font-size: 16px; line-height: 1.6; color: #24292e;">
