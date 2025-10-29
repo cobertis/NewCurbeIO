@@ -8253,11 +8253,9 @@ export default function QuotesPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const printWindow = window.open(`/consent/${viewingConsent.token}`, '_blank');
-                            if (printWindow) {
-                              printWindow.onload = () => {
-                                printWindow.print();
-                              };
+                            const iframe = document.getElementById('consent-preview-iframe') as HTMLIFrameElement;
+                            if (iframe?.contentWindow) {
+                              iframe.contentWindow.print();
                             }
                           }}
                           data-testid="button-print-consent"
@@ -8288,6 +8286,7 @@ export default function QuotesPage() {
                     <div className="space-y-4">
                       {/* Preview Iframe */}
                       <iframe
+                        id="consent-preview-iframe"
                         src={`/consent/${viewingConsent.token}`}
                         className="w-full h-[calc(100vh-200px)] border rounded-lg"
                         title="Consent Document Preview"
