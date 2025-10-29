@@ -10921,11 +10921,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           : 'Sign Your Health Insurance Consent Form';
         
         // Convert logo path to full URL if it's a relative path
-        let logoUrl = company.logo;
-        if (logoUrl && !logoUrl.startsWith('http') && !logoUrl.startsWith('data:')) {
+        // Gmail blocks data URIs, so only use http/https URLs
+        let logoUrl = null;
+        if (company.logo && company.logo.startsWith('http')) {
+          logoUrl = company.logo; // Already absolute URL
+        } else if (company.logo && !company.logo.startsWith('data:')) {
           // It's a relative path, convert to absolute URL
-          logoUrl = `${baseUrl}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
+          logoUrl = `${baseUrl}${company.logo.startsWith('/') ? '' : '/'}${company.logo}`;
         }
+        // If logo is data URI or null, don't use it (Gmail blocks data URIs)
         
         // Simple email with just notification message and button (no full document)
         const htmlContent = `
