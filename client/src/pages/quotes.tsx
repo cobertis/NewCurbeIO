@@ -18,7 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -3867,6 +3867,56 @@ export default function QuotesPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete reminder",
+        variant: "destructive",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+  });
+
+  // Resend consent mutation
+  const resendConsentMutation = useMutation({
+    mutationFn: async (consentId: string) => {
+      return apiRequest('POST', `/api/consents/${consentId}/send`, {});
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'consents'] });
+      }
+      toast({
+        title: "Consent resent",
+        description: "Consent document has been resent successfully.",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend consent",
+        variant: "destructive",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+  });
+
+  // Delete consent mutation
+  const deleteConsentMutation = useMutation({
+    mutationFn: async (consentId: string) => {
+      return apiRequest('DELETE', `/api/consents/${consentId}`);
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'consents'] });
+      }
+      toast({
+        title: "Consent deleted",
+        description: "Consent document has been removed successfully.",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete consent",
         variant: "destructive",
       });
       setTimeout(() => toast({ description: "" }), 3000);
@@ -8324,6 +8374,27 @@ export default function QuotesPage() {
                                         >
                                           <Download className="h-4 w-4 mr-2" />
                                           Download Signed
+                                        </DropdownMenuItem>
+                                      )}
+                                      {consent.status !== 'signed' && consent.deliveryChannel && consent.deliveryChannel !== 'link' && (
+                                        <DropdownMenuItem
+                                          onClick={() => resendConsentMutation.mutate(consent.id)}
+                                          disabled={resendConsentMutation.isPending}
+                                          data-testid={`menu-resend-${consent.id}`}
+                                        >
+                                          <Send className="h-4 w-4 mr-2" />
+                                          Resend
+                                        </DropdownMenuItem>
+                                      )}
+                                      {consent.status !== 'signed' && (
+                                        <DropdownMenuItem
+                                          onClick={() => deleteConsentMutation.mutate(consent.id)}
+                                          disabled={deleteConsentMutation.isPending}
+                                          className="text-destructive focus:text-destructive"
+                                          data-testid={`menu-delete-${consent.id}`}
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete
                                         </DropdownMenuItem>
                                       )}
                                     </DropdownMenuContent>

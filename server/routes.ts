@@ -11006,6 +11006,49 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to list consents" });
     }
   });
+  
+  // DELETE /api/consents/:id - Delete consent document
+  app.delete("/api/consents/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: consentId } = req.params;
+    
+    try {
+      // Get consent to verify ownership
+      const consent = await storage.getConsentById(consentId, currentUser.companyId!);
+      if (!consent) {
+        return res.status(404).json({ message: "Consent document not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && consent.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Don't allow deletion of signed documents
+      if (consent.status === 'signed') {
+        return res.status(400).json({ message: "Cannot delete signed consent documents" });
+      }
+      
+      const deleted = await storage.deleteConsentDocument(consentId, consent.companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete consent document" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "consent_document",
+        entityId: consentId,
+        companyId: currentUser.companyId || undefined,
+      });
+      
+      res.json({ message: "Consent document deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting consent:", error);
+      res.status(500).json({ message: "Failed to delete consent document" });
+    }
+  });
 
   // ==================== CMS MARKETPLACE API ====================
   

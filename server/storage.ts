@@ -527,6 +527,7 @@ export interface IStorage {
   getConsentByToken(token: string): Promise<ConsentDocument | null>;
   listQuoteConsents(quoteId: string, companyId: string): Promise<ConsentDocument[]>;
   updateConsentDocument(id: string, data: Partial<InsertConsentDocument>): Promise<ConsentDocument | null>;
+  deleteConsentDocument(id: string, companyId: string): Promise<boolean>;
   signConsent(token: string, signatureData: {
     signedByName: string;
     signedByEmail?: string;
@@ -3522,6 +3523,18 @@ export class DbStorage implements IStorage {
       .returning();
     
     return result[0] || null;
+  }
+  
+  async deleteConsentDocument(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(consentDocuments)
+      .where(and(
+        eq(consentDocuments.id, id),
+        eq(consentDocuments.companyId, companyId)
+      ))
+      .returning();
+    
+    return result.length > 0;
   }
   
   async signConsent(token: string, signatureData: {
