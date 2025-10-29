@@ -612,8 +612,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   }, 5 * 60 * 1000);
   
-  // GET /consent/:token - Public endpoint to view consent (no auth required)
-  app.get("/consent/:token", consentRateLimiter, async (req: Request, res: Response) => {
+  // GET /api/consent/:token - Public endpoint to view consent (no auth required)
+  app.get("/api/consent/:token", consentRateLimiter, async (req: Request, res: Response) => {
     const { token } = req.params;
     
     try {
@@ -666,8 +666,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // POST /consent/:token/sign - Public endpoint to sign consent (no auth required)
-  app.post("/consent/:token/sign", consentRateLimiter, async (req: Request, res: Response) => {
+  // POST /api/consent/:token/sign - Public endpoint to sign consent (no auth required)
+  app.post("/api/consent/:token/sign", consentRateLimiter, async (req: Request, res: Response) => {
     const { token } = req.params;
     const { signedByName, signedByEmail, signedByPhone, timezone, location, platform, browser, userAgent } = req.body;
     
@@ -10940,8 +10940,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const isSpanish = quote.clientPreferredLanguage === 'spanish' || quote.clientPreferredLanguage === 'es';
         
         const smsMessage = isSpanish 
-          ? `Hola ${quote.clientFirstName}, por favor firme su formulario de consentimiento de seguro de salud: ${consentUrl}\n\nEste enlace expira en 30 d\u00edas.\n\n- ${company.name}`
-          : `Hello ${quote.clientFirstName}, please sign your health insurance consent form: ${consentUrl}\n\nThis link expires in 30 days.\n\n- ${company.name}`;
+          ? `Hola ${quote.clientFirstName}, \n\nPara continuar necesitamos su consentimiento por favor firme en el siguiente enlace:\n\n${consentUrl}\n\nGracias\n\n${company.name}`
+          : `Hello ${quote.clientFirstName},\n\nTo continue we need your consent, please sign at the following link:\n\n${consentUrl}\n\nThank you\n\n${company.name}`;
         
         try {
           const result = await twilioService.sendSMS(target, smsMessage);

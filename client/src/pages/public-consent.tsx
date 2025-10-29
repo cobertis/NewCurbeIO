@@ -83,7 +83,7 @@ export default function PublicConsentPage() {
   const fetchConsentData = async (token: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`/consent/${token}`);
+      const response = await fetch(`/api/consent/${token}`);
       
       if (!response.ok) {
         if (response.status === 410) {
@@ -129,7 +129,7 @@ export default function PublicConsentPage() {
     
     try {
       setSigning(true);
-      const response = await fetch(`/consent/${params?.token}/sign`, {
+      const response = await fetch(`/api/consent/${params?.token}/sign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
