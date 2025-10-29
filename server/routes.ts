@@ -404,6 +404,307 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     next();
   };
 
+  // ==================== PUBLIC ROUTES (NO AUTH REQUIRED) ====================
+  // These routes MUST be defined BEFORE any authenticated routes to ensure
+  // they are accessible without authentication
+  
+  // ==================== TWILIO WEBHOOKS ====================
+  
+  // Helper function to validate Twilio signature
+  function validateTwilioSignature(req: Request): boolean {
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (!authToken) {
+      console.error("[TWILIO WEBHOOK] TWILIO_AUTH_TOKEN not configured");
+      return false;
+    }
+
+    const twilioSignature = req.headers['x-twilio-signature'] as string;
+    if (!twilioSignature) {
+      console.error("[TWILIO WEBHOOK] Missing X-Twilio-Signature header");
+      return false;
+    }
+
+    // Get the full URL (protocol + host + path)
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const url = `${protocol}://${host}${req.originalUrl}`;
+
+    try {
+      const isValid = twilio.validateRequest(
+        authToken,
+        twilioSignature,
+        url,
+        req.body
+      );
+      
+      if (!isValid) {
+        console.error("[TWILIO WEBHOOK] Invalid signature");
+      }
+      
+      return isValid;
+    } catch (error) {
+      console.error("[TWILIO WEBHOOK] Signature validation error:", error);
+      return false;
+    }
+  }
+  
+  // Twilio Status Callback - Update message delivery status
+  app.post("/api/webhooks/twilio/status", async (req: Request, res: Response) => {
+    try {
+      // Validate Twilio signature
+      if (!validateTwilioSignature(req)) {
+        console.warn("[TWILIO STATUS] Rejected unauthorized webhook request");
+        return res.status(403).send("Forbidden");
+      }
+
+      const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = req.body;
+      
+      console.log(`[TWILIO STATUS] SID: ${MessageSid}, Status: ${MessageStatus}`);
+      
+      if (!MessageSid || !MessageStatus) {
+        return res.status(400).send("Missing required fields");
+      }
+      
+      // Update message status in database
+      await storage.updateCampaignSmsMessageStatus(
+        MessageSid, 
+        MessageStatus,
+        ErrorCode,
+        ErrorMessage
+      );
+      
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("[TWILIO STATUS WEBHOOK] Error:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+  
+  // Twilio Incoming Message - Receive SMS replies
+  app.post("/api/webhooks/twilio/incoming", async (req: Request, res: Response) => {
+    try {
+      // Log incoming webhook for debugging
+      console.log("[TWILIO INCOMING] Webhook URL:", `${req.protocol}://${req.get('host')}${req.originalUrl}`);
+      console.log("[TWILIO INCOMING] Headers:", JSON.stringify(req.headers));
+      
+      // Validate Twilio signature
+      // Temporarily disabled for debugging - TODO: Re-enable after fixing URL mismatch
+      // if (!validateTwilioSignature(req)) {
+      //   console.warn("[TWILIO INCOMING] Rejected unauthorized webhook request");
+      //   return res.status(403).send("Forbidden");
+      // }
+
+      const { MessageSid, From, To, Body } = req.body;
+      
+      console.log(`[TWILIO INCOMING] From: ${From}, Body: ${Body}`);
+      
+      if (!MessageSid || !From || !To || !Body) {
+        return res.status(400).send("Missing required fields");
+      }
+      
+      // Try to find user by phone number (optimized with direct query)
+      const matchedUser = await storage.getUserByPhone(From);
+      
+      // Check for unsubscribe keywords (STOP, UNSUBSCRIBE, etc.)
+      const unsubscribeKeywords = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'];
+      const messageUpper = Body.trim().toUpperCase();
+      const isUnsubscribeRequest = unsubscribeKeywords.includes(messageUpper);
+      
+      // If user wants to unsubscribe and we found them
+      if (isUnsubscribeRequest && matchedUser) {
+        await storage.updateUserSmsSubscription(matchedUser.id, false);
+        console.log(`[TWILIO INCOMING] User ${matchedUser.id} unsubscribed from SMS`);
+      }
+      
+      // Store incoming message
+      await storage.createIncomingSmsMessage({
+        twilioMessageSid: MessageSid,
+        fromPhone: From,
+        toPhone: To,
+        messageBody: Body,
+        userId: matchedUser?.id,
+        companyId: matchedUser?.companyId || null,
+        isRead: false
+      });
+      
+      // Create notifications for superadmins
+      try {
+        const allUsers = await storage.getAllUsers();
+        const superadmins = allUsers.filter(user => user.role === 'superadmin');
+        
+        if (superadmins.length === 0) {
+          console.log("[TWILIO INCOMING] No superadmins found for notifications");
+        } else {
+          // Get sender name or format phone number
+          const senderName = matchedUser && matchedUser.firstName && matchedUser.lastName
+            ? `${matchedUser.firstName} ${matchedUser.lastName}` 
+            : From;
+          
+          // Create notification for each superadmin
+          const notificationPromises = superadmins.map(admin => 
+            storage.createNotification({
+              userId: admin.id,
+              type: 'sms_received',
+              title: `SMS from ${senderName}`,
+              message: Body.substring(0, 100) + (Body.length > 100 ? '...' : ''),
+              link: '/incoming-sms'
+            })
+          );
+          
+          await Promise.all(notificationPromises);
+          console.log(`[TWILIO INCOMING] Created ${superadmins.length} notification(s) for incoming SMS`);
+        }
+      } catch (error) {
+        console.error("[TWILIO INCOMING] Failed to create notifications:", error);
+        // Don't fail the webhook if notifications fail
+      }
+      
+      // Broadcast update to WebSocket clients for real-time updates
+      broadcastConversationUpdate();
+      
+      // Respond to Twilio with TwiML (empty response = no auto-reply)
+      res.type("text/xml");
+      res.send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
+    } catch (error) {
+      console.error("[TWILIO INCOMING WEBHOOK] Error:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+  
+  // ==================== CONSENT PUBLIC ENDPOINTS ====================
+  
+  // Rate limiting for consent endpoints to prevent brute force attacks
+  const consentRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+  const CONSENT_RATE_LIMIT = 10; // max 10 requests
+  const CONSENT_RATE_WINDOW = 60 * 1000; // per 60 seconds
+  
+  const consentRateLimiter = (req: Request, res: Response, next: Function) => {
+    const clientIp = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    
+    const record = consentRateLimitMap.get(clientIp);
+    
+    if (!record || now > record.resetAt) {
+      consentRateLimitMap.set(clientIp, { count: 1, resetAt: now + CONSENT_RATE_WINDOW });
+      return next();
+    }
+    
+    if (record.count >= CONSENT_RATE_LIMIT) {
+      const retryAfterSeconds = Math.ceil((record.resetAt - now) / 1000);
+      res.setHeader('Retry-After', retryAfterSeconds.toString());
+      return res.status(429).json({ 
+        message: "Too many requests. Please try again later.",
+        retryAfter: retryAfterSeconds
+      });
+    }
+    
+    record.count++;
+    next();
+  };
+  
+  // Clean up old rate limit records every 5 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, record] of consentRateLimitMap.entries()) {
+      if (now > record.resetAt) {
+        consentRateLimitMap.delete(ip);
+      }
+    }
+  }, 5 * 60 * 1000);
+  
+  // GET /consent/:token - Public endpoint to view consent (no auth required)
+  app.get("/consent/:token", consentRateLimiter, async (req: Request, res: Response) => {
+    const { token } = req.params;
+    
+    try {
+      const consent = await storage.getConsentByToken(token);
+      if (!consent) {
+        return res.status(404).json({ message: "Consent document not found" });
+      }
+      
+      // Check if expired
+      if (consent.expiresAt && new Date(consent.expiresAt) < new Date()) {
+        return res.status(410).json({ message: "Consent document has expired" });
+      }
+      
+      // Get quote and company details
+      const quote = await storage.getQuote(consent.quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      const company = await storage.getCompany(consent.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Get agent (creator) details
+      const agent = await storage.getUser(consent.createdBy);
+      
+      // Mark as viewed if first time
+      if (consent.status === 'sent' && !consent.viewedAt) {
+        await storage.updateConsentDocument(consent.id, {
+          status: 'viewed',
+          viewedAt: new Date(),
+        });
+        await storage.createConsentEvent(consent.id, 'viewed', {});
+      }
+      
+      res.json({
+        consent,
+        quote,
+        company,
+        agent: agent ? {
+          firstName: agent.firstName,
+          lastName: agent.lastName,
+          nationalProducerNumber: agent.nationalProducerNumber,
+        } : null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching consent:", error);
+      res.status(500).json({ message: "Failed to fetch consent document" });
+    }
+  });
+  
+  // POST /consent/:token/sign - Public endpoint to sign consent (no auth required)
+  app.post("/consent/:token/sign", consentRateLimiter, async (req: Request, res: Response) => {
+    const { token } = req.params;
+    const { signedByName, signedByEmail, signedByPhone, timezone, location, platform, browser, userAgent } = req.body;
+    
+    try {
+      if (!signedByName) {
+        return res.status(400).json({ message: "Signature name is required" });
+      }
+      
+      // Get IP address from request (server-side - cannot be spoofed)
+      const signerIp = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
+      // Use header user-agent (more reliable) or fallback to body if needed
+      const signerUserAgent = req.headers['user-agent'] || userAgent || '';
+      
+      // Sign the consent
+      const signedConsent = await storage.signConsent(token, {
+        signedByName,
+        signedByEmail,
+        signedByPhone,
+        signerIp,
+        signerUserAgent,
+        signerTimezone: timezone,
+        signerLocation: location,
+        signerPlatform: platform,
+        signerBrowser: browser,
+      });
+      
+      if (!signedConsent) {
+        return res.status(404).json({ message: "Consent document not found or expired" });
+      }
+      
+      res.json({ consent: signedConsent, message: "Consent signed successfully" });
+    } catch (error: any) {
+      console.error("Error signing consent:", error);
+      res.status(500).json({ message: "Failed to sign consent document" });
+    }
+  });
+
   // ==================== AUTH ENDPOINTS ====================
   
   app.post("/api/login", async (req: Request, res: Response) => {
@@ -7647,169 +7948,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to delete conversation" });
     }
   });
-  
-  // ==================== TWILIO WEBHOOKS ====================
-  
-  // Helper function to validate Twilio signature
-  function validateTwilioSignature(req: Request): boolean {
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    if (!authToken) {
-      console.error("[TWILIO WEBHOOK] TWILIO_AUTH_TOKEN not configured");
-      return false;
-    }
-
-    const twilioSignature = req.headers['x-twilio-signature'] as string;
-    if (!twilioSignature) {
-      console.error("[TWILIO WEBHOOK] Missing X-Twilio-Signature header");
-      return false;
-    }
-
-    // Get the full URL (protocol + host + path)
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const url = `${protocol}://${host}${req.originalUrl}`;
-
-    try {
-      const isValid = twilio.validateRequest(
-        authToken,
-        twilioSignature,
-        url,
-        req.body
-      );
-      
-      if (!isValid) {
-        console.error("[TWILIO WEBHOOK] Invalid signature");
-      }
-      
-      return isValid;
-    } catch (error) {
-      console.error("[TWILIO WEBHOOK] Signature validation error:", error);
-      return false;
-    }
-  }
-  
-  // Twilio Status Callback - Update message delivery status
-  app.post("/api/webhooks/twilio/status", async (req: Request, res: Response) => {
-    try {
-      // Validate Twilio signature
-      if (!validateTwilioSignature(req)) {
-        console.warn("[TWILIO STATUS] Rejected unauthorized webhook request");
-        return res.status(403).send("Forbidden");
-      }
-
-      const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = req.body;
-      
-      console.log(`[TWILIO STATUS] SID: ${MessageSid}, Status: ${MessageStatus}`);
-      
-      if (!MessageSid || !MessageStatus) {
-        return res.status(400).send("Missing required fields");
-      }
-      
-      // Update message status in database
-      await storage.updateCampaignSmsMessageStatus(
-        MessageSid, 
-        MessageStatus,
-        ErrorCode,
-        ErrorMessage
-      );
-      
-      res.status(200).send("OK");
-    } catch (error) {
-      console.error("[TWILIO STATUS WEBHOOK] Error:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  });
-  
-  // Twilio Incoming Message - Receive SMS replies
-  app.post("/api/webhooks/twilio/incoming", async (req: Request, res: Response) => {
-    try {
-      // Log incoming webhook for debugging
-      console.log("[TWILIO INCOMING] Webhook URL:", `${req.protocol}://${req.get('host')}${req.originalUrl}`);
-      console.log("[TWILIO INCOMING] Headers:", JSON.stringify(req.headers));
-      
-      // Validate Twilio signature
-      // Temporarily disabled for debugging - TODO: Re-enable after fixing URL mismatch
-      // if (!validateTwilioSignature(req)) {
-      //   console.warn("[TWILIO INCOMING] Rejected unauthorized webhook request");
-      //   return res.status(403).send("Forbidden");
-      // }
-
-      const { MessageSid, From, To, Body } = req.body;
-      
-      console.log(`[TWILIO INCOMING] From: ${From}, Body: ${Body}`);
-      
-      if (!MessageSid || !From || !To || !Body) {
-        return res.status(400).send("Missing required fields");
-      }
-      
-      // Try to find user by phone number (optimized with direct query)
-      const matchedUser = await storage.getUserByPhone(From);
-      
-      // Check for unsubscribe keywords (STOP, UNSUBSCRIBE, etc.)
-      const unsubscribeKeywords = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'];
-      const messageUpper = Body.trim().toUpperCase();
-      const isUnsubscribeRequest = unsubscribeKeywords.includes(messageUpper);
-      
-      // If user wants to unsubscribe and we found them
-      if (isUnsubscribeRequest && matchedUser) {
-        await storage.updateUserSmsSubscription(matchedUser.id, false);
-        console.log(`[TWILIO INCOMING] User ${matchedUser.id} unsubscribed from SMS`);
-      }
-      
-      // Store incoming message
-      await storage.createIncomingSmsMessage({
-        twilioMessageSid: MessageSid,
-        fromPhone: From,
-        toPhone: To,
-        messageBody: Body,
-        userId: matchedUser?.id,
-        companyId: matchedUser?.companyId || null,
-        isRead: false
-      });
-      
-      // Create notifications for superadmins
-      try {
-        const allUsers = await storage.getAllUsers();
-        const superadmins = allUsers.filter(user => user.role === 'superadmin');
-        
-        if (superadmins.length === 0) {
-          console.log("[TWILIO INCOMING] No superadmins found for notifications");
-        } else {
-          // Get sender name or format phone number
-          const senderName = matchedUser && matchedUser.firstName && matchedUser.lastName
-            ? `${matchedUser.firstName} ${matchedUser.lastName}` 
-            : From;
-          
-          // Create notification for each superadmin
-          const notificationPromises = superadmins.map(admin => 
-            storage.createNotification({
-              userId: admin.id,
-              type: 'sms_received',
-              title: `SMS from ${senderName}`,
-              message: Body.substring(0, 100) + (Body.length > 100 ? '...' : ''),
-              link: '/incoming-sms'
-            })
-          );
-          
-          await Promise.all(notificationPromises);
-          console.log(`[TWILIO INCOMING] Created ${superadmins.length} notification(s) for incoming SMS`);
-        }
-      } catch (error) {
-        console.error("[TWILIO INCOMING] Failed to create notifications:", error);
-        // Don't fail the webhook if notifications fail
-      }
-      
-      // Broadcast update to WebSocket clients for real-time updates
-      broadcastConversationUpdate();
-      
-      // Respond to Twilio with TwiML (empty response = no auto-reply)
-      res.type("text/xml");
-      res.send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
-    } catch (error) {
-      console.error("[TWILIO INCOMING WEBHOOK] Error:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  });
 
   // ==================== QUOTES ====================
   
@@ -10880,138 +11018,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error listing consents:", error);
       res.status(500).json({ message: "Failed to list consents" });
-    }
-  });
-  
-  // Rate limiting for consent endpoints to prevent brute force attacks
-  const consentRateLimitMap = new Map<string, { count: number; resetAt: number }>();
-  const CONSENT_RATE_LIMIT = 10; // max 10 requests
-  const CONSENT_RATE_WINDOW = 60 * 1000; // per 60 seconds
-  
-  const consentRateLimiter = (req: Request, res: Response, next: Function) => {
-    const clientIp = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown';
-    const now = Date.now();
-    
-    const record = consentRateLimitMap.get(clientIp);
-    
-    if (!record || now > record.resetAt) {
-      consentRateLimitMap.set(clientIp, { count: 1, resetAt: now + CONSENT_RATE_WINDOW });
-      return next();
-    }
-    
-    if (record.count >= CONSENT_RATE_LIMIT) {
-      const retryAfterSeconds = Math.ceil((record.resetAt - now) / 1000);
-      res.setHeader('Retry-After', retryAfterSeconds.toString());
-      return res.status(429).json({ 
-        message: "Too many requests. Please try again later.",
-        retryAfter: retryAfterSeconds
-      });
-    }
-    
-    record.count++;
-    next();
-  };
-  
-  // Clean up old rate limit records every 5 minutes
-  setInterval(() => {
-    const now = Date.now();
-    for (const [ip, record] of consentRateLimitMap.entries()) {
-      if (now > record.resetAt) {
-        consentRateLimitMap.delete(ip);
-      }
-    }
-  }, 5 * 60 * 1000);
-  
-  // GET /consent/:token - Public endpoint to view consent (no auth required)
-  app.get("/consent/:token", consentRateLimiter, async (req: Request, res: Response) => {
-    const { token } = req.params;
-    
-    try {
-      const consent = await storage.getConsentByToken(token);
-      if (!consent) {
-        return res.status(404).json({ message: "Consent document not found" });
-      }
-      
-      // Check if expired
-      if (consent.expiresAt && new Date(consent.expiresAt) < new Date()) {
-        return res.status(410).json({ message: "Consent document has expired" });
-      }
-      
-      // Get quote and company details
-      const quote = await storage.getQuote(consent.quoteId);
-      if (!quote) {
-        return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      const company = await storage.getCompany(consent.companyId);
-      if (!company) {
-        return res.status(404).json({ message: "Company not found" });
-      }
-      
-      // Get agent (creator) details
-      const agent = await storage.getUser(consent.createdBy);
-      
-      // Mark as viewed if first time
-      if (consent.status === 'sent' && !consent.viewedAt) {
-        await storage.updateConsentDocument(consent.id, {
-          status: 'viewed',
-          viewedAt: new Date(),
-        });
-        await storage.createConsentEvent(consent.id, 'viewed', {});
-      }
-      
-      res.json({
-        consent,
-        quote,
-        company,
-        agent: agent ? {
-          firstName: agent.firstName,
-          lastName: agent.lastName,
-          nationalProducerNumber: agent.nationalProducerNumber,
-        } : null,
-      });
-    } catch (error: any) {
-      console.error("Error fetching consent:", error);
-      res.status(500).json({ message: "Failed to fetch consent document" });
-    }
-  });
-  
-  // POST /consent/:token/sign - Public endpoint to sign consent (no auth required)
-  app.post("/consent/:token/sign", consentRateLimiter, async (req: Request, res: Response) => {
-    const { token } = req.params;
-    const { signedByName, signedByEmail, signedByPhone, timezone, location, platform, browser, userAgent } = req.body;
-    
-    try {
-      if (!signedByName) {
-        return res.status(400).json({ message: "Signature name is required" });
-      }
-      
-      // Get IP address from request (server-side - cannot be spoofed)
-      const signerIp = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
-      // Use header user-agent (more reliable) or fallback to body if needed
-      const signerUserAgent = req.headers['user-agent'] || userAgent || '';
-      
-      // Sign the consent
-      const signedConsent = await storage.signConsent(token, {
-        signedByName,
-        signedByEmail,
-        signedByPhone,
-        signerIp,
-        signerUserAgent,
-        signerTimezone: timezone,
-        signerLocation: location,
-        signerPlatform: platform,
-        signerBrowser: browser,
-      });
-      
-      if (!signedConsent) {
-        return res.status(404).json({ message: "Consent document not found or expired" });
-      }
-      
-      res.json({ consent: signedConsent, message: "Consent signed successfully" });
-    } catch (error: any) {
-      console.error("Error signing consent:", error);
-      res.status(500).json({ message: "Failed to sign consent document" });
     }
   });
 
