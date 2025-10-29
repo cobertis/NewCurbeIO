@@ -2987,6 +2987,13 @@ export default function QuotesPage() {
   const [previewDocument, setPreviewDocument] = useState<any | null>(null);
   const documentFileInputRef = useRef<HTMLInputElement>(null);
   
+  // Reminders sheet state
+  const [remindersSheetOpen, setRemindersSheetOpen] = useState(false);
+  const [selectedReminder, setSelectedReminder] = useState<any | null>(null);
+  const [reminderFormOpen, setReminderFormOpen] = useState(false);
+  const [filterReminderStatus, setFilterReminderStatus] = useState<string>('all');
+  const [filterReminderPriority, setFilterReminderPriority] = useState<string>('all');
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -5312,7 +5319,7 @@ export default function QuotesPage() {
               </button>
 
               <button
-                onClick={() => {}}
+                onClick={() => setRemindersSheetOpen(true)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
                 data-testid="button-reminders"
               >
@@ -5324,7 +5331,7 @@ export default function QuotesPage() {
                   variant="secondary" 
                   className="text-xs h-5 px-1.5 border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
                 >
-                  1
+                  0
                 </Badge>
               </button>
 

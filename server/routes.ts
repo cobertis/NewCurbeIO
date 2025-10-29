@@ -37,6 +37,8 @@ import {
   insertQuoteDocumentSchema,
   insertPaymentMethodSchema,
   updatePaymentMethodSchema,
+  insertQuoteReminderSchema,
+  updateQuoteReminderSchema,
   quoteNotes
 } from "@shared/schema";
 import { db } from "./db";
@@ -10291,6 +10293,336 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // ==================== QUOTE REMINDERS ====================
+  
+  // GET /api/quotes/:quoteId/reminders - List all reminders for a quote
+  app.get("/api/quotes/:quoteId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    const { status, priority, userId } = req.query;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Build filters
+      const filters: { status?: string; priority?: string; userId?: string } = {};
+      if (status && typeof status === 'string') filters.status = status;
+      if (priority && typeof priority === 'string') filters.priority = priority;
+      if (userId && typeof userId === 'string') filters.userId = userId;
+
+      const reminders = await storage.listQuoteReminders(quoteId, quote.companyId, filters);
+
+      res.json(reminders);
+    } catch (error: any) {
+      console.error("Error fetching reminders:", error);
+      res.status(500).json({ message: "Failed to fetch reminders" });
+    }
+  });
+
+  // GET /api/quotes/:quoteId/reminders/:reminderId - Get a specific reminder
+  app.get("/api/quotes/:quoteId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, reminderId } = req.params;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      const reminder = await storage.getQuoteReminder(reminderId, quote.companyId);
+      if (!reminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      // Verify reminder belongs to quote
+      if (reminder.quoteId !== quoteId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      res.json(reminder);
+    } catch (error: any) {
+      console.error("Error fetching reminder:", error);
+      res.status(500).json({ message: "Failed to fetch reminder" });
+    }
+  });
+
+  // POST /api/quotes/:quoteId/reminders - Create a new reminder
+  app.post("/api/quotes/:quoteId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Validate request body
+      const reminderData = insertQuoteReminderSchema.parse({
+        ...req.body,
+        quoteId,
+        companyId: quote.companyId,
+        createdBy: currentUser.id,
+      });
+
+      const reminder = await storage.createQuoteReminder(reminderData);
+
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_reminder",
+        entityId: reminder.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          dueDate: reminder.dueDate,
+          reminderType: reminder.reminderType,
+        },
+      });
+
+      res.status(201).json(reminder);
+    } catch (error: any) {
+      console.error("Error creating reminder:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid reminder data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create reminder" });
+    }
+  });
+
+  // PUT /api/quotes/:quoteId/reminders/:reminderId - Update a reminder
+  app.put("/api/quotes/:quoteId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, reminderId } = req.params;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Verify reminder exists and belongs to quote
+      const existingReminder = await storage.getQuoteReminder(reminderId, quote.companyId);
+      if (!existingReminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (existingReminder.quoteId !== quoteId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      // Validate update data
+      const updateData = updateQuoteReminderSchema.parse(req.body);
+
+      const updatedReminder = await storage.updateQuoteReminder(reminderId, quote.companyId, updateData);
+
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_reminder",
+        entityId: reminderId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+        },
+      });
+
+      res.json(updatedReminder);
+    } catch (error: any) {
+      console.error("Error updating reminder:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid reminder data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update reminder" });
+    }
+  });
+
+  // DELETE /api/quotes/:quoteId/reminders/:reminderId - Delete a reminder
+  app.delete("/api/quotes/:quoteId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, reminderId } = req.params;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Verify reminder exists and belongs to quote
+      const existingReminder = await storage.getQuoteReminder(reminderId, quote.companyId);
+      if (!existingReminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (existingReminder.quoteId !== quoteId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      const deleted = await storage.deleteQuoteReminder(reminderId, quote.companyId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete reminder" });
+      }
+
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_reminder",
+        entityId: reminderId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+        },
+      });
+
+      res.json({ message: "Reminder deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting reminder:", error);
+      res.status(500).json({ message: "Failed to delete reminder" });
+    }
+  });
+
+  // PUT /api/quotes/:quoteId/reminders/:reminderId/complete - Mark reminder as completed
+  app.put("/api/quotes/:quoteId/reminders/:reminderId/complete", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, reminderId } = req.params;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Verify reminder exists and belongs to quote
+      const existingReminder = await storage.getQuoteReminder(reminderId, quote.companyId);
+      if (!existingReminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (existingReminder.quoteId !== quoteId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      const completedReminder = await storage.completeQuoteReminder(reminderId, quote.companyId, currentUser.id);
+
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_reminder",
+        entityId: reminderId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          action: "completed",
+          completedBy: currentUser.email,
+        },
+      });
+
+      res.json(completedReminder);
+    } catch (error: any) {
+      console.error("Error completing reminder:", error);
+      res.status(500).json({ message: "Failed to complete reminder" });
+    }
+  });
+
+  // PUT /api/quotes/:quoteId/reminders/:reminderId/snooze - Snooze reminder
+  app.put("/api/quotes/:quoteId/reminders/:reminderId/snooze", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId, reminderId } = req.params;
+    const { snoozedUntil } = req.body;
+
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Verify reminder exists and belongs to quote
+      const existingReminder = await storage.getQuoteReminder(reminderId, quote.companyId);
+      if (!existingReminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (existingReminder.quoteId !== quoteId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      if (!snoozedUntil) {
+        return res.status(400).json({ message: "snoozedUntil is required" });
+      }
+
+      const snoozeDate = new Date(snoozedUntil);
+      if (isNaN(snoozeDate.getTime())) {
+        return res.status(400).json({ message: "Invalid snoozedUntil date" });
+      }
+
+      const snoozedReminder = await storage.snoozeQuoteReminder(reminderId, quote.companyId, snoozeDate);
+
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_reminder",
+        entityId: reminderId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteId,
+          action: "snoozed",
+          snoozedUntil: snoozeDate.toISOString(),
+        },
+      });
+
+      res.json(snoozedReminder);
+    } catch (error: any) {
+      console.error("Error snoozing reminder:", error);
+      res.status(500).json({ message: "Failed to snooze reminder" });
     }
   });
 
