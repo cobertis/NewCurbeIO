@@ -10642,21 +10642,54 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
           <div className="border rounded-lg p-6 bg-white dark:bg-gray-900 max-h-[400px] overflow-y-auto">
             {/* Company Header */}
             <div className="text-center mb-8 pb-6 border-b">
-              {company?.logoUrl && (
+              {company?.logo && (
                 <img 
-                  src={company.logoUrl} 
+                  src={company.logo} 
                   alt={company.name} 
-                  className="h-16 mx-auto mb-4"
+                  className="h-16 mx-auto mb-4 object-contain"
                 />
               )}
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {company?.name || 'Insurance Company'}
               </h2>
-              {company?.address && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  {company.address}
-                </p>
-              )}
+              
+              {/* Full Address */}
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-3 space-y-1">
+                {company?.address && (
+                  <p>
+                    {company.address}
+                    {company.addressLine2 && `, ${company.addressLine2}`}
+                  </p>
+                )}
+                {(company?.city || company?.state || company?.postalCode) && (
+                  <p>
+                    {[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}
+                    {company?.country && company.country !== 'United States' && `, ${company.country}`}
+                  </p>
+                )}
+                
+                {/* Contact Information */}
+                <div className="flex items-center justify-center gap-4 mt-3 flex-wrap">
+                  {company?.phone && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3 w-3" />
+                      {company.phone}
+                    </span>
+                  )}
+                  {company?.email && (
+                    <span className="flex items-center gap-1">
+                      <Mail className="h-3 w-3" />
+                      {company.email}
+                    </span>
+                  )}
+                  {company?.website && (
+                    <span className="flex items-center gap-1">
+                      <ExternalLink className="h-3 w-3" />
+                      {company.website}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Document Title */}
