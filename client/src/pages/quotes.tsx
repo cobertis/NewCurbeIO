@@ -8383,7 +8383,7 @@ export default function QuotesPage() {
                                   {consent.createdAt ? formatDateForDisplay(new Date(consent.createdAt).toISOString().split('T')[0], "MMM dd, yyyy") : '-'}
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
-                                  {consent.signedAt ? formatDateForDisplay(new Date(consent.signedAt).toISOString().split('T')[0], "MMM dd, yyyy HH:mm") : '-'}
+                                  {consent.signedAt ? format(new Date(consent.signedAt), "MMM dd, yyyy h:mm a") : '-'}
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
