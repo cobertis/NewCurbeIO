@@ -10695,84 +10695,53 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
 
             {/* Document Title */}
             <div className="mb-6">
-              <h3 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4">
-                SCOPE OF APPOINTMENT (SOA) - CONSENT FORM
+              <h3 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-2">
+                LEGAL CONSENT IN FULL USE OF MY FACULTIES
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                Required by Centers for Medicare & Medicaid Services (CMS)
-              </p>
-            </div>
-
-            {/* Agent Information */}
-            <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Agent Information</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Agent Name:</span>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {user ? `${user.firstName} ${user.lastName}` : 'Agent Name'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">National Producer Number (NPN):</span>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {user?.nationalProducerNumber || 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Company:</span>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {company?.name || 'Company Name'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Date:</span>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {new Date().toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Client Information */}
-            <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Client Information</h4>
-              <div className="text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Beneficiary Name:</span>
-                <p className="font-medium text-gray-900 dark:text-gray-100">{clientName}</p>
-              </div>
             </div>
 
             {/* Consent Text */}
             <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-              <p className="font-semibold text-gray-900 dark:text-gray-100">
-                I understand that the purpose of this appointment is to discuss:
+              <p>
+                Yo, <strong className="text-gray-900 dark:text-gray-100">{clientName}</strong>, en la fecha de hoy <strong className="text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString()}</strong>, doy mi permiso a
               </p>
+
+              <p className="text-center font-semibold text-gray-900 dark:text-gray-100">
+                {user ? `${user.firstName} ${user.lastName}` : 'Agent Name'} NPN: {user?.nationalProducerNumber || 'N/A'}
+              </p>
+
+              <p>
+                Agentes(s) de <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> que van hacer las licencias reponsable por este cliente y actuar como agente o corredor de seguros médicos para mí y para todo mi hogar, si corresponde, para fines de inscripción en un Plan de salud calificado ofrecido en el Mercado facilitado a nivel federal.
+              </p>
+
+              <p>
+                Al dar mi consentimiento a este acuerdo, autorizo al Agente mencionado anteriormente a ver y utilizar la información confidencial proporcionada por mí por escrito, electrónicamente o por teléfono solo para los fines de uno o más de los siguientes:
+              </p>
+
               <ul className="list-disc pl-6 space-y-2">
-                <li>Health Insurance Marketplace plans and enrollment assistance</li>
-                <li>Medicare Advantage (Part C) and/or Medicare Prescription Drug (Part D) plans</li>
-                <li>Supplemental insurance products as applicable</li>
+                <li>Buscar una aplicación de Marketplace existente;</li>
+                <li>Completar una solicitud de elegibilidad e inscripción en un Plan de Salud Calificado del Mercado u otro programas gubernamentales de asequibilidad de seguros, como Medicaid y CHIP; o</li>
+                <li>Créditos fiscales anticipados para ayudar pagar las primas del Mercado;</li>
+                <li>Proporcionar mantenimiento continuo de la cuenta y asistencia para la inscripción, según sea necesario; o</li>
+                <li>Responder a consultas del Mercado sobre mi solicitud del Mercado.</li>
               </ul>
 
-              <p className="mt-4">
-                I understand that this meeting may include information about Medicare Advantage, 
-                Medicare Prescription Drug, or Medigap products. I also understand that I may ask 
-                to discuss other products or services not mentioned above at the time of this meeting.
+              <p>
+                Confirmo que la información que proporciono para ingresar en mi solicitud de inscripción y elegibilidad del Mercado será verdadera a mi leal saber y entender.
               </p>
 
               <p>
-                I acknowledge that the agent named above has been authorized to provide me with 
-                information and assistance regarding my insurance options. I consent to be contacted 
-                by the agent via the contact information I have provided.
+                Entiendo que no tengo que compartir información personal adicional sobre mí o mi salud con mi Agente más allá de lo requerido en la solicitud para fines de elegibilidad e inscripción.
               </p>
 
-              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-6">
-                Electronic Signature Consent:
-              </p>
               <p>
-                By signing this document electronically, I agree that my electronic signature 
-                has the same legal effect as a handwritten signature.
+                Entiendo que mi consentimiento permanece vigente hasta que lo revoque, y puedo revocar o modificar mi consentimiento en cualquier momento comunicandoselo a <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> o cualquiera de sus agentes.
               </p>
+
+              <div className="mt-6 pt-4">
+                <p className="font-medium text-gray-900 dark:text-gray-100">{clientName}</p>
+                <p className="text-gray-600 dark:text-gray-400">{quote?.clientPhone || ''}</p>
+              </div>
             </div>
 
             {/* Signature Line (Preview) */}
