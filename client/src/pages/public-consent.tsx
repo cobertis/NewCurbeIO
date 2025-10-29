@@ -204,7 +204,7 @@ export default function PublicConsentPage() {
     return null;
   }
 
-  const { consent, quote, company, agent } = consentData;
+  const { consent, quote, company, agents } = consentData;
   const isSpanish = quote.clientPreferredLanguage === 'spanish' || quote.clientPreferredLanguage === 'es';
   const language = isSpanish ? 'es' : 'en';
 
@@ -303,9 +303,18 @@ export default function PublicConsentPage() {
                 Yo, <strong className="text-gray-900 dark:text-gray-100">{clientName}</strong>, en la fecha de hoy <strong className="text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString()}</strong>, doy mi permiso a
               </p>
 
-              <p className="text-center font-semibold text-gray-900 dark:text-gray-100">
-                {agent ? `${agent.firstName} ${agent.lastName}` : 'Agent Name'} NPN: {agent?.nationalProducerNumber || 'N/A'}
-              </p>
+              {/* ALL Agents with NPNs */}
+              <div className="text-center font-semibold text-gray-900 dark:text-gray-100 space-y-1">
+                {agents && agents.length > 0 ? (
+                  agents.map((agent: any, index: number) => (
+                    <p key={index}>
+                      {agent.firstName} {agent.lastName} NPN: {agent.nationalProducerNumber}
+                    </p>
+                  ))
+                ) : (
+                  <p>Agent Name NPN: N/A</p>
+                )}
+              </div>
 
               <p>
                 Agentes(s) de <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> que van hacer las licencias reponsable por este cliente y actuar como agente o corredor de seguros médicos para mí y para todo mi hogar, si corresponde, para fines de inscripción en un Plan de salud calificado ofrecido en el Mercado facilitado a nivel federal.
@@ -347,9 +356,18 @@ export default function PublicConsentPage() {
                 I, <strong className="text-gray-900 dark:text-gray-100">{clientName}</strong>, on this day <strong className="text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString()}</strong>, give my permission to
               </p>
 
-              <p className="text-center font-semibold text-gray-900 dark:text-gray-100">
-                {agent ? `${agent.firstName} ${agent.lastName}` : 'Agent Name'} NPN: {agent?.nationalProducerNumber || 'N/A'}
-              </p>
+              {/* ALL Agents with NPNs */}
+              <div className="text-center font-semibold text-gray-900 dark:text-gray-100 space-y-1">
+                {agents && agents.length > 0 ? (
+                  agents.map((agent: any, index: number) => (
+                    <p key={index}>
+                      {agent.firstName} {agent.lastName} NPN: {agent.nationalProducerNumber}
+                    </p>
+                  ))
+                ) : (
+                  <p>Agent Name NPN: N/A</p>
+                )}
+              </div>
 
               <p>
                 Agent(s) of <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> who will be the licensed responsible agent for this client and act as an agent or health insurance broker for me and my entire household, if applicable, for purposes of enrollment in a Qualified Health Plan offered on the Federally-facilitated Marketplace.

@@ -638,8 +638,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Company not found" });
       }
       
-      // Get agent (creator) details
-      const agent = await storage.getUser(consent.createdBy);
+      // Get ALL agents (users) from the company with their NPNs
+      const allUsers = await storage.getCompanyUsers(consent.companyId);
+      const agents = allUsers
+        .filter(user => user.nationalProducerNumber) // Only include users with NPN
+        .map(user => ({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          nationalProducerNumber: user.nationalProducerNumber,
+        }));
       
       // Mark as viewed if first time
       if (consent.status === 'sent' && !consent.viewedAt) {
@@ -654,11 +661,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         consent,
         quote,
         company,
-        agent: agent ? {
-          firstName: agent.firstName,
-          lastName: agent.lastName,
-          nationalProducerNumber: agent.nationalProducerNumber,
-        } : null,
+        agents, // Array of all agents with NPNs
       });
     } catch (error: any) {
       console.error("Error fetching consent:", error);
