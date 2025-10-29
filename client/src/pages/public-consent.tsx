@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, FileText, AlertCircle, MapPin, Monitor } from "lucide-react";
+import { Loader2, CheckCircle2, FileText, AlertCircle, MapPin, Monitor, Phone, Mail, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 
 export default function PublicConsentPage() {
