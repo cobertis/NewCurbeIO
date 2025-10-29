@@ -1882,6 +1882,7 @@ export const consentDocuments = pgTable("consent_documents", {
   signedByName: text("signedByName"),
   signedByEmail: text("signedByEmail"),
   signedByPhone: text("signedByPhone"),
+  signatureImage: text("signatureImage"), // Base64 encoded signature image from signature pad
   
   // Digital audit trail
   signerIp: varchar("signerIp"),
