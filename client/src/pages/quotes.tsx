@@ -6028,17 +6028,6 @@ export default function QuotesPage() {
               </button>
 
               <button
-                onClick={() => setConsentModalOpen(true)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
-                data-testid="button-send-consent"
-              >
-                <div className="flex items-center gap-2.5">
-                  <FileSignature className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Send Consent</span>
-                </div>
-              </button>
-
-              <button
                 onClick={() => {}}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
                 data-testid="button-tasks"
