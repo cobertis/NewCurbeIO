@@ -8386,17 +8386,15 @@ export default function QuotesPage() {
                                           Resend
                                         </DropdownMenuItem>
                                       )}
-                                      {consent.status !== 'signed' && (
-                                        <DropdownMenuItem
-                                          onClick={() => deleteConsentMutation.mutate(consent.id)}
-                                          disabled={deleteConsentMutation.isPending}
-                                          className="text-destructive focus:text-destructive"
-                                          data-testid={`menu-delete-${consent.id}`}
-                                        >
-                                          <Trash2 className="h-4 w-4 mr-2" />
-                                          Delete
-                                        </DropdownMenuItem>
-                                      )}
+                                      <DropdownMenuItem
+                                        onClick={() => deleteConsentMutation.mutate(consent.id)}
+                                        disabled={deleteConsentMutation.isPending}
+                                        className="text-destructive focus:text-destructive"
+                                        data-testid={`menu-delete-${consent.id}`}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </TableCell>
