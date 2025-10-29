@@ -10798,7 +10798,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(400).json({ message: "Phone number is required for SMS delivery" });
         }
         
-        const smsMessage = `Hello ${quote.clientFirstName}, please sign your health insurance consent form: ${consentUrl}\n\nThis link expires in 30 days.\n\n- ${company.name}`;
+        // Use client's preferred language
+        const isSpanish = quote.clientPreferredLanguage === 'spanish' || quote.clientPreferredLanguage === 'es';
+        
+        const smsMessage = isSpanish 
+          ? `Hola ${quote.clientFirstName}, por favor firme su formulario de consentimiento de seguro de salud: ${consentUrl}\n\nEste enlace expira en 30 d\u00edas.\n\n- ${company.name}`
+          : `Hello ${quote.clientFirstName}, please sign your health insurance consent form: ${consentUrl}\n\nThis link expires in 30 days.\n\n- ${company.name}`;
         
         try {
           const result = await twilioService.sendSMS(target, smsMessage);

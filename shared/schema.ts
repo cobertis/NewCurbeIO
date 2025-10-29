@@ -1875,8 +1875,8 @@ export const consentDocuments = pgTable("consent_documents", {
   deliveryChannel: text("deliveryChannel"), // email, sms, link
   deliveryTarget: text("deliveryTarget"), // email address, phone number, or null for link
   
-  // Security token for public access
-  token: varchar("token").notNull().unique(), // Secure random token for public access URL
+  // Security token for public access (short 8-character ID)
+  token: varchar("token", { length: 8 }).notNull().unique(), // Short 8-character ID for public access URL
   
   // Signature information
   signedByName: text("signedByName"),

@@ -3438,10 +3438,28 @@ export class DbStorage implements IStorage {
   // ==================== CONSENT DOCUMENTS ====================
   
   async createConsentDocument(quoteId: string, companyId: string, userId: string): Promise<ConsentDocument> {
-    const { randomBytes } = await import('crypto');
+    const { generateShortId } = await import("./id-generator");
     
-    // Generate secure random token
-    const token = randomBytes(32).toString('hex');
+    // Generate unique short token (8 characters)
+    let token: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    do {
+      token = generateShortId();
+      const existing = await db
+        .select()
+        .from(consentDocuments)
+        .where(eq(consentDocuments.token, token))
+        .limit(1);
+      
+      if (existing.length === 0) break;
+      
+      attempts++;
+      if (attempts >= maxAttempts) {
+        throw new Error("Failed to generate unique consent token after maximum attempts");
+      }
+    } while (true);
     
     // Set expiration to 30 days from now
     const expiresAt = new Date();
