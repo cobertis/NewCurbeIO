@@ -10639,19 +10639,20 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
 
         {/* Preview Tab */}
         <TabsContent value="preview" className="space-y-4">
-          <div className="border rounded-lg p-6 bg-white dark:bg-gray-900 max-h-[400px] overflow-y-auto">
+          <div className="border rounded-lg p-6 bg-white dark:bg-gray-900 max-h-[calc(100vh-250px)] overflow-y-auto">
             {/* Company Header */}
             <div className="text-center mb-8 pb-6 border-b">
-              {company?.logo && (
+              {company?.logo ? (
                 <img 
                   src={company.logo} 
                   alt={company.name} 
                   className="h-16 mx-auto mb-4 object-contain"
                 />
+              ) : (
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {company?.name || 'Insurance Company'}
+                </h2>
               )}
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {company?.name || 'Insurance Company'}
-              </h2>
               
               {/* Full Address */}
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-3 space-y-1">
