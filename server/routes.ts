@@ -10324,7 +10324,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const reminders = await storage.listQuoteReminders(quoteId, quote.companyId, filters);
 
-      res.json(reminders);
+      res.json({ reminders });
     } catch (error: any) {
       console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
