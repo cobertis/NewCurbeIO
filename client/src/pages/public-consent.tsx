@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, FileText, AlertCircle, MapPin, Monitor, Phone, Mail, ExternalLink } from "lucide-react";
+import { Loader2, CheckCircle2, FileText, AlertCircle, MapPin, Monitor, Phone, Mail, ExternalLink, Eraser } from "lucide-react";
 import { format } from "date-fns";
+import SignatureCanvas from "react-signature-canvas";
 
 export default function PublicConsentPage() {
   const [, params] = useRoute("/consent/:token");
@@ -24,6 +25,9 @@ export default function PublicConsentPage() {
   const [signedByPhone, setSignedByPhone] = useState("");
   const [agreeChecked, setAgreeChecked] = useState(false);
   const [signing, setSigning] = useState(false);
+  
+  // Signature pad ref
+  const signaturePadRef = useRef<SignatureCanvas>(null);
   
   // Audit trail data
   const [auditData, setAuditData] = useState<any>({});
@@ -106,11 +110,31 @@ export default function PublicConsentPage() {
     }
   };
 
+  const clearSignature = () => {
+    if (signaturePadRef.current) {
+      signaturePadRef.current.clear();
+    }
+  };
+
   const handleSign = async () => {
+    // Get language for error messages
+    const isSpanish = consentData?.quote?.clientPreferredLanguage === 'spanish' || consentData?.quote?.clientPreferredLanguage === 'es';
+    
     if (!signedByName.trim()) {
       toast({
-        title: "Name required",
-        description: "Please enter your full name to sign",
+        title: isSpanish ? "Nombre requerido" : "Name required",
+        description: isSpanish ? "Por favor ingrese su nombre completo" : "Please enter your full name to sign",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
+    
+    // Validate signature pad has content
+    if (signaturePadRef.current?.isEmpty()) {
+      toast({
+        title: isSpanish ? "Firma requerida" : "Signature required",
+        description: isSpanish ? "Por favor firme en el cuadro de firma con su dedo o mouse" : "Please sign in the signature box using your finger or mouse",
         variant: "destructive",
         duration: 3000,
       });
@@ -119,8 +143,8 @@ export default function PublicConsentPage() {
     
     if (!agreeChecked) {
       toast({
-        title: "Agreement required",
-        description: "Please check the agreement box to proceed",
+        title: isSpanish ? "Aceptación requerida" : "Agreement required",
+        description: isSpanish ? "Por favor marque la casilla de aceptación para continuar" : "Please check the agreement box to proceed",
         variant: "destructive",
         duration: 3000,
       });
@@ -129,6 +153,10 @@ export default function PublicConsentPage() {
     
     try {
       setSigning(true);
+      
+      // Get signature as base64
+      const signatureImage = signaturePadRef.current?.toDataURL() || '';
+      
       const response = await fetch(`/api/consent/${params?.token}/sign`, {
         method: 'POST',
         headers: {
@@ -138,6 +166,7 @@ export default function PublicConsentPage() {
           signedByName,
           signedByEmail: signedByEmail || undefined,
           signedByPhone: signedByPhone || undefined,
+          signatureImage,
           timezone: auditData.timezone,
           platform: auditData.platform,
           browser: auditData.browser,
@@ -464,6 +493,43 @@ export default function PublicConsentPage() {
                 />
               </div>
               
+              {/* Signature Pad */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm" data-testid="label-signature-pad">
+                    {language === 'es' ? 'Firma Digital' : 'Digital Signature'} <span className="text-red-600">*</span>
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSignature}
+                    className="h-8 text-xs"
+                    data-testid="button-clear-signature"
+                  >
+                    <Eraser className="h-3 w-3 mr-1" />
+                    {language === 'es' ? 'Limpiar' : 'Clear'}
+                  </Button>
+                </div>
+                <div className="border-2 border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 touch-none" data-testid="signature-canvas-container">
+                  <SignatureCanvas
+                    ref={signaturePadRef}
+                    canvasProps={{
+                      className: 'w-full h-40 rounded-md cursor-crosshair',
+                      'data-testid': 'signature-canvas',
+                    }}
+                    backgroundColor="transparent"
+                    penColor="rgb(17, 24, 39)"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  {language === 'es'
+                    ? 'Por favor firme usando su dedo (móvil) o mouse (computadora)'
+                    : 'Please sign using your finger (mobile) or mouse (desktop)'
+                  }
+                </p>
+              </div>
+              
               <div className="flex items-start space-x-2 pt-2">
                 <Checkbox
                   id="agree"
@@ -534,6 +600,23 @@ export default function PublicConsentPage() {
                     {language === 'es' ? 'Teléfono:' : 'Phone:'}
                   </p>
                   <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100">{consent.signedByPhone}</p>
+                </div>
+              )}
+              
+              {/* Display captured signature */}
+              {consent.signatureImage && (
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                    {language === 'es' ? 'Firma:' : 'Signature:'}
+                  </p>
+                  <div className="border border-gray-300 dark:border-gray-700 rounded-md p-4 bg-white dark:bg-gray-900">
+                    <img 
+                      src={consent.signatureImage} 
+                      alt="Signature" 
+                      className="max-w-full h-auto"
+                      data-testid="signature-image"
+                    />
+                  </div>
                 </div>
               )}
               
