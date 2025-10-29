@@ -516,7 +516,6 @@ export default function PublicConsentPage() {
                     ref={signaturePadRef}
                     canvasProps={{
                       className: 'w-full h-40 rounded-md cursor-crosshair',
-                      'data-testid': 'signature-canvas',
                     }}
                     backgroundColor="transparent"
                     penColor="rgb(17, 24, 39)"

@@ -532,6 +532,7 @@ export interface IStorage {
     signedByName: string;
     signedByEmail?: string;
     signedByPhone?: string;
+    signatureImage?: string;
     signerIp?: string;
     signerUserAgent?: string;
     signerTimezone?: string;
@@ -3541,6 +3542,7 @@ export class DbStorage implements IStorage {
     signedByName: string;
     signedByEmail?: string;
     signedByPhone?: string;
+    signatureImage?: string;
     signerIp?: string;
     signerUserAgent?: string;
     signerTimezone?: string;
@@ -3571,6 +3573,7 @@ export class DbStorage implements IStorage {
         signedByName: signatureData.signedByName,
         signedByEmail: signatureData.signedByEmail,
         signedByPhone: signatureData.signedByPhone,
+        signatureImage: signatureData.signatureImage,
         signerIp: signatureData.signerIp,
         signerUserAgent: signatureData.signerUserAgent,
         signerTimezone: signatureData.signerTimezone,

@@ -683,11 +683,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/consent/:token/sign - Public endpoint to sign consent (no auth required)
   app.post("/api/consent/:token/sign", consentRateLimiter, async (req: Request, res: Response) => {
     const { token } = req.params;
-    const { signedByName, signedByEmail, signedByPhone, timezone, location, platform, browser, userAgent } = req.body;
+    const { signedByName, signedByEmail, signedByPhone, signatureImage, timezone, location, platform, browser, userAgent } = req.body;
     
     try {
       if (!signedByName) {
         return res.status(400).json({ message: "Signature name is required" });
+      }
+      
+      if (!signatureImage) {
+        return res.status(400).json({ message: "Signature image is required" });
       }
       
       // Get IP address from request (server-side - cannot be spoofed)
@@ -700,6 +704,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         signedByName,
         signedByEmail,
         signedByPhone,
+        signatureImage,
         signerIp,
         signerUserAgent,
         signerTimezone: timezone,
