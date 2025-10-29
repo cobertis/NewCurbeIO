@@ -40,12 +40,23 @@ export function startReminderScheduler() {
 
         for (const reminder of expiredSnoozes) {
           try {
+            // Get the user who created the reminder to check their preferred language
+            const [creatorUser] = await db
+              .select()
+              .from(users)
+              .where(eq(users.id, reminder.createdBy))
+              .limit(1);
+            
+            const isSpanish = creatorUser?.preferredLanguage === 'es' || creatorUser?.preferredLanguage === 'spanish';
+            
             // Create notification for the user who created the reminder
             await db.insert(notifications).values({
               userId: reminder.createdBy,
               type: 'warning',
-              title: 'Reminder Activo',
-              message: `Tu recordatorio "${reminder.title || 'Sin título'}" para el quote ${reminder.quoteId} está pendiente y requiere tu atención.`,
+              title: isSpanish ? 'Reminder Activo' : 'Active Reminder',
+              message: isSpanish 
+                ? `Tu recordatorio "${reminder.title || 'Sin título'}" para el quote ${reminder.quoteId} está pendiente y requiere tu atención.`
+                : `Your reminder "${reminder.title || 'Untitled'}" for quote ${reminder.quoteId} is pending and requires your attention.`,
               link: `/quotes/${reminder.quoteId}`,
               isRead: false,
             });
@@ -53,11 +64,22 @@ export function startReminderScheduler() {
             // Also notify any users in the notifyUsers array
             if (reminder.notifyUsers && reminder.notifyUsers.length > 0) {
               for (const userId of reminder.notifyUsers) {
+                // Get each user's preferred language
+                const [notifyUser] = await db
+                  .select()
+                  .from(users)
+                  .where(eq(users.id, userId))
+                  .limit(1);
+                
+                const userIsSpanish = notifyUser?.preferredLanguage === 'es' || notifyUser?.preferredLanguage === 'spanish';
+                
                 await db.insert(notifications).values({
                   userId: userId,
                   type: 'warning',
-                  title: 'Reminder Activo',
-                  message: `El recordatorio "${reminder.title || 'Sin título'}" para el quote ${reminder.quoteId} está pendiente.`,
+                  title: userIsSpanish ? 'Reminder Activo' : 'Active Reminder',
+                  message: userIsSpanish 
+                    ? `El recordatorio "${reminder.title || 'Sin título'}" para el quote ${reminder.quoteId} está pendiente.`
+                    : `The reminder "${reminder.title || 'Untitled'}" for quote ${reminder.quoteId} is pending.`,
                   link: `/quotes/${reminder.quoteId}`,
                   isRead: false,
                 });
