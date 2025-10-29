@@ -53,7 +53,8 @@ class EmailService {
     }
 
     try {
-      const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
+      // Always use SMTP_USER as the from email (it's properly configured)
+      const fromEmail = process.env.SMTP_USER;
       const fromName = process.env.SMTP_FROM_NAME || "Curbe Admin";
 
       console.log('[EMAIL DEBUG] Starting email send...');
