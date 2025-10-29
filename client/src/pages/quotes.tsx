@@ -8335,12 +8335,22 @@ export default function QuotesPage() {
                                   {consent.signedAt ? formatDateForDisplay(new Date(consent.signedAt).toISOString().split('T')[0], "MMM dd, yyyy HH:mm") : '-'}
                                 </TableCell>
                                 <TableCell>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" data-testid={`menu-consent-${consent.id}`}>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
+                                  <div className="flex items-center gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => window.open(`/consent/${consent.token}`, '_blank')}
+                                      data-testid={`button-view-consent-${consent.id}`}
+                                      title="View consent form"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" data-testid={`menu-consent-${consent.id}`}>
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                       {consent.deliveryChannel === 'link' && consent.status !== 'signed' && (
                                         <DropdownMenuItem
@@ -8396,6 +8406,7 @@ export default function QuotesPage() {
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
