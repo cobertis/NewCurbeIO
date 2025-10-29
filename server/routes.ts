@@ -639,7 +639,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Get ALL agents (users) from the company with their NPNs
-      const allUsers = await storage.getCompanyUsers(consent.companyId);
+      const allUsers = await storage.getUsersByCompany(consent.companyId);
       const agents = allUsers
         .filter(user => user.nationalProducerNumber) // Only include users with NPN
         .map(user => ({
