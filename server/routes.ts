@@ -3341,19 +3341,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
     try {
       // Only allow updating own profile fields (not role, companyId, password, etc.)
+      // Convert empty strings to null for optional fields
       const allowedFields = {
         firstName: req.body.firstName,
         lastName: req.body.lastName,
         email: req.body.email,
-        phone: req.body.phone,
+        phone: req.body.phone || null,
         avatar: req.body.avatar,
         dateOfBirth: req.body.dateOfBirth,
         preferredLanguage: req.body.preferredLanguage,
-        agentInternalCode: req.body.agentInternalCode,
+        agentInternalCode: req.body.agentInternalCode || null,
         instructionLevel: req.body.instructionLevel,
-        nationalProducerNumber: req.body.nationalProducerNumber,
+        nationalProducerNumber: req.body.nationalProducerNumber?.trim() || null,
         federallyFacilitatedMarketplace: req.body.federallyFacilitatedMarketplace,
-        referredBy: req.body.referredBy,
+        referredBy: req.body.referredBy || null,
       };
 
       // Validate using updateUserSchema (validates phone E.164 format, email, etc.)
