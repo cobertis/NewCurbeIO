@@ -16,12 +16,12 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type User as UserType, type Quote, type QuotePaymentMethod, type InsertPaymentMethod, insertPaymentMethodSchema, type QuoteMember, type QuoteMemberIncome, type QuoteMemberImmigration, type QuoteMemberDocument } from "@shared/schema";
+import { type User as UserType, type Quote, type QuotePaymentMethod, type InsertPaymentMethod, insertPaymentMethodSchema, type QuoteMember, type QuoteMemberIncome, type QuoteMemberImmigration, type QuoteMemberDocument, type QuoteReminder, type InsertQuoteReminder, insertQuoteReminderSchema } from "@shared/schema";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
@@ -2006,6 +2006,289 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   );
 }
 
+// Reminder Form Component
+interface ReminderFormProps {
+  reminder: QuoteReminder | null;
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
+  isPending: boolean;
+}
+
+const reminderFormSchema = insertQuoteReminderSchema
+  .omit({ companyId: true, quoteId: true, createdBy: true, id: true, createdAt: true, updatedAt: true, status: true, snoozeUntil: true })
+  .extend({
+    title: z.string().min(1, "Title is required"),
+    dueDate: z.string().min(1, "Due date is required"),
+    dueTime: z.string().min(1, "Due time is required"),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']),
+    reminderType: z.enum(['call', 'email', 'followup', 'meeting', 'document', 'other']),
+  });
+
+type ReminderFormData = z.infer<typeof reminderFormSchema>;
+
+function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormProps) {
+  const form = useForm<ReminderFormData>({
+    resolver: zodResolver(reminderFormSchema),
+    defaultValues: {
+      title: reminder?.title || '',
+      description: reminder?.description || '',
+      dueDate: reminder?.dueDate ? format(new Date(reminder.dueDate), 'yyyy-MM-dd') : '',
+      dueTime: reminder?.dueTime || '',
+      timezone: reminder?.timezone || 'America/New_York',
+      reminderBefore: reminder?.reminderBefore || 60,
+      reminderBeforeUnit: reminder?.reminderBeforeUnit || 'minutes',
+      reminderType: reminder?.reminderType || 'call',
+      priority: reminder?.priority || 'medium',
+      notifyUsers: reminder?.notifyUsers || [],
+      isPrivate: reminder?.isPrivate || false,
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid gap-4">
+          {/* Title */}
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title *</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Enter reminder title" data-testid="input-title" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Description */}
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea {...field} placeholder="Add details about this reminder" rows={3} data-testid="textarea-description" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Due Date and Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="dueDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Due Date *</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="date" data-testid="input-due-date" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dueTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Due Time *</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="time" data-testid="input-due-time" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Timezone */}
+          <FormField
+            control={form.control}
+            name="timezone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Timezone</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-timezone">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
+                    <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
+                    <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
+                    <SelectItem value="America/Anchorage">Alaska Time (AKT)</SelectItem>
+                    <SelectItem value="Pacific/Honolulu">Hawaii Time (HT)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Reminder Before */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="reminderBefore"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reminder Before</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      type="number" 
+                      min="0"
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      data-testid="input-reminder-before" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="reminderBeforeUnit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Unit</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-reminder-unit">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="minutes">Minutes</SelectItem>
+                      <SelectItem value="hours">Hours</SelectItem>
+                      <SelectItem value="days">Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Type and Priority */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="reminderType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="call">Call</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="followup">Follow-up</SelectItem>
+                      <SelectItem value="meeting">Meeting</SelectItem>
+                      <SelectItem value="document">Document</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-priority-form">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Private Reminder */}
+          <FormField
+            control={form.control}
+            name="isPrivate"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={field.onChange}
+                    className="h-4 w-4 mt-1"
+                    data-testid="checkbox-private"
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Private reminder</FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Only you will be able to see this reminder
+                  </p>
+                </div>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Form Actions */}
+        <div className="flex gap-2 justify-end pt-4 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isPending}
+            data-testid="button-cancel-reminder"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isPending}
+            data-testid="button-submit-reminder"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {reminder ? 'Updating...' : 'Creating...'}
+              </>
+            ) : (
+              reminder ? 'Update Reminder' : 'Create Reminder'
+            )}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
 // Add Member Sheet Component - NUEVO DISEÑO que funciona como Edit Member
 interface AddMemberSheetProps {
   open: boolean;
@@ -2989,10 +3272,15 @@ export default function QuotesPage() {
   
   // Reminders sheet state
   const [remindersSheetOpen, setRemindersSheetOpen] = useState(false);
-  const [selectedReminder, setSelectedReminder] = useState<any | null>(null);
+  const [selectedReminder, setSelectedReminder] = useState<QuoteReminder | null>(null);
   const [reminderFormOpen, setReminderFormOpen] = useState(false);
   const [filterReminderStatus, setFilterReminderStatus] = useState<string>('all');
   const [filterReminderPriority, setFilterReminderPriority] = useState<string>('all');
+  const [searchReminders, setSearchReminders] = useState("");
+  const [reminderToDelete, setReminderToDelete] = useState<string | null>(null);
+  const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
+  const [snoozeReminderId, setSnoozeReminderId] = useState<string | null>(null);
+  const [snoozeDuration, setSnoozeDuration] = useState<string>("1hour");
   
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
@@ -3262,6 +3550,169 @@ export default function QuotesPage() {
         description: error.message || "Failed to delete document",
         variant: "destructive",
       });
+    },
+  });
+
+  // Fetch quote reminders
+  const { data: quoteRemindersData, isLoading: isLoadingReminders } = useQuery<{ reminders: QuoteReminder[] }>({
+    queryKey: ['/api/quotes', params?.id, 'reminders', filterReminderStatus, filterReminderPriority, searchReminders],
+    queryFn: async () => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      const params_obj = new URLSearchParams();
+      if (filterReminderStatus && filterReminderStatus !== 'all') {
+        params_obj.append('status', filterReminderStatus);
+      }
+      if (filterReminderPriority && filterReminderPriority !== 'all') {
+        params_obj.append('priority', filterReminderPriority);
+      }
+      if (searchReminders.trim()) {
+        params_obj.append('q', searchReminders);
+      }
+      const url = `/api/quotes/${params.id}/reminders${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch reminders');
+      return response.json();
+    },
+    enabled: !!params?.id && params?.id !== 'new' && remindersSheetOpen,
+  });
+
+  const quoteReminders = quoteRemindersData?.reminders || [];
+  const pendingRemindersCount = quoteReminders.filter(r => r.status === 'pending').length || 0;
+
+  // Create reminder mutation
+  const createReminderMutation = useMutation({
+    mutationFn: async (data: Omit<InsertQuoteReminder, 'companyId' | 'quoteId' | 'createdBy'>) => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      return apiRequest('POST', `/api/quotes/${viewingQuote.id}/reminders`, data);
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+      }
+      setReminderFormOpen(false);
+      setSelectedReminder(null);
+      toast({
+        title: "Reminder created",
+        description: "Reminder has been created successfully.",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create reminder",
+        variant: "destructive",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+  });
+
+  // Update reminder mutation
+  const updateReminderMutation = useMutation({
+    mutationFn: async ({ reminderId, data }: { reminderId: string; data: Partial<InsertQuoteReminder> }) => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      return apiRequest('PUT', `/api/quotes/${viewingQuote.id}/reminders/${reminderId}`, data);
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+      }
+      setReminderFormOpen(false);
+      setSelectedReminder(null);
+      toast({
+        title: "Reminder updated",
+        description: "Reminder has been updated successfully.",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update reminder",
+        variant: "destructive",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+  });
+
+  // Complete reminder mutation
+  const completeReminderMutation = useMutation({
+    mutationFn: async (reminderId: string) => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      return apiRequest('PUT', `/api/quotes/${viewingQuote.id}/reminders/${reminderId}/complete`, {});
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+      }
+      toast({
+        title: "Reminder completed",
+        description: "Reminder marked as completed.",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to complete reminder",
+        variant: "destructive",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+  });
+
+  // Snooze reminder mutation
+  const snoozeReminderMutation = useMutation({
+    mutationFn: async ({ reminderId, duration }: { reminderId: string; duration: string }) => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      return apiRequest('PUT', `/api/quotes/${viewingQuote.id}/reminders/${reminderId}/snooze`, { duration });
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+      }
+      setSnoozeDialogOpen(false);
+      setSnoozeReminderId(null);
+      toast({
+        title: "Reminder snoozed",
+        description: "Reminder has been snoozed.",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to snooze reminder",
+        variant: "destructive",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+  });
+
+  // Delete reminder mutation
+  const deleteReminderMutation = useMutation({
+    mutationFn: async (reminderId: string) => {
+      if (!viewingQuote?.id) throw new Error("Quote ID not found");
+      return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/reminders/${reminderId}`);
+    },
+    onSuccess: () => {
+      if (params?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes', params.id, 'reminders'] });
+      }
+      setReminderToDelete(null);
+      toast({
+        title: "Reminder deleted",
+        description: "Reminder has been removed successfully.",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete reminder",
+        variant: "destructive",
+      });
+      setTimeout(() => toast({ description: "" }), 3000);
     },
   });
 
@@ -5330,8 +5781,9 @@ export default function QuotesPage() {
                 <Badge 
                   variant="secondary" 
                   className="text-xs h-5 px-1.5 border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  data-testid="badge-reminders-count"
                 >
-                  0
+                  {pendingRemindersCount}
                 </Badge>
               </button>
 
@@ -7284,6 +7736,347 @@ export default function QuotesPage() {
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* Reminders Sheet - Professional Corporate Design */}
+            <Sheet open={remindersSheetOpen} onOpenChange={setRemindersSheetOpen}>
+              <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right" data-testid="sheet-reminders">
+                <SheetHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <SheetTitle>Reminders</SheetTitle>
+                      <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-reminders-sheet-count">
+                        {quoteReminders.length}
+                      </Badge>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setSelectedReminder(null);
+                        setReminderFormOpen(true);
+                      }}
+                      size="sm"
+                      data-testid="button-create-reminder"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Reminder
+                    </Button>
+                  </div>
+                  <SheetDescription>
+                    Manage reminders for this quote
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="space-y-4 py-6">
+                  {/* Filters Section */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Search reminders..."
+                        value={searchReminders}
+                        onChange={(e) => setSearchReminders(e.target.value)}
+                        data-testid="input-search-reminders"
+                        className="h-9"
+                      />
+                    </div>
+                    <Select value={filterReminderStatus} onValueChange={setFilterReminderStatus}>
+                      <SelectTrigger className="w-full sm:w-[150px] h-9" data-testid="select-status">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="snoozed">Snoozed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterReminderPriority} onValueChange={setFilterReminderPriority}>
+                      <SelectTrigger className="w-full sm:w-[150px] h-9" data-testid="select-priority">
+                        <SelectValue placeholder="Priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Priority</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Reminders Table */}
+                  {isLoadingReminders ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+                      <p className="text-sm text-muted-foreground">Loading reminders...</p>
+                    </div>
+                  ) : quoteReminders.length === 0 ? (
+                    <div className="text-center py-12 border rounded-lg">
+                      <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No reminders found</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {searchReminders || filterReminderStatus !== 'all' || filterReminderPriority !== 'all'
+                          ? 'Try adjusting your filters or search'
+                          : 'Create your first reminder to get started'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Title</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Priority</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Due Date</TableHead>
+                            <TableHead>Created By</TableHead>
+                            <TableHead className="w-[120px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {quoteReminders.map((reminder: QuoteReminder) => {
+                            const getPriorityBadgeClasses = (priority: string) => {
+                              switch (priority) {
+                                case 'urgent':
+                                  return 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400';
+                                case 'high':
+                                  return 'border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-400';
+                                case 'medium':
+                                  return 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400';
+                                case 'low':
+                                default:
+                                  return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
+                              }
+                            };
+
+                            const getStatusBadgeClasses = (status: string) => {
+                              switch (status) {
+                                case 'completed':
+                                  return 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400';
+                                case 'snoozed':
+                                  return 'border-yellow-500/50 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
+                                case 'pending':
+                                default:
+                                  return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
+                              }
+                            };
+
+                            const getTypeLabel = (type: string) => {
+                              const labels: Record<string, string> = {
+                                call: 'Call',
+                                email: 'Email',
+                                followup: 'Follow-up',
+                                meeting: 'Meeting',
+                                document: 'Document',
+                                other: 'Other',
+                              };
+                              return labels[type] || type;
+                            };
+
+                            return (
+                              <TableRow key={reminder.id} className="hover:bg-muted/50">
+                                <TableCell>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedReminder(reminder);
+                                      setReminderFormOpen(true);
+                                    }}
+                                    className="text-sm font-semibold hover:underline text-left"
+                                    data-testid={`button-view-reminder-${reminder.id}`}
+                                  >
+                                    {reminder.title}
+                                  </button>
+                                  {reminder.description && (
+                                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                      {reminder.description}
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {getTypeLabel(reminder.reminderType)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary" className={`text-xs h-5 px-2 border ${getPriorityBadgeClasses(reminder.priority)}`}>
+                                    {reminder.priority.charAt(0).toUpperCase() + reminder.priority.slice(1)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary" className={`text-xs h-5 px-2 border ${getStatusBadgeClasses(reminder.status)}`}>
+                                    {reminder.status.charAt(0).toUpperCase() + reminder.status.slice(1)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {format(new Date(reminder.dueDate), "MMM dd, yyyy")}
+                                  {reminder.dueTime && (
+                                    <div className="text-xs">{reminder.dueTime}</div>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {reminder.createdByUser ? (
+                                    <>{reminder.createdByUser.firstName} {reminder.createdByUser.lastName}</>
+                                  ) : (
+                                    'Unknown'
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    {reminder.status === 'pending' && (
+                                      <>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 px-2"
+                                          onClick={() => completeReminderMutation.mutate(reminder.id)}
+                                          disabled={completeReminderMutation.isPending}
+                                          data-testid={`button-complete-${reminder.id}`}
+                                        >
+                                          <CheckCircle2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 px-2"
+                                          onClick={() => {
+                                            setSnoozeReminderId(reminder.id);
+                                            setSnoozeDialogOpen(true);
+                                          }}
+                                          data-testid={`button-snooze-${reminder.id}`}
+                                        >
+                                          <Clock className="h-4 w-4" />
+                                        </Button>
+                                      </>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      onClick={() => {
+                                        setSelectedReminder(reminder);
+                                        setReminderFormOpen(true);
+                                      }}
+                                      data-testid={`button-edit-${reminder.id}`}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      onClick={() => setReminderToDelete(reminder.id)}
+                                      data-testid={`button-delete-${reminder.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Create/Edit Reminder Dialog */}
+            <Dialog open={reminderFormOpen} onOpenChange={setReminderFormOpen}>
+              <DialogContent className="sm:max-w-[600px]" data-testid="dialog-reminder-form">
+                <DialogTitle>{selectedReminder ? 'Edit Reminder' : 'Create Reminder'}</DialogTitle>
+                <DialogDescription>
+                  {selectedReminder ? 'Update the reminder details' : 'Create a new reminder for this quote'}
+                </DialogDescription>
+                <ReminderForm
+                  reminder={selectedReminder}
+                  onSubmit={(data) => {
+                    if (selectedReminder) {
+                      updateReminderMutation.mutate({
+                        reminderId: selectedReminder.id,
+                        data,
+                      });
+                    } else {
+                      createReminderMutation.mutate(data);
+                    }
+                  }}
+                  onCancel={() => {
+                    setReminderFormOpen(false);
+                    setSelectedReminder(null);
+                  }}
+                  isPending={createReminderMutation.isPending || updateReminderMutation.isPending}
+                />
+              </DialogContent>
+            </Dialog>
+
+            {/* Snooze Reminder Dialog */}
+            <AlertDialog open={snoozeDialogOpen} onOpenChange={setSnoozeDialogOpen}>
+              <AlertDialogContent data-testid="dialog-snooze-reminder">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Snooze Reminder</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Select how long you want to snooze this reminder
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4">
+                  <Select value={snoozeDuration} onValueChange={setSnoozeDuration}>
+                    <SelectTrigger data-testid="select-snooze-duration">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15min">15 minutes</SelectItem>
+                      <SelectItem value="30min">30 minutes</SelectItem>
+                      <SelectItem value="1hour">1 hour</SelectItem>
+                      <SelectItem value="2hours">2 hours</SelectItem>
+                      <SelectItem value="1day">1 day</SelectItem>
+                      <SelectItem value="2days">2 days</SelectItem>
+                      <SelectItem value="1week">1 week</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-snooze">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (snoozeReminderId) {
+                        snoozeReminderMutation.mutate({
+                          reminderId: snoozeReminderId,
+                          duration: snoozeDuration,
+                        });
+                      }
+                    }}
+                    disabled={snoozeReminderMutation.isPending}
+                    data-testid="button-confirm-snooze"
+                  >
+                    {snoozeReminderMutation.isPending ? 'Snoozing...' : 'Snooze'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Reminder Confirmation */}
+            <AlertDialog open={!!reminderToDelete} onOpenChange={(open) => !open && setReminderToDelete(null)}>
+              <AlertDialogContent data-testid="dialog-delete-reminder">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Reminder</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this reminder? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-delete-reminder">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (reminderToDelete) {
+                        deleteReminderMutation.mutate(reminderToDelete);
+                      }
+                    }}
+                    className="bg-destructive hover:bg-destructive/90"
+                    data-testid="button-confirm-delete-reminder"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
       </div>
     );
   }
