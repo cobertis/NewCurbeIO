@@ -10696,53 +10696,102 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
             {/* Document Title */}
             <div className="mb-6">
               <h3 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-2">
-                LEGAL CONSENT IN FULL USE OF MY FACULTIES
+                {user?.preferredLanguage === 'es' 
+                  ? 'CONSENTIMIENTO LEGAL EN PLENO USO DE MIS FACULTADES'
+                  : 'LEGAL CONSENT IN FULL USE OF MY FACULTIES'
+                }
               </h3>
             </div>
 
-            {/* Consent Text */}
-            <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-              <p>
-                Yo, <strong className="text-gray-900 dark:text-gray-100">{clientName}</strong>, en la fecha de hoy <strong className="text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString()}</strong>, doy mi permiso a
-              </p>
+            {/* Consent Text - Spanish Version */}
+            {user?.preferredLanguage === 'es' ? (
+              <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+                <p>
+                  Yo, <strong className="text-gray-900 dark:text-gray-100">{clientName}</strong>, en la fecha de hoy <strong className="text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString()}</strong>, doy mi permiso a
+                </p>
 
-              <p className="text-center font-semibold text-gray-900 dark:text-gray-100">
-                {user ? `${user.firstName} ${user.lastName}` : 'Agent Name'} NPN: {user?.nationalProducerNumber || 'N/A'}
-              </p>
+                <p className="text-center font-semibold text-gray-900 dark:text-gray-100">
+                  {user ? `${user.firstName} ${user.lastName}` : 'Agent Name'} NPN: {user?.nationalProducerNumber || 'N/A'}
+                </p>
 
-              <p>
-                Agentes(s) de <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> que van hacer las licencias reponsable por este cliente y actuar como agente o corredor de seguros médicos para mí y para todo mi hogar, si corresponde, para fines de inscripción en un Plan de salud calificado ofrecido en el Mercado facilitado a nivel federal.
-              </p>
+                <p>
+                  Agentes(s) de <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> que van hacer las licencias reponsable por este cliente y actuar como agente o corredor de seguros médicos para mí y para todo mi hogar, si corresponde, para fines de inscripción en un Plan de salud calificado ofrecido en el Mercado facilitado a nivel federal.
+                </p>
 
-              <p>
-                Al dar mi consentimiento a este acuerdo, autorizo al Agente mencionado anteriormente a ver y utilizar la información confidencial proporcionada por mí por escrito, electrónicamente o por teléfono solo para los fines de uno o más de los siguientes:
-              </p>
+                <p>
+                  Al dar mi consentimiento a este acuerdo, autorizo al Agente mencionado anteriormente a ver y utilizar la información confidencial proporcionada por mí por escrito, electrónicamente o por teléfono solo para los fines de uno o más de los siguientes:
+                </p>
 
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Buscar una aplicación de Marketplace existente;</li>
-                <li>Completar una solicitud de elegibilidad e inscripción en un Plan de Salud Calificado del Mercado u otro programas gubernamentales de asequibilidad de seguros, como Medicaid y CHIP; o</li>
-                <li>Créditos fiscales anticipados para ayudar pagar las primas del Mercado;</li>
-                <li>Proporcionar mantenimiento continuo de la cuenta y asistencia para la inscripción, según sea necesario; o</li>
-                <li>Responder a consultas del Mercado sobre mi solicitud del Mercado.</li>
-              </ul>
+                <ul className="list-disc pl-6 space-y-2">
+                  <li>Buscar una aplicación de Marketplace existente;</li>
+                  <li>Completar una solicitud de elegibilidad e inscripción en un Plan de Salud Calificado del Mercado u otro programas gubernamentales de asequibilidad de seguros, como Medicaid y CHIP; o</li>
+                  <li>Créditos fiscales anticipados para ayudar pagar las primas del Mercado;</li>
+                  <li>Proporcionar mantenimiento continuo de la cuenta y asistencia para la inscripción, según sea necesario; o</li>
+                  <li>Responder a consultas del Mercado sobre mi solicitud del Mercado.</li>
+                </ul>
 
-              <p>
-                Confirmo que la información que proporciono para ingresar en mi solicitud de inscripción y elegibilidad del Mercado será verdadera a mi leal saber y entender.
-              </p>
+                <p>
+                  Confirmo que la información que proporciono para ingresar en mi solicitud de inscripción y elegibilidad del Mercado será verdadera a mi leal saber y entender.
+                </p>
 
-              <p>
-                Entiendo que no tengo que compartir información personal adicional sobre mí o mi salud con mi Agente más allá de lo requerido en la solicitud para fines de elegibilidad e inscripción.
-              </p>
+                <p>
+                  Entiendo que no tengo que compartir información personal adicional sobre mí o mi salud con mi Agente más allá de lo requerido en la solicitud para fines de elegibilidad e inscripción.
+                </p>
 
-              <p>
-                Entiendo que mi consentimiento permanece vigente hasta que lo revoque, y puedo revocar o modificar mi consentimiento en cualquier momento comunicandoselo a <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> o cualquiera de sus agentes.
-              </p>
+                <p>
+                  Entiendo que mi consentimiento permanece vigente hasta que lo revoque, y puedo revocar o modificar mi consentimiento en cualquier momento comunicandoselo a <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> o cualquiera de sus agentes.
+                </p>
 
-              <div className="mt-6 pt-4">
-                <p className="font-medium text-gray-900 dark:text-gray-100">{clientName}</p>
-                <p className="text-gray-600 dark:text-gray-400">{quote?.clientPhone || ''}</p>
+                <div className="mt-6 pt-4">
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{clientName}</p>
+                  <p className="text-gray-600 dark:text-gray-400">{quote?.clientPhone || ''}</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Consent Text - English Version */
+              <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+                <p>
+                  I, <strong className="text-gray-900 dark:text-gray-100">{clientName}</strong>, on this day <strong className="text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString()}</strong>, give my permission to
+                </p>
+
+                <p className="text-center font-semibold text-gray-900 dark:text-gray-100">
+                  {user ? `${user.firstName} ${user.lastName}` : 'Agent Name'} NPN: {user?.nationalProducerNumber || 'N/A'}
+                </p>
+
+                <p>
+                  Agent(s) of <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> who will be the licensed responsible agent for this client and act as an agent or health insurance broker for me and my entire household, if applicable, for purposes of enrollment in a Qualified Health Plan offered on the Federally-facilitated Marketplace.
+                </p>
+
+                <p>
+                  By giving my consent to this agreement, I authorize the Agent mentioned above to view and use confidential information provided by me in writing, electronically, or by phone only for the purposes of one or more of the following:
+                </p>
+
+                <ul className="list-disc pl-6 space-y-2">
+                  <li>Search for an existing Marketplace application;</li>
+                  <li>Complete an eligibility and enrollment application for a Marketplace Qualified Health Plan or other government insurance affordability programs, such as Medicaid and CHIP; or</li>
+                  <li>Advance premium tax credits to help pay for Marketplace premiums;</li>
+                  <li>Provide ongoing account maintenance and enrollment assistance, as needed; or</li>
+                  <li>Respond to Marketplace inquiries about my Marketplace application.</li>
+                </ul>
+
+                <p>
+                  I confirm that the information I provide to enter into my Marketplace enrollment and eligibility application will be true to the best of my knowledge and belief.
+                </p>
+
+                <p>
+                  I understand that I do not have to share additional personal information about myself or my health with my Agent beyond what is required in the application for eligibility and enrollment purposes.
+                </p>
+
+                <p>
+                  I understand that my consent remains in effect until I revoke it, and I can revoke or modify my consent at any time by communicating it to <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> or any of its agents.
+                </p>
+
+                <div className="mt-6 pt-4">
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{clientName}</p>
+                  <p className="text-gray-600 dark:text-gray-400">{quote?.clientPhone || ''}</p>
+                </div>
+              </div>
+            )}
 
             {/* Signature Line (Preview) */}
             <div className="mt-8 pt-6 border-t">
