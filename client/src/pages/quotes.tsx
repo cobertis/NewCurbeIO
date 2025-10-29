@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -10468,6 +10469,28 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
   const [target, setTarget] = useState(clientEmail || '');
   const [sending, setSending] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(true);
+
+  // Fetch user data for agent info
+  const { data: userData } = useQuery<{ user: UserType }>({
+    queryKey: ["/api/session"],
+  });
+
+  // Fetch company data
+  const { data: companyData } = useQuery<{ company: any }>({
+    queryKey: ["/api/companies", userData?.user?.companyId],
+    enabled: !!userData?.user?.companyId,
+  });
+
+  // Fetch quote data
+  const { data: quoteData } = useQuery<{ quote: any }>({
+    queryKey: ["/api/quotes", quoteId, "detail"],
+    enabled: !!quoteId,
+  });
+
+  const user = userData?.user;
+  const company = companyData?.company;
+  const quote = quoteData?.quote;
 
   useEffect(() => {
     if (channel === 'email') {
@@ -10539,6 +10562,7 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
     }
   };
 
+  // If link was generated, show it
   if (generatedUrl) {
     return (
       <div className="space-y-4">
@@ -10555,6 +10579,7 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
               onClick={() => {
                 navigator.clipboard.writeText(generatedUrl);
                 toast({ description: "Link copied to clipboard" });
+                setTimeout(() => toast({ description: "" }), 3000);
               }}
               variant="outline"
               size="sm"
@@ -10571,60 +10596,213 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
     );
   }
 
+  // Client name
+  const clientName = quote ? `${quote.clientFirstName || ''} ${quote.clientLastName || ''}`.trim() : 'Client';
+
   return (
     <div className="space-y-4">
-      <div>
-        <Label>Delivery Method</Label>
-        <RadioGroup value={channel} onValueChange={(v) => setChannel(v as any)}>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="email" id="email" data-testid="radio-email" />
-            <Label htmlFor="email">Email</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="sms" id="sms" data-testid="radio-sms" />
-            <Label htmlFor="sms">SMS</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="link" id="link" data-testid="radio-link" />
-            <Label htmlFor="link">Generate Link</Label>
-          </div>
-        </RadioGroup>
-      </div>
+      <Tabs defaultValue="preview" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="preview">Preview</TabsTrigger>
+          <TabsTrigger value="send">Send</TabsTrigger>
+        </TabsList>
 
-      {(channel === 'email' || channel === 'sms') && (
-        <div>
-          <Label htmlFor="target">
-            {channel === 'email' ? 'Email Address' : 'Phone Number'}
-          </Label>
-          <Input
-            id="target"
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-            placeholder={channel === 'email' ? 'client@example.com' : '(555) 123-4567'}
-            data-testid="input-target"
-          />
-        </div>
-      )}
+        {/* Preview Tab */}
+        <TabsContent value="preview" className="space-y-4">
+          <div className="border rounded-lg p-6 bg-white dark:bg-gray-900 max-h-[400px] overflow-y-auto">
+            {/* Company Header */}
+            <div className="text-center mb-8 pb-6 border-b">
+              {company?.logoUrl && (
+                <img 
+                  src={company.logoUrl} 
+                  alt={company.name} 
+                  className="h-16 mx-auto mb-4"
+                />
+              )}
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {company?.name || 'Insurance Company'}
+              </h2>
+              {company?.address && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  {company.address}
+                </p>
+              )}
+            </div>
 
-      <div className="flex gap-2">
-        <Button 
-          onClick={onClose} 
-          variant="outline" 
-          className="flex-1"
-          data-testid="button-cancel-consent"
-        >
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSend} 
-          disabled={sending || (channel !== 'link' && !target.trim())}
-          className="flex-1"
-          data-testid="button-send-consent"
-        >
-          {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {channel === 'link' ? 'Generate Link' : 'Send Consent'}
-        </Button>
-      </div>
+            {/* Document Title */}
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4">
+                SCOPE OF APPOINTMENT (SOA) - CONSENT FORM
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                Required by Centers for Medicare & Medicaid Services (CMS)
+              </p>
+            </div>
+
+            {/* Agent Information */}
+            <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Agent Information</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Agent Name:</span>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {user ? `${user.firstName} ${user.lastName}` : 'Agent Name'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">National Producer Number (NPN):</span>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {user?.nationalProducerNumber || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Company:</span>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {company?.name || 'Company Name'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Date:</span>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {new Date().toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Client Information */}
+            <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Client Information</h4>
+              <div className="text-sm">
+                <span className="text-gray-600 dark:text-gray-400">Beneficiary Name:</span>
+                <p className="font-medium text-gray-900 dark:text-gray-100">{clientName}</p>
+              </div>
+            </div>
+
+            {/* Consent Text */}
+            <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                I understand that the purpose of this appointment is to discuss:
+              </p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>Health Insurance Marketplace plans and enrollment assistance</li>
+                <li>Medicare Advantage (Part C) and/or Medicare Prescription Drug (Part D) plans</li>
+                <li>Supplemental insurance products as applicable</li>
+              </ul>
+
+              <p className="mt-4">
+                I understand that this meeting may include information about Medicare Advantage, 
+                Medicare Prescription Drug, or Medigap products. I also understand that I may ask 
+                to discuss other products or services not mentioned above at the time of this meeting.
+              </p>
+
+              <p>
+                I acknowledge that the agent named above has been authorized to provide me with 
+                information and assistance regarding my insurance options. I consent to be contacted 
+                by the agent via the contact information I have provided.
+              </p>
+
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-6">
+                Electronic Signature Consent:
+              </p>
+              <p>
+                By signing this document electronically, I agree that my electronic signature 
+                has the same legal effect as a handwritten signature.
+              </p>
+            </div>
+
+            {/* Signature Line (Preview) */}
+            <div className="mt-8 pt-6 border-t">
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <div className="border-b border-gray-400 pb-1 mb-2 h-8"></div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Beneficiary Signature</p>
+                </div>
+                <div>
+                  <div className="border-b border-gray-400 pb-1 mb-2 h-8"></div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Date</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Send Tab */}
+        <TabsContent value="send" className="space-y-4">
+          <div className="space-y-4">
+            <div>
+              <Label className="text-base font-semibold mb-3 block">Delivery Method</Label>
+              <RadioGroup value={channel} onValueChange={(v) => setChannel(v as any)}>
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <RadioGroupItem value="email" id="email" data-testid="radio-email" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="email" className="font-medium cursor-pointer">Email</Label>
+                      <p className="text-sm text-muted-foreground">Send consent form via email for electronic signature</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <RadioGroupItem value="sms" id="sms" data-testid="radio-sms" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="sms" className="font-medium cursor-pointer">SMS</Label>
+                      <p className="text-sm text-muted-foreground">Send consent link via text message</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <RadioGroupItem value="link" id="link" data-testid="radio-link" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="link" className="font-medium cursor-pointer">Generate Link</Label>
+                      <p className="text-sm text-muted-foreground">Create a shareable link to send manually</p>
+                    </div>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {(channel === 'email' || channel === 'sms') && (
+              <div>
+                <Label htmlFor="target" className="text-base font-semibold mb-2 block">
+                  {channel === 'email' ? 'Email Address' : 'Phone Number'}
+                </Label>
+                <Input
+                  id="target"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  placeholder={channel === 'email' ? 'client@example.com' : '(555) 123-4567'}
+                  data-testid="input-target"
+                  className="text-base"
+                />
+                <p className="text-sm text-muted-foreground mt-2">
+                  {channel === 'email' 
+                    ? 'Client will receive an email with a link to sign the consent form'
+                    : 'Client will receive a text message with a link to sign the consent form'
+                  }
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button 
+                onClick={onClose} 
+                variant="outline" 
+                className="flex-1"
+                data-testid="button-cancel-consent"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSend} 
+                disabled={sending || (channel !== 'link' && !target.trim())}
+                className="flex-1"
+                data-testid="button-send-consent"
+              >
+                {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {channel === 'link' ? 'Generate Link' : `Send via ${channel === 'email' ? 'Email' : 'SMS'}`}
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
