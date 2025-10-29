@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -2006,6 +2007,54 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   );
 }
 
+// Helper function to generate time options in 15-minute intervals
+const generateTimeOptions = () => {
+  const options = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const value = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      const date = new Date();
+      date.setHours(hour, minute);
+      const display12h = format(date, "h:mm a");
+      options.push({ value, label: display12h });
+    }
+  }
+  return options;
+};
+
+// Helper function to parse reminderBefore string (e.g., "15min", "1hour", "2days")
+const parseReminderBefore = (reminderBefore: string | null | undefined): { value: number; unit: string } => {
+  if (!reminderBefore) return { value: 60, unit: 'minutes' };
+  
+  const match = reminderBefore.match(/^(\d+)(min|hour|day|week)s?$/);
+  if (!match) return { value: 60, unit: 'minutes' };
+  
+  const value = parseInt(match[1]);
+  const unit = match[2];
+  
+  // Convert to standard units
+  const unitMap: Record<string, string> = {
+    'min': 'minutes',
+    'hour': 'hours',
+    'day': 'days',
+    'week': 'weeks'
+  };
+  
+  return { value, unit: unitMap[unit] || 'minutes' };
+};
+
+// Helper function to format reminderBefore for submission (e.g., 15 minutes -> "15min")
+const formatReminderBefore = (value: number, unit: string): string => {
+  const unitMap: Record<string, string> = {
+    'minutes': 'min',
+    'hours': 'hour',
+    'days': 'day',
+    'weeks': 'week'
+  };
+  
+  return `${value}${unitMap[unit] || 'min'}`;
+};
+
 // Reminder Form Component
 interface ReminderFormProps {
   reminder: QuoteReminder | null;
@@ -2021,12 +2070,18 @@ const reminderFormSchema = insertQuoteReminderSchema
     dueDate: z.string().min(1, "Due date is required"),
     dueTime: z.string().min(1, "Due time is required"),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
-    reminderType: z.enum(['call', 'email', 'followup', 'meeting', 'document', 'other']),
+    reminderType: z.enum(['follow_up', 'document_request', 'payment_due', 'policy_renewal', 'call_client', 'send_email', 'review_application', 'other']),
+    // Temporary fields for form UI (will be combined before submission)
+    reminderBeforeValue: z.number().optional(),
+    reminderBeforeUnit: z.string().optional(),
   });
 
 type ReminderFormData = z.infer<typeof reminderFormSchema>;
 
 function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormProps) {
+  // Parse reminderBefore from combined string format
+  const parsedReminder = reminder?.reminderBefore ? parseReminderBefore(reminder.reminderBefore) : { value: 60, unit: 'minutes' };
+  
   const form = useForm<ReminderFormData>({
     resolver: zodResolver(reminderFormSchema),
     defaultValues: {
@@ -2035,18 +2090,33 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
       dueDate: reminder?.dueDate ? format(new Date(reminder.dueDate), 'yyyy-MM-dd') : '',
       dueTime: reminder?.dueTime || '',
       timezone: reminder?.timezone || 'America/New_York',
-      reminderBefore: reminder?.reminderBefore || 60,
-      reminderBeforeUnit: reminder?.reminderBeforeUnit || 'minutes',
-      reminderType: reminder?.reminderType || 'call',
+      reminderBeforeValue: parsedReminder.value,
+      reminderBeforeUnit: parsedReminder.unit,
+      reminderType: reminder?.reminderType || 'follow_up',
       priority: reminder?.priority || 'medium',
       notifyUsers: reminder?.notifyUsers || [],
       isPrivate: reminder?.isPrivate || false,
     },
   });
 
+  // Wrap onSubmit to combine reminderBefore fields
+  const handleFormSubmit = (data: ReminderFormData) => {
+    const { reminderBeforeValue, reminderBeforeUnit, ...rest } = data;
+    
+    // Combine reminderBeforeValue and reminderBeforeUnit into single string
+    const reminderBefore = reminderBeforeValue && reminderBeforeUnit 
+      ? formatReminderBefore(reminderBeforeValue, reminderBeforeUnit)
+      : undefined;
+    
+    onSubmit({
+      ...rest,
+      reminderBefore,
+    });
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
         <div className="grid gap-4">
           {/* Title */}
           <FormField
@@ -2086,9 +2156,28 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Due Date *</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="date" data-testid="input-due-date" />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                          data-testid="button-due-date"
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {field.value ? formatDateForDisplay(field.value, "MM/dd/yyyy") : "Select date"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={field.value ? parseISO(field.value + 'T00:00:00') : undefined}
+                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -2099,9 +2188,23 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Due Time *</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="time" data-testid="input-due-time" />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-due-time">
+                        <div className="flex items-center">
+                          <Clock className="mr-2 h-4 w-4" />
+                          <SelectValue placeholder="Select time" />
+                        </div>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="max-h-[300px]">
+                      {generateTimeOptions().map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -2139,7 +2242,7 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="reminderBefore"
+              name="reminderBeforeValue"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Reminder Before</FormLabel>
@@ -2148,6 +2251,7 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
                       {...field} 
                       type="number" 
                       min="0"
+                      value={field.value || ''}
                       onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                       data-testid="input-reminder-before" 
                     />
@@ -2162,7 +2266,7 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unit</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-reminder-unit">
                         <SelectValue />
@@ -2172,6 +2276,7 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
                       <SelectItem value="minutes">Minutes</SelectItem>
                       <SelectItem value="hours">Hours</SelectItem>
                       <SelectItem value="days">Days</SelectItem>
+                      <SelectItem value="weeks">Weeks</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -2188,18 +2293,20 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-type">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="call">Call</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="followup">Follow-up</SelectItem>
-                      <SelectItem value="meeting">Meeting</SelectItem>
-                      <SelectItem value="document">Document</SelectItem>
+                      <SelectItem value="follow_up">Follow Up</SelectItem>
+                      <SelectItem value="document_request">Document Request</SelectItem>
+                      <SelectItem value="payment_due">Payment Due</SelectItem>
+                      <SelectItem value="policy_renewal">Policy Renewal</SelectItem>
+                      <SelectItem value="call_client">Call Client</SelectItem>
+                      <SelectItem value="send_email">Send Email</SelectItem>
+                      <SelectItem value="review_application">Review Application</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -7862,11 +7969,13 @@ export default function QuotesPage() {
 
                             const getTypeLabel = (type: string) => {
                               const labels: Record<string, string> = {
-                                call: 'Call',
-                                email: 'Email',
-                                followup: 'Follow-up',
-                                meeting: 'Meeting',
-                                document: 'Document',
+                                follow_up: 'Follow Up',
+                                document_request: 'Document Request',
+                                payment_due: 'Payment Due',
+                                policy_renewal: 'Policy Renewal',
+                                call_client: 'Call Client',
+                                send_email: 'Send Email',
+                                review_application: 'Review Application',
                                 other: 'Other',
                               };
                               return labels[type] || type;
