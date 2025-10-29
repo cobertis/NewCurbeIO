@@ -711,6 +711,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Consent document not found or expired" });
       }
       
+      // Get quote information to send notification
+      try {
+        const quote = await storage.getQuoteById(signedConsent.quoteId);
+        if (quote && signedConsent.signedAt) {
+          const clientName = `${quote.clientFirstName || ''} ${quote.clientLastName || ''}`.trim() || 'Client';
+          await notificationService.notifyConsentSigned(
+            quote.id,
+            clientName,
+            signedConsent.signedAt,
+            quote.assignedTo || null
+          );
+        }
+      } catch (notificationError) {
+        // Log but don't fail the request if notification fails
+        console.error('Failed to send consent signed notification:', notificationError);
+      }
+      
       res.json({ consent: signedConsent, message: "Consent signed successfully" });
     } catch (error: any) {
       console.error("Error signing consent:", error);

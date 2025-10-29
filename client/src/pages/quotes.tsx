@@ -18,7 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -3717,7 +3717,7 @@ export default function QuotesPage() {
 
   const quoteReminders = quoteRemindersData?.reminders || [];
 
-  // Fetch consent documents for quote
+  // Fetch consent documents for quote (with real-time polling when sheet is open)
   const { data: consentsData, isLoading: isLoadingConsents } = useQuery<{ consents: any[] }>({
     queryKey: ['/api/quotes', params?.id, 'consents'],
     queryFn: async () => {
@@ -3727,6 +3727,8 @@ export default function QuotesPage() {
       return response.json();
     },
     enabled: !!params?.id && params?.id !== 'new',
+    refetchInterval: consentsSheetOpen ? 5000 : false, // Refetch every 5 seconds when sheet is open
+    refetchOnWindowFocus: true, // Also refetch when window regains focus
   });
 
   const consents = consentsData?.consents || [];
@@ -8253,10 +8255,38 @@ export default function QuotesPage() {
                 <div className="space-y-4 py-6">
                   {viewingConsent ? (
                     /* Consent Preview View */
-                    <div className="space-y-6">
+                    <div className="space-y-4">
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const printWindow = window.open(`/consent/${viewingConsent.token}`, '_blank');
+                            if (printWindow) {
+                              printWindow.onload = () => {
+                                printWindow.print();
+                              };
+                            }
+                          }}
+                          data-testid="button-print-consent"
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Print / Save as PDF
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => window.open(`/consent/${viewingConsent.token}`, '_blank')}
+                          data-testid="button-open-consent-tab"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open in New Tab
+                        </Button>
+                      </div>
+                      
+                      {/* Preview Iframe */}
                       <iframe
                         src={`/consent/${viewingConsent.token}`}
-                        className="w-full h-[calc(100vh-200px)] border rounded-lg"
+                        className="w-full h-[calc(100vh-280px)] border rounded-lg"
                         title="Consent Document Preview"
                       />
                     </div>

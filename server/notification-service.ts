@@ -598,6 +598,38 @@ class NotificationService {
   }
 
   /**
+   * Create a notification when a consent document is signed
+   */
+  async notifyConsentSigned(
+    quoteId: string,
+    clientName: string,
+    signedAt: Date,
+    assignedUserId: string | null
+  ) {
+    const notifications: InsertNotification[] = [];
+    
+    // Notify the assigned user if there is one
+    if (assignedUserId) {
+      notifications.push({
+        userId: assignedUserId,
+        type: "info",
+        title: "Consent Signed",
+        message: `${clientName} signed the consent document on ${signedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+        link: `/quotes/${quoteId}`,
+        isRead: false,
+      });
+    }
+    
+    if (notifications.length > 0) {
+      const result = await Promise.all(notifications.map(n => storage.createNotification(n)));
+      broadcastNotificationUpdate();
+      return result;
+    }
+    
+    return [];
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {
