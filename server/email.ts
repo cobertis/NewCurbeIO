@@ -56,7 +56,18 @@ class EmailService {
       const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
       const fromName = process.env.SMTP_FROM_NAME || "Curbe Admin";
 
-      await this.transporter.sendMail({
+      console.log('[EMAIL DEBUG] Starting email send...');
+      console.log('[EMAIL DEBUG] From:', `"${fromName}" <${fromEmail}>`);
+      console.log('[EMAIL DEBUG] To:', options.to);
+      console.log('[EMAIL DEBUG] Subject:', options.subject);
+      console.log('[EMAIL DEBUG] SMTP Config:', {
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        user: process.env.SMTP_USER,
+        secure: parseInt(process.env.SMTP_PORT || "587") === 465
+      });
+
+      const result = await this.transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
         to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
         subject: options.subject,
@@ -64,10 +75,15 @@ class EmailService {
         html: options.html,
       });
 
+      console.log('[EMAIL DEBUG] Nodemailer result:', JSON.stringify(result, null, 2));
       console.log(`Email sent successfully to ${options.to}`);
       return true;
-    } catch (error) {
-      console.error("Failed to send email:", error);
+    } catch (error: any) {
+      console.error("Failed to send email - ERROR DETAILS:");
+      console.error("Error message:", error.message);
+      console.error("Error code:", error.code);
+      console.error("Error response:", error.response);
+      console.error("Full error:", JSON.stringify(error, null, 2));
       return false;
     }
   }
