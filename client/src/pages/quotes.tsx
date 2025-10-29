@@ -8351,7 +8351,6 @@ export default function QuotesPage() {
                                               title: "Link copied",
                                               description: "Consent form link copied to clipboard",
                                             });
-                                            setTimeout(() => toast({ description: "" }), 3000);
                                           }}
                                           data-testid={`menu-copy-link-${consent.id}`}
                                         >

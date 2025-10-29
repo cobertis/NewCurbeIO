@@ -11071,11 +11071,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Don't allow deletion of signed documents
-      if (consent.status === 'signed') {
-        return res.status(400).json({ message: "Cannot delete signed consent documents" });
-      }
-      
       const deleted = await storage.deleteConsentDocument(consentId, consent.companyId);
       
       if (!deleted) {
