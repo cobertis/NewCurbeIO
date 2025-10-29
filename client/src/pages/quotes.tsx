@@ -8179,7 +8179,7 @@ export default function QuotesPage() {
                     <Button
                       onClick={() => {
                         setConsentsSheetOpen(false);
-                        setConsentModalOpen(true);
+                        setTimeout(() => setConsentModalOpen(true), 100);
                       }}
                       className="flex-shrink-0"
                       data-testid="button-create-consent"
