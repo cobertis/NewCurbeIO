@@ -10571,7 +10571,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.put("/api/quotes/:quoteId/reminders/:reminderId/snooze", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { quoteId, reminderId } = req.params;
-    const { snoozedUntil } = req.body;
+    const { duration } = req.body;
 
     try {
       // Get quote to verify access
@@ -10595,16 +10595,64 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Reminder does not belong to this quote" });
       }
 
-      if (!snoozedUntil) {
-        return res.status(400).json({ message: "snoozedUntil is required" });
+      if (!duration) {
+        return res.status(400).json({ message: "duration is required" });
       }
 
-      const snoozeDate = new Date(snoozedUntil);
-      if (isNaN(snoozeDate.getTime())) {
-        return res.status(400).json({ message: "Invalid snoozedUntil date" });
+      // Calculate snooze until date based on duration
+      const now = new Date();
+      let snoozeDate = new Date(now);
+
+      // Parse duration (e.g., "15min", "1hour", "2days", "1week")
+      const match = duration.match(/^(\d+)(min|hour|hours|day|days|week)s?$/);
+      if (!match) {
+        return res.status(400).json({ message: "Invalid duration format" });
+      }
+
+      const value = parseInt(match[1]);
+      const unit = match[2];
+
+      switch (unit) {
+        case 'min':
+          snoozeDate.setMinutes(snoozeDate.getMinutes() + value);
+          break;
+        case 'hour':
+        case 'hours':
+          snoozeDate.setHours(snoozeDate.getHours() + value);
+          break;
+        case 'day':
+        case 'days':
+          snoozeDate.setDate(snoozeDate.getDate() + value);
+          break;
+        case 'week':
+          snoozeDate.setDate(snoozeDate.getDate() + (value * 7));
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid duration unit" });
       }
 
       const snoozedReminder = await storage.snoozeQuoteReminder(reminderId, quote.companyId, snoozeDate);
+
+      // Create a notification to remind the user when snooze time is up
+      const durationText = duration.replace(/(\d+)(min|hour|hours|day|days|week)s?/, (_, num, unit) => {
+        const unitMap: Record<string, string> = {
+          'min': num === '1' ? 'minuto' : 'minutos',
+          'hour': num === '1' ? 'hora' : 'horas',
+          'hours': 'horas',
+          'day': num === '1' ? 'día' : 'días',
+          'days': 'días',
+          'week': num === '1' ? 'semana' : 'semanas'
+        };
+        return `${num} ${unitMap[unit] || unit}`;
+      });
+
+      await storage.createNotification({
+        userId: currentUser.id,
+        type: 'warning',
+        title: 'Reminder Pendiente',
+        message: `Recordatorio sobre "${existingReminder.title || 'Sin título'}" para el quote ${quoteId}. Este recordatorio está pendiente y se te notificará en ${durationText}.`,
+        link: `/quotes/${quoteId}`,
+      });
 
       await logger.logCrud({
         req,
@@ -10615,6 +10663,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         metadata: {
           quoteId,
           action: "snoozed",
+          duration,
           snoozedUntil: snoozeDate.toISOString(),
         },
       });
