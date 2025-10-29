@@ -640,6 +640,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get ALL agents (users) from the company with their NPNs
       const allUsers = await storage.getUsersByCompany(consent.companyId);
+      console.log('[CONSENT DEBUG] All users:', allUsers.map(u => ({ 
+        name: `${u.firstName} ${u.lastName}`, 
+        npn: u.nationalProducerNumber 
+      })));
+      
       const agents = allUsers
         .filter(user => user.nationalProducerNumber && user.nationalProducerNumber.trim() !== '') // Only include users with valid NPN
         .map(user => ({
@@ -647,6 +652,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           lastName: user.lastName,
           nationalProducerNumber: user.nationalProducerNumber,
         }));
+      
+      console.log('[CONSENT DEBUG] Filtered agents with NPN:', agents);
       
       // Mark as viewed if first time
       if (consent.status === 'sent' && !consent.viewedAt) {
