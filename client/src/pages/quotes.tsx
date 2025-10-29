@@ -3403,6 +3403,7 @@ export default function QuotesPage() {
   
   // Consents sheet state
   const [consentsSheetOpen, setConsentsSheetOpen] = useState(false);
+  const [showConsentForm, setShowConsentForm] = useState(false); // Track if we're in form view
   
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
@@ -8157,37 +8158,53 @@ export default function QuotesPage() {
             </Sheet>
 
             {/* Consents Sheet */}
-            <Sheet open={consentsSheetOpen} onOpenChange={setConsentsSheetOpen}>
+            <Sheet open={consentsSheetOpen} onOpenChange={(open) => {
+              setConsentsSheetOpen(open);
+              if (!open) setShowConsentForm(false); // Reset form view when closing
+            }}>
               <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right" data-testid="sheet-consents">
                 <SheetHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <SheetTitle>Signature Forms</SheetTitle>
-                      <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-consents-count">
-                        {consents.length}
-                      </Badge>
+                      {showConsentForm && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowConsentForm(false)}
+                          className="mr-2"
+                          data-testid="button-back-to-list"
+                        >
+                          <ArrowLeft className="h-4 w-4 mr-2" />
+                          Back
+                        </Button>
+                      )}
+                      <SheetTitle>{showConsentForm ? 'Send Consent Form' : 'Signature Forms'}</SheetTitle>
+                      {!showConsentForm && (
+                        <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-consents-count">
+                          {consents.length}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <SheetDescription>
-                    Manage consent documents for this quote
+                    {showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this quote'}
                   </SheetDescription>
                 </SheetHeader>
 
                 <div className="space-y-4 py-6">
-                  {/* Create Button */}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        setConsentsSheetOpen(false);
-                        setTimeout(() => setConsentModalOpen(true), 100);
-                      }}
-                      className="flex-shrink-0"
-                      data-testid="button-create-consent"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Send Consent Form
-                    </Button>
-                  </div>
+                  {!showConsentForm ? (
+                    <>
+                      {/* Create Button */}
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => setShowConsentForm(true)}
+                          className="flex-shrink-0"
+                          data-testid="button-create-consent"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Send Consent Form
+                        </Button>
+                      </div>
 
                   {/* Consents List */}
                   {isLoadingConsents ? (
@@ -8318,6 +8335,19 @@ export default function QuotesPage() {
                         </TableBody>
                       </Table>
                     </div>
+                  )}
+                  </>
+                  ) : (
+                    /* Consent Form View */
+                    <SendConsentModalContent 
+                      quoteId={viewingQuote?.id || ''} 
+                      clientEmail={viewingQuote?.clientEmail || ''}
+                      clientPhone={viewingQuote?.clientPhone || ''}
+                      onClose={() => {
+                        setShowConsentForm(false);
+                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote?.id, 'consents'] });
+                      }}
+                    />
                   )}
                 </div>
               </SheetContent>
