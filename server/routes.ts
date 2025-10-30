@@ -8371,9 +8371,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Quote not found" });
       }
       
-      // Check access: superadmin can edit any quote, others only their company's quotes
-      if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "You don't have permission to edit this quote" });
+      // Check access: superadmin can edit any quote, admin can edit company quotes, regular users only their own
+      if (currentUser.role === "superadmin") {
+        // Superadmin can edit any quote
+      } else if (currentUser.role === "admin") {
+        // Admin can edit quotes from their company
+        if (existingQuote.companyId !== currentUser.companyId) {
+          return res.status(403).json({ message: "You don't have permission to edit this quote" });
+        }
+      } else {
+        // Regular users can only edit their own quotes
+        if (existingQuote.companyId !== currentUser.companyId || existingQuote.agentId !== currentUser.id) {
+          return res.status(403).json({ message: "You don't have permission to edit this quote" });
+        }
       }
       
       // 2. NO date conversions - keep dates as yyyy-MM-dd strings
@@ -12091,9 +12101,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Policy not found" });
       }
       
-      // Check access: superadmin can edit any policy, others only their company's policys
-      if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "You don't have permission to edit this policy" });
+      // Check access: superadmin can edit any policy, admin can edit company policies, regular users only their own
+      if (currentUser.role === "superadmin") {
+        // Superadmin can edit any policy
+      } else if (currentUser.role === "admin") {
+        // Admin can edit policies from their company
+        if (existingPolicy.companyId !== currentUser.companyId) {
+          return res.status(403).json({ message: "You don't have permission to edit this policy" });
+        }
+      } else {
+        // Regular users can only edit their own policies
+        if (existingPolicy.companyId !== currentUser.companyId || existingPolicy.agentId !== currentUser.id) {
+          return res.status(403).json({ message: "You don't have permission to edit this policy" });
+        }
       }
       
       // 2. NO date conversions - keep dates as yyyy-MM-dd strings
