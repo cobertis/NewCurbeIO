@@ -9229,6 +9229,11 @@ export default function PoliciesPage() {
                                       <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                         {quote.selectedPlan.metal_level || 'N/A'}
                                       </Badge>
+                                      {quote.selectedPlan.plan_type && (
+                                        <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                          {quote.selectedPlan.plan_type}
+                                        </Badge>
+                                      )}
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-semibold text-green-600 dark:text-green-400">
                                           {quote.selectedPlan.premium_w_credit !== undefined && quote.selectedPlan.premium_w_credit !== null
