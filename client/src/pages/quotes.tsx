@@ -6055,6 +6055,17 @@ export default function QuotesPage() {
                 </div>
 
                 <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground">Documents status</label>
+                  <p className="text-sm font-medium capitalize">
+                    {quoteDocumentsCount > 0 ? (
+                      <span className="text-green-600 dark:text-green-500">Completed</span>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-500">Pending</span>
+                    )}
+                  </p>
+                </div>
+
+                <div className="pb-3 border-b">
                   <label className="text-xs text-muted-foreground">Carrier</label>
                   <p className="text-sm font-medium">{product?.name || viewingQuote.productType}</p>
                 </div>
