@@ -1949,3 +1949,641 @@ export type InsertConsentDocument = z.infer<typeof insertConsentDocumentSchema>;
 
 export type ConsentSignatureEvent = typeof consentSignatureEvents.$inferSelect;
 export type InsertConsentEvent = z.infer<typeof insertConsentEventSchema>;
+
+// =====================================================
+// POLICIES (Insurance Policy Management - Converted from Quotes)
+// =====================================================
+
+export const policies = pgTable("policies", {
+  id: varchar("id", { length: 8 }).primaryKey(), // Short 8-character unique identifier
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // User who created the policy
+  
+  // Step 1: Policy Information
+  effectiveDate: date("effective_date").notNull(), // Policy effective date (yyyy-MM-dd)
+  agentId: varchar("agent_id").references(() => users.id, { onDelete: "set null" }), // Agent on record for this client
+  productType: text("product_type").notNull(), // medicare, medicaid, aca, life, private, dental, vision, supplemental, annuities, final_expense, travel
+  
+  // Step 2: Personal Information (Client)
+  clientFirstName: text("client_first_name").notNull(),
+  clientMiddleName: text("client_middle_name"),
+  clientLastName: text("client_last_name").notNull(),
+  clientSecondLastName: text("client_second_last_name"),
+  clientEmail: text("client_email").notNull(),
+  clientPhone: text("client_phone").notNull(),
+  clientDateOfBirth: date("client_date_of_birth"), // Date of birth (yyyy-MM-dd)
+  clientGender: text("client_gender"), // male, female, other
+  clientIsApplicant: boolean("client_is_applicant").default(false),
+  clientTobaccoUser: boolean("client_tobacco_user").default(false),
+  clientPregnant: boolean("client_pregnant").default(false),
+  clientSsn: text("client_ssn"), // Encrypted/masked SSN
+  clientPreferredLanguage: text("client_preferred_language"), // English, Spanish, etc.
+  clientCountryOfBirth: text("client_country_of_birth"), // Country of birth
+  clientMaritalStatus: text("client_marital_status"), // single, married, divorced, widowed
+  clientWeight: text("client_weight"), // Weight in lbs
+  clientHeight: text("client_height"), // Height in feet and inches (e.g., "5'10")
+  
+  // Step 3: Family Group
+  annualHouseholdIncome: text("annual_household_income"), // Stored as text to handle currency formatting
+  familyGroupSize: integer("family_group_size"),
+  spouses: jsonb("spouses").default([]), // Array of spouse objects
+  dependents: jsonb("dependents").default([]), // Array of dependent objects
+  
+  // Step 4: Addresses
+  // Physical Address (Optional - often same as mailing)
+  physical_street: text("physical_street"),
+  physical_address_line_2: text("physical_address_line_2"), // Apt, Suite, Unit, etc.
+  physical_city: text("physical_city"),
+  physical_state: text("physical_state"),
+  physical_postal_code: text("physical_postal_code"),
+  physical_county: text("physical_county"),
+  
+  // Mailing Address (Optional)
+  mailing_street: text("mailing_street"),
+  mailing_address_line_2: text("mailing_address_line_2"),
+  mailing_city: text("mailing_city"),
+  mailing_state: text("mailing_state"),
+  mailing_postal_code: text("mailing_postal_code"),
+  mailing_county: text("mailing_county"),
+  
+  // Billing Address (Optional)
+  billing_street: text("billing_street"),
+  billing_address_line_2: text("billing_address_line_2"),
+  billing_city: text("billing_city"),
+  billing_state: text("billing_state"),
+  billing_postal_code: text("billing_postal_code"),
+  billing_county: text("billing_county"),
+  
+  // Shared field for all addresses
+  country: text("country").notNull().default("United States"),
+  
+  // Policy Status
+  status: text("status").notNull().default("active"), // active, pending, suspended, cancelled, expired
+  
+  // Additional Information
+  notes: text("notes"), // Internal notes
+  estimatedPremium: text("estimated_premium"), // Estimated premium amount
+  
+  // Selected Plan from Marketplace
+  selectedPlan: jsonb("selected_plan"), // Complete plan object selected from marketplace
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertPolicySchema = createInsertSchema(policies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  // Override date fields to accept yyyy-MM-dd strings instead of Date objects
+  effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  clientDateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format").optional(),
+  // Override spouses and dependents to use proper validation
+  spouses: z.array(spouseSchema).optional(),
+  dependents: z.array(dependentSchema).optional(),
+});
+
+// Update schema for PATCH requests - all fields optional but validated if provided
+export const updatePolicySchema = insertPolicySchema.partial().omit({
+  companyId: true,
+  createdBy: true,
+});
+
+export type Policy = typeof policies.$inferSelect;
+export type InsertPolicy = z.infer<typeof insertPolicySchema>;
+
+// =====================================================
+// POLICY MEMBERS (Normalized member data)
+// =====================================================
+
+export const policyMembers = pgTable("policy_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  policyId: varchar("policy_id", { length: 8 }).notNull().references(() => policies.id, { onDelete: "cascade" }),
+  
+  // Member role and identification
+  role: text("role").notNull(), // client, spouse, dependent
+  
+  // Personal Information
+  firstName: text("first_name").notNull(),
+  middleName: text("middle_name"),
+  lastName: text("last_name").notNull(),
+  secondLastName: text("second_last_name"),
+  dateOfBirth: date("date_of_birth"), // Date of birth (yyyy-MM-dd)
+  ssn: text("ssn"), // Encrypted SSN
+  gender: text("gender"), // male, female, other
+  phone: text("phone"),
+  email: text("email"),
+  
+  // Additional Information
+  isApplicant: boolean("is_applicant").default(false),
+  isPrimaryDependent: boolean("is_primary_dependent").default(false), // Dependent of primary policyholder
+  tobaccoUser: boolean("tobacco_user").default(false),
+  pregnant: boolean("pregnant").default(false),
+  preferredLanguage: text("preferred_language"),
+  countryOfBirth: text("country_of_birth"),
+  maritalStatus: text("marital_status"), // single, married, divorced, widowed
+  weight: text("weight"), // Weight in lbs
+  height: text("height"), // Height in feet and inches
+  
+  // For dependents only
+  relation: text("relation"), // child, parent, sibling, other (only for dependents)
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// POLICY MEMBER INCOME (Income information)
+// =====================================================
+
+export const policyMemberIncome = pgTable("policy_member_income", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: varchar("member_id").notNull().references(() => policyMembers.id, { onDelete: "cascade" }).unique(),
+  
+  // Employment Information
+  employmentStatus: text("employment_status"), // employed, self_employed, unemployed, retired, student, disabled
+  employerName: text("employer_name"),
+  jobTitle: text("job_title"),
+  position: text("position"), // Job position/title (alias for jobTitle)
+  employerPhone: text("employer_phone"), // Employer contact phone
+  selfEmployed: boolean("self_employed").default(false), // Self-employed flag
+  yearsEmployed: integer("years_employed"),
+  
+  // Income Details
+  annualIncome: text("annual_income"), // Encrypted - stored as text (value entered by user according to frequency)
+  incomeFrequency: text("income_frequency"), // annually, monthly, weekly, biweekly
+  totalAnnualIncome: text("total_annual_income"), // Encrypted - calculated annual total for summing
+  
+  // Additional Income
+  hasAdditionalIncome: boolean("has_additional_income").default(false),
+  additionalIncomeSources: jsonb("additional_income_sources").default([]), // [{ type: 'rental', amount: '1000' }, ...]
+  
+  // Tax Information
+  taxFilingStatus: text("tax_filing_status"), // single, married_filing_jointly, married_filing_separately, head_of_household
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// POLICY MEMBER IMMIGRATION (Immigration status)
+// =====================================================
+
+export const policyMemberImmigration = pgTable("policy_member_immigration", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: varchar("member_id").notNull().references(() => policyMembers.id, { onDelete: "cascade" }).unique(),
+  
+  // Citizenship Information
+  citizenshipStatus: text("citizenship_status"), // us_citizen, permanent_resident, visa_holder, refugee, asylum_seeker, undocumented
+  immigrationStatus: text("immigration_status"), // asylum, citizen, humanitarian_parole, resident, temporary_protected_status, work_authorization, other
+  immigrationStatusCategory: text("immigration_status_category"), // I-94, Parole, etc.
+  
+  // Visa/Green Card Information
+  visaType: text("visa_type"), // H1B, F1, J1, L1, O1, etc. (only if visa_holder)
+  visaNumber: text("visa_number"), // Encrypted
+  greenCardNumber: text("green_card_number"), // Encrypted
+  
+  // Entry and Status
+  entryDate: timestamp("entry_date"), // Date of entry to US
+  visaExpirationDate: timestamp("visa_expiration_date"),
+  
+  // Work Authorization
+  hasWorkAuthorization: boolean("has_work_authorization").default(false),
+  workAuthorizationType: text("work_authorization_type"), // EAD, visa_based, citizen, etc.
+  workAuthorizationExpiration: timestamp("work_authorization_expiration"),
+  
+  // Document Numbers
+  i94Number: text("i94_number"), // Encrypted
+  uscisNumber: text("uscis_number"), // Encrypted - USCIS/Alien Registration Number
+  naturalizationNumber: text("naturalization_number"), // Encrypted - Naturalization Certificate Number
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// POLICY MEMBER DOCUMENTS (Document uploads)
+// =====================================================
+
+export const policyMemberDocuments = pgTable("policy_member_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: varchar("member_id").notNull().references(() => policyMembers.id, { onDelete: "cascade" }),
+  
+  // Document Information
+  documentType: text("document_type").notNull(), // passport, visa, work_permit, green_card, tax_return, pay_stub, proof_of_residence, birth_certificate, other
+  documentName: text("document_name").notNull(), // Original filename
+  documentPath: text("document_path").notNull(), // Relative path to file on disk
+  
+  // File Metadata
+  fileType: text("file_type").notNull(), // MIME type (e.g., application/pdf, image/jpeg)
+  fileSize: integer("file_size").notNull(), // File size in bytes
+  
+  // Optional Description
+  description: text("description"),
+  
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// POLICY DOCUMENTS (Document management for insurance policies)
+// =====================================================
+
+export const policyDocuments = pgTable("policy_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  policyId: varchar("policy_id", { length: 8 }).notNull().references(() => policies.id, { onDelete: "cascade" }), // The policy this document belongs to
+  fileName: text("file_name").notNull(), // Original file name
+  fileUrl: text("file_url").notNull(), // Path/URL to the uploaded file
+  fileType: text("file_type").notNull(), // MIME type (e.g., application/pdf, image/jpeg)
+  fileSize: integer("file_size").notNull(), // File size in bytes
+  category: text("category").notNull().default("other"), // Document category: passport, drivers_license, state_id, birth_certificate, parole, permanent_residence, work_permit, i94, other
+  description: text("description"), // Optional description of the document
+  belongsTo: varchar("belongs_to").references(() => policyMembers.id, { onDelete: "cascade" }), // Optional: Which family member this document belongs to
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }), // Multi-tenant reference
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who uploaded the document
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// POLICY PAYMENT METHODS (Credit cards and bank accounts)
+// =====================================================
+
+export const policyPaymentMethods = pgTable("policy_payment_methods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  policyId: varchar("policy_id", { length: 8 }).notNull().references(() => policies.id, { onDelete: "cascade" }),
+  
+  // Payment Method Type
+  paymentType: text("payment_type").notNull(), // 'card' or 'bank_account'
+  
+  // Credit/Debit Card Fields (PLAIN TEXT - no encryption per user requirement)
+  cardNumber: text("card_number"), // Full card number in plain text
+  cardHolderName: text("card_holder_name"),
+  expirationMonth: text("expiration_month"), // MM
+  expirationYear: text("expiration_year"), // YYYY
+  cvv: text("cvv"), // CVV in plain text
+  billingZip: text("billing_zip"),
+  
+  // Bank Account Fields (PLAIN TEXT - no encryption per user requirement)
+  bankName: text("bank_name"),
+  accountNumber: text("account_number"), // Account number in plain text
+  routingNumber: text("routing_number"), // Routing number in plain text
+  accountHolderName: text("account_holder_name"),
+  accountType: text("account_type"), // 'checking' or 'savings'
+  
+  // Metadata
+  isDefault: boolean("is_default").default(false), // Mark one as default payment method
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// POLICY REMINDERS
+// =====================================================
+
+export const policyReminders = pgTable("policy_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  policyId: varchar("policy_id", { length: 8 }).notNull().references(() => policies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  // Reminder Details
+  dueDate: date("due_date").notNull(), // yyyy-MM-dd format
+  dueTime: text("due_time").notNull(), // HH:mm format (24-hour)
+  timezone: text("timezone").notNull().default("America/New_York"),
+  
+  // Notification Settings
+  reminderBefore: text("reminder_before"), // e.g., "15min", "1hour", "1day", "1week"
+  reminderType: text("reminder_type").notNull(), // e.g., "follow_up", "document_request", "payment_due", "policy_renewal", "other"
+  notifyUsers: text("notify_users").array(), // Array of user IDs to notify
+  
+  // Content
+  title: text("title"), // Short title/summary
+  description: text("description"), // Detailed description
+  
+  // Privacy & Status
+  isPrivate: boolean("is_private").default(false), // Only visible to creator if true
+  status: text("status").notNull().default("pending"), // "pending", "completed", "snoozed", "cancelled"
+  priority: text("priority").default("medium"), // "low", "medium", "high", "urgent"
+  
+  // Completion & Snooze
+  completedAt: timestamp("completed_at"),
+  completedBy: varchar("completed_by").references(() => users.id),
+  snoozedUntil: timestamp("snoozed_until"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// POLICY NOTES (Internal notes for insurance policies)
+// =====================================================
+
+export const policyNotes = pgTable("policy_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  policyId: varchar("policy_id", { length: 8 }).notNull().references(() => policies.id, { onDelete: "cascade" }), // The policy this note is about
+  note: text("note").notNull(), // The actual note content
+  attachments: text("attachments").array(), // Array of image URLs/paths attached to this note
+  isImportant: boolean("is_important").notNull().default(false), // Whether this is an important note (shown with red border)
+  isPinned: boolean("is_pinned").notNull().default(false), // Whether this note is pinned to the top
+  isResolved: boolean("is_resolved").notNull().default(false), // Whether this note is resolved/completed
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }), // Multi-tenant reference
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Who created the note
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// POLICY CONSENT DOCUMENTS (Legal consent forms for policies)
+// =====================================================
+
+export const policyConsentDocuments = pgTable("policy_consent_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  policyId: varchar("policyId", { length: 8 }).notNull().references(() => policies.id, { onDelete: "cascade" }),
+  companyId: varchar("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Status and delivery
+  status: text("status").notNull().default("draft"), // draft, sent, viewed, signed, void
+  deliveryChannel: text("deliveryChannel"), // email, sms, link
+  deliveryTarget: text("deliveryTarget"), // email address, phone number, or null for link
+  
+  // Security token for public access (cryptographically secure 8-character ID)
+  token: varchar("token", { length: 8 }).notNull().unique(), // Cryptographically secure 8-character ID for public access URL
+  
+  // Signature information
+  signedByName: text("signedByName"),
+  signedByEmail: text("signedByEmail"),
+  signedByPhone: text("signedByPhone"),
+  signatureImage: text("signatureImage"), // Base64 encoded signature image from signature pad
+  
+  // Digital audit trail
+  signerIp: varchar("signerIp"),
+  signerUserAgent: text("signerUserAgent"),
+  signerTimezone: varchar("signerTimezone"),
+  signerLocation: varchar("signerLocation"), // Lat/long coordinates
+  signerPlatform: varchar("signerPlatform"), // Desktop/Mobile/Tablet
+  signerBrowser: varchar("signerBrowser"), // Chrome, Firefox, Safari, etc.
+  
+  // Timestamps
+  sentAt: timestamp("sentAt"),
+  viewedAt: timestamp("viewedAt"),
+  signedAt: timestamp("signedAt"),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdBy: varchar("createdBy").notNull().references(() => users.id),
+});
+
+// =====================================================
+// POLICY CONSENT SIGNATURE EVENTS (Audit trail for policy consent documents)
+// =====================================================
+
+export const policyConsentSignatureEvents = pgTable("policy_consent_signature_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consentDocumentId: varchar("consentDocumentId").notNull().references(() => policyConsentDocuments.id, { onDelete: "cascade" }),
+  
+  // Event details
+  eventType: text("eventType").notNull(), // generated, sent, delivered, viewed, signed, failed
+  payload: jsonb("payload").default({}), // Event-specific data
+  
+  // Timestamps and actor
+  occurredAt: timestamp("occurredAt").notNull().defaultNow(),
+  actorId: varchar("actorId").references(() => users.id), // User who triggered the event (nullable for public actions)
+});
+
+// =====================================================
+// POLICY ZOD SCHEMAS FOR NORMALIZED TABLES
+// =====================================================
+
+// Policy Member Insert Schema
+export const insertPolicyMemberSchema = createInsertSchema(policyMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  // Override date field to accept yyyy-MM-dd string instead of Date object
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format").optional(),
+});
+
+export const updatePolicyMemberSchema = insertPolicyMemberSchema.partial().omit({
+  companyId: true,
+  policyId: true,
+  role: true,
+});
+
+// Income Insert Schema
+export const insertPolicyMemberIncomeSchema = createInsertSchema(policyMemberIncome).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  additionalIncomeSources: z.array(z.object({
+    type: z.string(),
+    amount: z.string(),
+    description: z.string().optional(),
+  })).optional(),
+});
+
+export const updatePolicyMemberIncomeSchema = insertPolicyMemberIncomeSchema.partial().omit({
+  companyId: true,
+  memberId: true,
+});
+
+// Immigration Insert Schema
+export const insertPolicyMemberImmigrationSchema = createInsertSchema(policyMemberImmigration).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updatePolicyMemberImmigrationSchema = insertPolicyMemberImmigrationSchema.partial().omit({
+  companyId: true,
+  memberId: true,
+});
+
+// Document Insert Schema
+export const insertPolicyMemberDocumentSchema = createInsertSchema(policyMemberDocuments).omit({
+  id: true,
+  createdAt: true,
+  uploadedAt: true,
+});
+
+export const insertPolicyDocumentSchema = createInsertSchema(policyDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Policy Payment Method Schema
+const basePolicyPaymentMethodSchema = createInsertSchema(policyPaymentMethods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  paymentType: z.enum(['card', 'bank_account'], { required_error: "Payment type is required" }),
+  
+  // Card validation (only when paymentType is 'card')
+  cardNumber: z.string().optional().refine(
+    (val) => {
+      if (!val) return true;
+      const cleaned = val.replace(/\s/g, '');
+      return /^\d{13,19}$/.test(cleaned);
+    },
+    { message: "Card number must be 13-19 digits" }
+  ),
+  cardHolderName: z.string().optional(),
+  expirationMonth: z.string().optional().refine(
+    (val) => !val || /^(0[1-9]|1[0-2])$/.test(val),
+    { message: "Month must be 01-12" }
+  ),
+  expirationYear: z.string().optional().refine(
+    (val) => !val || /^\d{4}$/.test(val),
+    { message: "Year must be 4 digits (YYYY)" }
+  ),
+  cvv: z.string().optional(),
+  billingZip: z.string().optional().refine(
+    (val) => !val || /^\d{5}(-\d{4})?$/.test(val),
+    { message: "ZIP code must be 5 digits or 5+4 format" }
+  ),
+  
+  // Bank account validation (only when paymentType is 'bank_account')
+  bankName: z.string().optional(),
+  accountNumber: z.string().optional().refine(
+    (val) => !val || /^\d{4,17}$/.test(val),
+    { message: "Account number must be 4-17 digits" }
+  ),
+  routingNumber: z.string().optional().refine(
+    (val) => !val || /^\d{9}$/.test(val),
+    { message: "Routing number must be exactly 9 digits" }
+  ),
+  accountHolderName: z.string().optional(),
+  accountType: z.enum(['checking', 'savings']).optional(),
+  
+  isDefault: z.boolean().default(false),
+});
+
+export const insertPolicyPaymentMethodSchema = basePolicyPaymentMethodSchema.superRefine((data, ctx) => {
+  // Validate expiration date if both month and year are provided
+  if (data.expirationMonth && data.expirationYear) {
+    const year = data.expirationYear.length === 4 
+      ? data.expirationYear.slice(2) 
+      : data.expirationYear;
+    const expiration = data.expirationMonth + year;
+    const result = validateExpirationDate(expiration);
+    if (!result.isValid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: result.error || "Invalid expiration date",
+        path: ['expirationMonth'],
+      });
+    }
+  }
+  
+  // Validate CVV against card number if both are provided
+  if (data.cvv && data.cardNumber) {
+    const result = validateCVV(data.cvv, data.cardNumber);
+    if (!result.isValid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: result.error || "Invalid CVV",
+        path: ['cvv'],
+      });
+    }
+  }
+});
+
+export const updatePolicyPaymentMethodSchema = basePolicyPaymentMethodSchema.partial().omit({
+  companyId: true,
+  policyId: true,
+});
+
+// Policy Reminder Insert Schema
+export const insertPolicyReminderSchema = createInsertSchema(policyReminders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  completedBy: true,
+}).extend({
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  dueTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Time must be in HH:mm format (24-hour)"),
+  reminderType: z.enum(["follow_up", "document_request", "payment_due", "policy_renewal", "call_client", "send_email", "review_application", "other"]),
+  status: z.enum(["pending", "completed", "snoozed", "cancelled"]).default("pending"),
+  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  notifyUsers: z.array(z.string()).optional(),
+});
+
+export const updatePolicyReminderSchema = insertPolicyReminderSchema.partial().omit({
+  companyId: true,
+  policyId: true,
+  createdBy: true,
+});
+
+export const insertPolicyNoteSchema = createInsertSchema(policyNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPolicyConsentDocumentSchema = createInsertSchema(policyConsentDocuments).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+  viewedAt: true,
+  signedAt: true,
+}).extend({
+  status: z.enum(["draft", "sent", "viewed", "signed", "void"]).default("draft"),
+  deliveryChannel: z.enum(["email", "sms", "link"]).optional(),
+});
+
+export const insertPolicyConsentEventSchema = createInsertSchema(policyConsentSignatureEvents).omit({
+  id: true,
+  occurredAt: true,
+}).extend({
+  eventType: z.enum(["generated", "sent", "delivered", "viewed", "signed", "failed"]),
+  payload: z.record(z.any()).optional(),
+});
+
+// Types
+export type PolicyMember = typeof policyMembers.$inferSelect;
+export type InsertPolicyMember = z.infer<typeof insertPolicyMemberSchema>;
+export type UpdatePolicyMember = z.infer<typeof updatePolicyMemberSchema>;
+
+export type PolicyMemberIncome = typeof policyMemberIncome.$inferSelect;
+export type InsertPolicyMemberIncome = z.infer<typeof insertPolicyMemberIncomeSchema>;
+export type UpdatePolicyMemberIncome = z.infer<typeof updatePolicyMemberIncomeSchema>;
+
+export type PolicyMemberImmigration = typeof policyMemberImmigration.$inferSelect;
+export type InsertPolicyMemberImmigration = z.infer<typeof insertPolicyMemberImmigrationSchema>;
+export type UpdatePolicyMemberImmigration = z.infer<typeof updatePolicyMemberImmigrationSchema>;
+
+export type PolicyMemberDocument = typeof policyMemberDocuments.$inferSelect;
+export type InsertPolicyMemberDocument = z.infer<typeof insertPolicyMemberDocumentSchema>;
+
+export type PolicyDocument = typeof policyDocuments.$inferSelect;
+export type InsertPolicyDocument = z.infer<typeof insertPolicyDocumentSchema>;
+
+export type PolicyPaymentMethod = typeof policyPaymentMethods.$inferSelect;
+export type InsertPolicyPaymentMethod = z.infer<typeof insertPolicyPaymentMethodSchema>;
+export type UpdatePolicyPaymentMethod = z.infer<typeof updatePolicyPaymentMethodSchema>;
+
+export type PolicyReminder = typeof policyReminders.$inferSelect;
+export type InsertPolicyReminder = z.infer<typeof insertPolicyReminderSchema>;
+export type UpdatePolicyReminder = z.infer<typeof updatePolicyReminderSchema>;
+
+export type PolicyNote = typeof policyNotes.$inferSelect;
+export type InsertPolicyNote = z.infer<typeof insertPolicyNoteSchema>;
+
+export type PolicyConsentDocument = typeof policyConsentDocuments.$inferSelect;
+export type InsertPolicyConsentDocument = z.infer<typeof insertPolicyConsentDocumentSchema>;
+
+export type PolicyConsentSignatureEvent = typeof policyConsentSignatureEvents.$inferSelect;
+export type InsertPolicyConsentEvent = z.infer<typeof insertPolicyConsentEventSchema>;

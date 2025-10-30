@@ -95,7 +95,34 @@ import {
   type ConsentDocument,
   type InsertConsentDocument,
   type ConsentSignatureEvent,
-  type InsertConsentEvent
+  type InsertConsentEvent,
+  type Policy,
+  type InsertPolicy,
+  type PolicyMember,
+  type InsertPolicyMember,
+  type UpdatePolicyMember,
+  type PolicyMemberIncome,
+  type InsertPolicyMemberIncome,
+  type UpdatePolicyMemberIncome,
+  type PolicyMemberImmigration,
+  type InsertPolicyMemberImmigration,
+  type UpdatePolicyMemberImmigration,
+  type PolicyMemberDocument,
+  type InsertPolicyMemberDocument,
+  type PolicyDocument,
+  type InsertPolicyDocument,
+  type PolicyPaymentMethod,
+  type InsertPolicyPaymentMethod,
+  type UpdatePolicyPaymentMethod,
+  type PolicyReminder,
+  type InsertPolicyReminder,
+  type UpdatePolicyReminder,
+  type PolicyNote,
+  type InsertPolicyNote,
+  type PolicyConsentDocument,
+  type InsertPolicyConsentDocument,
+  type PolicyConsentSignatureEvent,
+  type InsertPolicyConsentEvent
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -144,7 +171,18 @@ import {
   quotePaymentMethods,
   quoteReminders,
   consentDocuments,
-  consentSignatureEvents
+  consentSignatureEvents,
+  policies,
+  policyMembers,
+  policyMemberIncome,
+  policyMemberImmigration,
+  policyMemberDocuments,
+  policyDocuments,
+  policyPaymentMethods,
+  policyReminders,
+  policyNotes,
+  policyConsentDocuments,
+  policyConsentSignatureEvents
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -541,6 +579,115 @@ export interface IStorage {
   // Consent Signature Events
   createConsentEvent(consentDocumentId: string, eventType: string, payload?: Record<string, any>, actorId?: string): Promise<ConsentSignatureEvent>;
   getConsentEvents(consentDocumentId: string): Promise<ConsentSignatureEvent[]>;
+  
+  // ===== POLICIES (Mirror of Quotes) =====
+  // Policies
+  createPolicy(policy: InsertPolicy): Promise<Policy>;
+  getPolicy(id: string): Promise<(Policy & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }) | undefined>;
+  getPoliciesByCompany(companyId: string): Promise<Array<Policy & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>>;
+  getPoliciesByAgent(agentId: string): Promise<Array<Policy & {
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>>;
+  updatePolicy(id: string, data: Partial<InsertPolicy>): Promise<Policy | undefined>;
+  deletePolicy(id: string): Promise<boolean>;
+  
+  // Policy Members
+  getPolicyMembersByPolicyId(policyId: string, companyId: string): Promise<PolicyMember[]>;
+  getPolicyMemberById(memberId: string, companyId: string): Promise<PolicyMember | null>;
+  createPolicyMember(data: InsertPolicyMember): Promise<PolicyMember>;
+  updatePolicyMember(memberId: string, data: UpdatePolicyMember, companyId: string): Promise<PolicyMember | null>;
+  deletePolicyMember(memberId: string, companyId: string): Promise<boolean>;
+  ensurePolicyMember(policyId: string, companyId: string, role: string, memberData: Partial<InsertPolicyMember>): Promise<{ member: PolicyMember; wasCreated: boolean }>;
+  
+  // Policy Member Income
+  getPolicyMemberIncome(memberId: string, companyId: string): Promise<PolicyMemberIncome | null>;
+  createOrUpdatePolicyMemberIncome(data: InsertPolicyMemberIncome): Promise<PolicyMemberIncome>;
+  deletePolicyMemberIncome(memberId: string, companyId: string): Promise<boolean>;
+  
+  // Policy Member Immigration
+  getPolicyMemberImmigration(memberId: string, companyId: string): Promise<PolicyMemberImmigration | null>;
+  createOrUpdatePolicyMemberImmigration(data: InsertPolicyMemberImmigration): Promise<PolicyMemberImmigration>;
+  deletePolicyMemberImmigration(memberId: string, companyId: string): Promise<boolean>;
+  
+  // Policy Member Documents
+  getPolicyMemberDocuments(memberId: string, companyId: string): Promise<PolicyMemberDocument[]>;
+  getPolicyMemberDocumentById(documentId: string, companyId: string): Promise<PolicyMemberDocument | null>;
+  createPolicyMemberDocument(data: InsertPolicyMemberDocument): Promise<PolicyMemberDocument>;
+  deletePolicyMemberDocument(documentId: string, companyId: string): Promise<boolean>;
+  
+  // Policy Payment Methods
+  getPolicyPaymentMethods(policyId: string, companyId: string): Promise<PolicyPaymentMethod[]>;
+  getPolicyPaymentMethodById(paymentMethodId: string, companyId: string): Promise<PolicyPaymentMethod | null>;
+  createPolicyPaymentMethod(data: InsertPolicyPaymentMethod): Promise<PolicyPaymentMethod>;
+  updatePolicyPaymentMethod(paymentMethodId: string, data: UpdatePolicyPaymentMethod, companyId: string): Promise<PolicyPaymentMethod | null>;
+  deletePolicyPaymentMethod(paymentMethodId: string, companyId: string): Promise<boolean>;
+  setDefaultPolicyPaymentMethod(paymentMethodId: string, policyId: string, companyId: string): Promise<void>;
+  
+  // Policy Documents
+  listPolicyDocuments(policyId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<PolicyDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null; belongsToMember: { firstName: string; lastName: string; role: string } | null }>>;
+  createPolicyDocument(document: InsertPolicyDocument): Promise<PolicyDocument>;
+  getPolicyDocument(id: string, companyId: string): Promise<PolicyDocument | null>;
+  deletePolicyDocument(id: string, companyId: string): Promise<boolean>;
+  
+  // Unified Policy Detail - Gets all related data in one call
+  getPolicyDetail(policyId: string, companyId: string): Promise<{
+    policy: Policy & {
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    };
+    members: Array<{
+      member: PolicyMember;
+      income?: PolicyMemberIncome;
+      immigration?: PolicyMemberImmigration;
+      documents: PolicyMemberDocument[];
+    }>;
+    paymentMethods: PolicyPaymentMethod[];
+    totalHouseholdIncome: number;
+  }>;
+  
+  // Policy Reminders
+  listPolicyReminders(policyId: string, companyId: string, filters?: { status?: string; priority?: string; userId?: string }): Promise<Array<PolicyReminder & { creator: { firstName: string | null; lastName: string | null } }>>;
+  getPolicyReminder(id: string, companyId: string): Promise<PolicyReminder | null>;
+  createPolicyReminder(data: InsertPolicyReminder): Promise<PolicyReminder>;
+  updatePolicyReminder(id: string, companyId: string, data: UpdatePolicyReminder): Promise<PolicyReminder | null>;
+  deletePolicyReminder(id: string, companyId: string): Promise<boolean>;
+  completePolicyReminder(id: string, companyId: string, userId: string): Promise<PolicyReminder | null>;
+  snoozePolicyReminder(id: string, companyId: string, until: Date): Promise<PolicyReminder | null>;
+  
+  // Policy Notes
+  createPolicyNote(note: InsertPolicyNote): Promise<PolicyNote>;
+  getPolicyNotes(policyId: string, companyId: string): Promise<PolicyNote[]>;
+  deletePolicyNote(id: string, companyId?: string): Promise<void>;
+  
+  // Policy Consent Documents
+  createPolicyConsentDocument(policyId: string, companyId: string, userId: string): Promise<PolicyConsentDocument>;
+  getPolicyConsentById(id: string, companyId: string): Promise<PolicyConsentDocument | null>;
+  getPolicyConsentByToken(token: string): Promise<PolicyConsentDocument | null>;
+  listPolicyConsents(policyId: string, companyId: string): Promise<PolicyConsentDocument[]>;
+  updatePolicyConsentDocument(id: string, data: Partial<InsertPolicyConsentDocument>): Promise<PolicyConsentDocument | null>;
+  deletePolicyConsentDocument(id: string, companyId: string): Promise<boolean>;
+  signPolicyConsent(token: string, signatureData: {
+    signatureImage: string;
+    signerIp?: string;
+    signerUserAgent?: string;
+    signerTimezone?: string;
+    signerLocation?: string;
+    signerPlatform?: string;
+    signerBrowser?: string;
+  }): Promise<PolicyConsentDocument | null>;
+  
+  // Policy Consent Signature Events
+  createPolicyConsentEvent(consentDocumentId: string, eventType: string, payload?: Record<string, any>, actorId?: string): Promise<PolicyConsentSignatureEvent>;
+  getPolicyConsentEvents(consentDocumentId: string): Promise<PolicyConsentSignatureEvent[]>;
+  
+  // Quote to Policy Conversion
+  submitQuoteAsPolicy(quoteId: string): Promise<Policy>;
 }
 
 export class DbStorage implements IStorage {
@@ -3620,6 +3767,1262 @@ export class DbStorage implements IStorage {
       .orderBy(desc(consentSignatureEvents.occurredAt));
     
     return result;
+  }
+
+  // ==================== POLICIES ====================
+
+  async createPolicy(insertPolicy: InsertPolicy): Promise<Policy> {
+    const { generateShortId } = await import("./id-generator");
+    
+    // Generate unique short ID
+    let shortId: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    do {
+      shortId = generateShortId();
+      const existing = await db.select().from(policies).where(eq(policies.id, shortId)).limit(1);
+      if (existing.length === 0) break;
+      attempts++;
+    } while (attempts < maxAttempts);
+    
+    if (attempts >= maxAttempts) {
+      throw new Error("Failed to generate unique policy ID");
+    }
+    
+    const [policy] = await db
+      .insert(policies)
+      .values({ ...insertPolicy, id: shortId } as any)
+      .returning();
+    return policy;
+  }
+
+  async getPolicy(id: string): Promise<(Policy & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }) | undefined> {
+    const result = await db
+      .select({
+        policy: policies,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(policies)
+      .leftJoin(users, eq(policies.createdBy, users.id))
+      .where(eq(policies.id, id))
+      .limit(1);
+
+    if (!result || result.length === 0) {
+      return undefined;
+    }
+
+    const policy = result[0];
+    let agent = null;
+
+    if (policy.policy.agentId) {
+      const agentUser = await this.getUser(policy.policy.agentId);
+      if (agentUser) {
+        agent = {
+          id: agentUser.id,
+          firstName: agentUser.firstName,
+          lastName: agentUser.lastName,
+          email: agentUser.email,
+        };
+      }
+    }
+
+    return {
+      ...policy.policy,
+      creator: policy.creator,
+      agent,
+    } as any;
+  }
+
+  async getPoliciesByCompany(companyId: string): Promise<Array<Policy & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>> {
+    const results = await db
+      .select({
+        policy: policies,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(policies)
+      .leftJoin(users, eq(policies.createdBy, users.id))
+      .where(eq(policies.companyId, companyId))
+      .orderBy(desc(policies.createdAt));
+
+    const policiesWithDetails = await Promise.all(
+      results.map(async (result) => {
+        let agent = null;
+        if (result.policy.agentId) {
+          const agentUser = await this.getUser(result.policy.agentId);
+          if (agentUser) {
+            agent = {
+              id: agentUser.id,
+              firstName: agentUser.firstName,
+              lastName: agentUser.lastName,
+              email: agentUser.email,
+            };
+          }
+        }
+
+        return {
+          ...result.policy,
+          creator: result.creator,
+          agent,
+        } as any;
+      })
+    );
+
+    return policiesWithDetails;
+  }
+
+  async getPoliciesByAgent(agentId: string): Promise<Array<Policy & {
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>> {
+    const results = await db
+      .select({
+        policy: policies,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(policies)
+      .leftJoin(users, eq(policies.createdBy, users.id))
+      .where(eq(policies.agentId, agentId))
+      .orderBy(desc(policies.createdAt));
+
+    return results.map((result) => ({
+      ...result.policy,
+      creator: result.creator,
+    })) as any;
+  }
+
+  async updatePolicy(id: string, data: Partial<InsertPolicy>): Promise<Policy | undefined> {
+    const [updated] = await db
+      .update(policies)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(policies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePolicy(id: string): Promise<boolean> {
+    const result = await db
+      .delete(policies)
+      .where(eq(policies.id, id))
+      .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== POLICY MEMBERS ====================
+  
+  async getPolicyMembersByPolicyId(policyId: string, companyId: string): Promise<PolicyMember[]> {
+    return db
+      .select()
+      .from(policyMembers)
+      .where(
+        and(
+          eq(policyMembers.policyId, policyId),
+          eq(policyMembers.companyId, companyId)
+        )
+      )
+      .orderBy(policyMembers.createdAt);
+  }
+  
+  async getPolicyMemberById(memberId: string, companyId: string): Promise<PolicyMember | null> {
+    const [member] = await db
+      .select()
+      .from(policyMembers)
+      .where(
+        and(
+          eq(policyMembers.id, memberId),
+          eq(policyMembers.companyId, companyId)
+        )
+      );
+    return member || null;
+  }
+  
+  async createPolicyMember(data: InsertPolicyMember): Promise<PolicyMember> {
+    const [member] = await db
+      .insert(policyMembers)
+      .values(data)
+      .returning();
+    return member;
+  }
+  
+  async updatePolicyMember(memberId: string, data: UpdatePolicyMember, companyId: string): Promise<PolicyMember | null> {
+    const [updated] = await db
+      .update(policyMembers)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(policyMembers.id, memberId),
+          eq(policyMembers.companyId, companyId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+  
+  async deletePolicyMember(memberId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyMembers)
+      .where(
+        and(
+          eq(policyMembers.id, memberId),
+          eq(policyMembers.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  async ensurePolicyMember(
+    policyId: string,
+    companyId: string,
+    role: string,
+    memberData: Partial<InsertPolicyMember>
+  ): Promise<{ member: PolicyMember; wasCreated: boolean }> {
+    let existingMember: PolicyMember | undefined;
+    
+    if (memberData.ssn) {
+      const members = await db
+        .select()
+        .from(policyMembers)
+        .where(
+          and(
+            eq(policyMembers.policyId, policyId),
+            eq(policyMembers.companyId, companyId),
+            eq(policyMembers.role, role),
+            eq(policyMembers.ssn, memberData.ssn)
+          )
+        );
+      existingMember = members[0];
+    }
+    
+    if (!existingMember && memberData.firstName && memberData.lastName && memberData.dateOfBirth) {
+      const members = await db
+        .select()
+        .from(policyMembers)
+        .where(
+          and(
+            eq(policyMembers.policyId, policyId),
+            eq(policyMembers.companyId, companyId),
+            eq(policyMembers.role, role),
+            eq(policyMembers.firstName, memberData.firstName),
+            eq(policyMembers.lastName, memberData.lastName),
+            eq(policyMembers.dateOfBirth, memberData.dateOfBirth)
+          )
+        );
+      existingMember = members[0];
+    }
+    
+    if (existingMember) {
+      const [updated] = await db
+        .update(policyMembers)
+        .set({
+          ...memberData,
+          updatedAt: new Date(),
+        })
+        .where(eq(policyMembers.id, existingMember.id))
+        .returning();
+      return { member: updated, wasCreated: false };
+    } else {
+      const [created] = await db
+        .insert(policyMembers)
+        .values({
+          policyId,
+          companyId,
+          role,
+          ...memberData,
+        } as InsertPolicyMember)
+        .returning();
+      return { member: created, wasCreated: true };
+    }
+  }
+  
+  // ==================== POLICY MEMBER INCOME ====================
+  
+  async getPolicyMemberIncome(memberId: string, companyId: string): Promise<PolicyMemberIncome | null> {
+    const [income] = await db
+      .select()
+      .from(policyMemberIncome)
+      .where(
+        and(
+          eq(policyMemberIncome.memberId, memberId),
+          eq(policyMemberIncome.companyId, companyId)
+        )
+      );
+    return income || null;
+  }
+  
+  async createOrUpdatePolicyMemberIncome(data: InsertPolicyMemberIncome): Promise<PolicyMemberIncome> {
+    const updateData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== null && value !== undefined)
+    );
+    
+    const [result] = await db
+      .insert(policyMemberIncome)
+      .values(data)
+      .onConflictDoUpdate({
+        target: policyMemberIncome.memberId,
+        set: {
+          ...updateData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+  
+  async deletePolicyMemberIncome(memberId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyMemberIncome)
+      .where(
+        and(
+          eq(policyMemberIncome.memberId, memberId),
+          eq(policyMemberIncome.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== POLICY MEMBER IMMIGRATION ====================
+  
+  async getPolicyMemberImmigration(memberId: string, companyId: string): Promise<PolicyMemberImmigration | null> {
+    const [immigration] = await db
+      .select()
+      .from(policyMemberImmigration)
+      .where(
+        and(
+          eq(policyMemberImmigration.memberId, memberId),
+          eq(policyMemberImmigration.companyId, companyId)
+        )
+      );
+    return immigration || null;
+  }
+  
+  async createOrUpdatePolicyMemberImmigration(data: InsertPolicyMemberImmigration): Promise<PolicyMemberImmigration> {
+    const updateData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== null && value !== undefined)
+    );
+    
+    const [result] = await db
+      .insert(policyMemberImmigration)
+      .values(data)
+      .onConflictDoUpdate({
+        target: policyMemberImmigration.memberId,
+        set: {
+          ...updateData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+  
+  async deletePolicyMemberImmigration(memberId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyMemberImmigration)
+      .where(
+        and(
+          eq(policyMemberImmigration.memberId, memberId),
+          eq(policyMemberImmigration.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== POLICY MEMBER DOCUMENTS ====================
+  
+  async getPolicyMemberDocuments(memberId: string, companyId: string): Promise<PolicyMemberDocument[]> {
+    return db
+      .select()
+      .from(policyMemberDocuments)
+      .where(
+        and(
+          eq(policyMemberDocuments.memberId, memberId),
+          eq(policyMemberDocuments.companyId, companyId)
+        )
+      )
+      .orderBy(policyMemberDocuments.uploadedAt);
+  }
+  
+  async getPolicyMemberDocumentById(documentId: string, companyId: string): Promise<PolicyMemberDocument | null> {
+    const [document] = await db
+      .select()
+      .from(policyMemberDocuments)
+      .where(
+        and(
+          eq(policyMemberDocuments.id, documentId),
+          eq(policyMemberDocuments.companyId, companyId)
+        )
+      );
+    return document || null;
+  }
+  
+  async createPolicyMemberDocument(data: InsertPolicyMemberDocument): Promise<PolicyMemberDocument> {
+    const [document] = await db
+      .insert(policyMemberDocuments)
+      .values(data)
+      .returning();
+    return document;
+  }
+  
+  async deletePolicyMemberDocument(documentId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyMemberDocuments)
+      .where(
+        and(
+          eq(policyMemberDocuments.id, documentId),
+          eq(policyMemberDocuments.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== POLICY PAYMENT METHODS ====================
+  
+  async getPolicyPaymentMethods(policyId: string, companyId: string): Promise<PolicyPaymentMethod[]> {
+    return db
+      .select()
+      .from(policyPaymentMethods)
+      .where(
+        and(
+          eq(policyPaymentMethods.policyId, policyId),
+          eq(policyPaymentMethods.companyId, companyId)
+        )
+      )
+      .orderBy(desc(policyPaymentMethods.isDefault), policyPaymentMethods.createdAt);
+  }
+  
+  async getPolicyPaymentMethodById(paymentMethodId: string, companyId: string): Promise<PolicyPaymentMethod | null> {
+    const [paymentMethod] = await db
+      .select()
+      .from(policyPaymentMethods)
+      .where(
+        and(
+          eq(policyPaymentMethods.id, paymentMethodId),
+          eq(policyPaymentMethods.companyId, companyId)
+        )
+      );
+    return paymentMethod || null;
+  }
+  
+  async createPolicyPaymentMethod(data: InsertPolicyPaymentMethod): Promise<PolicyPaymentMethod> {
+    const [paymentMethod] = await db
+      .insert(policyPaymentMethods)
+      .values(data)
+      .returning();
+    return paymentMethod;
+  }
+  
+  async updatePolicyPaymentMethod(paymentMethodId: string, data: UpdatePolicyPaymentMethod, companyId: string): Promise<PolicyPaymentMethod | null> {
+    const [updated] = await db
+      .update(policyPaymentMethods)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(policyPaymentMethods.id, paymentMethodId),
+          eq(policyPaymentMethods.companyId, companyId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+  
+  async deletePolicyPaymentMethod(paymentMethodId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyPaymentMethods)
+      .where(
+        and(
+          eq(policyPaymentMethods.id, paymentMethodId),
+          eq(policyPaymentMethods.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+  
+  async setDefaultPolicyPaymentMethod(policyId: string, paymentMethodId: string, companyId: string): Promise<void> {
+    await db
+      .update(policyPaymentMethods)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(policyPaymentMethods.policyId, policyId),
+          eq(policyPaymentMethods.companyId, companyId)
+        )
+      );
+    
+    await db
+      .update(policyPaymentMethods)
+      .set({ isDefault: true, updatedAt: new Date() })
+      .where(
+        and(
+          eq(policyPaymentMethods.id, paymentMethodId),
+          eq(policyPaymentMethods.companyId, companyId)
+        )
+      );
+  }
+  
+  // ==================== POLICY DOCUMENTS ====================
+  
+  async listPolicyDocuments(
+    policyId: string,
+    companyId: string,
+    filters?: { category?: string; search?: string }
+  ): Promise<Array<Omit<PolicyDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null; belongsToMember: { firstName: string; lastName: string; role: string } | null }>> {
+    let query = db
+      .select({
+        id: policyDocuments.id,
+        companyId: policyDocuments.companyId,
+        policyId: policyDocuments.policyId,
+        memberId: policyDocuments.memberId,
+        documentName: policyDocuments.documentName,
+        documentPath: policyDocuments.documentPath,
+        fileType: policyDocuments.fileType,
+        fileSize: policyDocuments.fileSize,
+        category: policyDocuments.category,
+        description: policyDocuments.description,
+        uploadedAt: policyDocuments.uploadedAt,
+        createdAt: policyDocuments.createdAt,
+        uploadedBy: {
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+        belongsToMember: sql<{ firstName: string; lastName: string; role: string } | null>`
+          CASE 
+            WHEN ${policyDocuments.memberId} IS NOT NULL 
+            THEN json_build_object(
+              'firstName', ${policyMembers.firstName},
+              'lastName', ${policyMembers.lastName},
+              'role', ${policyMembers.role}
+            )
+            ELSE NULL
+          END
+        `.as('belongsToMember'),
+      })
+      .from(policyDocuments)
+      .leftJoin(users, eq(policyDocuments.uploadedBy, users.id))
+      .leftJoin(policyMembers, eq(policyDocuments.memberId, policyMembers.id))
+      .where(
+        and(
+          eq(policyDocuments.policyId, policyId),
+          eq(policyDocuments.companyId, companyId)
+        )
+      );
+
+    const results = await query.orderBy(desc(policyDocuments.uploadedAt));
+    return results as any;
+  }
+  
+  async createPolicyDocument(document: InsertPolicyDocument): Promise<PolicyDocument> {
+    const [created] = await db
+      .insert(policyDocuments)
+      .values(document)
+      .returning();
+    return created;
+  }
+
+  async getPolicyDocument(id: string, companyId: string): Promise<PolicyDocument | null> {
+    const [document] = await db
+      .select()
+      .from(policyDocuments)
+      .where(
+        and(
+          eq(policyDocuments.id, id),
+          eq(policyDocuments.companyId, companyId)
+        )
+      );
+    return document || null;
+  }
+
+  async deletePolicyDocument(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyDocuments)
+      .where(
+        and(
+          eq(policyDocuments.id, id),
+          eq(policyDocuments.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+
+  // ==================== UNIFIED POLICY DETAIL ====================
+
+  async getPolicyDetail(policyId: string, companyId: string): Promise<{
+    policy: Policy & {
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    };
+    members: Array<{
+      member: PolicyMember;
+      income?: PolicyMemberIncome;
+      immigration?: PolicyMemberImmigration;
+      documents: PolicyMemberDocument[];
+    }>;
+    paymentMethods: PolicyPaymentMethod[];
+    totalHouseholdIncome: number;
+  }> {
+    const policy = await this.getPolicy(policyId);
+    if (!policy || policy.companyId !== companyId) {
+      throw new Error("Policy not found or access denied");
+    }
+
+    const members = await this.getPolicyMembersByPolicyId(policyId, companyId);
+    
+    const membersWithDetails = await Promise.all(
+      members.map(async (member) => {
+        const income = await this.getPolicyMemberIncome(member.id, companyId);
+        const immigration = await this.getPolicyMemberImmigration(member.id, companyId);
+        const documents = await this.getPolicyMemberDocuments(member.id, companyId);
+        
+        return {
+          member,
+          income: income || undefined,
+          immigration: immigration || undefined,
+          documents,
+        };
+      })
+    );
+
+    const paymentMethods = await this.getPolicyPaymentMethods(policyId, companyId);
+
+    const totalHouseholdIncome = membersWithDetails.reduce((total, m) => {
+      if (m.income?.totalAnnualIncome) {
+        const amount = parseFloat(m.income.totalAnnualIncome.replace(/[^0-9.-]+/g, ""));
+        return total + (isNaN(amount) ? 0 : amount);
+      }
+      return total;
+    }, 0);
+
+    return {
+      policy,
+      members: membersWithDetails,
+      paymentMethods,
+      totalHouseholdIncome,
+    };
+  }
+
+  // ==================== POLICY REMINDERS ====================
+
+  async listPolicyReminders(
+    policyId: string,
+    companyId: string,
+    filters?: { status?: string; priority?: string; userId?: string }
+  ): Promise<Array<PolicyReminder & { creator: { firstName: string | null; lastName: string | null } }>> {
+    const conditions = [
+      eq(policyReminders.policyId, policyId),
+      eq(policyReminders.companyId, companyId),
+    ];
+
+    if (filters?.status) {
+      conditions.push(eq(policyReminders.status, filters.status));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(policyReminders.priority, filters.priority));
+    }
+
+    const results = await db
+      .select({
+        reminder: policyReminders,
+        creator: {
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(policyReminders)
+      .leftJoin(users, eq(policyReminders.createdBy, users.id))
+      .where(and(...conditions))
+      .orderBy(policyReminders.dueDate, policyReminders.dueTime);
+
+    return results.map((r) => ({
+      ...r.reminder,
+      creator: r.creator,
+    })) as any;
+  }
+
+  async getPolicyReminder(id: string, companyId: string): Promise<PolicyReminder | null> {
+    const [reminder] = await db
+      .select()
+      .from(policyReminders)
+      .where(
+        and(
+          eq(policyReminders.id, id),
+          eq(policyReminders.companyId, companyId)
+        )
+      );
+    return reminder || null;
+  }
+
+  async createPolicyReminder(data: InsertPolicyReminder): Promise<PolicyReminder> {
+    const result = await db
+      .insert(policyReminders)
+      .values(data as any)
+      .returning();
+    
+    return result[0];
+  }
+  
+  async updatePolicyReminder(id: string, companyId: string, data: UpdatePolicyReminder): Promise<PolicyReminder | null> {
+    const result = await db
+      .update(policyReminders)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      } as any)
+      .where(
+        and(
+          eq(policyReminders.id, id),
+          eq(policyReminders.companyId, companyId)
+        )
+      )
+      .returning();
+    
+    return result[0] || null;
+  }
+
+  async deletePolicyReminder(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyReminders)
+      .where(
+        and(
+          eq(policyReminders.id, id),
+          eq(policyReminders.companyId, companyId)
+        )
+      )
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  async completePolicyReminder(id: string, companyId: string, userId: string): Promise<PolicyReminder | null> {
+    const [updated] = await db
+      .update(policyReminders)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        completedBy: userId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(policyReminders.id, id),
+          eq(policyReminders.companyId, companyId)
+        )
+      )
+      .returning();
+    
+    return updated || null;
+  }
+
+  async snoozePolicyReminder(id: string, companyId: string, until: Date): Promise<PolicyReminder | null> {
+    const [updated] = await db
+      .update(policyReminders)
+      .set({
+        status: 'snoozed',
+        snoozedUntil: until,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(policyReminders.id, id),
+          eq(policyReminders.companyId, companyId)
+        )
+      )
+      .returning();
+    
+    return updated || null;
+  }
+
+  // ==================== POLICY NOTES ====================
+
+  async createPolicyNote(note: InsertPolicyNote): Promise<PolicyNote> {
+    const result = await db.insert(policyNotes).values(note).returning();
+    return result[0];
+  }
+  
+  async getPolicyNotes(policyId: string, companyId: string): Promise<(PolicyNote & { creatorName: string; creatorAvatar: string | null })[]> {
+    const results = await db
+      .select({
+        id: policyNotes.id,
+        policyId: policyNotes.policyId,
+        note: policyNotes.note,
+        createdBy: policyNotes.createdBy,
+        createdAt: policyNotes.createdAt,
+        creatorName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        creatorAvatar: users.avatar,
+      })
+      .from(policyNotes)
+      .leftJoin(users, eq(policyNotes.createdBy, users.id))
+      .where(
+        and(
+          eq(policyNotes.policyId, policyId)
+        )
+      )
+      .orderBy(desc(policyNotes.createdAt));
+    
+    return results as any;
+  }
+
+  async deletePolicyNote(id: string, companyId?: string): Promise<void> {
+    await db.delete(policyNotes).where(eq(policyNotes.id, id));
+  }
+
+  // ==================== POLICY CONSENT DOCUMENTS ====================
+
+  async createPolicyConsentDocument(policyId: string, companyId: string, userId: string): Promise<PolicyConsentDocument> {
+    const { generateShortId } = await import("./id-generator");
+    
+    let token: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    do {
+      token = generateShortId();
+      const existing = await db.select().from(policyConsentDocuments).where(eq(policyConsentDocuments.token, token)).limit(1);
+      if (existing.length === 0) break;
+      attempts++;
+    } while (attempts < maxAttempts);
+    
+    if (attempts >= maxAttempts) {
+      throw new Error("Failed to generate unique consent token");
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    
+    const [consent] = await db
+      .insert(policyConsentDocuments)
+      .values({
+        policyId,
+        companyId,
+        token,
+        status: 'draft',
+        createdBy: userId,
+        expiresAt,
+      } as any)
+      .returning();
+    
+    await this.createPolicyConsentEvent(consent.id, 'generated', {}, userId);
+    
+    return consent;
+  }
+
+  async getPolicyConsentById(id: string, companyId: string): Promise<PolicyConsentDocument | null> {
+    const [consent] = await db
+      .select()
+      .from(policyConsentDocuments)
+      .where(
+        and(
+          eq(policyConsentDocuments.id, id),
+          eq(policyConsentDocuments.companyId, companyId)
+        )
+      );
+    return consent || null;
+  }
+
+  async getPolicyConsentByToken(token: string): Promise<PolicyConsentDocument | null> {
+    const [consent] = await db
+      .select()
+      .from(policyConsentDocuments)
+      .where(eq(policyConsentDocuments.token, token));
+    return consent || null;
+  }
+
+  async listPolicyConsents(policyId: string, companyId: string): Promise<PolicyConsentDocument[]> {
+    return db
+      .select()
+      .from(policyConsentDocuments)
+      .where(
+        and(
+          eq(policyConsentDocuments.policyId, policyId),
+          eq(policyConsentDocuments.companyId, companyId)
+        )
+      )
+      .orderBy(desc(policyConsentDocuments.createdAt));
+  }
+
+  async updatePolicyConsentDocument(id: string, data: Partial<InsertPolicyConsentDocument>): Promise<PolicyConsentDocument | null> {
+    const [updated] = await db
+      .update(policyConsentDocuments)
+      .set(data)
+      .where(eq(policyConsentDocuments.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deletePolicyConsentDocument(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyConsentDocuments)
+      .where(
+        and(
+          eq(policyConsentDocuments.id, id),
+          eq(policyConsentDocuments.companyId, companyId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+
+  async signPolicyConsent(token: string, signatureData: {
+    signatureImage: string;
+    signerIp?: string;
+    signerUserAgent?: string;
+    signerTimezone?: string;
+    signerLocation?: string;
+    signerPlatform?: string;
+    signerBrowser?: string;
+  }): Promise<PolicyConsentDocument | null> {
+    const consent = await this.getPolicyConsentByToken(token);
+    if (!consent || consent.status === 'signed' || consent.status === 'void') {
+      return null;
+    }
+    
+    if (consent.expiresAt && new Date(consent.expiresAt) < new Date()) {
+      return null;
+    }
+    
+    const result = await db
+      .update(policyConsentDocuments)
+      .set({
+        status: 'signed',
+        signedAt: new Date(),
+        signatureImage: signatureData.signatureImage,
+        signerIp: signatureData.signerIp,
+        signerUserAgent: signatureData.signerUserAgent,
+        signerTimezone: signatureData.signerTimezone,
+        signerLocation: signatureData.signerLocation,
+        signerPlatform: signatureData.signerPlatform,
+        signerBrowser: signatureData.signerBrowser,
+      })
+      .where(eq(policyConsentDocuments.token, token))
+      .returning();
+    
+    await this.createPolicyConsentEvent(consent.id, 'signed', signatureData);
+    
+    return result[0] || null;
+  }
+  
+  // ==================== POLICY CONSENT SIGNATURE EVENTS ====================
+  
+  async createPolicyConsentEvent(
+    consentDocumentId: string,
+    eventType: string,
+    payload?: Record<string, any>,
+    actorId?: string
+  ): Promise<PolicyConsentSignatureEvent> {
+    const result = await db
+      .insert(policyConsentSignatureEvents)
+      .values({
+        consentDocumentId,
+        eventType,
+        payload: payload || {},
+        actorId,
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async getPolicyConsentEvents(consentDocumentId: string): Promise<PolicyConsentSignatureEvent[]> {
+    const result = await db
+      .select()
+      .from(policyConsentSignatureEvents)
+      .where(eq(policyConsentSignatureEvents.consentDocumentId, consentDocumentId))
+      .orderBy(desc(policyConsentSignatureEvents.occurredAt));
+    
+    return result;
+  }
+
+  // ==================== SUBMIT QUOTE AS POLICY ====================
+
+  async submitQuoteAsPolicy(quoteId: string): Promise<Policy> {
+    return await db.transaction(async (tx) => {
+      const quote = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).limit(1);
+      if (!quote || quote.length === 0) {
+        throw new Error("Quote not found");
+      }
+      const quoteData = quote[0];
+
+      const { generateShortId } = await import("./id-generator");
+      let policyId: string;
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      do {
+        policyId = generateShortId();
+        const existing = await tx.select().from(policies).where(eq(policies.id, policyId)).limit(1);
+        if (existing.length === 0) break;
+        attempts++;
+      } while (attempts < maxAttempts);
+      
+      if (attempts >= maxAttempts) {
+        throw new Error("Failed to generate unique policy ID");
+      }
+
+      const [policy] = await tx
+        .insert(policies)
+        .values({
+          id: policyId,
+          companyId: quoteData.companyId,
+          createdBy: quoteData.createdBy,
+          effectiveDate: quoteData.effectiveDate,
+          agentId: quoteData.agentId,
+          productType: quoteData.productType,
+          clientFirstName: quoteData.clientFirstName,
+          clientMiddleName: quoteData.clientMiddleName,
+          clientLastName: quoteData.clientLastName,
+          clientSecondLastName: quoteData.clientSecondLastName,
+          clientEmail: quoteData.clientEmail,
+          clientPhone: quoteData.clientPhone,
+          clientDateOfBirth: quoteData.clientDateOfBirth,
+          clientGender: quoteData.clientGender,
+          clientIsApplicant: quoteData.clientIsApplicant,
+          clientTobaccoUser: quoteData.clientTobaccoUser,
+          clientPregnant: quoteData.clientPregnant,
+          clientSsn: quoteData.clientSsn,
+          clientPreferredLanguage: quoteData.clientPreferredLanguage,
+          clientCountryOfBirth: quoteData.clientCountryOfBirth,
+          clientMaritalStatus: quoteData.clientMaritalStatus,
+          clientWeight: quoteData.clientWeight,
+          clientHeight: quoteData.clientHeight,
+          annualHouseholdIncome: quoteData.annualHouseholdIncome,
+          familyGroupSize: quoteData.familyGroupSize,
+          spouses: quoteData.spouses,
+          dependents: quoteData.dependents,
+          physical_street: quoteData.physical_street,
+          physical_address_line_2: quoteData.physical_address_line_2,
+          physical_city: quoteData.physical_city,
+          physical_state: quoteData.physical_state,
+          physical_postal_code: quoteData.physical_postal_code,
+          physical_county: quoteData.physical_county,
+          mailing_street: quoteData.mailing_street,
+          mailing_address_line_2: quoteData.mailing_address_line_2,
+          mailing_city: quoteData.mailing_city,
+          mailing_state: quoteData.mailing_state,
+          mailing_postal_code: quoteData.mailing_postal_code,
+          mailing_county: quoteData.mailing_county,
+          billing_street: quoteData.billing_street,
+          billing_address_line_2: quoteData.billing_address_line_2,
+          billing_city: quoteData.billing_city,
+          billing_state: quoteData.billing_state,
+          billing_postal_code: quoteData.billing_postal_code,
+          billing_county: quoteData.billing_county,
+          country: quoteData.country,
+          status: 'active',
+          notes: quoteData.notes,
+          selectedPlan: quoteData.selectedPlan,
+          selectedProvider: quoteData.selectedProvider,
+        } as any)
+        .returning();
+
+      const members = await tx.select().from(quoteMembers).where(eq(quoteMembers.quoteId, quoteId));
+      for (const member of members) {
+        const [newMember] = await tx.insert(policyMembers).values({
+          policyId: policyId,
+          companyId: member.companyId,
+          role: member.role,
+          firstName: member.firstName,
+          middleName: member.middleName,
+          lastName: member.lastName,
+          secondLastName: member.secondLastName,
+          dateOfBirth: member.dateOfBirth,
+          gender: member.gender,
+          ssn: member.ssn,
+          email: member.email,
+          phone: member.phone,
+          tobaccoUser: member.tobaccoUser,
+          pregnant: member.pregnant,
+          preferredLanguage: member.preferredLanguage,
+          countryOfBirth: member.countryOfBirth,
+          maritalStatus: member.maritalStatus,
+          weight: member.weight,
+          height: member.height,
+        } as any).returning();
+
+        const [income] = await tx.select().from(quoteMemberIncome).where(eq(quoteMemberIncome.memberId, member.id));
+        if (income) {
+          await tx.insert(policyMemberIncome).values({
+            memberId: newMember.id,
+            companyId: income.companyId,
+            employmentStatus: income.employmentStatus,
+            employerName: income.employerName,
+            jobTitle: income.jobTitle,
+            yearsEmployed: income.yearsEmployed,
+            grossMonthlyIncome: income.grossMonthlyIncome,
+            totalAnnualIncome: income.totalAnnualIncome,
+            additionalIncomeSources: income.additionalIncomeSources,
+          } as any);
+        }
+
+        const [immigration] = await tx.select().from(quoteMemberImmigration).where(eq(quoteMemberImmigration.memberId, member.id));
+        if (immigration) {
+          await tx.insert(policyMemberImmigration).values({
+            memberId: newMember.id,
+            companyId: immigration.companyId,
+            citizenshipStatus: immigration.citizenshipStatus,
+            visaType: immigration.visaType,
+            visaNumber: immigration.visaNumber,
+            visaExpirationDate: immigration.visaExpirationDate,
+            greenCardNumber: immigration.greenCardNumber,
+            greenCardExpirationDate: immigration.greenCardExpirationDate,
+            workPermitNumber: immigration.workPermitNumber,
+            workPermitExpirationDate: immigration.workPermitExpirationDate,
+            countryOfCitizenship: immigration.countryOfCitizenship,
+            dateOfEntry: immigration.dateOfEntry,
+          } as any);
+        }
+
+        const documents = await tx.select().from(quoteMemberDocuments).where(eq(quoteMemberDocuments.memberId, member.id));
+        for (const doc of documents) {
+          await tx.insert(policyMemberDocuments).values({
+            memberId: newMember.id,
+            companyId: doc.companyId,
+            documentType: doc.documentType,
+            documentName: doc.documentName,
+            documentPath: doc.documentPath,
+            fileType: doc.fileType,
+            fileSize: doc.fileSize,
+            description: doc.description,
+            uploadedBy: doc.uploadedBy,
+          } as any);
+        }
+      }
+
+      const paymentMethods = await tx.select().from(quotePaymentMethods).where(eq(quotePaymentMethods.quoteId, quoteId));
+      for (const pm of paymentMethods) {
+        await tx.insert(policyPaymentMethods).values({
+          policyId: policyId,
+          companyId: pm.companyId,
+          paymentType: pm.paymentType,
+          cardNumber: pm.cardNumber,
+          cardHolderName: pm.cardHolderName,
+          expirationMonth: pm.expirationMonth,
+          expirationYear: pm.expirationYear,
+          cvv: pm.cvv,
+          billingZip: pm.billingZip,
+          bankName: pm.bankName,
+          accountNumber: pm.accountNumber,
+          routingNumber: pm.routingNumber,
+          accountHolderName: pm.accountHolderName,
+          accountType: pm.accountType,
+          isDefault: pm.isDefault,
+        } as any);
+      }
+
+      const quoteDocuments = await tx.select().from(quoteDocuments).where(eq(quoteDocuments.quoteId, quoteId));
+      for (const doc of quoteDocuments) {
+        await tx.insert(policyDocuments).values({
+          policyId: policyId,
+          companyId: doc.companyId,
+          memberId: doc.memberId,
+          documentName: doc.documentName,
+          documentPath: doc.documentPath,
+          fileType: doc.fileType,
+          fileSize: doc.fileSize,
+          category: doc.category,
+          description: doc.description,
+          uploadedBy: doc.uploadedBy,
+        } as any);
+      }
+
+      const reminders = await tx.select().from(quoteReminders).where(eq(quoteReminders.quoteId, quoteId));
+      for (const reminder of reminders) {
+        await tx.insert(policyReminders).values({
+          policyId: policyId,
+          companyId: reminder.companyId,
+          createdBy: reminder.createdBy,
+          dueDate: reminder.dueDate,
+          dueTime: reminder.dueTime,
+          timezone: reminder.timezone,
+          reminderBefore: reminder.reminderBefore,
+          reminderType: reminder.reminderType,
+          notifyUsers: reminder.notifyUsers,
+          title: reminder.title,
+          description: reminder.description,
+          isPrivate: reminder.isPrivate,
+          status: reminder.status,
+          priority: reminder.priority,
+        } as any);
+      }
+
+      const notes = await tx.select().from(quoteNotes).where(eq(quoteNotes.quoteId, quoteId));
+      for (const note of notes) {
+        await tx.insert(policyNotes).values({
+          policyId: policyId,
+          note: note.note,
+          createdBy: note.createdBy,
+        } as any);
+      }
+
+      const consents = await tx.select().from(consentDocuments).where(eq(consentDocuments.quoteId, quoteId));
+      for (const consent of consents) {
+        const [newConsent] = await tx.insert(policyConsentDocuments).values({
+          policyId: policyId,
+          companyId: consent.companyId,
+          status: consent.status,
+          deliveryChannel: consent.deliveryChannel,
+          deliveryTarget: consent.deliveryTarget,
+          token: consent.token,
+          signedByName: consent.signedByName,
+          signedByEmail: consent.signedByEmail,
+          signedByPhone: consent.signedByPhone,
+          signatureImage: consent.signatureImage,
+          signerIp: consent.signerIp,
+          signerUserAgent: consent.signerUserAgent,
+          signerTimezone: consent.signerTimezone,
+          signerLocation: consent.signerLocation,
+          signerPlatform: consent.signerPlatform,
+          signerBrowser: consent.signerBrowser,
+          sentAt: consent.sentAt,
+          viewedAt: consent.viewedAt,
+          signedAt: consent.signedAt,
+          expiresAt: consent.expiresAt,
+          createdBy: consent.createdBy,
+        } as any).returning();
+
+        const events = await tx.select().from(consentSignatureEvents).where(eq(consentSignatureEvents.consentDocumentId, consent.id));
+        for (const event of events) {
+          await tx.insert(policyConsentSignatureEvents).values({
+            consentDocumentId: newConsent.id,
+            eventType: event.eventType,
+            payload: event.payload,
+            actorId: event.actorId,
+          } as any);
+        }
+      }
+
+      await tx.delete(quotes).where(eq(quotes.id, quoteId));
+
+      return policy;
+    });
   }
 }
 

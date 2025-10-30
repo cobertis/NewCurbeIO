@@ -1054,22 +1054,43 @@ export default function MarketplacePlansPage() {
                       </label>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button className="text-sm text-primary hover:underline">
-                        Medicamentos
-                      </button>
-                      <button className="text-sm text-primary hover:underline">
-                        Doctores
-                      </button>
-                      <button className="text-sm text-primary hover:underline">
-                        Beneficios
-                      </button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        data-testid={`button-view-details-${index}`}
-                      >
-                        Detalles del plan
-                      </Button>
+                      {plan.drug_formulary_url && (
+                        <button 
+                          className="text-sm text-primary hover:underline"
+                          onClick={() => window.open(plan.drug_formulary_url, '_blank')}
+                          data-testid={`button-drugs-${index}`}
+                        >
+                          Medicamentos
+                        </button>
+                      )}
+                      {plan.network_url && (
+                        <button 
+                          className="text-sm text-primary hover:underline"
+                          onClick={() => window.open(plan.network_url, '_blank')}
+                          data-testid={`button-providers-${index}`}
+                        >
+                          Doctores
+                        </button>
+                      )}
+                      {plan.brochure_url && (
+                        <button 
+                          className="text-sm text-primary hover:underline"
+                          onClick={() => window.open(plan.brochure_url, '_blank')}
+                          data-testid={`button-benefits-${index}`}
+                        >
+                          Beneficios
+                        </button>
+                      )}
+                      {plan.brochure_url && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          data-testid={`button-view-details-${index}`}
+                          onClick={() => window.open(plan.brochure_url, '_blank')}
+                        >
+                          Detalles del plan
+                        </Button>
+                      )}
                       <Button 
                         variant="default" 
                         size="sm"
