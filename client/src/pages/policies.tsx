@@ -3471,7 +3471,7 @@ export default function PoliciesPage() {
   // UNIFIED QUOTE DETAIL QUERY - Fetches ALL related data in one request
   const { data: quoteDetail, isLoading: isLoadingQuoteDetail } = useQuery<{
     quote: Quote & {
-      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
       creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
     };
     members: Array<{
