@@ -255,6 +255,36 @@ export function broadcastNotificationUpdate(companyId?: string) {
   console.log(`[WebSocket] Broadcasting notification_update to ${sentCount} authenticated clients${companyId ? ` (company: ${companyId})` : ''}`);
 }
 
+// Broadcast notification update to a specific user
+export function broadcastNotificationUpdateToUser(userId: string) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'notification_update',
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    // CRITICAL: Always verify authentication first to prevent leaks
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    // Only send to the specific user
+    if (authClient.userId === userId) {
+      client.send(message);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting notification_update to user ${userId} (${sentCount} active sessions)`);
+}
+
 // Broadcast subscription update to tenant-scoped clients only
 export function broadcastSubscriptionUpdate(companyId: string) {
   if (!wss) {

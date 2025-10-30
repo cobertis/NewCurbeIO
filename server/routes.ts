@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -8435,7 +8435,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             
             console.log(`[AGENT CHANGE] Broadcasting notification to user ${validatedData.agentId}`);
             // Broadcast notification via WebSocket to the specific user
-            await broadcastNotificationUpdate(validatedData.agentId);
+            broadcastNotificationUpdateToUser(validatedData.agentId);
             console.log(`[AGENT CHANGE] Notification sent successfully`);
           }
         } catch (notificationError) {
@@ -12188,7 +12188,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             
             console.log(`[AGENT CHANGE] Broadcasting notification to user ${validatedData.agentId}`);
             // Broadcast notification via WebSocket to the specific user
-            await broadcastNotificationUpdate(validatedData.agentId);
+            broadcastNotificationUpdateToUser(validatedData.agentId);
             console.log(`[AGENT CHANGE] Notification sent successfully`);
           }
         } catch (notificationError) {
