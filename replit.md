@@ -59,7 +59,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **Policies Management System:** Converts quotes to policies, migrating all associated data. Provides identical functionality to the Quotes module with comprehensive policy status management and agent assignment capabilities.
 -   **Consent Document System:** Generates legal consent documents, supports email/SMS/link delivery, and captures electronic signatures with a full digital audit trail.
 -   **Calendar System:** Full-screen professional calendar displaying company-wide events including birthdays and reminders, with multi-tenant isolation.
--   **Agent Assignment System:** Flexible agent reassignment for quotes and policies with agent-based filtering for admin users.
+-   **Agent Assignment System:** Flexible agent reassignment for quotes and policies with agent-based filtering for admin users. When an agent is reassigned, the new agent automatically receives a notification: "Nueva Quote/Póliza Asignada - {AssignerName} te asignó la quote/póliza de {ClientName}" with a clickable link. Delivered in real-time via WebSocket.
 
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.

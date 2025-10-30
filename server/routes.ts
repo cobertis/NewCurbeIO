@@ -8410,6 +8410,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // 4. Update the quote
       const updatedQuote = await storage.updateQuote(id, validatedData);
       
+      // 5. Check if agent was changed and send notification to new agent
+      if (validatedData.agentId && validatedData.agentId !== existingQuote.agentId) {
+        try {
+          // Get the new agent's information
+          const newAgent = await storage.getUser(validatedData.agentId);
+          
+          if (newAgent) {
+            // Create notification for the new agent
+            const clientName = `${existingQuote.clientFirstName} ${existingQuote.clientLastName}`;
+            const assignerName = `${currentUser.firstName} ${currentUser.lastName}`;
+            
+            await storage.createNotification({
+              userId: validatedData.agentId,
+              type: 'info',
+              title: 'Nueva Quote Asignada',
+              message: `${assignerName} te asignó la quote de ${clientName}`,
+              link: `/quotes/${id}`,
+            });
+            
+            // Broadcast notification via WebSocket
+            await broadcastNotificationUpdate(validatedData.agentId);
+          }
+        } catch (notificationError) {
+          console.error("Error creating agent assignment notification:", notificationError);
+          // Don't fail the quote update if notification fails
+        }
+      }
+      
       // Log activity (WARNING: Do NOT log the full request body - contains SSN)
       await logger.logCrud({
         req,
@@ -12128,6 +12156,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // 4. Update the policy
       const updatedPolicy = await storage.updatePolicy(id, validatedData);
+      
+      // 5. Check if agent was changed and send notification to new agent
+      if (validatedData.agentId && validatedData.agentId !== existingPolicy.agentId) {
+        try {
+          // Get the new agent's information
+          const newAgent = await storage.getUser(validatedData.agentId);
+          
+          if (newAgent) {
+            // Create notification for the new agent
+            const clientName = `${existingPolicy.clientFirstName} ${existingPolicy.clientLastName}`;
+            const assignerName = `${currentUser.firstName} ${currentUser.lastName}`;
+            
+            await storage.createNotification({
+              userId: validatedData.agentId,
+              type: 'info',
+              title: 'Nueva Póliza Asignada',
+              message: `${assignerName} te asignó la póliza de ${clientName}`,
+              link: `/policies/${id}`,
+            });
+            
+            // Broadcast notification via WebSocket
+            await broadcastNotificationUpdate(validatedData.agentId);
+          }
+        } catch (notificationError) {
+          console.error("Error creating agent assignment notification:", notificationError);
+          // Don't fail the policy update if notification fails
+        }
+      }
       
       // Log activity (WARNING: Do NOT log the full request body - contains SSN)
       await logger.logCrud({
