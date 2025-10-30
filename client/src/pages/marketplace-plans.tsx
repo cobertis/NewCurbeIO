@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +135,36 @@ export default function MarketplacePlansPage() {
       return response.json();
     },
     enabled: !!quoteData,
+  });
+
+  // Mutation for selecting a plan
+  const selectPlanMutation = useMutation({
+    mutationFn: async (plan: any) => {
+      const response = await apiRequest(`/api/quotes/${quoteId}/select-plan`, {
+        method: 'POST',
+        body: JSON.stringify({ plan }),
+      });
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Plan Selected",
+        description: "The plan has been successfully added to your quote.",
+        duration: 3000,
+      });
+      // Invalidate quote data to refresh
+      queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}/detail`] });
+      // Navigate back to quote detail
+      setLocation(`/quotes/${quoteId}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to select plan. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
   });
 
   // State for marketplace plans and pagination
@@ -1046,8 +1077,17 @@ export default function MarketplacePlansPage() {
                         variant="default" 
                         size="sm"
                         data-testid={`button-select-plan-${index}`}
+                        onClick={() => selectPlanMutation.mutate(plan)}
+                        disabled={selectPlanMutation.isPending}
                       >
-                        Agregar al carrito
+                        {selectPlanMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Selecting...
+                          </>
+                        ) : (
+                          'Select Plan'
+                        )}
                       </Button>
                     </div>
                   </div>

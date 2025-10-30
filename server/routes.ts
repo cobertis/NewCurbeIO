@@ -10919,6 +10919,61 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== PLAN SELECTION ====================
+  
+  // POST /api/quotes/:quoteId/select-plan - Select a marketplace plan for a quote
+  app.post("/api/quotes/:quoteId/select-plan", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { quoteId } = req.params;
+    const { plan } = req.body;
+    
+    try {
+      // Validate that plan data was provided
+      if (!plan) {
+        return res.status(400).json({ message: "Plan data is required" });
+      }
+      
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Update quote with selected plan
+      const updatedQuote = await storage.updateQuote(quoteId, {
+        selectedPlan: plan as any, // Store the complete plan object
+      });
+      
+      if (!updatedQuote) {
+        return res.status(500).json({ message: "Failed to update quote with selected plan" });
+      }
+      
+      // Log the activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote",
+        entityId: quoteId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          action: "select_plan",
+          planId: plan.id || 'unknown',
+          planName: plan.name || 'unknown',
+        },
+      });
+      
+      res.json({ quote: updatedQuote });
+    } catch (error: any) {
+      console.error("Error selecting plan:", error);
+      res.status(500).json({ message: "Failed to select plan" });
+    }
+  });
+
   // ==================== CONSENT DOCUMENTS ====================
   
   // POST /api/quotes/:id/consents/generate - Generate new consent document

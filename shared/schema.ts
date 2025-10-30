@@ -1389,6 +1389,9 @@ export const quotes = pgTable("quotes", {
   notes: text("notes"), // Internal notes
   estimatedPremium: text("estimated_premium"), // Estimated premium amount
   
+  // Selected Plan from Marketplace
+  selectedPlan: jsonb("selected_plan"), // Complete plan object selected from marketplace
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

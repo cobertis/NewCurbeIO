@@ -6185,6 +6185,229 @@ export default function QuotesPage() {
 
             <div className="space-y-6">
 
+              {/* Selected Plan Card - Professional Corporate Design */}
+              {viewingQuote.selectedPlan && (
+                <Card className="border-2 border-neutral-200 shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-neutral-50 to-neutral-100 border-b border-neutral-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Shield className="h-6 w-6 text-neutral-700" />
+                          <CardTitle className="text-xl font-bold text-neutral-900">
+                            Selected Health Insurance Plan
+                          </CardTitle>
+                        </div>
+                        <CardDescription className="text-neutral-600">
+                          Your comprehensive coverage details and benefits
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`)}
+                          data-testid="button-change-plan"
+                          className="border-neutral-300 hover:bg-neutral-100"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Change Plan
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await apiRequest(`/api/quotes/${viewingQuote.id}`, {
+                                method: "PATCH",
+                                body: JSON.stringify({ selectedPlan: null }),
+                              });
+                              queryClient.invalidateQueries({ queryKey: [`/api/quotes/${viewingQuote.id}/detail`] });
+                              toast({
+                                title: "Plan Removed",
+                                description: "The selected plan has been removed from this quote.",
+                                duration: 3000,
+                              });
+                            } catch (error: any) {
+                              toast({
+                                title: "Error",
+                                description: error.message || "Failed to remove plan.",
+                                variant: "destructive",
+                                duration: 3000,
+                              });
+                            }
+                          }}
+                          data-testid="button-remove-plan"
+                          className="border-neutral-300 hover:bg-neutral-100 text-neutral-700"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Remove Plan
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {/* Carrier and Plan Name Header */}
+                    <div className="mb-6 pb-6 border-b border-neutral-200">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Building2 className="h-5 w-5 text-neutral-600" />
+                            <p className="text-sm font-medium text-neutral-600">Insurance Carrier</p>
+                          </div>
+                          <p className="text-2xl font-bold text-neutral-900 mb-1">
+                            {viewingQuote.selectedPlan.issuer?.name || 'Insurance Provider'}
+                          </p>
+                          <p className="text-base font-semibold text-neutral-700">
+                            {viewingQuote.selectedPlan.name || 'Health Plan'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-3">
+                            <Badge variant="secondary" className="bg-neutral-200 text-neutral-800 hover:bg-neutral-300">
+                              {viewingQuote.selectedPlan.metal_level || 'Standard'}
+                            </Badge>
+                            <Badge variant="outline" className="border-neutral-300 text-neutral-700">
+                              {viewingQuote.selectedPlan.type || 'Health Insurance'}
+                            </Badge>
+                            {viewingQuote.selectedPlan.market && (
+                              <Badge variant="outline" className="border-neutral-300 text-neutral-700">
+                                {viewingQuote.selectedPlan.market}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {viewingQuote.selectedPlan.issuer?.logo_url && (
+                          <div className="flex-shrink-0">
+                            <img 
+                              src={viewingQuote.selectedPlan.issuer.logo_url} 
+                              alt={viewingQuote.selectedPlan.issuer.name}
+                              className="h-16 w-auto object-contain"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Premium Information - Highlighted Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pb-6 border-b border-neutral-200">
+                      <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <DollarSign className="h-5 w-5 text-neutral-600" />
+                          <p className="text-sm font-medium text-neutral-600">Monthly Premium</p>
+                        </div>
+                        <p className="text-3xl font-bold text-neutral-900">
+                          ${viewingQuote.selectedPlan.premium ? parseFloat(viewingQuote.selectedPlan.premium).toFixed(2) : '0.00'}
+                        </p>
+                        <p className="text-xs text-neutral-500 mt-1">per month</p>
+                      </div>
+                      {viewingQuote.selectedPlan.premium_w_credit && (
+                        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <DollarSign className="h-5 w-5 text-green-700" />
+                            <p className="text-sm font-medium text-green-700">Premium with Tax Credit</p>
+                          </div>
+                          <p className="text-3xl font-bold text-green-900">
+                            ${viewingQuote.selectedPlan.premium_w_credit ? parseFloat(viewingQuote.selectedPlan.premium_w_credit).toFixed(2) : '0.00'}
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">Savings applied</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Deductibles and Out-of-Pocket Maximums */}
+                    <div className="mb-6 pb-6 border-b border-neutral-200">
+                      <h4 className="text-sm font-semibold text-neutral-700 mb-4 flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Cost Sharing Details
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {viewingQuote.selectedPlan.deductibles?.map((ded: any, idx: number) => (
+                          <div key={idx} className="bg-neutral-50 rounded p-3 border border-neutral-200">
+                            <p className="text-xs text-neutral-600 mb-1">
+                              {ded.family_cost ? 'Family' : 'Individual'} Deductible
+                            </p>
+                            <p className="text-lg font-bold text-neutral-900">
+                              ${ded.amount ? parseFloat(ded.amount).toLocaleString() : '0'}
+                            </p>
+                            {ded.network_tier && (
+                              <p className="text-xs text-neutral-500 mt-1">{ded.network_tier}</p>
+                            )}
+                          </div>
+                        ))}
+                        {viewingQuote.selectedPlan.moops?.map((moop: any, idx: number) => (
+                          <div key={idx} className="bg-neutral-50 rounded p-3 border border-neutral-200">
+                            <p className="text-xs text-neutral-600 mb-1">
+                              {moop.family_cost ? 'Family' : 'Individual'} Max OOP
+                            </p>
+                            <p className="text-lg font-bold text-neutral-900">
+                              ${moop.amount ? parseFloat(moop.amount).toLocaleString() : '0'}
+                            </p>
+                            {moop.network_tier && (
+                              <p className="text-xs text-neutral-500 mt-1">{moop.network_tier}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Benefits Grid */}
+                    {viewingQuote.selectedPlan.benefits && viewingQuote.selectedPlan.benefits.length > 0 && (
+                      <div className="mb-6 pb-6 border-b border-neutral-200">
+                        <h4 className="text-sm font-semibold text-neutral-700 mb-4 flex items-center gap-2">
+                          <Heart className="h-4 w-4" />
+                          Key Benefits
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {viewingQuote.selectedPlan.benefits.slice(0, 9).map((benefit: any, idx: number) => (
+                            <div key={idx} className="flex items-start gap-2 p-2 bg-neutral-50 rounded border border-neutral-200">
+                              <Check className="h-4 w-4 text-neutral-600 mt-0.5 flex-shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-neutral-700 truncate">
+                                  {benefit.name || 'Benefit'}
+                                </p>
+                                {benefit.covered && (
+                                  <p className="text-xs text-neutral-600 truncate">
+                                    {benefit.cost_sharings?.[0]?.display_string || 'Covered'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Plan Details Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-neutral-600 mb-1">Plan ID</p>
+                        <p className="font-mono font-medium text-neutral-900 text-xs break-all">
+                          {viewingQuote.selectedPlan.id || 'N/A'}
+                        </p>
+                      </div>
+                      {viewingQuote.selectedPlan.plan_type && (
+                        <div>
+                          <p className="text-neutral-600 mb-1">Plan Type</p>
+                          <p className="font-medium text-neutral-900">{viewingQuote.selectedPlan.plan_type}</p>
+                        </div>
+                      )}
+                      {viewingQuote.selectedPlan.network && (
+                        <div>
+                          <p className="text-neutral-600 mb-1">Network</p>
+                          <p className="font-medium text-neutral-900">{viewingQuote.selectedPlan.network}</p>
+                        </div>
+                      )}
+                      {viewingQuote.effectiveDate && (
+                        <div>
+                          <p className="text-neutral-600 mb-1">Effective Date</p>
+                          <p className="font-medium text-neutral-900">
+                            {formatDateForDisplay(viewingQuote.effectiveDate, "MMM dd, yyyy")}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Family Members Section - Horizontal Layout */}
               <Card className="bg-accent/5">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
