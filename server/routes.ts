@@ -10974,6 +10974,55 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/quotes/:id/submit-policy - Submit quote as policy
+  app.post("/api/quotes/:id/submit-policy", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: quoteId } = req.params;
+    
+    try {
+      // Get quote to verify access and check if plan is selected
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Verify that a plan has been selected
+      if (!quote.selectedPlan) {
+        return res.status(400).json({ message: "Quote must have a selected plan before submitting as policy" });
+      }
+      
+      // Submit quote as policy using transaction
+      const policy = await storage.submitQuoteAsPolicy(quoteId);
+      
+      // Log the activity
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "policy",
+        entityId: policy.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          action: "submit_quote_as_policy",
+          sourceQuoteId: quoteId,
+          selectedPlan: quote.selectedPlan,
+        },
+      });
+      
+      res.json({ policy });
+    } catch (error: any) {
+      console.error("Error submitting quote as policy:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to submit quote as policy",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
 
   // ==================== CONSENT DOCUMENTS ====================
   
@@ -11513,6 +11562,3548 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Log successful fetch for tracking
       console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}, page ${page}`);
+      
+      res.json(marketplaceData);
+    } catch (error: any) {
+      console.error("Error fetching marketplace plans:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch marketplace plans",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+  // ==================== POLICIES ====================
+  
+  // Create policy
+  app.post("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      // Debug log to see what fields are being received
+      console.log('[POLICY DEBUG] Received fields:', Object.keys(req.body));
+      console.log('[POLICY DEBUG] Mailing address fields:', {
+        mailing_street: req.body.mailing_street,
+        mailing_city: req.body.mailing_city,
+        mailing_state: req.body.mailing_state,
+        mailing_postal_code: req.body.mailing_postal_code,
+        mailing_county: req.body.mailing_county
+      });
+      
+      // NO date conversions - keep dates as yyyy-MM-dd strings
+      const payload = {
+        ...req.body,
+        companyId: currentUser.companyId,
+        createdBy: currentUser.id,
+        // effectiveDate and clientDateOfBirth remain as strings (yyyy-MM-dd)
+        
+        // Map frontend address fields to database fields
+        // Frontend already sends fields WITH mailing_ prefix, so use them directly
+        mailing_street: req.body.mailing_street,
+        mailing_city: req.body.mailing_city,
+        mailing_state: req.body.mailing_state,
+        mailing_postal_code: req.body.mailing_postal_code,
+        mailing_county: req.body.mailing_county,
+        
+        // Map physical address fields (fix field name discrepancies)
+        physical_street: req.body.physical_street || req.body.physical_address, // frontend might send either
+        physical_city: req.body.physical_city,
+        physical_state: req.body.physical_state,
+        physical_postal_code: req.body.physical_postal_code || req.body.physical_postalCode, // handle both snake_case and camelCase
+        physical_county: req.body.physical_county,
+        
+        // Remove duplicate fields that may have been sent from frontend
+        // These are being removed because we've already mapped them above
+        physical_address: undefined,
+        physical_postalCode: undefined // Remove the camelCase version
+      };
+      
+      // Remove undefined fields from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+      
+      // Debug log to see the final payload after mapping and cleanup
+      console.log('[POLICY DEBUG] Mapped payload:', Object.keys(payload));
+      console.log('[POLICY DEBUG] Address data in final payload:', {
+        mailing_street: payload.mailing_street,
+        mailing_city: payload.mailing_city,
+        mailing_state: payload.mailing_state,
+        mailing_postal_code: payload.mailing_postal_code,
+        mailing_county: payload.mailing_county,
+        physical_street: payload.physical_street,
+        physical_city: payload.physical_city,
+        physical_state: payload.physical_state,
+        physical_postal_code: payload.physical_postal_code,
+        physical_county: payload.physical_county
+      });
+      
+      // Validate request body using Zod schema
+      const validatedData = insertQuoteSchema.parse(payload);
+      
+      const policy = await storage.createPolicy(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote",
+        entityId: policy.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          productType: policy.productType,
+          clientEmail: policy.clientEmail,
+          createdBy: currentUser.email,
+        },
+      });
+      
+      // Create notification for the assigned agent and admins
+      try {
+        const clientName = `${policy.clientFirstName} ${policy.clientLastName}`;
+        const notificationTitle = "New Quote Created";
+        const notificationMessage = `A new policy has been created for client ${clientName}`;
+        const notificationLink = `/quotes/${policy.id}`;
+        
+        // Get all users in the company who should be notified
+        const companyUsers = await storage.getUsersByCompany(currentUser.companyId!);
+        const usersToNotify = companyUsers.filter(user => 
+          user.id === policy.agentId || user.role === 'admin' || user.role === 'superadmin'
+        );
+        
+        // Create notifications for each user
+        for (const user of usersToNotify) {
+          await storage.createNotification({
+            userId: user.id,
+            type: 'info',
+            title: notificationTitle,
+            message: notificationMessage,
+            link: notificationLink,
+          });
+        }
+      } catch (notificationError) {
+        console.error("Error creating notifications for new quote:", notificationError);
+        // Don't fail the policy creation if notifications fail
+      }
+      
+      // Return policy with plain text SSN (as stored in database)
+      res.status(201).json({ policy });
+    } catch (error: any) {
+      console.error("Error creating quote:", error);
+      res.status(400).json({ message: error.message || "Failed to create quote" });
+    }
+  });
+  
+  // Get all policies for company
+  // WARNING: This endpoint returns PII - SSN must be masked
+  app.get("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      let quotes: Awaited<ReturnType<typeof storage.getPolicysByCompany>> = [];
+      
+      if (currentUser.role === "superadmin") {
+        // Superadmin can see all policies across all companies
+        // For now, we'll return policies from current company
+        // TODO: Add query param to filter by companyId for superadmin
+        if (currentUser.companyId) {
+          policies = await storage.getPolicysByCompany(currentUser.companyId);
+        }
+      } else if (currentUser.companyId) {
+        // Regular users see only their company's quotes
+        policies = await storage.getPolicysByCompany(currentUser.companyId);
+      }
+      
+      // Return policies with plain text SSN (as stored in database)
+      if (policies.length > 0) {
+        await logger.logAuth({
+          req,
+          action: "view_quotes",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "quotes",
+            count: policies.length,
+            fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
+          },
+        });
+      }
+      
+      res.json({ policies });
+    } catch (error: any) {
+      console.error("Error fetching quotes:", error);
+      res.status(500).json({ message: "Failed to fetch quotes" });
+    }
+  });
+  
+  // Get single policy by ID
+  // WARNING: This endpoint returns PII - SSN must be masked
+  app.get("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Return policy with plain text SSN (as stored in database)
+      await logger.logAuth({
+        req,
+        action: "view_quote",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote",
+          policyId: id,
+          fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
+        },
+      });
+      
+      res.json({ policy });
+    } catch (error: any) {
+      console.error("Error fetching quote:", error);
+      res.status(500).json({ message: "Failed to fetch quote" });
+    }
+  });
+  
+  // Get all members with income and immigration data for a quote
+  app.get("/api/policies/:id/members-details", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Get all policy members for this quote
+      const members = await storage.getPolicyMembersByQuoteId(id, currentUser.companyId!);
+      
+      // Fetch income and immigration data for each member
+      const membersWithDetails = await Promise.all(
+        members.map(async (member) => {
+          const income = await storage.getPolicyMemberIncome(member.id, currentUser.companyId!).catch(() => null);
+          const immigration = await storage.getPolicyMemberImmigration(member.id, currentUser.companyId!).catch(() => null);
+          
+          return {
+            ...member,
+            income,
+            immigration
+          };
+        })
+      );
+      
+      res.json({ members: membersWithDetails });
+    } catch (error: any) {
+      console.error("Error fetching members details:", error);
+      res.status(500).json({ message: "Failed to fetch members details" });
+    }
+  });
+
+  // Get total household income for a policy (sum of all family members)
+  app.get("/api/policies/:id/household-income", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Get all policy members for this quote
+      const members = await storage.getPolicyMembersByQuoteId(id, currentUser.companyId!);
+      
+      // Calculate total income by summing all members' annual income
+      let totalIncome = 0;
+      
+      for (const member of members) {
+        // Get income data for this member
+        const incomeData = await storage.getPolicyMemberIncome(member.id, currentUser.companyId!);
+        
+        // Use totalAnnualIncome if available (already calculated), otherwise fall back to annualIncome
+        const incomeField = incomeData?.totalAnnualIncome || incomeData?.annualIncome;
+        
+        if (incomeField) {
+          const incomeAmount = parseFloat(incomeField);
+          
+          if (!isNaN(incomeAmount)) {
+            totalIncome += incomeAmount;
+          }
+        }
+      }
+      
+      res.json({ totalIncome });
+    } catch (error: any) {
+      console.error("Error calculating household income:", error);
+      res.status(500).json({ message: "Failed to calculate household income" });
+    }
+  });
+
+  // UNIFIED QUOTE DETAIL - Gets ALL related data in one call to prevent stale cache issues
+  app.get("/api/policies/:id/detail", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Use the new unified getQuoteDetail function that fetches all data atomically
+      const quoteDetail = await storage.getPolicyDetail(id, currentUser.companyId!);
+      
+      // Log access to sensitive data
+      await logger.logAuth({
+        req,
+        action: "view_quote_detail",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote",
+          policyId: id,
+          fields: ["clientSsn", "members", "income", "immigration", "paymentMethods"],
+        },
+      });
+      
+      // Return the complete policy detail with all related data
+      res.json(quoteDetail);
+    } catch (error: any) {
+      console.error("Error fetching unified policy detail:", error);
+      
+      // If policy not found, return 404
+      if (error.message === 'Policy not found') {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      res.status(500).json({ message: "Failed to fetch policy details" });
+    }
+  });
+
+  // Update policy
+  // WARNING: This endpoint handles PII (SSN) - never log full request body or return unmasked SSN
+  app.patch("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // 1. Get existing policy and verify ownership (SECURITY: tenant-scoped authorization)
+      const existingQuote = await storage.getPolicy(id);
+      
+      if (!existingQuote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin can edit any quote, others only their company's quotes
+      if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to edit this quote" });
+      }
+      
+      // 2. NO date conversions - keep dates as yyyy-MM-dd strings
+      // Apply same address field mapping as in create quote
+      const payload = {
+        ...req.body,
+        // Map address fields consistently with create route
+        // Frontend sends fields WITH mailing_ prefix, use them directly
+        mailing_street: req.body.mailing_street,
+        mailing_city: req.body.mailing_city,
+        mailing_state: req.body.mailing_state,
+        mailing_postal_code: req.body.mailing_postal_code,
+        mailing_county: req.body.mailing_county,
+        
+        // Map physical address fields (fix field name discrepancies)
+        physical_street: req.body.physical_street || req.body.physical_address,
+        physical_city: req.body.physical_city,
+        physical_state: req.body.physical_state,
+        physical_postal_code: req.body.physical_postal_code || req.body.physical_postalCode,
+        physical_county: req.body.physical_county,
+        
+        // Remove duplicate fields
+        physical_address: undefined,
+        physical_postalCode: undefined
+      };
+      
+      // Remove undefined fields from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+      
+      // Dates remain as strings (yyyy-MM-dd) - no conversion needed
+      // effectiveDate, clientDateOfBirth, spouse.dateOfBirth, dependent.dateOfBirth all stay as strings
+      
+      // 3. Validate with Zod (strips unknown keys, validates nested arrays)
+      const validatedData = updateQuoteSchema.parse(payload);
+      
+      // 4. Update the quote
+      const updatedQuote = await storage.updatePolicy(id, validatedData);
+      
+      // Log activity (WARNING: Do NOT log the full request body - contains SSN)
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      // Return policy with plain text SSN (as stored in database)
+      res.json({ quote: updatedQuote });
+    } catch (error: any) {
+      console.error("Error updating quote:", error);
+      // Return validation errors with proper details
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to update quote" });
+    }
+  });
+  
+  // Delete policy
+  app.delete("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin or same company admin
+      if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - Admin or Superadmin only" });
+      }
+      
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const deleted = await storage.deletePolicy(id);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete quote" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Policy deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting quote:", error);
+      res.status(500).json({ message: "Failed to delete quote" });
+    }
+  });
+
+  // ==================== QUOTE MEMBERS ====================
+  
+  // Get all members for a quote
+  app.get("/api/policies/:policyId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const members = await storage.getPolicyMembersByQuoteId(policyId, policy.companyId);
+      
+      // Return members with plain text SSN (as stored in database)
+      await logger.logAuth({
+        req,
+        action: "view_quote_members",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_members",
+          policyId,
+          fields: ["ssn"],
+        },
+      });
+      
+      res.json({ members });
+    } catch (error: any) {
+      console.error("Error getting policy members:", error);
+      res.status(500).json({ message: "Failed to get policy members" });
+    }
+  });
+  
+  // Get single member by ID
+  app.get("/api/policies/:policyId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, memberId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const member = await storage.getPolicyMemberById(memberId, policy.companyId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Verify member belongs to this quote
+      if (member.policyId !== policyId) {
+        return res.status(404).json({ message: "Member not found in this quote" });
+      }
+      
+      // Return member with plain text SSN (as stored in database)
+      await logger.logAuth({
+        req,
+        action: "view_quote_member",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_member",
+          memberId,
+          policyId,
+          fields: ["ssn"],
+        },
+      });
+      
+      res.json({ member });
+    } catch (error: any) {
+      console.error("Error getting policy member:", error);
+      res.status(500).json({ message: "Failed to get policy member" });
+    }
+  });
+  
+  // Create new member
+  app.post("/api/policies/:policyId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body
+      const validatedData = insertPolicyMemberSchema.parse({
+        ...req.body,
+        policyId,
+      });
+      
+      // SSN stored as plain text (no encryption)
+      const member = await storage.createPolicyMember(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_member",
+        entityId: member.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          createdBy: currentUser.email,
+        },
+      });
+      
+      res.status(201).json({ member });
+    } catch (error: any) {
+      console.error("Error creating policy member:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to create policy member" });
+    }
+  });
+  
+  // Update member
+  app.patch("/api/policies/:policyId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, memberId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const member = await storage.getPolicyMemberById(memberId, policy.companyId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Verify member belongs to this quote
+      if (member.policyId !== policyId) {
+        return res.status(404).json({ message: "Member not found in this quote" });
+      }
+      
+      // Validate request body
+      const validatedData = updatePolicyMemberSchema.parse(req.body);
+      
+      // SSN stored as plain text (no encryption)
+      const updatedMember = await storage.updatePolicyMember(memberId, validatedData, policy.companyId);
+      
+      if (!updatedMember) {
+        return res.status(500).json({ message: "Failed to update member" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_member",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ member: updatedMember });
+    } catch (error: any) {
+      console.error("Error updating policy member:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to update policy member" });
+    }
+  });
+  
+  // Delete member
+  app.delete("/api/policies/:policyId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, memberId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const member = await storage.getPolicyMemberById(memberId, policy.companyId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Verify member belongs to this quote
+      if (member.policyId !== policyId) {
+        return res.status(404).json({ message: "Member not found in this quote" });
+      }
+      
+      const deleted = await storage.deletePolicyMember(memberId, policy.companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete member" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Member deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting policy member:", error);
+      res.status(500).json({ message: "Failed to delete policy member" });
+    }
+  });
+
+  // Create new policy member (for AddMemberSheet)
+  app.post("/api/policies/:policyId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Verify policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const { role, memberData } = req.body;
+      
+      if (!role || !memberData) {
+        return res.status(400).json({ message: "Missing required fields: role and memberData" });
+      }
+      
+      // Ensure member exists (this will create a new member)
+      const result = await storage.ensurePolicyMember(
+        policyId,
+        policy.companyId,
+        role,
+        memberData
+      );
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_member",
+        entityId: result.member.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          role,
+        },
+      });
+      
+      res.status(201).json({
+        member: result.member,
+        message: "Member created successfully"
+      });
+    } catch (error: any) {
+      console.error("Error creating policy member:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: error.message || "Failed to create policy member" });
+    }
+  });
+
+  // Ensure policy member exists (create or update) - returns memberId
+  app.post("/api/policies/:policyId/ensure-member", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Verify policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const { role, memberData } = req.body;
+      
+      if (!role || !memberData) {
+        return res.status(400).json({ message: "Missing required fields: role and memberData" });
+      }
+      
+      // Convert dateOfBirth from string to Date if present
+      if (memberData.dateOfBirth && typeof memberData.dateOfBirth === 'string') {
+        memberData.dateOfBirth = new Date(memberData.dateOfBirth);
+      }
+      
+      // Ensure member exists (create or update)
+      const result = await storage.ensurePolicyMember(
+        policyId,
+        policy.companyId,
+        role,
+        memberData
+      );
+      
+      await logger.logCrud({
+        req,
+        operation: result.wasCreated ? "create" : "update",
+        entity: "quote_member",
+        entityId: result.member.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          role,
+          wasCreated: result.wasCreated,
+        },
+      });
+      
+      res.json({
+        memberId: result.member.id,
+        wasCreated: result.wasCreated,
+      });
+    } catch (error: any) {
+      console.error("Error ensuring policy member:", error);
+      res.status(500).json({ message: "Failed to ensure policy member" });
+    }
+  });
+
+  // Update member basic data
+  app.put("/api/policies/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate and prepare update data
+      const updateData = {
+        firstName: req.body.firstName,
+        middleName: req.body.middleName,
+        lastName: req.body.lastName,
+        secondLastName: req.body.secondLastName,
+        email: req.body.email,
+        phone: req.body.phone,
+        dateOfBirth: req.body.dateOfBirth,
+        ssn: req.body.ssn,
+        gender: req.body.gender,
+        isApplicant: req.body.isApplicant,
+        isPrimaryDependent: req.body.isPrimaryDependent,
+        tobaccoUser: req.body.tobaccoUser,
+        pregnant: req.body.pregnant,
+        preferredLanguage: req.body.preferredLanguage,
+        countryOfBirth: req.body.countryOfBirth,
+        maritalStatus: req.body.maritalStatus,
+        weight: req.body.weight,
+        height: req.body.height,
+        relation: req.body.relation,
+      };
+      
+      // Update member
+      const updatedMember = await storage.updatePolicyMember(memberId, policy.companyId, updateData as any);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_member",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId: member.policyId,
+          role: member.role,
+        },
+      });
+      
+      res.json({ member: updatedMember });
+    } catch (error: any) {
+      console.error("Error updating member:", error);
+      res.status(500).json({ message: "Failed to update member" });
+    }
+  });
+
+  // Delete member (and cascading related data)
+  app.delete("/api/policies/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Prevent deletion of primary client
+      if (member.role === 'client') {
+        return res.status(400).json({ message: "Cannot delete primary client" });
+      }
+      
+      // Delete member (cascades to income, immigration, documents)
+      const success = await storage.deletePolicyMember(memberId, policy.companyId);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete member" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId: member.policyId,
+          role: member.role,
+          memberName: `${member.firstName} ${member.lastName}`,
+        },
+      });
+      
+      res.json({ success: true, message: "Member deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting member:", error);
+      res.status(500).json({ message: "Failed to delete member" });
+    }
+  });
+
+  // ==================== MEMBER INCOME ====================
+  
+  // Get member income
+  app.get("/api/policies/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const income = await storage.getPolicyMemberIncome(memberId, policy.companyId);
+      if (!income) {
+        return res.status(404).json({ message: "Income information not found" });
+      }
+      
+      // Income is stored as plain text (not encrypted)
+      res.json({ income });
+    } catch (error: any) {
+      console.error("Error getting member income:", error);
+      res.status(500).json({ message: "Failed to get member income" });
+    }
+  });
+  
+  // Create or update member income (upsert)
+  app.put("/api/policies/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body (include companyId from member)
+      const validatedData = insertPolicyMemberIncomeSchema.parse({
+        ...req.body,
+        memberId,
+        companyId: member.companyId,
+      });
+      
+      // Save income as plain text (no encryption)
+      const income = await storage.createOrUpdatePolicyMemberIncome(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_member_income",
+        entityId: income.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ income });
+    } catch (error: any) {
+      console.error("Error upserting member income:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to save member income" });
+    }
+  });
+  
+  // Delete member income
+  app.delete("/api/policies/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const deleted = await storage.deletePolicyMemberIncome(memberId, policy.companyId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Income information not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member_income",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Income information deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting member income:", error);
+      res.status(500).json({ message: "Failed to delete member income" });
+    }
+  });
+
+  // ==================== MEMBER IMMIGRATION ====================
+  
+  // Get member immigration
+  app.get("/api/policies/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const immigration = await storage.getPolicyMemberImmigration(memberId, policy.companyId);
+      if (!immigration) {
+        return res.status(404).json({ message: "Immigration information not found" });
+      }
+      
+      // Return immigration with plain text document numbers (as stored in database)
+      await logger.logAuth({
+        req,
+        action: "view_immigration",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_member_immigration",
+          memberId,
+          fields: ["visaNumber", "greenCardNumber", "i94Number"],
+        },
+      });
+      
+      res.json({ immigration });
+    } catch (error: any) {
+      console.error("Error getting member immigration:", error);
+      res.status(500).json({ message: "Failed to get member immigration" });
+    }
+  });
+  
+  // Create or update member immigration (upsert)
+  app.put("/api/policies/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body (include companyId from member)
+      const validatedData = insertPolicyMemberImmigrationSchema.parse({
+        ...req.body,
+        memberId,
+        companyId: member.companyId,
+      });
+      
+      // Immigration numbers stored as plain text (no encryption)
+      const immigration = await storage.createOrUpdatePolicyMemberImmigration(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_member_immigration",
+        entityId: immigration.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ immigration });
+    } catch (error: any) {
+      console.error("Error upserting member immigration:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to save member immigration" });
+    }
+  });
+  
+  // Delete member immigration
+  app.delete("/api/policies/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const deleted = await storage.deletePolicyMemberImmigration(memberId, policy.companyId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Immigration information not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member_immigration",
+        entityId: memberId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Immigration information deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting member immigration:", error);
+      res.status(500).json({ message: "Failed to delete member immigration" });
+    }
+  });
+
+  // ==================== MEMBER DOCUMENTS ====================
+  
+  // Get all documents for a member
+  app.get("/api/policies/members/:memberId/documents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const documents = await storage.getPolicyMemberDocuments(memberId, policy.companyId);
+      
+      res.json({ documents });
+    } catch (error: any) {
+      console.error("Error getting member documents:", error);
+      res.status(500).json({ message: "Failed to get member documents" });
+    }
+  });
+  
+  // Upload document (base64 JSON)
+  app.post("/api/policies/members/:memberId/documents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const { documentType, documentName, fileType, base64Data, description } = req.body;
+      
+      // Validate required fields
+      if (!documentType || !documentName || !fileType || !base64Data) {
+        return res.status(400).json({ 
+          message: "Missing required fields: documentType, documentName, fileType, base64Data" 
+        });
+      }
+      
+      // SECURITY: Validate MIME type against whitelist
+      if (!ALLOWED_MIME_TYPES.includes(fileType)) {
+        return res.status(400).json({ 
+          message: "Invalid file type. Allowed types: PDF, JPEG, PNG, JPG" 
+        });
+      }
+      
+      // Decode base64 to buffer
+      let fileBuffer: Buffer;
+      try {
+        fileBuffer = Buffer.from(base64Data, 'base64');
+      } catch (error) {
+        return res.status(400).json({ message: "Invalid base64 data" });
+      }
+      
+      // SECURITY: Validate file size (10MB max)
+      if (fileBuffer.length > MAX_FILE_SIZE) {
+        return res.status(400).json({ 
+          message: `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB` 
+        });
+      }
+      
+      // Create upload directory with strict path (prevents path traversal)
+      const uploadDir = path.join(process.cwd(), 'server', 'uploads', policy.companyId, member.policyId, memberId);
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      // SECURITY: Generate secure filename with crypto random bytes
+      // Sanitize original filename and extract extension
+      const sanitizedName = documentName.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\.{2,}/g, '_');
+      const ext = path.extname(sanitizedName);
+      const timestamp = Date.now();
+      const randomId = crypto.randomBytes(8).toString('hex');
+      const safeFilename = `${timestamp}-${randomId}${ext}`;
+      const filePath = path.join(uploadDir, safeFilename);
+      
+      // Write file to disk
+      fs.writeFileSync(filePath, fileBuffer);
+      
+      // Store relative path in database
+      const relativePath = path.join('uploads', policy.companyId, member.policyId, memberId, safeFilename);
+      
+      // Validate and create document record
+      const validatedData = insertPolicyMemberDocumentSchema.parse({
+        memberId,
+        documentType,
+        documentName,
+        documentPath: relativePath,
+        fileType,
+        fileSize: fileBuffer.length,
+        description: description || null,
+        uploadedBy: currentUser.id,
+      });
+      
+      const document = await storage.createPolicyMemberDocument(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_member_document",
+        entityId: document.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          documentType,
+          fileName: safeFilename,
+          fileSize: fileBuffer.length,
+          uploadedBy: currentUser.email,
+        },
+      });
+      
+      res.status(201).json({ document });
+    } catch (error: any) {
+      console.error("Error uploading document:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to upload document" });
+    }
+  });
+  
+  // Get single document metadata
+  app.get("/api/policies/members/:memberId/documents/:docId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId, docId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const document = await storage.getPolicyMemberDocumentById(docId, policy.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify document belongs to this member
+      if (document.memberId !== memberId) {
+        return res.status(404).json({ message: "Document not found for this member" });
+      }
+      
+      res.json({ document });
+    } catch (error: any) {
+      console.error("Error getting document:", error);
+      res.status(500).json({ message: "Failed to get document" });
+    }
+  });
+  
+  // Download document file
+  app.get("/api/policies/members/:memberId/documents/:docId/download", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId, docId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const document = await storage.getPolicyMemberDocumentById(docId, policy.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify document belongs to this member
+      if (document.memberId !== memberId) {
+        return res.status(404).json({ message: "Document not found for this member" });
+      }
+      
+      // Get full file path
+      const filePath = path.join(process.cwd(), 'server', document.documentPath);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "Document file not found on disk" });
+      }
+      
+      // SECURITY: Sanitize filename for Content-Disposition header to prevent header injection
+      const safeFilename = document.documentName.replace(/["\r\n]/g, '');
+      
+      // SECURITY: Validate MIME type against whitelist before serving
+      const safeContentType = ALLOWED_MIME_TYPES.includes(document.fileType) 
+        ? document.fileType 
+        : 'application/octet-stream';
+      
+      // Set secure content headers
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+      res.setHeader('Content-Type', safeContentType);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      
+      // Send file
+      res.sendFile(filePath);
+    } catch (error: any) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+  
+  // Delete document and file
+  app.delete("/api/policies/members/:memberId/documents/:docId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { memberId, docId } = req.params;
+    
+    try {
+      // First check if member exists and get company ownership
+      const member = await storage.getPolicyMemberById(memberId, currentUser.companyId!);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Get policy to check company ownership
+      const policy = await storage.getPolicy(member.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const document = await storage.getPolicyMemberDocumentById(docId, policy.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify document belongs to this member
+      if (document.memberId !== memberId) {
+        return res.status(404).json({ message: "Document not found for this member" });
+      }
+      
+      // Delete file from disk
+      const filePath = path.join(process.cwd(), 'server', document.documentPath);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      // Delete document record from database
+      const deleted = await storage.deletePolicyMemberDocument(docId, policy.companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete document record" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_member_document",
+        entityId: docId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          memberId,
+          documentType: document.documentType,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Document deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // ==================== QUOTE PAYMENT METHODS ====================
+  
+  // Get all payment methods for a policy (PLAIN TEXT - NO ENCRYPTION)
+  app.get("/api/policies/:policyId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const paymentMethods = await storage.getPolicyPaymentMethods(policyId, policy.companyId);
+      
+      // Return payment methods with plain text card/bank info
+      await logger.logAuth({
+        req,
+        action: "view_payment_methods",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_payment_methods",
+          policyId,
+          fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
+        },
+      });
+      
+      res.json({ paymentMethods });
+    } catch (error: any) {
+      console.error("Error getting payment methods:", error);
+      res.status(500).json({ message: "Failed to get payment methods" });
+    }
+  });
+  
+  // Get single payment method by ID (PLAIN TEXT - NO ENCRYPTION)
+  app.get("/api/policies/:policyId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, paymentMethodId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
+      if (!paymentMethod) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+      
+      // Verify payment method belongs to this quote
+      if (paymentMethod.policyId !== policyId) {
+        return res.status(404).json({ message: "Payment method not found in this quote" });
+      }
+      
+      // Return payment method with plain text data
+      await logger.logAuth({
+        req,
+        action: "view_payment_method",
+        userId: currentUser.id,
+        email: currentUser.email,
+        metadata: {
+          entity: "quote_payment_method",
+          paymentMethodId,
+          paymentType: paymentMethod.paymentType,
+          fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
+        },
+      });
+      
+      res.json({ paymentMethod });
+    } catch (error: any) {
+      console.error("Error getting payment method:", error);
+      res.status(500).json({ message: "Failed to get payment method" });
+    }
+  });
+  
+  // Create new payment method (PLAIN TEXT - NO ENCRYPTION)
+  app.post("/api/policies/:policyId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body (include companyId and policyId)
+      const validatedData = insertPaymentMethodSchema.parse({
+        ...req.body,
+        policyId,
+        companyId: policy.companyId,
+      });
+      
+      // Save payment method as plain text (no encryption per user requirement)
+      const paymentMethod = await storage.createPolicyPaymentMethod(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_payment_method",
+        entityId: paymentMethod.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          paymentType: paymentMethod.paymentType,
+          createdBy: currentUser.email,
+        },
+      });
+      
+      res.status(201).json({ paymentMethod });
+    } catch (error: any) {
+      console.error("Error creating payment method:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to create payment method" });
+    }
+  });
+  
+  // Update payment method (PLAIN TEXT - NO ENCRYPTION)
+  app.patch("/api/policies/:policyId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, paymentMethodId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Verify payment method exists and belongs to this quote
+      const existingPaymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
+      if (!existingPaymentMethod) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+      
+      if (existingPaymentMethod.policyId !== policyId) {
+        return res.status(404).json({ message: "Payment method not found in this quote" });
+      }
+      
+      // Validate request body
+      const validatedData = updatePaymentMethodSchema.parse(req.body);
+      
+      // Update payment method as plain text (no encryption)
+      const updated = await storage.updatePolicyPaymentMethod(paymentMethodId, validatedData, policy.companyId);
+      
+      if (!updated) {
+        return res.status(500).json({ message: "Failed to update payment method" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_payment_method",
+        entityId: paymentMethodId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          paymentType: updated.paymentType,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ paymentMethod: updated });
+    } catch (error: any) {
+      console.error("Error updating payment method:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(400).json({ message: error.message || "Failed to update payment method" });
+    }
+  });
+  
+  // Delete payment method
+  app.delete("/api/policies/:policyId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, paymentMethodId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Verify payment method exists and belongs to this quote
+      const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
+      if (!paymentMethod) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+      
+      if (paymentMethod.policyId !== policyId) {
+        return res.status(404).json({ message: "Payment method not found in this quote" });
+      }
+      
+      // Delete payment method
+      const deleted = await storage.deletePolicyPaymentMethod(paymentMethodId, policy.companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete payment method" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_payment_method",
+        entityId: paymentMethodId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          paymentType: paymentMethod.paymentType,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Payment method deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting payment method:", error);
+      res.status(500).json({ message: "Failed to delete payment method" });
+    }
+  });
+  
+  // Set default payment method
+  app.post("/api/policies/:policyId/payment-methods/:paymentMethodId/set-default", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, paymentMethodId } = req.params;
+    
+    try {
+      // Validate policy exists and user has access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Verify payment method exists and belongs to this quote
+      const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
+      if (!paymentMethod) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+      
+      if (paymentMethod.policyId !== policyId) {
+        return res.status(404).json({ message: "Payment method not found in this quote" });
+      }
+      
+      // Set as default payment method
+      await storage.setDefaultPolicyPaymentMethod(paymentMethodId, policyId, policy.companyId);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_payment_method",
+        entityId: paymentMethodId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          action: "set_default",
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Payment method set as default successfully" });
+    } catch (error: any) {
+      console.error("Error setting default payment method:", error);
+      res.status(500).json({ message: "Failed to set default payment method" });
+    }
+  });
+
+  // ==================== QUOTE NOTES ====================
+  
+  // Create a new note for a quote
+  app.post("/api/policies/:policyId/notes", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const { note, isImportant, isPinned, isResolved, attachments } = req.body;
+      
+      if (!note || note.trim() === "") {
+        return res.status(400).json({ message: "Note content is required" });
+      }
+      
+      const newNote = await storage.createPolicyNote({
+        policyId,
+        note: note.trim(),
+        isImportant: isImportant || false,
+        isPinned: isPinned || false,
+        isResolved: isResolved || false,
+        attachments: attachments || null,
+        companyId: policy.companyId,
+        createdBy: currentUser.id,
+      });
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_note",
+        entityId: newNote.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          isImportant: newNote.isImportant,
+          createdBy: currentUser.email,
+          hasAttachments: !!attachments && attachments.length > 0,
+        },
+      });
+      
+      res.status(201).json(newNote);
+    } catch (error: any) {
+      console.error("Error creating policy note:", error);
+      res.status(500).json({ message: "Failed to create policy note" });
+    }
+  });
+  
+  // Get all notes for a quote
+  app.get("/api/policies/:policyId/notes", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const notes = await storage.getPolicyNotes(policyId, policy.companyId);
+      
+      res.json({ notes });
+    } catch (error: any) {
+      console.error("Error fetching policy notes:", error);
+      res.status(500).json({ message: "Failed to fetch policy notes" });
+    }
+  });
+  
+  // Update a policy note
+  app.patch("/api/policies/:policyId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, noteId } = req.params;
+    const { note, isImportant, isPinned, isResolved, attachments } = req.body;
+    
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get the note to check permissions
+      const [existingNote] = await db
+        .select()
+        .from(quoteNotes)
+        .where(and(
+          eq(quoteNotes.id, noteId),
+          eq(quoteNotes.policyId, policyId),
+          eq(quoteNotes.companyId, policy.companyId)
+        ));
+      
+      if (!existingNote) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      // Permission check: only creator can edit (unless superadmin)
+      if (currentUser.role !== "superadmin" && existingNote.createdBy !== currentUser.id) {
+        return res.status(403).json({ message: "Forbidden - only the note creator can edit this note" });
+      }
+      
+      // Build update object with only provided fields
+      const updateData: any = {};
+      if (note !== undefined) updateData.note = note.trim();
+      if (isImportant !== undefined) updateData.isImportant = isImportant;
+      if (isPinned !== undefined) updateData.isPinned = isPinned;
+      if (isResolved !== undefined) updateData.isResolved = isResolved;
+      if (attachments !== undefined) updateData.attachments = attachments;
+      
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
+      }
+      
+      // Update the note
+      await db.update(quoteNotes)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(and(
+          eq(quoteNotes.id, noteId),
+          eq(quoteNotes.policyId, policyId),
+          eq(quoteNotes.companyId, policy.companyId)
+        ));
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_note",
+        entityId: noteId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          updatedBy: currentUser.email,
+          updates: Object.keys(updateData),
+        },
+      });
+      
+      res.json({ message: "Quote note updated successfully" });
+    } catch (error: any) {
+      console.error("Error updating policy note:", error);
+      res.status(500).json({ message: "Failed to update policy note" });
+    }
+  });
+  
+  // Delete a policy note
+  app.delete("/api/policies/:policyId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, noteId } = req.params;
+    
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get the note to check permissions
+      const [existingNote] = await db
+        .select()
+        .from(quoteNotes)
+        .where(and(
+          eq(quoteNotes.id, noteId),
+          eq(quoteNotes.policyId, policyId),
+          eq(quoteNotes.companyId, policy.companyId)
+        ));
+      
+      if (!existingNote) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      // Permission check: only creator can delete (unless superadmin)
+      if (currentUser.role !== "superadmin" && existingNote.createdBy !== currentUser.id) {
+        return res.status(403).json({ message: "Forbidden - only the note creator can delete this note" });
+      }
+      
+      // Delete the note (storage method handles company ID filtering)
+      await storage.deletePolicyNote(noteId, currentUser.role === "superadmin" ? undefined : policy.companyId);
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_note",
+        entityId: noteId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ message: "Quote note deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting policy note:", error);
+      res.status(500).json({ message: "Failed to delete policy note" });
+    }
+  });
+  
+  // Upload image attachment for policy notes
+  app.post("/api/policies/:policyId/notes/upload", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Set up multer for file upload
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'notes_attachments');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      const storage_config = multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, uploadsDir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `note_${uniqueSuffix}${ext}`);
+        },
+      });
+      
+      const upload = multer({
+        storage: storage_config,
+        limits: { fileSize: MAX_IMAGE_SIZE },
+        fileFilter: (req, file, cb) => {
+          if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'));
+          }
+          cb(null, true);
+        },
+      }).single('image');
+      
+      // Handle upload with promisified multer
+      await new Promise<void>((resolve, reject) => {
+        upload(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 5MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+      
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Return the file URL/path
+      const fileUrl = `/uploads/notes_attachments/${req.file.filename}`;
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_note_attachment",
+        entityId: req.file.filename,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          uploadedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ 
+        url: fileUrl,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      });
+    } catch (error: any) {
+      console.error("Error uploading note attachment:", error);
+      res.status(500).json({ message: error.message || "Failed to upload attachment" });
+    }
+  });
+
+  // ==================== QUOTE DOCUMENTS ENDPOINTS ====================
+  
+  // Multer configuration for policy documents
+  const documentStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const policyId = req.params.policyId;
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(7);
+      const ext = path.extname(file.originalname);
+      cb(null, `${policyId}_${timestamp}_${randomString}${ext}`);
+    }
+  });
+
+  const documentUpload = multer({
+    storage: documentStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      ];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Allowed types: PDF, images (JPEG, PNG, GIF, WebP), and Office documents (DOCX, XLSX, PPTX).'));
+      }
+    }
+  });
+
+  // GET /api/quotes/:policyId/documents - List all documents for a quote
+  app.get("/api/policies/:policyId/documents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    const { category, q } = req.query;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // List documents with optional filters
+      const documents = await storage.listPolicyDocuments(policyId, policy.companyId, {
+        category: category as string | undefined,
+        search: q as string | undefined
+      });
+
+      res.json({ documents });
+    } catch (error: any) {
+      console.error("Error listing policy documents:", error);
+      res.status(500).json({ message: "Failed to list documents" });
+    }
+  });
+
+  // POST /api/quotes/:policyId/documents/upload - Upload a new document
+  app.post("/api/policies/:policyId/documents/upload", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Handle upload with promisified multer
+      await new Promise<void>((resolve, reject) => {
+        documentUpload.single('file')(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 10MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Get category, description, and belongsTo from body
+      const { category, description, belongsTo } = req.body;
+
+      // Validate category if provided
+      const validCategories = ['passport', 'drivers_license', 'state_id', 'birth_certificate', 'parole', 'permanent_residence', 'work_permit', 'i94', 'other'];
+      const documentCategory = category && validCategories.includes(category) ? category : 'other';
+
+      // Create database record
+      const document = await storage.createPolicyDocument({
+        policyId,
+        fileName: req.file.originalname,
+        fileUrl: `/uploads/documents/${req.file.filename}`,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        category: documentCategory,
+        description: description || null,
+        belongsTo: (belongsTo && belongsTo !== 'none') ? belongsTo : null,
+        companyId: policy.companyId,
+        uploadedBy: currentUser.id
+      });
+
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_document",
+        entityId: document.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          category: documentCategory,
+          uploadedBy: currentUser.email,
+        },
+      });
+
+      res.status(201).json({ document });
+    } catch (error: any) {
+      console.error("Error uploading document:", error);
+      res.status(500).json({ message: error.message || "Failed to upload document" });
+    }
+  });
+
+  // GET /api/quotes/:policyId/documents/:documentId/download - Download a document
+  app.get("/api/policies/:policyId/documents/:documentId/download", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, documentId } = req.params;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Get document
+      const document = await storage.getPolicyDocument(documentId, policy.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Verify document belongs to quote
+      if (document.policyId !== policyId) {
+        return res.status(403).json({ message: "Document does not belong to this quote" });
+      }
+
+      // Extract filename from fileUrl
+      const filename = path.basename(document.fileUrl);
+      const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
+
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`File not found at path: ${filePath}`);
+        return res.status(404).json({ message: "File not found on server" });
+      }
+
+      // Prevent path traversal attacks
+      const realPath = fs.realpathSync(filePath);
+      const uploadsDir = fs.realpathSync(path.join(process.cwd(), 'uploads', 'documents'));
+      if (!realPath.startsWith(uploadsDir)) {
+        console.error(`Path traversal attempt detected: ${realPath}`);
+        return res.status(403).json({ message: "Invalid file path" });
+      }
+
+      // Set proper headers and stream file
+      res.setHeader('Content-Type', document.fileType);
+      res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+      res.download(filePath, document.fileName);
+
+      await logger.logCrud({
+        req,
+        operation: "read",
+        entity: "quote_document",
+        entityId: documentId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          fileName: document.fileName,
+          downloadedBy: currentUser.email,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
+  // DELETE /api/quotes/:policyId/documents/:documentId - Delete a document
+  app.delete("/api/policies/:policyId/documents/:documentId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, documentId } = req.params;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Get document
+      const document = await storage.getPolicyDocument(documentId, policy.companyId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Verify document belongs to quote
+      if (document.policyId !== policyId) {
+        return res.status(403).json({ message: "Document does not belong to this quote" });
+      }
+
+      // Delete from database first
+      const deleted = await storage.deletePolicyDocument(documentId, policy.companyId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete document from database" });
+      }
+
+      // Extract filename from fileUrl and delete physical file
+      const filename = path.basename(document.fileUrl);
+      const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
+
+      // Prevent path traversal attacks
+      const realPath = fs.existsSync(filePath) ? fs.realpathSync(filePath) : null;
+      const uploadsDir = fs.realpathSync(path.join(process.cwd(), 'uploads', 'documents'));
+
+      if (realPath && realPath.startsWith(uploadsDir)) {
+        // Delete physical file
+        try {
+          fs.unlinkSync(filePath);
+        } catch (fileError) {
+          console.error(`Error deleting file ${filePath}:`, fileError);
+          // Don't fail the request if file deletion fails - db record is already gone
+        }
+      }
+
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_document",
+        entityId: documentId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          fileName: document.fileName,
+          deletedBy: currentUser.email,
+        },
+      });
+
+      res.json({ message: "Document deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // ==================== QUOTE REMINDERS ====================
+  
+  // GET /api/quotes/:policyId/reminders - List all reminders for a quote
+  app.get("/api/policies/:policyId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    const { status, priority, userId } = req.query;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Build filters
+      const filters: { status?: string; priority?: string; userId?: string } = {};
+      if (status && typeof status === 'string') filters.status = status;
+      if (priority && typeof priority === 'string') filters.priority = priority;
+      if (userId && typeof userId === 'string') filters.userId = userId;
+
+      const reminders = await storage.listPolicyReminders(policyId, policy.companyId, filters);
+
+      res.json({ reminders });
+    } catch (error: any) {
+      console.error("Error fetching reminders:", error);
+      res.status(500).json({ message: "Failed to fetch reminders" });
+    }
+  });
+
+  // GET /api/quotes/:policyId/reminders/:reminderId - Get a specific reminder
+  app.get("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, reminderId } = req.params;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      const reminder = await storage.getPolicyReminder(reminderId, policy.companyId);
+      if (!reminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      // Verify reminder belongs to quote
+      if (reminder.policyId !== policyId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      res.json(reminder);
+    } catch (error: any) {
+      console.error("Error fetching reminder:", error);
+      res.status(500).json({ message: "Failed to fetch reminder" });
+    }
+  });
+
+  // POST /api/quotes/:policyId/reminders - Create a new reminder
+  app.post("/api/policies/:policyId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Validate request body
+      const reminderData = insertPolicyReminderSchema.parse({
+        ...req.body,
+        policyId,
+        companyId: policy.companyId,
+        createdBy: currentUser.id,
+      });
+
+      const reminder = await storage.createPolicyReminder(reminderData);
+
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_reminder",
+        entityId: reminder.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          dueDate: reminder.dueDate,
+          reminderType: reminder.reminderType,
+        },
+      });
+
+      res.status(201).json(reminder);
+    } catch (error: any) {
+      console.error("Error creating reminder:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid reminder data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create reminder" });
+    }
+  });
+
+  // PUT /api/quotes/:policyId/reminders/:reminderId - Update a reminder
+  app.put("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, reminderId } = req.params;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Verify reminder exists and belongs to quote
+      const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
+      if (!existingReminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (existingReminder.policyId !== policyId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      // Validate update data
+      const updateData = updatePolicyReminderSchema.parse(req.body);
+
+      const updatedReminder = await storage.updatePolicyReminder(reminderId, policy.companyId, updateData);
+
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_reminder",
+        entityId: reminderId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+        },
+      });
+
+      res.json(updatedReminder);
+    } catch (error: any) {
+      console.error("Error updating reminder:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid reminder data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update reminder" });
+    }
+  });
+
+  // DELETE /api/quotes/:policyId/reminders/:reminderId - Delete a reminder
+  app.delete("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, reminderId } = req.params;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Verify reminder exists and belongs to quote
+      const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
+      if (!existingReminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (existingReminder.policyId !== policyId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      const deleted = await storage.deletePolicyReminder(reminderId, policy.companyId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete reminder" });
+      }
+
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_reminder",
+        entityId: reminderId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+        },
+      });
+
+      res.json({ message: "Reminder deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting reminder:", error);
+      res.status(500).json({ message: "Failed to delete reminder" });
+    }
+  });
+
+  // PUT /api/quotes/:policyId/reminders/:reminderId/complete - Mark reminder as completed
+  app.put("/api/policies/:policyId/reminders/:reminderId/complete", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, reminderId } = req.params;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Verify reminder exists and belongs to quote
+      const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
+      if (!existingReminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (existingReminder.policyId !== policyId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      const completedReminder = await storage.completePolicyReminder(reminderId, policy.companyId, currentUser.id);
+
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_reminder",
+        entityId: reminderId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          action: "completed",
+          completedBy: currentUser.email,
+        },
+      });
+
+      res.json(completedReminder);
+    } catch (error: any) {
+      console.error("Error completing reminder:", error);
+      res.status(500).json({ message: "Failed to complete reminder" });
+    }
+  });
+
+  // PUT /api/quotes/:policyId/reminders/:reminderId/snooze - Snooze reminder
+  app.put("/api/policies/:policyId/reminders/:reminderId/snooze", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, reminderId } = req.params;
+    const { duration } = req.body;
+
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Verify reminder exists and belongs to quote
+      const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
+      if (!existingReminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (existingReminder.policyId !== policyId) {
+        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+      }
+
+      if (!duration) {
+        return res.status(400).json({ message: "duration is required" });
+      }
+
+      // Calculate snooze until date based on duration
+      const now = new Date();
+      let snoozeDate = new Date(now);
+
+      // Parse duration (e.g., "15min", "1hour", "2days", "1week")
+      const match = duration.match(/^(\d+)(min|hour|hours|day|days|week)s?$/);
+      if (!match) {
+        return res.status(400).json({ message: "Invalid duration format" });
+      }
+
+      const value = parseInt(match[1]);
+      const unit = match[2];
+
+      switch (unit) {
+        case 'min':
+          snoozeDate.setMinutes(snoozeDate.getMinutes() + value);
+          break;
+        case 'hour':
+        case 'hours':
+          snoozeDate.setHours(snoozeDate.getHours() + value);
+          break;
+        case 'day':
+        case 'days':
+          snoozeDate.setDate(snoozeDate.getDate() + value);
+          break;
+        case 'week':
+          snoozeDate.setDate(snoozeDate.getDate() + (value * 7));
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid duration unit" });
+      }
+
+      const snoozedReminder = await storage.snoozePolicyReminder(reminderId, policy.companyId, snoozeDate);
+
+      // The reminder scheduler will automatically create a notification when the snooze time expires
+
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_reminder",
+        entityId: reminderId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          action: "snoozed",
+          duration,
+          snoozedUntil: snoozeDate.toISOString(),
+        },
+      });
+
+      res.json(snoozedReminder);
+    } catch (error: any) {
+      console.error("Error snoozing reminder:", error);
+      res.status(500).json({ message: "Failed to snooze reminder" });
+    }
+  });
+
+  // ==================== CALENDAR EVENTS ====================
+  
+  // GET /api/calendar/events - Get all calendar events (birthdays + reminders) for the company
+  app.get("/api/calendar/events", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.role === "superadmin" && req.query.companyId 
+      ? String(req.query.companyId) 
+      : currentUser.companyId!;
+
+    try {
+      const events: any[] = [];
+
+      // Get all policies for the company
+      const policies = await storage.getPolicysByCompany(companyId);
+
+      // Track unique birthdays to avoid duplicates (using person identifier)
+      const birthdaySet = new Set<string>();
+
+      // Extract birthdays from all policy members
+      for (const policy of quotes) {
+        // Get policy members (spouses and dependents) from normalized table
+        const members = await storage.getPolicyMembersByQuoteId(policy.id, companyId);
+        
+        // Check if primary client exists in quote_members table
+        const primaryClientInMembers = members.find(m => m.role === 'client');
+        
+        // Only add primary client birthday if NOT in quote_members table (to avoid duplicates)
+        if (policy.clientDateOfBirth && !primaryClientInMembers) {
+          const birthdayKey = `${policy.id}-client-${policy.clientDateOfBirth}`;
+          if (!birthdaySet.has(birthdayKey)) {
+            birthdaySet.add(birthdayKey);
+            events.push({
+              type: 'birthday',
+              date: policy.clientDateOfBirth,
+              title: `${policy.clientFirstName} ${policy.clientLastName}`,
+              description: 'Birthday',
+              policyId: policy.id,
+              personName: `${policy.clientFirstName} ${policy.clientLastName}`,
+              role: 'Client',
+            });
+          }
+        }
+
+        // Add birthdays from quote_members table (normalized data)
+        for (const member of members) {
+          if (member.dateOfBirth) {
+            const birthdayKey = `${policy.id}-${member.id}-${member.dateOfBirth}`;
+            if (!birthdaySet.has(birthdayKey)) {
+              birthdaySet.add(birthdayKey);
+              const roleDisplay = member.role === 'client' ? 'Client' : 
+                                 member.role === 'spouse' ? 'Spouse' : 
+                                 member.relation || 'Dependent';
+              events.push({
+                type: 'birthday',
+                date: member.dateOfBirth,
+                title: `${member.firstName} ${member.lastName}`,
+                description: 'Birthday',
+                policyId: policy.id,
+                personName: `${member.firstName} ${member.lastName}`,
+                role: roleDisplay,
+              });
+            }
+          }
+        }
+      }
+
+      // Get all reminders for the company
+      const reminders = await storage.getPolicyRemindersByCompany(companyId);
+      for (const reminder of reminders) {
+        // Only include pending and snoozed reminders
+        if (reminder.status === 'pending' || reminder.status === 'snoozed') {
+          events.push({
+            type: 'reminder',
+            date: reminder.dueDate,
+            title: reminder.title || reminder.reminderType.replace('_', ' '),
+            description: reminder.description || '',
+            policyId: reminder.policyId,
+            reminderId: reminder.id,
+            reminderType: reminder.reminderType,
+            priority: reminder.priority,
+            status: reminder.status,
+            dueTime: reminder.dueTime,
+          });
+        }
+      }
+
+      res.json({ events });
+    } catch (error: any) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ message: "Failed to fetch calendar events" });
+    }
+  });
+
+  // ==================== PLAN SELECTION ====================
+  
+  // POST /api/quotes/:policyId/select-plan - Select a marketplace plan for a quote
+  app.post("/api/policies/:policyId/select-plan", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    const { plan } = req.body;
+    
+    try {
+      // Validate that plan data was provided
+      if (!plan) {
+        return res.status(400).json({ message: "Plan data is required" });
+      }
+      
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Update policy with selected plan
+      const updatedQuote = await storage.updatePolicy(policyId, {
+        selectedPlan: plan as any, // Store the complete plan object
+      });
+      
+      if (!updatedQuote) {
+        return res.status(500).json({ message: "Failed to update policy with selected plan" });
+      }
+      
+      // Log the activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote",
+        entityId: policyId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          action: "select_plan",
+          planId: plan.id || 'unknown',
+          planName: plan.name || 'unknown',
+        },
+      });
+      
+      res.json({ quote: updatedQuote });
+    } catch (error: any) {
+      console.error("Error selecting plan:", error);
+      res.status(500).json({ message: "Failed to select plan" });
+    }
+  });
+
+
+  // ==================== CONSENT DOCUMENTS ====================
+  
+  // POST /api/quotes/:id/consents/generate - Generate new consent document
+  app.post("/api/policies/:id/consents/generate", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: policyId } = req.params;
+    
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Create consent document
+      const consent = await storage.createPolicyConsentDocument(policyId, policy.companyId, currentUser.id);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "consent_document",
+        entityId: consent.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyId,
+          token: consent.token,
+        },
+      });
+      
+      res.json({ consent });
+    } catch (error: any) {
+      console.error("Error generating consent document:", error);
+      res.status(500).json({ message: "Failed to generate consent document" });
+    }
+  });
+  
+  // POST /api/consents/:id/send - Send consent via email/sms/link
+  app.post("/api/consents/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: consentId } = req.params;
+    const { channel, target } = req.body;
+    
+    try {
+      // Validate channel
+      if (!channel || !['email', 'sms', 'link'].includes(channel)) {
+        return res.status(400).json({ message: "Invalid channel. Must be 'email', 'sms', or 'link'" });
+      }
+      
+      // Get consent document
+      const consent = await storage.getConsentById(consentId, currentUser.companyId!);
+      if (!consent) {
+        return res.status(404).json({ message: "Consent document not found" });
+      }
+      
+      // Get policy and company details
+      const policy = await storage.getPolicy(consent.policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      const company = await storage.getCompany(consent.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Generate consent URL
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.APP_URL || 'http://localhost:5000';
+      const consentUrl = `${baseUrl}/consent/${consent.token}`;
+      
+      let deliveryTarget = target;
+      let sentAt = new Date();
+      
+      // Send based on channel
+      if (channel === 'email') {
+        if (!target) {
+          return res.status(400).json({ message: "Email address is required for email delivery" });
+        }
+        
+        // Use client's preferred language for simple notification email
+        const isSpanish = policy.clientPreferredLanguage === 'spanish' || policy.clientPreferredLanguage === 'es';
+        const agentName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Your Agent';
+        const clientName = policy.clientFirstName || 'there';
+        
+        const emailSubject = isSpanish 
+          ? 'Firme su Formulario de Consentimiento de Seguro de Salud' 
+          : 'Sign Your Health Insurance Consent Form';
+        
+        // Convert logo path to full URL if it's a relative path
+        // Gmail blocks data URIs, so only use http/https URLs
+        let logoUrl = null;
+        if (company.logo && company.logo.startsWith('http')) {
+          logoUrl = company.logo; // Already absolute URL
+        } else if (company.logo && !company.logo.startsWith('data:')) {
+          // It's a relative path, convert to absolute URL
+          logoUrl = `${baseUrl}${company.logo.startsWith('/') ? '' : '/'}${company.logo}`;
+        }
+        // If logo is data URI or null, don't use it (Gmail blocks data URIs)
+        
+        // Simple email with just notification message and button (no full document)
+        const htmlContent = `
+        <div style="max-width: 600px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #24292e; background: #ffffff; padding: 40px 24px;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            ${logoUrl ? `<img src="${logoUrl}" alt="${company.name}" style="height: 64px; margin: 0 auto 16px; display: block;">` : `<h2 style="font-size: 24px; font-weight: 700; margin: 0 0 16px; color: #24292e;">${company.name}</h2>`}
+          </div>
+          
+          <div style="font-size: 16px; line-height: 1.6; color: #24292e;">
+            <p style="margin: 0 0 16px;">${isSpanish ? 'Hola' : 'Hello'} ${clientName},</p>
+            <p style="margin: 0 0 16px;">
+              ${isSpanish 
+                ? `Ha recibido un formulario de consentimiento de <strong>${company.name}</strong>.` 
+                : `You have been sent a consent form from <strong>${company.name}</strong>.`
+              }
+            </p>
+            <p style="margin: 0 0 24px;">
+              ${isSpanish 
+                ? 'Por favor revise y firme el formulario de consentimiento para autorizarnos a asistirle con su inscripción de seguro de salud.' 
+                : 'Please review and sign the consent form to authorize us to assist you with your health insurance enrollment.'
+              }
+            </p>
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${consentUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; padding: 12px 32px; font-size: 16px; font-weight: 600;">
+                ${isSpanish ? 'Firmar Formulario de Consentimiento' : 'Sign Consent Form'}
+              </a>
+            </div>
+            <p style="margin: 0 0 8px; font-size: 14px; color: #57606a;">
+              ${isSpanish ? 'O copie y pegue este enlace en su navegador:' : 'Or copy and paste this link into your browser:'}
+            </p>
+            <p style="word-break: break-all; background: #f6f8fa; padding: 12px; border: 1px solid #d0d7de; border-radius: 6px; margin: 0 0 16px; font-size: 13px; color: #24292e;">${consentUrl}</p>
+            <p style="margin: 0 0 16px; font-size: 14px; color: #57606a;">
+              <strong>${isSpanish ? 'Este enlace expirará en 30 días.' : 'This link will expire in 30 days.'}</strong>
+            </p>
+          </div>
+          
+          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #d0d7de; font-size: 14px; color: #24292e;">
+            <p style="margin: 0 0 8px; font-weight: 600;">
+              ${isSpanish ? '¿Tiene alguna duda o pregunta?' : 'Questions or concerns?'}
+            </p>
+            <p style="margin: 0 0 4px;">
+              ${isSpanish ? 'Comuníquese con su agente:' : 'Contact your agent:'}
+            </p>
+            <p style="margin: 0 0 4px;"><strong>${agentName}</strong></p>
+            <p style="margin: 0 0 16px;">
+              ${isSpanish ? 'Teléfono:' : 'Phone:'} ${currentUser.phone || 'N/A'}
+            </p>
+          </div>
+          
+          <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #d0d7de; font-size: 12px; color: #57606a; text-align: center;">
+            <p style="margin: 0 0 8px;">
+              ${isSpanish ? 'Este es un mensaje automático de' : 'This is an automated message from'} ${company.name}.
+            </p>
+            <p style="margin: 0;">
+              © 2025 ${company.name}. ${isSpanish ? 'Todos los derechos reservados' : 'All rights reserved'}.
+            </p>
+          </div>
+        </div>
+        `;
+        
+        console.log('[CONSENT EMAIL] Sending notification email to:', target);
+        console.log('[CONSENT EMAIL] Language:', isSpanish ? 'Spanish' : 'English');
+        const sent = await emailService.sendEmail({
+          to: target,
+          subject: emailSubject,
+          html: htmlContent,
+        });
+        console.log('[CONSENT EMAIL] Send result:', sent);
+        
+        if (!sent) {
+          await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'Email delivery failed' }, currentUser.id);
+          return res.status(500).json({ message: "Failed to send email" });
+        }
+        
+        await storage.createConsentEvent(consentId, 'sent', { channel, target }, currentUser.id);
+        await storage.createConsentEvent(consentId, 'delivered', { channel, target }, currentUser.id);
+        
+      } else if (channel === 'sms') {
+        if (!target) {
+          return res.status(400).json({ message: "Phone number is required for SMS delivery" });
+        }
+        
+        // Use client's preferred language
+        const isSpanish = policy.clientPreferredLanguage === 'spanish' || policy.clientPreferredLanguage === 'es';
+        
+        const smsMessage = isSpanish 
+          ? `Hola ${policy.clientFirstName}, \n\nPara continuar necesitamos su consentimiento por favor firme en el siguiente enlace:\n\n${consentUrl}\n\nGracias\n\n${company.name}`
+          : `Hello ${policy.clientFirstName},\n\nTo continue we need your consent, please sign at the following link:\n\n${consentUrl}\n\nThank you\n\n${company.name}`;
+        
+        try {
+          const result = await twilioService.sendSMS(target, smsMessage);
+          
+          if (!result) {
+            await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'SMS delivery failed' }, currentUser.id);
+            return res.status(500).json({ message: "Failed to send SMS" });
+          }
+          
+          await storage.createConsentEvent(consentId, 'sent', { channel, target, sid: result.sid }, currentUser.id);
+          await storage.createConsentEvent(consentId, 'delivered', { channel, target, sid: result.sid }, currentUser.id);
+          
+        } catch (error: any) {
+          await storage.createConsentEvent(consentId, 'failed', { channel, target, error: error.message }, currentUser.id);
+          return res.status(500).json({ message: "Failed to send SMS" });
+        }
+        
+      } else if (channel === 'link') {
+        // For link channel, just return the URL
+        deliveryTarget = null;
+        sentAt = new Date();
+        
+        await storage.createConsentEvent(consentId, 'sent', { channel, url: consentUrl }, currentUser.id);
+      }
+      
+      // Update consent document with delivery info
+      const updatedConsent = await storage.updatePolicyConsentDocument(consentId, {
+        status: 'sent',
+        deliveryChannel: channel,
+        deliveryTarget,
+        sentAt,
+      });
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "consent_document",
+        entityId: consentId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          channel,
+          target,
+          action: "sent",
+        },
+      });
+      
+      res.json({ consent: updatedConsent, url: channel === 'link' ? consentUrl : undefined });
+    } catch (error: any) {
+      console.error("Error sending consent:", error);
+      res.status(500).json({ message: "Failed to send consent document" });
+    }
+  });
+  
+  // GET /api/quotes/:id/consents - List all consents for a quote
+  app.get("/api/policies/:id/consents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: policyId } = req.params;
+    
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const consents = await storage.listPolicyConsents(policyId, policy.companyId);
+      
+      res.json({ consents });
+    } catch (error: any) {
+      console.error("Error listing consents:", error);
+      res.status(500).json({ message: "Failed to list consents" });
+    }
+  });
+  
+  // DELETE /api/consents/:id - Delete consent document
+  app.delete("/api/consents/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: consentId } = req.params;
+    
+    try {
+      // Get consent to verify ownership
+      const consent = await storage.getConsentById(consentId, currentUser.companyId!);
+      if (!consent) {
+        return res.status(404).json({ message: "Consent document not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && consent.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const deleted = await storage.deletePolicyConsentDocument(consentId, consent.companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete consent document" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "consent_document",
+        entityId: consentId,
+        companyId: currentUser.companyId || undefined,
+      });
+      
+      res.json({ message: "Consent document deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting consent:", error);
+      res.status(500).json({ message: "Failed to delete consent document" });
+    }
+  });
+
+  // ==================== CMS MARKETPLACE API ====================
+  
+  // Import CMS Marketplace service
+  const cmsMarketplace = await import('./cms-marketplace.js');
+  const { fetchMarketplacePlans, getCountyFips } = cmsMarketplace;
+  
+  // Get health insurance plans from CMS Marketplace API
+  app.post("/api/cms-marketplace/plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const { policyId } = req.body;
+      
+      if (!policyId) {
+        return res.status(400).json({ message: "Policy ID is required" });
+      }
+      
+      // Get policy details
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get policy members
+      const members = await storage.getPolicyMembersByQuoteId(policyId, policy.companyId);
+      
+      // Get household income
+      const incomePromises = members.map(member => 
+        storage.getPolicyMemberIncome(member.id, policy.companyId)
+      );
+      const incomeRecords = await Promise.all(incomePromises);
+      const totalIncome = incomeRecords.reduce((sum, income) => {
+        if (income?.totalAnnualIncome) {
+          return sum + Number(income.totalAnnualIncome);
+        }
+        return sum;
+      }, 0);
+      
+      // Prepare data for CMS API
+      const client = members.find(m => m.role === 'client');
+      const spouses = members.filter(m => m.role === 'spouse');
+      const dependents = members.filter(m => m.role === 'dependent');
+      
+      // If no client in members, check the quote's client fields
+      const clientData = client || {
+        dateOfBirth: policy.clientDateOfBirth,
+        gender: policy.clientGender,
+        tobaccoUser: policy.clientTobaccoUser,
+        pregnant: false, // No pregnant field in policies table for client
+      };
+      
+      if (!clientData || !clientData.dateOfBirth) {
+        return res.status(400).json({ message: "Client information incomplete - date of birth required" });
+      }
+      
+      if (!policy.physical_postal_code || !policy.physical_county || !policy.physical_state) {
+        return res.status(400).json({ message: "Quote address information incomplete" });
+      }
+      
+      const quoteData = {
+        zipCode: policy.physical_postal_code,
+        county: policy.physical_county,
+        state: policy.physical_state,
+        householdIncome: totalIncome,
+        client: {
+          dateOfBirth: clientData.dateOfBirth,
+          gender: clientData.gender || undefined,
+          pregnant: clientData.pregnant || false,
+          usesTobacco: clientData.tobaccoUser || false,
+        },
+        spouses: spouses.map(s => ({
+          dateOfBirth: s.dateOfBirth!,
+          gender: s.gender || undefined,
+          pregnant: s.pregnant || false,
+          usesTobacco: s.tobaccoUser || false,
+        })),
+        dependents: dependents.map(d => ({
+          dateOfBirth: d.dateOfBirth!,
+          gender: d.gender || undefined,
+          pregnant: d.pregnant || false,
+          usesTobacco: d.tobaccoUser || false,
+        })),
+      };
+      
+      // Get pagination parameters from query string
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      
+      // Fetch plans from CMS Marketplace with pagination
+      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize);
+      
+      // TODO: Add audit logging when logger service is available
+      // Log successful fetch for tracking
+      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for policy ${policyId}, page ${page}`);
+      
+      res.json(marketplaceData);
+    } catch (error: any) {
+      console.error("Error fetching marketplace plans:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch marketplace plans",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
+  // GET endpoint for health insurance plans with server-side pagination
+  app.get("/api/policies/:id/marketplace-plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const policyId = req.params.id;
+    
+    try {
+      // Get pagination parameters from query string
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      
+      if (!policyId) {
+        return res.status(400).json({ message: "Policy ID is required" });
+      }
+      
+      // Get policy details
+      const policy = await storage.getPolicy(policyId);
+      if (!quote) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get policy members
+      const members = await storage.getPolicyMembersByQuoteId(policyId, policy.companyId);
+      
+      // Get household income
+      const incomePromises = members.map(member => 
+        storage.getPolicyMemberIncome(member.id, policy.companyId)
+      );
+      const incomeRecords = await Promise.all(incomePromises);
+      const totalIncome = incomeRecords.reduce((sum, income) => {
+        if (income?.totalAnnualIncome) {
+          return sum + Number(income.totalAnnualIncome);
+        }
+        return sum;
+      }, 0);
+      
+      // Prepare data for CMS API
+      const client = members.find(m => m.role === 'client');
+      const spouses = members.filter(m => m.role === 'spouse');
+      const dependents = members.filter(m => m.role === 'dependent');
+      
+      // If no client in members, check the quote's client fields
+      const clientData = client || {
+        dateOfBirth: policy.clientDateOfBirth,
+        gender: policy.clientGender,
+        tobaccoUser: policy.clientTobaccoUser,
+        pregnant: false, // No pregnant field in policies table for client
+      };
+      
+      if (!clientData || !clientData.dateOfBirth) {
+        return res.status(400).json({ message: "Client information incomplete - date of birth required" });
+      }
+      
+      if (!policy.physical_postal_code || !policy.physical_county || !policy.physical_state) {
+        return res.status(400).json({ message: "Quote address information incomplete" });
+      }
+      
+      const quoteData = {
+        zipCode: policy.physical_postal_code,
+        county: policy.physical_county,
+        state: policy.physical_state,
+        householdIncome: totalIncome,
+        client: {
+          dateOfBirth: clientData.dateOfBirth,
+          gender: clientData.gender || undefined,
+          pregnant: clientData.pregnant || false,
+          usesTobacco: clientData.tobaccoUser || false,
+        },
+        spouses: spouses.map(s => ({
+          dateOfBirth: s.dateOfBirth!,
+          gender: s.gender || undefined,
+          pregnant: s.pregnant || false,
+          usesTobacco: s.tobaccoUser || false,
+        })),
+        dependents: dependents.map(d => ({
+          dateOfBirth: d.dateOfBirth!,
+          gender: d.gender || undefined,
+          pregnant: d.pregnant || false,
+          usesTobacco: d.tobaccoUser || false,
+        })),
+      };
+      
+      // Dynamic import of CMS Marketplace service (same as other endpoints)
+      const cmsMarketplace = await import('./cms-marketplace.js');
+      const { fetchMarketplacePlans: fetchPlans } = cmsMarketplace;
+      
+      // Fetch plans from CMS Marketplace with pagination
+      const marketplaceData = await fetchPlans(quoteData, page, pageSize);
+      
+      // Enrich plans with dental coverage information from benefits
+      if (marketplaceData.plans) {
+        marketplaceData.plans = marketplaceData.plans.map((plan: any) => {
+          // Check for dental coverage in benefits
+          const hasDentalChild = plan.benefits?.some((b: any) => 
+            b.type?.toLowerCase().includes('dental') && 
+            b.type?.toLowerCase().includes('child') &&
+            b.covered === true
+          ) || false;
+          
+          const hasDentalAdult = plan.benefits?.some((b: any) => 
+            b.type?.toLowerCase().includes('dental') && 
+            b.type?.toLowerCase().includes('adult') &&
+            b.covered === true
+          ) || false;
+          
+          return {
+            ...plan,
+            has_dental_child_coverage: hasDentalChild,
+            has_dental_adult_coverage: hasDentalAdult,
+          };
+        });
+      }
+      
+      // Log successful fetch for tracking
+      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for policy ${policyId}, page ${page}`);
       
       res.json(marketplaceData);
     } catch (error: any) {
