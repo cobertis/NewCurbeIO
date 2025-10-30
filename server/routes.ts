@@ -11750,6 +11750,67 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Get policies statistics for dashboard cards
+  app.get("/api/policies/stats", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      if (!currentUser.companyId) {
+        return res.status(400).json({ message: "User must belong to a company" });
+      }
+      
+      // Get all policies for the company
+      const allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
+      
+      // Calculate total policies
+      const totalPolicies = allPolicies.length;
+      
+      // Calculate canceled policies
+      const canceledPolicies = allPolicies.filter(p => 
+        p.status === 'canceled' || p.status === 'cancelled'
+      ).length;
+      
+      // Get all policy members to count applicants
+      const memberPromises = allPolicies.map(policy => 
+        storage.getPolicyMembersByPolicyId(policy.id, currentUser.companyId!)
+      );
+      const allMembersArrays = await Promise.all(memberPromises);
+      
+      // Count total applicants (members with isApplicant=true + primary clients who are applicants)
+      let totalApplicants = 0;
+      let canceledApplicants = 0;
+      
+      for (let i = 0; i < allPolicies.length; i++) {
+        const policy = allPolicies[i];
+        const members = allMembersArrays[i];
+        const isCanceled = policy.status === 'canceled' || policy.status === 'cancelled';
+        
+        // Count primary client if applicant
+        if (policy.clientIsApplicant) {
+          totalApplicants++;
+          if (isCanceled) canceledApplicants++;
+        }
+        
+        // Count members who are applicants
+        const memberApplicants = members.filter(m => m.isApplicant).length;
+        totalApplicants += memberApplicants;
+        if (isCanceled) {
+          canceledApplicants += memberApplicants;
+        }
+      }
+      
+      res.json({
+        totalPolicies,
+        totalApplicants,
+        canceledPolicies,
+        canceledApplicants,
+      });
+    } catch (error: any) {
+      console.error("Error fetching policies stats:", error);
+      res.status(500).json({ message: "Failed to fetch policies statistics" });
+    }
+  });
+  
   // Get all policies for company
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {

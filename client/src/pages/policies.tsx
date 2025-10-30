@@ -8755,23 +8755,85 @@ export default function PoliciesPage() {
     );
   }
 
+  // Fetch policies statistics
+  const { data: stats } = useQuery<{
+    totalPolicies: number;
+    totalApplicants: number;
+    canceledPolicies: number;
+    canceledApplicants: number;
+  }>({
+    queryKey: ['/api/policies/stats'],
+    enabled: !showWizard,
+  });
+
   return (
     <div className="h-full p-6 flex flex-col overflow-hidden">
       {!showWizard ? (
-        <Card className="overflow-auto">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>All Policies</CardTitle>
-                <CardDescription>View and manage your insurance policies</CardDescription>
-              </div>
-              <Button onClick={() => setLocation("/policies/new")} data-testid="button-create-quote">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Policy
-              </Button>
+        <div className="space-y-6">
+          {/* Statistics Cards */}
+          {stats && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Policies Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Policies</CardTitle>
+                  <CardDescription className="text-xs">Number of policies</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
+                </CardContent>
+              </Card>
+
+              {/* Total Applicants Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Applicants</CardTitle>
+                  <CardDescription className="text-xs">Number of applicants</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+
+              {/* Canceled Policies Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Canceled policies</CardTitle>
+                  <CardDescription className="text-xs">Canceled policies</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
+                </CardContent>
+              </Card>
+
+              {/* Canceled Applicants Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Canceled applicants</CardTitle>
+                  <CardDescription className="text-xs">Canceled applicants</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
+                </CardContent>
+              </Card>
             </div>
-          </CardHeader>
-          <CardContent>
+          )}
+
+          {/* Policies Table */}
+          <Card className="overflow-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>All Policies</CardTitle>
+                  <CardDescription>View and manage your insurance policies</CardDescription>
+                </div>
+                <Button onClick={() => setLocation("/policies/new")} data-testid="button-create-quote">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Policy
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading policies...</div>
             ) : allQuotes.length === 0 ? (
@@ -9253,6 +9315,7 @@ export default function PoliciesPage() {
             )}
           </CardContent>
         </Card>
+        </div>
       ) : (
         <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader>
