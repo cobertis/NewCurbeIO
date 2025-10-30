@@ -60,13 +60,17 @@ export default function Calendar() {
     eventsData.events.forEach((event) => {
       // For birthdays, we need to match the month and day only (recurring annually)
       if (event.type === 'birthday') {
-        const eventDate = new Date(event.date);
-        const eventMonth = eventDate.getMonth();
-        const eventDay = eventDate.getDate();
+        // Parse date string directly to avoid timezone issues
+        // Format is yyyy-MM-dd, e.g., "2000-10-09"
+        const [yearStr, monthStr, dayStr] = event.date.split('-');
+        const eventMonth = parseInt(monthStr, 10); // 1-12
+        const eventDay = parseInt(dayStr, 10);     // 1-31
         
         // Check all calendar days to find matching birthdays
         calendarDays.forEach((day) => {
-          if (day.getMonth() === eventMonth && day.getDate() === eventDay) {
+          // getMonth() returns 0-11, so add 1 to compare
+          // getDate() returns 1-31, same as our parsed day
+          if (day.getMonth() + 1 === eventMonth && day.getDate() === eventDay) {
             const dateKey = format(day, "yyyy-MM-dd");
             if (!eventsByDate[dateKey]) {
               eventsByDate[dateKey] = [];

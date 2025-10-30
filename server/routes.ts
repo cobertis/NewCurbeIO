@@ -10841,34 +10841,53 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get all quotes for the company
       const quotes = await storage.getQuotesByCompany(companyId);
 
+      // Track unique birthdays to avoid duplicates (using person identifier)
+      const birthdaySet = new Set<string>();
+
       // Extract birthdays from all quote members
       for (const quote of quotes) {
-        // Primary client birthday
-        if (quote.clientDateOfBirth) {
-          events.push({
-            type: 'birthday',
-            date: quote.clientDateOfBirth,
-            title: `${quote.clientFirstName} ${quote.clientLastName}`,
-            description: 'Birthday',
-            quoteId: quote.id,
-            personName: `${quote.clientFirstName} ${quote.clientLastName}`,
-            role: 'Client',
-          });
-        }
-
-        // Get quote members (spouses and dependents)
+        // Get quote members (spouses and dependents) from normalized table
         const members = await storage.getQuoteMembersByQuoteId(quote.id, companyId);
-        for (const member of members) {
-          if (member.dateOfBirth) {
+        
+        // Check if primary client exists in quote_members table
+        const primaryClientInMembers = members.find(m => m.role === 'client');
+        
+        // Only add primary client birthday if NOT in quote_members table (to avoid duplicates)
+        if (quote.clientDateOfBirth && !primaryClientInMembers) {
+          const birthdayKey = `${quote.id}-client-${quote.clientDateOfBirth}`;
+          if (!birthdaySet.has(birthdayKey)) {
+            birthdaySet.add(birthdayKey);
             events.push({
               type: 'birthday',
-              date: member.dateOfBirth,
-              title: `${member.firstName} ${member.lastName}`,
+              date: quote.clientDateOfBirth,
+              title: `${quote.clientFirstName} ${quote.clientLastName}`,
               description: 'Birthday',
               quoteId: quote.id,
-              personName: `${member.firstName} ${member.lastName}`,
-              role: member.role === 'spouse' ? 'Spouse' : member.relation || 'Dependent',
+              personName: `${quote.clientFirstName} ${quote.clientLastName}`,
+              role: 'Client',
             });
+          }
+        }
+
+        // Add birthdays from quote_members table (normalized data)
+        for (const member of members) {
+          if (member.dateOfBirth) {
+            const birthdayKey = `${quote.id}-${member.id}-${member.dateOfBirth}`;
+            if (!birthdaySet.has(birthdayKey)) {
+              birthdaySet.add(birthdayKey);
+              const roleDisplay = member.role === 'client' ? 'Client' : 
+                                 member.role === 'spouse' ? 'Spouse' : 
+                                 member.relation || 'Dependent';
+              events.push({
+                type: 'birthday',
+                date: member.dateOfBirth,
+                title: `${member.firstName} ${member.lastName}`,
+                description: 'Birthday',
+                quoteId: quote.id,
+                personName: `${member.firstName} ${member.lastName}`,
+                role: roleDisplay,
+              });
+            }
           }
         }
       }
