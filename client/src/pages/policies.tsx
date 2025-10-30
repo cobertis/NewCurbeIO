@@ -6093,14 +6093,21 @@ export default function PoliciesPage() {
                     <label className="text-xs text-muted-foreground">Statuses</label>
                     <button
                       onClick={() => {
+                        console.log('[STATUS EDIT] Button clicked');
+                        console.log('[STATUS EDIT] Current values:', {
+                          status: viewingQuote.status,
+                          documentsStatus: viewingQuote.documentsStatus,
+                          paymentStatus: viewingQuote.paymentStatus,
+                        });
                         setStatusDialogValues({
                           status: viewingQuote.status || "",
                           documentsStatus: viewingQuote.documentsStatus || "",
                           paymentStatus: viewingQuote.paymentStatus || "",
                         });
                         setStatusDialogOpen(true);
+                        console.log('[STATUS EDIT] Dialog should be open now');
                       }}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       data-testid="button-edit-statuses"
                     >
                       <Pencil className="h-4 w-4" />
@@ -11140,11 +11147,16 @@ export default function PoliciesPage() {
       </Dialog>
 
       {/* Change Status Dialog */}
-      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+      <Dialog open={statusDialogOpen} onOpenChange={(open) => {
+        console.log('[STATUS DIALOG] onOpenChange called with:', open);
+        setStatusDialogOpen(open);
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Change policy status</DialogTitle>
           </DialogHeader>
+          
+          {console.log('[STATUS DIALOG] Rendering dialog, open:', statusDialogOpen, 'values:', statusDialogValues)}
           
           <div className="space-y-4 py-4">
             {/* Policy Status */}
