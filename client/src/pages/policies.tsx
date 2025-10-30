@@ -285,6 +285,110 @@ const COUNTRIES = [
   "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
+// Policy Status Selector Component
+const PolicyStatusSelector = ({ 
+  policyId, 
+  currentStatus, 
+  onStatusChange 
+}: { 
+  policyId: string; 
+  currentStatus: string; 
+  onStatusChange: (newStatus: string) => void;
+}) => {
+  const { toast } = useToast();
+  
+  const updateStatusMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      return await apiRequest(`/api/policies/${policyId}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status: newStatus }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    },
+    onSuccess: (data, newStatus) => {
+      toast({
+        title: "Status updated",
+        description: "Policy status has been updated successfully",
+      });
+      onStatusChange(newStatus);
+      setTimeout(() => {
+        toast({
+          title: "",
+          description: "",
+          className: "opacity-0",
+        });
+      }, 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update policy status",
+      });
+    },
+  });
+
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'active':
+        return {
+          label: 'Active',
+          className: 'bg-green-600 hover:bg-green-700 text-white border-0',
+        };
+      case 'pending':
+        return {
+          label: 'Pending',
+          className: 'bg-amber-500 hover:bg-amber-600 text-white border-0',
+        };
+      case 'cancelled':
+        return {
+          label: 'Cancelled',
+          className: 'bg-red-600 hover:bg-red-700 text-white border-0',
+        };
+      case 'expired':
+        return {
+          label: 'Expired',
+          className: 'bg-gray-500 hover:bg-gray-600 text-white border-0',
+        };
+      case 'suspended':
+        return {
+          label: 'Suspended',
+          className: 'bg-orange-600 hover:bg-orange-700 text-white border-0',
+        };
+      default:
+        return {
+          label: status,
+          className: 'bg-gray-500 hover:bg-gray-600 text-white border-0',
+        };
+    }
+  };
+
+  const currentConfig = getStatusConfig(currentStatus);
+
+  return (
+    <Select 
+      value={currentStatus} 
+      onValueChange={(value) => updateStatusMutation.mutate(value)}
+      disabled={updateStatusMutation.isPending}
+    >
+      <SelectTrigger className={`w-auto text-xs h-7 px-2 ${currentConfig.className}`} data-testid="select-policy-status">
+        <SelectValue>
+          {updateStatusMutation.isPending ? 'Updating...' : currentConfig.label}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="active">Active</SelectItem>
+        <SelectItem value="pending">Pending</SelectItem>
+        <SelectItem value="cancelled">Cancelled</SelectItem>
+        <SelectItem value="expired">Expired</SelectItem>
+        <SelectItem value="suspended">Suspended</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+};
+
 // Product types with descriptions
 const PRODUCT_TYPES = [
   {
@@ -6038,19 +6142,14 @@ export default function PoliciesPage() {
                           <h1 className="text-2xl font-bold">
                             {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                           </h1>
-                          {viewingQuote.status === 'active' ? (
-                            <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
-                              Active Policy
-                            </Badge>
-                          ) : viewingQuote.status === 'draft' ? (
-                            <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                              Draft
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              {viewingQuote.status || 'Draft'}
-                            </Badge>
-                          )}
+                          <PolicyStatusSelector 
+                            policyId={viewingQuote.id}
+                            currentStatus={viewingQuote.status || 'active'}
+                            onStatusChange={(newStatus) => {
+                              queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                              queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
+                            }}
+                          />
                         </div>
                         
                         {/* Quick Summary */}
