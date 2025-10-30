@@ -6065,21 +6065,42 @@ export default function QuotesPage() {
                   </DropdownMenu>
                 </div>
 
-                {/* Status Editor - Inline Collapsible */}
-                <div className="pb-3 border-b">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs text-muted-foreground">Statuses</label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2"
-                      onClick={() => setStatusEditorOpen(!statusEditorOpen)}
-                      data-testid="button-toggle-status-editor"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                {/* Status Badges with Inline Editor */}
+                <div className="pb-3 border-b space-y-2">
+                  {/* Status Badge with Edit Icon */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-muted-foreground">Status:</span>
+                      <button
+                        onClick={() => setStatusEditorOpen(!statusEditorOpen)}
+                        className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                        data-testid="button-toggle-status-editor"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <Badge variant={getStatusVariant(viewingQuote.status)} data-testid={`badge-status-${viewingQuote.status}`}>
+                      {formatStatusDisplay(viewingQuote.status)}
+                    </Badge>
                   </div>
                   
+                  {/* Documents Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Documents status:</span>
+                    <Badge variant={getDocumentsStatusVariant(viewingQuote.documentsStatus)} data-testid={`badge-documents-${viewingQuote.documentsStatus}`}>
+                      {formatStatusDisplay(viewingQuote.documentsStatus)}
+                    </Badge>
+                  </div>
+                  
+                  {/* Payment Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Payment status:</span>
+                    <Badge variant={getPaymentStatusVariant(viewingQuote.paymentStatus)} data-testid={`badge-payment-${viewingQuote.paymentStatus}`}>
+                      {formatPaymentStatusDisplay(viewingQuote.paymentStatus)}
+                    </Badge>
+                  </div>
+                  
+                  {/* Inline Editor - Expands below badges */}
                   <StatusEditorInline
                     type="quote"
                     id={viewingQuote.id}
