@@ -12100,6 +12100,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Update policy status
+  app.post("/api/policies/:id/status", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    try {
+      // Validate status value
+      const validStatuses = ["active", "pending", "cancelled", "expired", "suspended"];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be one of: active, pending, cancelled, expired, suspended" });
+      }
+      
+      // Get existing policy and verify ownership
+      const existingPolicy = await storage.getPolicy(id);
+      
+      if (!existingPolicy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin can edit any policy, others only their company's policies
+      if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to edit this policy" });
+      }
+      
+      // Update the policy status
+      const updatedPolicy = await storage.updatePolicy(id, { status });
+      
+      // Log activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "policy",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          updatedBy: currentUser.email,
+          field: "status",
+          oldValue: existingPolicy.status,
+          newValue: status,
+        },
+      });
+      
+      res.json({ policy: updatedPolicy });
+    } catch (error: any) {
+      console.error("Error updating policy status:", error);
+      res.status(400).json({ message: error.message || "Failed to update policy status" });
+    }
+  });
+  
   // Delete policy
   app.delete("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
