@@ -6208,10 +6208,12 @@ export default function PoliciesPage() {
                   return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
                 };
 
+                // Format currency to display EXACT value from API without any rounding
                 const formatCurrency = (value: any) => {
                   if (value === null || value === undefined) return 'N/A';
-                  const num = typeof value === 'string' ? parseFloat(value) : value;
-                  return `$${Math.round(num)}`;
+                  // Display exact value as received from API
+                  const valueStr = typeof value === 'number' ? value.toFixed(2) : value.toString();
+                  return `$${valueStr}`;
                 };
 
                 const primaryCareCost = getBenefitCost('Primary Care') || (plan.copay_primary ? formatCurrency(plan.copay_primary) : null);
@@ -6284,16 +6286,18 @@ export default function PoliciesPage() {
                           <p className="text-sm font-semibold mb-2">Premium</p>
                           <p className="text-4xl font-bold mb-1">
                             {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
-                              ? formatCurrency(plan.premium_w_credit)
-                              : formatCurrency(plan.premium)}
+                              ? `$${plan.premium_w_credit}/mo`
+                              : `$${plan.premium}/mo`}
                           </p>
                           {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
                             <>
                               <p className="text-xs text-green-600 dark:text-green-500">
-                                Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
+                                Savings total ${typeof plan.premium === 'number' && typeof plan.premium_w_credit === 'number' 
+                                  ? (plan.premium - plan.premium_w_credit).toFixed(2) 
+                                  : (parseFloat(plan.premium) - parseFloat(plan.premium_w_credit)).toFixed(2)}
                               </p>
                               <p className="text-xs text-muted-foreground line-through">
-                                Plan was {formatCurrency(plan.premium)}
+                                Plan was ${plan.premium}
                               </p>
                             </>
                           )}
@@ -8756,9 +8760,91 @@ export default function PoliciesPage() {
   }
 
   return (
-    <div className="h-full p-6 flex flex-col overflow-hidden">
-      {!showWizard ? (
-        <Card className="overflow-auto">
+    <div className="h-full flex overflow-hidden">
+      {/* Left Sidebar */}
+      {!showWizard && (
+        <div className="w-64 border-r bg-background p-4 overflow-y-auto flex-shrink-0">
+          <div className="space-y-1">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start font-semibold bg-accent text-accent-foreground"
+              data-testid="sidebar-policies"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Policies
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              data-testid="sidebar-oep-aca"
+            >
+              OEP 2026 ACA/Obamacare
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              data-testid="sidebar-oep-medicare"
+            >
+              OEP 2026 Medicare
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              data-testid="sidebar-important"
+            >
+              Important
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              data-testid="sidebar-archived"
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              Archived
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              data-testid="sidebar-exports"
+            >
+              Exports
+            </Button>
+            
+            <div className="pt-4 space-y-1">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-semibold text-muted-foreground">Agency folders</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0"
+                  data-testid="button-create-agency-folder"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="pt-2 space-y-1">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-semibold text-muted-foreground">Personal folders</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0"
+                  data-testid="button-create-personal-folder"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Main Content */}
+      <div className="flex-1 p-6 flex flex-col overflow-hidden">
+        {!showWizard ? (
+          <Card className="overflow-auto flex-1">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -9052,9 +9138,7 @@ export default function PoliciesPage() {
                         <TableHead className="w-16">Agent</TableHead>
                         <TableHead>Client</TableHead>
                         <TableHead>Policy</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Tags</TableHead>
-                        <TableHead>Assigned to</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -9146,65 +9230,48 @@ export default function PoliciesPage() {
                             </TableCell>
                             <TableCell>
                               <div className="space-y-1">
-                                <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
+                                <div className="font-medium text-sm">
                                   {quote.selectedPlan ? quote.selectedPlan.issuer_name : (product?.name || quote.productType)}
                                 </div>
-                                {quote.selectedPlan ? (
-                                  <div className="space-y-0.5">
-                                    <div className="text-xs text-muted-foreground">
-                                      {product?.name || quote.productType}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                      {quote.selectedPlan.plan_marketing_name}
-                                    </div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                                        {quote.selectedPlan.metal_level || 'N/A'}
-                                      </Badge>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-semibold text-green-600 dark:text-green-400">
-                                          ${quote.selectedPlan.premium_w_credit || quote.selectedPlan.premium}/mo
-                                        </span>
-                                        {quote.selectedPlan.premium_w_credit && quote.selectedPlan.premium > quote.selectedPlan.premium_w_credit && (
-                                          <span className="text-xs text-muted-foreground line-through">
-                                            ${quote.selectedPlan.premium}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="text-xs text-muted-foreground italic">
-                                    No plan selected
-                                  </div>
-                                )}
-                                <div className="text-xs text-muted-foreground pt-1 border-t">
-                                  Effective {formatDateForDisplay(quote.effectiveDate, "MMM dd, yyyy")} • ID: {quote.id.slice(0, 8)}
+                                <div className="text-xs text-muted-foreground">
+                                  Effective: {formatDateForDisplay(quote.effectiveDate, "MMM dd, yyyy")}
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  {(() => {
+                                    const spouses = Array.isArray(quote.spouses) ? quote.spouses : [];
+                                    const dependents = Array.isArray(quote.dependents) ? quote.dependents : [];
+                                    const applicantsCount = [
+                                      quote.clientIsApplicant ? 1 : 0,
+                                      ...spouses.map((s: any) => s.isApplicant ? 1 : 0),
+                                      ...dependents.map((d: any) => d.isApplicant ? 1 : 0)
+                                    ].reduce((a, b) => a + b, 0);
+                                    const totalMembers = 1 + spouses.length + dependents.length;
+                                    
+                                    return (
+                                      <>
+                                        <Badge variant="secondary" className="text-xs px-1.5 py-0 flex items-center gap-1">
+                                          <User className="h-3 w-3" />
+                                          {applicantsCount}
+                                        </Badge>
+                                        <Badge variant="outline" className="text-xs px-1.5 py-0 flex items-center gap-1">
+                                          <Users className="h-3 w-3" />
+                                          {totalMembers}
+                                        </Badge>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  ID: {quote.id.slice(0, 8)}
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="text-sm">
-                              {format(new Date(quote.createdAt), "MMM dd, yyyy h:mm a")}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              -
-                            </TableCell>
                             <TableCell>
-                              {assignedAgent ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm">{assignedAgent.firstName} {assignedAgent.lastName}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-5 w-5 p-0"
-                                    data-testid={`button-remove-assigned-${quote.id}`}
-                                  >
-                                    ×
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">-</span>
-                              )}
+                              <div className="space-y-1">
+                                <Badge variant={quote.status === 'canceled' ? 'destructive' : 'default'} className="text-xs">
+                                  {quote.status ? quote.status.charAt(0).toUpperCase() + quote.status.slice(1) : 'New'}
+                                </Badge>
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
@@ -10491,6 +10558,8 @@ export default function PoliciesPage() {
           </CardContent>
         </Card>
       )}
+      </div>
+      {/* End Main Content */}
 
       {/* Edit Member Sheet */}
       <EditMemberSheet

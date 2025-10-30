@@ -4619,14 +4619,14 @@ export class DbStorage implements IStorage {
       )
       .$dynamic();
     
-    const results = await query.orderBy(desc(policyDocuments.uploadedAt));
+    const results = await query.orderBy(desc(policyDocuments.createdAt));
     
     // Fetch member details for documents that belong to members
     const documentsWithDetails = await Promise.all(
       results.map(async (result) => {
         let belongsToMember = null;
-        if (result.document.belongsToMemberId) {
-          const member = await this.getPolicyMemberById(result.document.belongsToMemberId, companyId);
+        if (result.document.belongsTo) {
+          const member = await this.getPolicyMemberById(result.document.belongsTo, companyId);
           if (member) {
             belongsToMember = {
               firstName: member.firstName,
