@@ -522,10 +522,10 @@ function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending, addr
   };
 
   const getDescription = () => {
-    if (addressType === 'physical') return 'Update the physical address for this quote';
-    if (addressType === 'mailing') return 'Update the mailing address for this quote';
-    if (addressType === 'billing') return 'Update the billing address for this quote';
-    return 'Update the address for this quote';
+    if (addressType === 'physical') return 'Update the physical address for this policy';
+    if (addressType === 'mailing') return 'Update the mailing address for this policy';
+    if (addressType === 'billing') return 'Update the billing address for this policy';
+    return 'Update the address for this policy';
   };
 
   if (!addressType) return null;
@@ -4453,7 +4453,7 @@ export default function PoliciesPage() {
       setDeletingMember(null);
       toast({
         title: "Member deleted",
-        description: "The family member has been removed from this quote.",
+        description: "The family member has been removed from this policy.",
       });
     },
     onError: (error: any) => {
@@ -4875,7 +4875,7 @@ export default function PoliciesPage() {
           <SheetHeader>
             <SheetTitle>Edit Payment Information</SheetTitle>
             <SheetDescription>
-              Configure payment schedule and preferences for this quote
+              Configure payment schedule and preferences for this policy
             </SheetDescription>
           </SheetHeader>
           <Form {...paymentForm}>
@@ -4992,7 +4992,7 @@ export default function PoliciesPage() {
           <SheetHeader>
             <SheetTitle>Edit Notes or Comments</SheetTitle>
             <SheetDescription>
-              Add or update internal notes about this quote
+              Add or update internal notes about this policy
             </SheetDescription>
           </SheetHeader>
           <Form {...notesForm}>
@@ -5006,7 +5006,7 @@ export default function PoliciesPage() {
                     <FormControl>
                       <Textarea
                         {...field}
-                        placeholder="Add any notes or comments about this quote..."
+                        placeholder="Add any notes or comments about this policy..."
                         className="min-h-[200px]"
                         data-testid="textarea-notes"
                       />
@@ -5774,7 +5774,7 @@ export default function PoliciesPage() {
         <div className="flex items-center justify-center h-screen">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg text-muted-foreground">Loading quote details...</p>
+            <p className="text-lg text-muted-foreground">Loading policy details...</p>
           </div>
         </div>
       );
@@ -5784,8 +5784,8 @@ export default function PoliciesPage() {
       return (
         <div className="h-full p-6 flex items-center justify-center">
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Quote not found</h2>
-            <p className="text-muted-foreground mb-4">The quote you're looking for doesn't exist or has been deleted.</p>
+            <h2 className="text-2xl font-bold mb-2">Policy not found</h2>
+            <p className="text-muted-foreground mb-4">The policy you're looking for doesn't exist or has been deleted.</p>
             <Button onClick={() => setLocation("/policies")}>
               Back to Policies
             </Button>
@@ -6040,7 +6040,7 @@ export default function PoliciesPage() {
                           </h1>
                           {viewingQuote.status === 'active' ? (
                             <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
-                              Active Quote
+                              Active Policy
                             </Badge>
                           ) : viewingQuote.status === 'draft' ? (
                             <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
@@ -6398,7 +6398,7 @@ export default function PoliciesPage() {
                               queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                               toast({
                                 title: "Plan Removed",
-                                description: "The selected plan has been removed from this quote.",
+                                description: "The selected plan has been removed from this policy.",
                                 duration: 3000,
                               });
                             } catch (error: any) {
@@ -7118,7 +7118,7 @@ export default function PoliciesPage() {
                       {deletingMember && (
                         <>
                           <p>
-                            Are you sure you want to remove <strong>{deletingMember.name}</strong> ({deletingMember.role}) from this quote?
+                            Are you sure you want to remove <strong>{deletingMember.name}</strong> ({deletingMember.role}) from this policy?
                           </p>
                           <p className="mt-4">This will delete:</p>
                           <ul className="list-disc list-inside mt-2 space-y-1">
@@ -7161,7 +7161,7 @@ export default function PoliciesPage() {
                   <AlertDialogDescription asChild>
                     <div>
                       <p>
-                        Are you sure you want to remove the {deletingAddress === 'mailing' ? 'mailing' : 'billing'} address from this quote?
+                        Are you sure you want to remove the {deletingAddress === 'mailing' ? 'mailing' : 'billing'} address from this policy?
                       </p>
                       <p className="mt-4">
                         This will clear all address fields. You can add a new address later if needed.
@@ -7214,7 +7214,7 @@ export default function PoliciesPage() {
                 <div className="px-6 py-4 border-b">
                   <SheetTitle className="text-lg font-medium">Notes & Comments</SheetTitle>
                   <SheetDescription className="mt-1 text-sm">
-                    Internal notes for quote {viewingQuote?.id} - {quoteNotesCount} total
+                    Internal notes for policy {viewingQuote?.id} - {quoteNotesCount} total
                   </SheetDescription>
                 </div>
 
@@ -7753,7 +7753,7 @@ export default function PoliciesPage() {
                     </div>
                   </div>
                   <SheetDescription>
-                    Manage documents for this quote
+                    Manage documents for this policy
                   </SheetDescription>
                 </SheetHeader>
 
@@ -7910,7 +7910,7 @@ export default function PoliciesPage() {
               <DialogContent className="sm:max-w-[500px]" data-testid="dialog-upload-document">
                 <DialogTitle>Upload Document</DialogTitle>
                 <DialogDescription>
-                  Upload a document for this quote. Accepted formats: PDF, Images, Word, Excel, PowerPoint (max 10MB)
+                  Upload a document for this policy. Accepted formats: PDF, Images, Word, Excel, PowerPoint (max 10MB)
                 </DialogDescription>
                 <form onSubmit={(e) => {
                   e.preventDefault();
@@ -8165,7 +8165,7 @@ export default function PoliciesPage() {
                     </Button>
                   </div>
                   <SheetDescription>
-                    Manage reminders for this quote
+                    Manage reminders for this policy
                   </SheetDescription>
                 </SheetHeader>
 
@@ -8447,7 +8447,7 @@ export default function PoliciesPage() {
                     )}
                   </div>
                   <SheetDescription>
-                    {viewingConsent ? 'Preview of the signed consent document' : showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this quote'}
+                    {viewingConsent ? 'Preview of the signed consent document' : showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this policy'}
                   </SheetDescription>
                 </SheetHeader>
 
@@ -8658,7 +8658,7 @@ export default function PoliciesPage() {
               <DialogContent className="sm:max-w-[600px]" data-testid="dialog-reminder-form">
                 <DialogTitle>{selectedReminder ? 'Edit Reminder' : 'Create Reminder'}</DialogTitle>
                 <DialogDescription>
-                  {selectedReminder ? 'Update the reminder details' : 'Create a new reminder for this quote'}
+                  {selectedReminder ? 'Update the reminder details' : 'Create a new reminder for this policy'}
                 </DialogDescription>
                 <ReminderForm
                   reminder={selectedReminder}
@@ -9796,7 +9796,7 @@ export default function PoliciesPage() {
                       </div>
                       
                       <p className="text-sm text-muted-foreground">
-                        Add your spouse and/or dependents to the quote.
+                        Add your spouse and/or dependents to the policy.
                       </p>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
