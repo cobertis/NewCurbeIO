@@ -2070,7 +2070,7 @@ export const policies = pgTable("policies", {
   country: text("country").notNull().default("United States"),
   
   // Policy Status
-  status: text("status").notNull().default("active"),
+  status: text("status").notNull().default("new"),
   
   // Additional Information
   notes: text("notes"),

@@ -285,110 +285,6 @@ const COUNTRIES = [
   "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
-// Policy Status Selector Component
-const PolicyStatusSelector = ({ 
-  policyId, 
-  currentStatus, 
-  onStatusChange 
-}: { 
-  policyId: string; 
-  currentStatus: string; 
-  onStatusChange: (newStatus: string) => void;
-}) => {
-  const { toast } = useToast();
-  
-  const updateStatusMutation = useMutation({
-    mutationFn: async (newStatus: string) => {
-      return await apiRequest(`/api/policies/${policyId}/status`, {
-        method: 'POST',
-        body: JSON.stringify({ status: newStatus }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-    },
-    onSuccess: (data, newStatus) => {
-      toast({
-        title: "Status updated",
-        description: "Policy status has been updated successfully",
-      });
-      onStatusChange(newStatus);
-      setTimeout(() => {
-        toast({
-          title: "",
-          description: "",
-          className: "opacity-0",
-        });
-      }, 3000);
-    },
-    onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to update policy status",
-      });
-    },
-  });
-
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'active':
-        return {
-          label: 'Active',
-          className: 'bg-green-600 hover:bg-green-700 text-white border-0',
-        };
-      case 'pending':
-        return {
-          label: 'Pending',
-          className: 'bg-amber-500 hover:bg-amber-600 text-white border-0',
-        };
-      case 'cancelled':
-        return {
-          label: 'Cancelled',
-          className: 'bg-red-600 hover:bg-red-700 text-white border-0',
-        };
-      case 'expired':
-        return {
-          label: 'Expired',
-          className: 'bg-gray-500 hover:bg-gray-600 text-white border-0',
-        };
-      case 'suspended':
-        return {
-          label: 'Suspended',
-          className: 'bg-orange-600 hover:bg-orange-700 text-white border-0',
-        };
-      default:
-        return {
-          label: status,
-          className: 'bg-gray-500 hover:bg-gray-600 text-white border-0',
-        };
-    }
-  };
-
-  const currentConfig = getStatusConfig(currentStatus);
-
-  return (
-    <Select 
-      value={currentStatus} 
-      onValueChange={(value) => updateStatusMutation.mutate(value)}
-      disabled={updateStatusMutation.isPending}
-    >
-      <SelectTrigger className={`w-auto text-xs h-7 px-2 ${currentConfig.className}`} data-testid="select-policy-status">
-        <SelectValue>
-          {updateStatusMutation.isPending ? 'Updating...' : currentConfig.label}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="active">Active</SelectItem>
-        <SelectItem value="pending">Pending</SelectItem>
-        <SelectItem value="cancelled">Cancelled</SelectItem>
-        <SelectItem value="expired">Expired</SelectItem>
-        <SelectItem value="suspended">Suspended</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-};
-
 // Product types with descriptions
 const PRODUCT_TYPES = [
   {
@@ -6142,29 +6038,49 @@ export default function PoliciesPage() {
                           <h1 className="text-2xl font-bold">
                             {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                           </h1>
-                          {viewingQuote.status === 'active' ? (
-                            <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
-                              Active
-                            </Badge>
-                          ) : viewingQuote.status === 'pending' ? (
-                            <Badge className="text-xs bg-amber-500 hover:bg-amber-600 text-white">
-                              Pending
-                            </Badge>
-                          ) : viewingQuote.status === 'cancelled' ? (
+                          {viewingQuote.status === 'canceled' ? (
                             <Badge className="text-xs bg-red-600 hover:bg-red-700 text-white">
-                              Cancelled
+                              Canceled
                             </Badge>
-                          ) : viewingQuote.status === 'expired' ? (
-                            <Badge className="text-xs bg-gray-500 hover:bg-gray-600 text-white">
-                              Expired
+                          ) : viewingQuote.status === 'completed' ? (
+                            <Badge className="text-xs bg-green-600 hover:bg-green-700 text-white">
+                              Completed
                             </Badge>
-                          ) : viewingQuote.status === 'suspended' ? (
-                            <Badge className="text-xs bg-orange-600 hover:bg-orange-700 text-white">
-                              Suspended
+                          ) : viewingQuote.status === 'migrated' ? (
+                            <Badge className="text-xs bg-gray-900 hover:bg-gray-800 text-white">
+                              Migrated
+                            </Badge>
+                          ) : viewingQuote.status === 'new' ? (
+                            <Badge className="text-xs bg-blue-600 hover:bg-blue-700 text-white">
+                              New
+                            </Badge>
+                          ) : viewingQuote.status === 'pending_document' ? (
+                            <Badge className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white">
+                              Pending Document
+                            </Badge>
+                          ) : viewingQuote.status === 'pending_payment' ? (
+                            <Badge className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white">
+                              Pending Payment
+                            </Badge>
+                          ) : viewingQuote.status === 'renewed' ? (
+                            <Badge className="text-xs bg-blue-500 hover:bg-blue-600 text-white">
+                              Renewed
+                            </Badge>
+                          ) : viewingQuote.status === 'updated_by_client' ? (
+                            <Badge className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white">
+                              Updated by Client
+                            </Badge>
+                          ) : viewingQuote.status === 'waiting_for_approval' ? (
+                            <Badge className="text-xs bg-orange-500 hover:bg-orange-600 text-white">
+                              Waiting for Approval
+                            </Badge>
+                          ) : viewingQuote.status === 'waiting_on_agent' ? (
+                            <Badge className="text-xs bg-red-600 hover:bg-red-700 text-white">
+                              Waiting on Agent
                             </Badge>
                           ) : (
                             <Badge variant="secondary" className="text-xs">
-                              {viewingQuote.status || 'Active'}
+                              {viewingQuote.status || 'New'}
                             </Badge>
                           )}
                         </div>

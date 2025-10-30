@@ -80,7 +80,7 @@ Single reusable component (`marketplace-plans.tsx`) serves both Quotes and Polic
     -   **Quote Conversion:** "Submit Policy" button (green, visible when selectedPlan exists) converts quote to policy and removes from quotes list
     -   **Data Migration:** Sequential copy operation (Neon HTTP driver limitation - no transaction support) copying all quote data, family members, documents, payment methods, reminders, notes, and consent documents to policy tables
     -   **Policy Management:** Identical functionality to Quotes module with same UI components, endpoints (~54 API routes), and features
-    -   **Policy Status Management:** Interactive status selector in policy detail page with five states: Active (green), Pending (amber), Cancelled (red), Expired (gray), Suspended (orange). Includes endpoint POST `/api/policies/:id/status` with validation, authorization, and audit logging. Status changes invalidate TanStack Query cache and show auto-dismissing toast notifications (3 seconds).
+    -   **Policy Status Management:** Badge display in policy detail page with ten internal statuses: Canceled (red), Completed (green), Migrated (gray), New (blue), Pending Document (cyan), Pending Payment (cyan), Renewed (blue), Updated by Client (cyan), Waiting for Approval (orange), Waiting on Agent (red). Includes endpoint POST `/api/policies/:id/status` with validation, authorization, and audit logging.
     -   **Menu Organization:** Policies appears before Quotes in sidebar navigation
     -   **8-Character Short IDs:** Policies use same ID generation system as quotes for easy reference
 

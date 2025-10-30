@@ -12108,9 +12108,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     
     try {
       // Validate status value
-      const validStatuses = ["active", "pending", "cancelled", "expired", "suspended"];
+      const validStatuses = [
+        "canceled", "completed", "migrated", "new", 
+        "pending_document", "pending_payment", "renewed",
+        "updated_by_client", "waiting_for_approval", "waiting_on_agent"
+      ];
       if (!status || !validStatuses.includes(status)) {
-        return res.status(400).json({ message: "Invalid status. Must be one of: active, pending, cancelled, expired, suspended" });
+        return res.status(400).json({ message: "Invalid status. Must be one of: canceled, completed, migrated, new, pending_document, pending_payment, renewed, updated_by_client, waiting_for_approval, waiting_on_agent" });
       }
       
       // Get existing policy and verify ownership
