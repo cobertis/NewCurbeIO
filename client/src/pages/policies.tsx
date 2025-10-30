@@ -3385,9 +3385,6 @@ export default function PoliciesPage() {
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
   const [previewDocument, setPreviewDocument] = useState<any | null>(null);
   
-  // Change agent dialog state
-  const [changeAgentDialogOpen, setChangeAgentDialogOpen] = useState(false);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   
   const documentFileInputRef = useRef<HTMLInputElement>(null);
   
@@ -4473,7 +4470,6 @@ export default function PoliciesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/policies', params?.id, 'detail'] });
       queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
-      setChangeAgentDialogOpen(false);
       toast({
         title: "Agent Updated",
         description: "The agent has been successfully changed.",
@@ -5931,34 +5927,38 @@ export default function PoliciesPage() {
               
               <div className="space-y-3">
                 <div className="pb-3 border-b">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-muted-foreground">Agent</label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => {
-                        console.log('[CHANGE AGENT] Button clicked');
-                        console.log('[CHANGE AGENT] agent:', agent);
-                        console.log('[CHANGE AGENT] companyAgents:', companyAgents);
-                        setSelectedAgentId(agent?.id || "");
-                        setChangeAgentDialogOpen(true);
-                        console.log('[CHANGE AGENT] Dialog should open now');
-                      }}
-                      data-testid="button-change-agent"
-                    >
-                      Change
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={agent?.avatar || undefined} />
-                      <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                        {agent?.firstName?.[0] || 'A'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm font-medium">{agent?.firstName || 'Unknown'} {agent?.lastName || ''}</span>
-                  </div>
+                  <label className="text-xs text-muted-foreground mb-2 block">Agent</label>
+                  <Select
+                    value={agent?.id || ""}
+                    onValueChange={(newAgentId) => {
+                      changeAgentMutation.mutate(newAgentId);
+                    }}
+                    disabled={changeAgentMutation.isPending}
+                  >
+                    <SelectTrigger className="h-9" data-testid="select-agent">
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={agent?.avatar || undefined} />
+                            <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                              {agent?.firstName?.[0] || 'A'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm">{agent?.firstName || 'Unknown'} {agent?.lastName || ''}</span>
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companyAgents.map((agentOption) => (
+                        <SelectItem key={agentOption.id} value={agentOption.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{agentOption.firstName} {agentOption.lastName}</span>
+                            <span className="text-xs text-muted-foreground">({agentOption.email})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="pb-3 border-b">
@@ -10965,58 +10965,6 @@ export default function PoliciesPage() {
             clientPhone={viewingQuote?.clientPhone || ''}
             onClose={() => setConsentModalOpen(false)}
           />
-        </DialogContent>
-      </Dialog>
-
-      {/* Change Agent Dialog */}
-      <Dialog open={changeAgentDialogOpen} onOpenChange={setChangeAgentDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Change Agent</DialogTitle>
-            <DialogDescription>
-              Select a new agent to assign to this policy.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Agent</Label>
-              <Select
-                value={selectedAgentId}
-                onValueChange={setSelectedAgentId}
-              >
-                <SelectTrigger data-testid="select-agent">
-                  <SelectValue placeholder="Select an agent..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {companyAgents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      <div className="flex items-center gap-2">
-                        <span>{agent.firstName} {agent.lastName}</span>
-                        <span className="text-xs text-muted-foreground">({agent.email})</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setChangeAgentDialogOpen(false)}
-              data-testid="button-cancel-change-agent"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => changeAgentMutation.mutate(selectedAgentId)}
-              disabled={changeAgentMutation.isPending || !selectedAgentId}
-              data-testid="button-confirm-change-agent"
-            >
-              {changeAgentMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {changeAgentMutation.isPending ? "Updating..." : "Update Agent"}
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 
