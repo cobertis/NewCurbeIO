@@ -5940,10 +5940,10 @@ export default function PoliciesPage() {
                     <SelectTrigger className="h-9" data-testid="select-agent">
                       {agent ? (
                         <div className="flex items-center gap-2">
-                          <Avatar className="h-5 w-5">
+                          <Avatar className="h-6 w-6">
                             <AvatarImage src={agent.avatar || undefined} />
-                            <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                              {agent.firstName?.[0] || 'A'}
+                            <AvatarFallback className="text-xs font-semibold bg-muted">
+                              {agent.firstName?.[0]}{agent.lastName?.[0]}
                             </AvatarFallback>
                           </Avatar>
                           <span>{agent.firstName} {agent.lastName}</span>
