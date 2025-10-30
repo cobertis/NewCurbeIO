@@ -4746,7 +4746,7 @@ export default function QuotesPage() {
     });
   };
 
-  const agents = agentsData?.users || [];
+  const agents = companyAgents.length > 0 ? companyAgents : (agentsData?.users || []);
   const allQuotes = quotesData?.quotes || [];
   
   // Fetch members with income and immigration details

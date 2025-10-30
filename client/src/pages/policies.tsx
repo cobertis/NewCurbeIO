@@ -4734,7 +4734,7 @@ export default function PoliciesPage() {
     });
   };
 
-  const agents = agentsData?.users || [];
+  const agents = companyAgents.length > 0 ? companyAgents : (agentsData?.users || []);
   const allQuotes = quotesData?.policies || [];
   
   // Fetch members with income and immigration details
