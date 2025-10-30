@@ -9234,18 +9234,11 @@ export default function PoliciesPage() {
                                           {quote.selectedPlan.plan_type}
                                         </Badge>
                                       )}
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-semibold text-green-600 dark:text-green-400">
-                                          {quote.selectedPlan.premium_w_credit !== undefined && quote.selectedPlan.premium_w_credit !== null
-                                            ? formatCurrency(quote.selectedPlan.premium_w_credit)
-                                            : formatCurrency(quote.selectedPlan.premium)}/mo
-                                        </span>
-                                        {quote.selectedPlan.premium_w_credit && quote.selectedPlan.premium > quote.selectedPlan.premium_w_credit && (
-                                          <span className="text-xs text-muted-foreground line-through">
-                                            {formatCurrency(quote.selectedPlan.premium)}
-                                          </span>
-                                        )}
-                                      </div>
+                                      <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                        {quote.selectedPlan.premium_w_credit !== undefined && quote.selectedPlan.premium_w_credit !== null
+                                          ? formatCurrency(quote.selectedPlan.premium_w_credit)
+                                          : formatCurrency(quote.selectedPlan.premium)}/mo
+                                      </span>
                                     </div>
                                   </div>
                                 ) : (
