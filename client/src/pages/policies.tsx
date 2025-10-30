@@ -3413,6 +3413,17 @@ export default function PoliciesPage() {
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/policies/new";
   
+  // Fetch policies statistics
+  const { data: stats } = useQuery<{
+    totalPolicies: number;
+    totalApplicants: number;
+    canceledPolicies: number;
+    canceledApplicants: number;
+  }>({
+    queryKey: ['/api/policies/stats'],
+    enabled: !showWizard,
+  });
+  
   // Function to handle viewing a quote - navigates to the quote detail page
   const handleViewQuote = (quote: Quote | any) => {
     console.log('[handleViewQuote] Navigating to policy:', quote?.id);
@@ -8786,17 +8797,6 @@ export default function PoliciesPage() {
       </div>
     );
   }
-
-  // Fetch policies statistics
-  const { data: stats } = useQuery<{
-    totalPolicies: number;
-    totalApplicants: number;
-    canceledPolicies: number;
-    canceledApplicants: number;
-  }>({
-    queryKey: ['/api/policies/stats'],
-    enabled: !showWizard,
-  });
 
   return (
     <div className="h-full p-6 flex flex-col overflow-hidden">
