@@ -12218,7 +12218,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      const members = await storage.getPolicyMembersByQuoteId(policyId, policy.companyId);
+      const members = await storage.getPolicyMembersByPolicyId(policyId, policy.companyId);
       
       // Return members with plain text SSN (as stored in database)
       await logger.logAuth({
