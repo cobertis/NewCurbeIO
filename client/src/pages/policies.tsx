@@ -5940,12 +5940,17 @@ export default function PoliciesPage() {
                     <SelectTrigger className="h-9" data-testid="select-agent">
                       {agent ? (
                         <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={agent.avatar || undefined} />
-                            <AvatarFallback className="text-xs font-semibold bg-muted">
+                          {agent.avatar ? (
+                            <img 
+                              src={agent.avatar} 
+                              alt={`${agent.firstName} ${agent.lastName}`}
+                              className="h-6 w-6 rounded-full object-cover border border-border"
+                            />
+                          ) : (
+                            <div className="h-6 w-6 rounded-full bg-muted border border-border flex items-center justify-center text-[10px] font-semibold">
                               {agent.firstName?.[0]}{agent.lastName?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
+                            </div>
+                          )}
                           <span>{agent.firstName} {agent.lastName}</span>
                         </div>
                       ) : (
