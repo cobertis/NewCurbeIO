@@ -4727,30 +4727,47 @@ export class DbStorage implements IStorage {
     // Get payment methods
     const paymentMethods = await this.getPolicyPaymentMethods(policyId, companyId);
     
-    // Calculate total household income
+    // Calculate total household income (IDENTICAL to getQuoteDetail)
     let totalHouseholdIncome = 0;
     for (const memberDetail of membersWithDetails) {
-      if (memberDetail.income?.annualIncome) {
-        const income = parseFloat(memberDetail.income.annualIncome);
-        if (!isNaN(income)) {
-          totalHouseholdIncome += income;
-        }
-      }
-      
-      if (memberDetail.income?.otherIncomeAmount) {
-        const otherIncome = parseFloat(memberDetail.income.otherIncomeAmount);
-        if (!isNaN(otherIncome)) {
-          // Convert based on frequency
-          const freq = memberDetail.income.otherIncomeFrequency?.toLowerCase();
-          if (freq === 'monthly') {
-            totalHouseholdIncome += otherIncome * 12;
-          } else if (freq === 'weekly') {
-            totalHouseholdIncome += otherIncome * 52;
-          } else if (freq === 'biweekly') {
-            totalHouseholdIncome += otherIncome * 26;
-          } else {
-            totalHouseholdIncome += otherIncome;
+      if (memberDetail.income) {
+        const income = memberDetail.income;
+        
+        // Use totalAnnualIncome if available (already calculated), otherwise calculate from annualIncome
+        if (income.totalAnnualIncome) {
+          totalHouseholdIncome += Number(income.totalAnnualIncome) || 0;
+        } else if (income.annualIncome) {
+          // Calculate annual income based on frequency
+          let annualAmount = 0;
+          const amount = Number(income.annualIncome) || 0;
+          
+          switch (income.incomeFrequency) {
+            case 'weekly':
+              annualAmount = amount * 52;
+              break;
+            case 'bi-weekly':
+            case 'biweekly':
+              annualAmount = amount * 26;
+              break;
+            case 'semi-monthly':
+              annualAmount = amount * 24;
+              break;
+            case 'monthly':
+              annualAmount = amount * 12;
+              break;
+            case 'quarterly':
+              annualAmount = amount * 4;
+              break;
+            case 'semi-annually':
+              annualAmount = amount * 2;
+              break;
+            case 'annually':
+            default:
+              annualAmount = amount;
+              break;
           }
+          
+          totalHouseholdIncome += annualAmount;
         }
       }
     }
