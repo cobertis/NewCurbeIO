@@ -989,7 +989,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           memberBasicData.relation = (data as any).relation;
         }
         
-        const memberResponse = await fetch(`/api/policies/members/${currentMemberId}`, {
+        const memberResponse = await fetch(`/api/policies/${quote.id}/members/${currentMemberId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
