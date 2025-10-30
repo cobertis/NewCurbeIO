@@ -5900,7 +5900,7 @@ export default function QuotesPage() {
           <div className="space-y-6">
             {/* Summary Card */}
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Summary</h2>
+              <h2 className="text-lg font-semibold">Quote: {viewingQuote.id}</h2>
               
               <div className="space-y-3">
                 <div className="pb-3 border-b">
