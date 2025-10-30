@@ -11699,18 +11699,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const currentUser = req.user!;
     
     try {
-      let quotes: Awaited<ReturnType<typeof storage.getPolicysByCompany>> = [];
+      let policies: Awaited<ReturnType<typeof storage.getPoliciesByCompany>> = [];
       
       if (currentUser.role === "superadmin") {
         // Superadmin can see all policies across all companies
         // For now, we'll return policies from current company
         // TODO: Add query param to filter by companyId for superadmin
         if (currentUser.companyId) {
-          policies = await storage.getPolicysByCompany(currentUser.companyId);
+          policies = await storage.getPoliciesByCompany(currentUser.companyId);
         }
       } else if (currentUser.companyId) {
         // Regular users see only their company's quotes
-        policies = await storage.getPolicysByCompany(currentUser.companyId);
+        policies = await storage.getPoliciesByCompany(currentUser.companyId);
       }
       
       // Return policies with plain text SSN (as stored in database)
@@ -13765,46 +13765,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // ==================== QUOTE DOCUMENTS ENDPOINTS ====================
-  
-  // Multer configuration for policy documents
-  const documentStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-      const policyId = req.params.policyId;
-      const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(7);
-      const ext = path.extname(file.originalname);
-      cb(null, `${policyId}_${timestamp}_${randomString}${ext}`);
-    }
-  });
+  // ==================== POLICY DOCUMENTS ENDPOINTS ====================
 
-  const documentUpload = multer({
-    storage: documentStorage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-    fileFilter: (req, file, cb) => {
-      const allowedTypes = [
-        'application/pdf',
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-      ];
-      if (allowedTypes.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Invalid file type. Allowed types: PDF, images (JPEG, PNG, GIF, WebP), and Office documents (DOCX, XLSX, PPTX).'));
-      }
-    }
-  });
-
-  // GET /api/quotes/:policyId/documents - List all documents for a quote
+  // GET /api/policies/:policyId/documents - List all documents for a policy
   app.get("/api/policies/:policyId/documents", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -14430,7 +14393,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const events: any[] = [];
 
       // Get all policies for the company
-      const policies = await storage.getPolicysByCompany(companyId);
+      const policies = await storage.getPoliciesByCompany(companyId);
 
       // Track unique birthdays to avoid duplicates (using person identifier)
       const birthdaySet = new Set<string>();
@@ -14872,270 +14835,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
-    }
-  });
-
-  // ==================== CMS MARKETPLACE API ====================
-  
-  // Import CMS Marketplace service
-  const cmsMarketplace = await import('./cms-marketplace.js');
-  const { fetchMarketplacePlans, getCountyFips } = cmsMarketplace;
-  
-  // Get health insurance plans from CMS Marketplace API
-  app.post("/api/cms-marketplace/plans", requireActiveCompany, async (req: Request, res: Response) => {
-    const currentUser = req.user!;
-    
-    try {
-      const { policyId } = req.body;
-      
-      if (!policyId) {
-        return res.status(400).json({ message: "Policy ID is required" });
-      }
-      
-      // Get policy details
-      const policy = await storage.getPolicy(policyId);
-      if (!quote) {
-        return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
-      }
-      
-      // Get policy members
-      const members = await storage.getPolicyMembersByQuoteId(policyId, policy.companyId);
-      
-      // Get household income
-      const incomePromises = members.map(member => 
-        storage.getPolicyMemberIncome(member.id, policy.companyId)
-      );
-      const incomeRecords = await Promise.all(incomePromises);
-      const totalIncome = incomeRecords.reduce((sum, income) => {
-        if (income?.totalAnnualIncome) {
-          return sum + Number(income.totalAnnualIncome);
-        }
-        return sum;
-      }, 0);
-      
-      // Prepare data for CMS API
-      const client = members.find(m => m.role === 'client');
-      const spouses = members.filter(m => m.role === 'spouse');
-      const dependents = members.filter(m => m.role === 'dependent');
-      
-      // If no client in members, check the quote's client fields
-      const clientData = client || {
-        dateOfBirth: policy.clientDateOfBirth,
-        gender: policy.clientGender,
-        tobaccoUser: policy.clientTobaccoUser,
-        pregnant: false, // No pregnant field in policies table for client
-      };
-      
-      if (!clientData || !clientData.dateOfBirth) {
-        return res.status(400).json({ message: "Client information incomplete - date of birth required" });
-      }
-      
-      if (!policy.physical_postal_code || !policy.physical_county || !policy.physical_state) {
-        return res.status(400).json({ message: "Quote address information incomplete" });
-      }
-      
-      const quoteData = {
-        zipCode: policy.physical_postal_code,
-        county: policy.physical_county,
-        state: policy.physical_state,
-        householdIncome: totalIncome,
-        client: {
-          dateOfBirth: clientData.dateOfBirth,
-          gender: clientData.gender || undefined,
-          pregnant: clientData.pregnant || false,
-          usesTobacco: clientData.tobaccoUser || false,
-        },
-        spouses: spouses.map(s => ({
-          dateOfBirth: s.dateOfBirth!,
-          gender: s.gender || undefined,
-          pregnant: s.pregnant || false,
-          usesTobacco: s.tobaccoUser || false,
-        })),
-        dependents: dependents.map(d => ({
-          dateOfBirth: d.dateOfBirth!,
-          gender: d.gender || undefined,
-          pregnant: d.pregnant || false,
-          usesTobacco: d.tobaccoUser || false,
-        })),
-      };
-      
-      // Get pagination parameters from query string
-      const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 10;
-      
-      // Fetch plans from CMS Marketplace with pagination
-      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize);
-      
-      // TODO: Add audit logging when logger service is available
-      // Log successful fetch for tracking
-      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for policy ${policyId}, page ${page}`);
-      
-      res.json(marketplaceData);
-    } catch (error: any) {
-      console.error("Error fetching marketplace plans:", error);
-      res.status(500).json({ 
-        message: error.message || "Failed to fetch marketplace plans",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
-
-  // GET endpoint for health insurance plans with server-side pagination
-  app.get("/api/policies/:id/marketplace-plans", requireActiveCompany, async (req: Request, res: Response) => {
-    const currentUser = req.user!;
-    const policyId = req.params.id;
-    
-    try {
-      // Get pagination parameters from query string
-      const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 10;
-      
-      if (!policyId) {
-        return res.status(400).json({ message: "Policy ID is required" });
-      }
-      
-      // Get policy details
-      const policy = await storage.getPolicy(policyId);
-      if (!quote) {
-        return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
-      }
-      
-      // Get policy members
-      const members = await storage.getPolicyMembersByQuoteId(policyId, policy.companyId);
-      
-      // Get household income
-      const incomePromises = members.map(member => 
-        storage.getPolicyMemberIncome(member.id, policy.companyId)
-      );
-      const incomeRecords = await Promise.all(incomePromises);
-      const totalIncome = incomeRecords.reduce((sum, income) => {
-        if (income?.totalAnnualIncome) {
-          return sum + Number(income.totalAnnualIncome);
-        }
-        return sum;
-      }, 0);
-      
-      // Prepare data for CMS API
-      const client = members.find(m => m.role === 'client');
-      const spouses = members.filter(m => m.role === 'spouse');
-      const dependents = members.filter(m => m.role === 'dependent');
-      
-      // If no client in members, check the quote's client fields
-      const clientData = client || {
-        dateOfBirth: policy.clientDateOfBirth,
-        gender: policy.clientGender,
-        tobaccoUser: policy.clientTobaccoUser,
-        pregnant: false, // No pregnant field in policies table for client
-      };
-      
-      if (!clientData || !clientData.dateOfBirth) {
-        return res.status(400).json({ message: "Client information incomplete - date of birth required" });
-      }
-      
-      if (!policy.physical_postal_code || !policy.physical_county || !policy.physical_state) {
-        return res.status(400).json({ message: "Quote address information incomplete" });
-      }
-      
-      const quoteData = {
-        zipCode: policy.physical_postal_code,
-        county: policy.physical_county,
-        state: policy.physical_state,
-        householdIncome: totalIncome,
-        client: {
-          dateOfBirth: clientData.dateOfBirth,
-          gender: clientData.gender || undefined,
-          pregnant: clientData.pregnant || false,
-          usesTobacco: clientData.tobaccoUser || false,
-        },
-        spouses: spouses.map(s => ({
-          dateOfBirth: s.dateOfBirth!,
-          gender: s.gender || undefined,
-          pregnant: s.pregnant || false,
-          usesTobacco: s.tobaccoUser || false,
-        })),
-        dependents: dependents.map(d => ({
-          dateOfBirth: d.dateOfBirth!,
-          gender: d.gender || undefined,
-          pregnant: d.pregnant || false,
-          usesTobacco: d.tobaccoUser || false,
-        })),
-      };
-      
-      // Dynamic import of CMS Marketplace service (same as other endpoints)
-      const cmsMarketplace = await import('./cms-marketplace.js');
-      const { fetchMarketplacePlans: fetchPlans } = cmsMarketplace;
-      
-      // Fetch plans from CMS Marketplace with pagination
-      const marketplaceData = await fetchPlans(quoteData, page, pageSize);
-      
-      // Enrich plans with dental coverage information from benefits
-      if (marketplaceData.plans) {
-        marketplaceData.plans = marketplaceData.plans.map((plan: any) => {
-          // Check for dental coverage in benefits
-          const hasDentalChild = plan.benefits?.some((b: any) => 
-            b.type?.toLowerCase().includes('dental') && 
-            b.type?.toLowerCase().includes('child') &&
-            b.covered === true
-          ) || false;
-          
-          const hasDentalAdult = plan.benefits?.some((b: any) => 
-            b.type?.toLowerCase().includes('dental') && 
-            b.type?.toLowerCase().includes('adult') &&
-            b.covered === true
-          ) || false;
-          
-          return {
-            ...plan,
-            has_dental_child_coverage: hasDentalChild,
-            has_dental_adult_coverage: hasDentalAdult,
-          };
-        });
-      }
-      
-      // Log successful fetch for tracking
-      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for policy ${policyId}, page ${page}`);
-      
-      res.json(marketplaceData);
-    } catch (error: any) {
-      console.error("Error fetching marketplace plans:", error);
-      res.status(500).json({ 
-        message: error.message || "Failed to fetch marketplace plans",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
-  
-  // Get county FIPS code
-  app.get("/api/cms-marketplace/county-fips", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const { zipCode, county, state } = req.query;
-      
-      if (!zipCode || !county || !state) {
-        return res.status(400).json({ message: "zipCode, county, and state are required" });
-      }
-      
-      const fips = await getCountyFips(
-        zipCode as string, 
-        county as string, 
-        state as string
-      );
-      
-      res.json({ fips });
-    } catch (error: any) {
-      console.error("Error fetching county FIPS:", error);
-      res.status(500).json({ 
-        message: error.message || "Failed to fetch county FIPS code" 
-      });
     }
   });
 

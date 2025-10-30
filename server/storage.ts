@@ -3929,39 +3929,41 @@ export class DbStorage implements IStorage {
   }
   
   async submitQuoteAsPolicy(quoteId: string): Promise<Policy> {
-    return db.transaction(async (tx) => {
-      // 1. Get quote and all child records
-      const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId));
-      if (!quote) {
-        throw new Error("Quote not found");
-      }
-      
-      const members = await tx.select().from(quoteMembers).where(eq(quoteMembers.quoteId, quoteId));
-      const notes = await tx.select().from(quoteNotes).where(eq(quoteNotes.quoteId, quoteId));
-      const documents = await tx.select().from(quoteDocuments).where(eq(quoteDocuments.quoteId, quoteId));
-      const paymentMethods = await tx.select().from(quotePaymentMethods).where(eq(quotePaymentMethods.quoteId, quoteId));
-      const reminders = await tx.select().from(quoteReminders).where(eq(quoteReminders.quoteId, quoteId));
-      const consents = await tx.select().from(consentDocuments).where(eq(consentDocuments.quoteId, quoteId));
-      
-      // 2. Generate policy ID
-      const { generateShortId } = await import("./id-generator");
-      let policyId: string;
-      let attempts = 0;
-      const maxAttempts = 10;
-      
-      do {
-        policyId = generateShortId();
-        const existing = await tx.select().from(policies).where(eq(policies.id, policyId)).limit(1);
-        if (existing.length === 0) break;
-        attempts++;
-      } while (attempts < maxAttempts);
-      
-      if (attempts >= maxAttempts) {
-        throw new Error("Failed to generate unique policy ID");
-      }
-      
-      // 3. Insert into policy table
-      const [newPolicy] = await tx
+    // NOTE: Neon HTTP driver does not support transactions
+    // We do this sequentially without transaction for compatibility
+    
+    // 1. Get quote and all child records
+    const [quote] = await db.select().from(quotes).where(eq(quotes.id, quoteId));
+    if (!quote) {
+      throw new Error("Quote not found");
+    }
+    
+    const members = await db.select().from(quoteMembers).where(eq(quoteMembers.quoteId, quoteId));
+    const notes = await db.select().from(quoteNotes).where(eq(quoteNotes.quoteId, quoteId));
+    const documents = await db.select().from(quoteDocuments).where(eq(quoteDocuments.quoteId, quoteId));
+    const paymentMethods = await db.select().from(quotePaymentMethods).where(eq(quotePaymentMethods.quoteId, quoteId));
+    const reminders = await db.select().from(quoteReminders).where(eq(quoteReminders.quoteId, quoteId));
+    const consents = await db.select().from(consentDocuments).where(eq(consentDocuments.quoteId, quoteId));
+    
+    // 2. Generate policy ID
+    const { generateShortId } = await import("./id-generator");
+    let policyId: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    do {
+      policyId = generateShortId();
+      const existing = await db.select().from(policies).where(eq(policies.id, policyId)).limit(1);
+      if (existing.length === 0) break;
+      attempts++;
+    } while (attempts < maxAttempts);
+    
+    if (attempts >= maxAttempts) {
+      throw new Error("Failed to generate unique policy ID");
+    }
+    
+    // 3. Insert into policy table
+    const [newPolicy] = await db
         .insert(policies)
         .values({
           id: policyId,
@@ -4020,7 +4022,7 @@ export class DbStorage implements IStorage {
       
       // 4. Insert members
       for (const member of members) {
-        const [newMember] = await tx
+        const [newMember] = await db
           .insert(policyMembers)
           .values({
             companyId: member.companyId,
@@ -4049,9 +4051,9 @@ export class DbStorage implements IStorage {
           .returning();
         
         // Copy member income
-        const [income] = await tx.select().from(quoteMemberIncome).where(eq(quoteMemberIncome.memberId, member.id));
+        const [income] = await db.select().from(quoteMemberIncome).where(eq(quoteMemberIncome.memberId, member.id));
         if (income) {
-          await tx.insert(policyMemberIncome).values({
+          await db.insert(policyMemberIncome).values({
             companyId: income.companyId,
             memberId: newMember.id,
             employmentStatus: income.employmentStatus,
@@ -4070,9 +4072,9 @@ export class DbStorage implements IStorage {
         }
         
         // Copy member immigration
-        const [immigration] = await tx.select().from(quoteMemberImmigration).where(eq(quoteMemberImmigration.memberId, member.id));
+        const [immigration] = await db.select().from(quoteMemberImmigration).where(eq(quoteMemberImmigration.memberId, member.id));
         if (immigration) {
-          await tx.insert(policyMemberImmigration).values({
+          await db.insert(policyMemberImmigration).values({
             companyId: immigration.companyId,
             memberId: newMember.id,
             citizenshipStatus: immigration.citizenshipStatus,
@@ -4094,9 +4096,9 @@ export class DbStorage implements IStorage {
         }
         
         // Copy member documents
-        const memberDocs = await tx.select().from(quoteMemberDocuments).where(eq(quoteMemberDocuments.memberId, member.id));
+        const memberDocs = await db.select().from(quoteMemberDocuments).where(eq(quoteMemberDocuments.memberId, member.id));
         for (const doc of memberDocs) {
-          await tx.insert(policyMemberDocuments).values({
+          await db.insert(policyMemberDocuments).values({
             companyId: doc.companyId,
             memberId: newMember.id,
             documentType: doc.documentType,
@@ -4110,7 +4112,7 @@ export class DbStorage implements IStorage {
       
       // 5. Insert notes
       for (const note of notes) {
-        await tx.insert(policyNotes).values({
+        await db.insert(policyNotes).values({
           policyId: policyId,
           companyId: note.companyId,
           userId: note.userId,
@@ -4120,7 +4122,7 @@ export class DbStorage implements IStorage {
       
       // 6. Insert documents
       for (const doc of documents) {
-        await tx.insert(policyDocuments).values({
+        await db.insert(policyDocuments).values({
           policyId: policyId,
           companyId: doc.companyId,
           uploadedBy: doc.uploadedBy,
@@ -4135,7 +4137,7 @@ export class DbStorage implements IStorage {
       
       // 7. Insert payment methods
       for (const payment of paymentMethods) {
-        await tx.insert(policyPaymentMethods).values({
+        await db.insert(policyPaymentMethods).values({
           policyId: policyId,
           companyId: payment.companyId,
           paymentType: payment.paymentType,
@@ -4156,7 +4158,7 @@ export class DbStorage implements IStorage {
       
       // 8. Insert reminders
       for (const reminder of reminders) {
-        await tx.insert(policyReminders).values({
+        await db.insert(policyReminders).values({
           policyId: policyId,
           companyId: reminder.companyId,
           title: reminder.title,
@@ -4174,7 +4176,7 @@ export class DbStorage implements IStorage {
       
       // 9. Insert consents
       for (const consent of consents) {
-        await tx.insert(policyConsentDocuments).values({
+        await db.insert(policyConsentDocuments).values({
           policyId: policyId,
           companyId: consent.companyId,
           token: consent.token,
@@ -4193,10 +4195,9 @@ export class DbStorage implements IStorage {
       }
       
       // 10. Delete quote and all related records (cascade will handle child records)
-      await tx.delete(quotes).where(eq(quotes.id, quoteId));
+      await db.delete(quotes).where(eq(quotes.id, quoteId));
       
       return newPolicy;
-    });
   }
   
   // ==================== POLICY MEMBERS ====================

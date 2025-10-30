@@ -18,7 +18,8 @@ import {
   Ticket,
   MessageSquare,
   AlertTriangle,
-  Calendar
+  Calendar,
+  FileCheck
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -91,6 +92,11 @@ const superadminMenuItems = [
     icon: ClipboardList,
   },
   {
+    title: "Policies",
+    url: "/policies",
+    icon: FileCheck,
+  },
+  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
@@ -153,6 +159,11 @@ const regularUserMenuItems = [
     title: "Quotes",
     url: "/quotes",
     icon: ClipboardList,
+  },
+  {
+    title: "Policies",
+    url: "/policies",
+    icon: FileCheck,
   },
 ];
 
