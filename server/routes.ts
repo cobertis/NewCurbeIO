@@ -10828,7 +10828,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== CALENDAR EVENTS ====================
   
-  // GET /api/calendar/events - Get all calendar events (birthdays + reminders) for the company
+  // GET /api/calendar/events - Get all calendar events (birthdays + reminders) for the company from BOTH quotes AND policies
   app.get("/api/calendar/events", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const companyId = currentUser.role === "superadmin" && req.query.companyId 
@@ -10838,23 +10838,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const events: any[] = [];
 
-      // Get all quotes for the company
-      const quotes = await storage.getQuotesByCompany(companyId);
-
       // Track unique birthdays to avoid duplicates (using person identifier)
       const birthdaySet = new Set<string>();
 
-      // Extract birthdays from all quote members
+      // ============== QUOTES BIRTHDAYS ==============
+      const quotes = await storage.getQuotesByCompany(companyId);
       for (const quote of quotes) {
-        // Get quote members (spouses and dependents) from normalized table
         const members = await storage.getQuoteMembersByQuoteId(quote.id, companyId);
         
-        // Check if primary client exists in quote_members table
         const primaryClientInMembers = members.find(m => m.role === 'client');
         
-        // Only add primary client birthday if NOT in quote_members table (to avoid duplicates)
         if (quote.clientDateOfBirth && !primaryClientInMembers) {
-          const birthdayKey = `${quote.id}-client-${quote.clientDateOfBirth}`;
+          const birthdayKey = `quote-${quote.id}-client-${quote.clientDateOfBirth}`;
           if (!birthdaySet.has(birthdayKey)) {
             birthdaySet.add(birthdayKey);
             events.push({
@@ -10869,10 +10864,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
 
-        // Add birthdays from quote_members table (normalized data)
         for (const member of members) {
           if (member.dateOfBirth) {
-            const birthdayKey = `${quote.id}-${member.id}-${member.dateOfBirth}`;
+            const birthdayKey = `quote-${quote.id}-${member.id}-${member.dateOfBirth}`;
             if (!birthdaySet.has(birthdayKey)) {
               birthdaySet.add(birthdayKey);
               const roleDisplay = member.role === 'client' ? 'Client' : 
@@ -10892,10 +10886,54 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      // Get all reminders for the company
-      const reminders = await storage.getQuoteRemindersByCompany(companyId);
-      for (const reminder of reminders) {
-        // Only include pending and snoozed reminders
+      // ============== POLICIES BIRTHDAYS ==============
+      const policies = await storage.getPoliciesByCompany(companyId);
+      for (const policy of policies) {
+        const members = await storage.getPolicyMembersByPolicyId(policy.id, companyId);
+        
+        const primaryClientInMembers = members.find(m => m.role === 'client');
+        
+        if (policy.clientDateOfBirth && !primaryClientInMembers) {
+          const birthdayKey = `policy-${policy.id}-client-${policy.clientDateOfBirth}`;
+          if (!birthdaySet.has(birthdayKey)) {
+            birthdaySet.add(birthdayKey);
+            events.push({
+              type: 'birthday',
+              date: policy.clientDateOfBirth,
+              title: `${policy.clientFirstName} ${policy.clientLastName}`,
+              description: 'Birthday',
+              policyId: policy.id,
+              personName: `${policy.clientFirstName} ${policy.clientLastName}`,
+              role: 'Client',
+            });
+          }
+        }
+
+        for (const member of members) {
+          if (member.dateOfBirth) {
+            const birthdayKey = `policy-${policy.id}-${member.id}-${member.dateOfBirth}`;
+            if (!birthdaySet.has(birthdayKey)) {
+              birthdaySet.add(birthdayKey);
+              const roleDisplay = member.role === 'client' ? 'Client' : 
+                                 member.role === 'spouse' ? 'Spouse' : 
+                                 member.relation || 'Dependent';
+              events.push({
+                type: 'birthday',
+                date: member.dateOfBirth,
+                title: `${member.firstName} ${member.lastName}`,
+                description: 'Birthday',
+                policyId: policy.id,
+                personName: `${member.firstName} ${member.lastName}`,
+                role: roleDisplay,
+              });
+            }
+          }
+        }
+      }
+
+      // ============== QUOTE REMINDERS ==============
+      const quoteReminders = await storage.getQuoteRemindersByCompany(companyId);
+      for (const reminder of quoteReminders) {
         if (reminder.status === 'pending' || reminder.status === 'snoozed') {
           events.push({
             type: 'reminder',
@@ -10903,6 +10941,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             title: reminder.title || reminder.reminderType.replace('_', ' '),
             description: reminder.description || '',
             quoteId: reminder.quoteId,
+            reminderId: reminder.id,
+            reminderType: reminder.reminderType,
+            priority: reminder.priority,
+            status: reminder.status,
+            dueTime: reminder.dueTime,
+          });
+        }
+      }
+
+      // ============== POLICY REMINDERS ==============
+      const policyReminders = await storage.getPolicyRemindersByCompany(companyId);
+      for (const reminder of policyReminders) {
+        if (reminder.status === 'pending' || reminder.status === 'snoozed') {
+          events.push({
+            type: 'reminder',
+            date: reminder.dueDate,
+            title: reminder.title || reminder.reminderType.replace('_', ' '),
+            description: reminder.description || '',
+            policyId: reminder.policyId,
             reminderId: reminder.id,
             reminderType: reminder.reminderType,
             priority: reminder.priority,
@@ -14380,98 +14437,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // ==================== CALENDAR EVENTS ====================
-  
-  // GET /api/calendar/events - Get all calendar events (birthdays + reminders) for the company
-  app.get("/api/calendar/events", requireActiveCompany, async (req: Request, res: Response) => {
-    const currentUser = req.user!;
-    const companyId = currentUser.role === "superadmin" && req.query.companyId 
-      ? String(req.query.companyId) 
-      : currentUser.companyId!;
-
-    try {
-      const events: any[] = [];
-
-      // Get all policies for the company
-      const policies = await storage.getPoliciesByCompany(companyId);
-
-      // Track unique birthdays to avoid duplicates (using person identifier)
-      const birthdaySet = new Set<string>();
-
-      // Extract birthdays from all policy members
-      for (const policy of quotes) {
-        // Get policy members (spouses and dependents) from normalized table
-        const members = await storage.getPolicyMembersByQuoteId(policy.id, companyId);
-        
-        // Check if primary client exists in quote_members table
-        const primaryClientInMembers = members.find(m => m.role === 'client');
-        
-        // Only add primary client birthday if NOT in quote_members table (to avoid duplicates)
-        if (policy.clientDateOfBirth && !primaryClientInMembers) {
-          const birthdayKey = `${policy.id}-client-${policy.clientDateOfBirth}`;
-          if (!birthdaySet.has(birthdayKey)) {
-            birthdaySet.add(birthdayKey);
-            events.push({
-              type: 'birthday',
-              date: policy.clientDateOfBirth,
-              title: `${policy.clientFirstName} ${policy.clientLastName}`,
-              description: 'Birthday',
-              policyId: policy.id,
-              personName: `${policy.clientFirstName} ${policy.clientLastName}`,
-              role: 'Client',
-            });
-          }
-        }
-
-        // Add birthdays from quote_members table (normalized data)
-        for (const member of members) {
-          if (member.dateOfBirth) {
-            const birthdayKey = `${policy.id}-${member.id}-${member.dateOfBirth}`;
-            if (!birthdaySet.has(birthdayKey)) {
-              birthdaySet.add(birthdayKey);
-              const roleDisplay = member.role === 'client' ? 'Client' : 
-                                 member.role === 'spouse' ? 'Spouse' : 
-                                 member.relation || 'Dependent';
-              events.push({
-                type: 'birthday',
-                date: member.dateOfBirth,
-                title: `${member.firstName} ${member.lastName}`,
-                description: 'Birthday',
-                policyId: policy.id,
-                personName: `${member.firstName} ${member.lastName}`,
-                role: roleDisplay,
-              });
-            }
-          }
-        }
-      }
-
-      // Get all reminders for the company
-      const reminders = await storage.getPolicyRemindersByCompany(companyId);
-      for (const reminder of reminders) {
-        // Only include pending and snoozed reminders
-        if (reminder.status === 'pending' || reminder.status === 'snoozed') {
-          events.push({
-            type: 'reminder',
-            date: reminder.dueDate,
-            title: reminder.title || reminder.reminderType.replace('_', ' '),
-            description: reminder.description || '',
-            policyId: reminder.policyId,
-            reminderId: reminder.id,
-            reminderType: reminder.reminderType,
-            priority: reminder.priority,
-            status: reminder.status,
-            dueTime: reminder.dueTime,
-          });
-        }
-      }
-
-      res.json({ events });
-    } catch (error: any) {
-      console.error("Error fetching calendar events:", error);
-      res.status(500).json({ message: "Failed to fetch calendar events" });
-    }
-  });
 
   // ==================== PLAN SELECTION ====================
   
