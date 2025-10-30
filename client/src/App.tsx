@@ -208,6 +208,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     } else if (message.type === 'notification_update') {
       // When a broadcast notification is sent, update notifications in real-time
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      // Also invalidate quotes and policies in case it's an agent assignment notification
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
       // Play sound when new notification arrives
       playNotificationSound();
     } else if (message.type === 'subscription_update') {
