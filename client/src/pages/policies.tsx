@@ -161,11 +161,13 @@ function getPaymentStatusVariant(status: string): "default" | "secondary" | "out
   return variants[status] || "secondary";
 }
 
-function formatStatusDisplay(status: string): string {
+function formatStatusDisplay(status: string | undefined): string {
+  if (!status) return "N/A";
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatPaymentStatusDisplay(status: string): string {
+function formatPaymentStatusDisplay(status: string | undefined): string {
+  if (!status) return "N/A";
   if (status === "not_applicable") return "Not applicable ($0)";
   return formatStatusDisplay(status);
 }
