@@ -6185,58 +6185,206 @@ export default function QuotesPage() {
 
             <div className="space-y-6">
 
-              {/* Selected Plan Card - Balanced Design */}
-              {viewingQuote.selectedPlan && (
-                <Card className="border border-neutral-300">
-                  <CardContent className="p-4">
-                    {/* Header Section */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Shield className="h-4 w-4 text-neutral-600 flex-shrink-0" />
-                          <p className="text-xs font-semibold text-neutral-600 uppercase">Selected Health Plan</p>
+              {/* Selected Plan Card - Same as Marketplace */}
+              {viewingQuote.selectedPlan && (() => {
+                const plan = viewingQuote.selectedPlan;
+                
+                // Extract deductible info (same logic as marketplace)
+                const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
+                const familyDeductible = plan.deductibles?.find((d: any) => d.family);
+                const mainDeductible = individualDeductible || familyDeductible || plan.deductibles?.[0];
+                
+                // Extract MOOP (out-of-pocket max)
+                const individualMoop = plan.moops?.find((m: any) => !m.family);
+                const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
+                
+                // Extract benefits with cost sharing info
+                const getBenefitCost = (benefitName: string) => {
+                  const benefit = plan.benefits?.find((b: any) => 
+                    b.name?.toLowerCase().includes(benefitName.toLowerCase())
+                  );
+                  if (!benefit) return null;
+                  const costSharing = benefit.cost_sharings?.[0];
+                  return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                };
+
+                const formatCurrency = (value: any) => {
+                  if (value === null || value === undefined) return 'N/A';
+                  const num = typeof value === 'string' ? parseFloat(value) : value;
+                  return `$${Math.round(num)}`;
+                };
+
+                const primaryCareCost = getBenefitCost('Primary Care') || (plan.copay_primary ? formatCurrency(plan.copay_primary) : null);
+                const specialistCost = getBenefitCost('Specialist') || (plan.copay_specialist ? formatCurrency(plan.copay_specialist) : null);
+                const urgentCareCost = getBenefitCost('Urgent Care') || (plan.copay_urgent_care ? formatCurrency(plan.copay_urgent_care) : null);
+                const emergencyCost = getBenefitCost('Emergency') || (plan.copay_emergency ? formatCurrency(plan.copay_emergency) : null);
+                const genericDrugsCost = getBenefitCost('Generic Drugs');
+                const mentalHealthCost = getBenefitCost('Mental');
+
+                return (
+                  <Card className="overflow-hidden hover-elevate">
+                    {/* Header with Logo */}
+                    <div className="flex items-start justify-between gap-4 p-4 border-b bg-muted/20">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="h-12 w-12 rounded-lg bg-background border flex items-center justify-center flex-shrink-0">
+                          <Shield className="h-7 w-7 text-primary" />
                         </div>
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-base font-bold text-neutral-900 truncate">
-                              {viewingQuote.selectedPlan.issuer?.name || 'Insurance Provider'}
-                            </p>
-                            <p className="text-sm text-neutral-700 line-clamp-2 mb-2">
-                              {viewingQuote.selectedPlan.name || 'Health Plan'}
-                            </p>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <Badge variant="secondary" className="text-xs h-5 px-2 bg-neutral-200">
-                                {viewingQuote.selectedPlan.metal_level || 'Standard'}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-base mb-0.5">{plan.issuer?.name || 'Insurance Provider'}</h3>
+                          <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {plan.metal_level || 'N/A'}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {plan.type || 'N/A'}
+                            </Badge>
+                            {plan.quality_rating?.available ? (
+                              <span className="text-xs">
+                                Rating: {plan.quality_rating.global_rating > 0 
+                                  ? `${plan.quality_rating.global_rating}/5` 
+                                  : 'New/Ineligible'}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Rating: N/A</span>
+                            )}
+                            {plan.has_dental_child_coverage && (
+                              <Badge variant="outline" className="text-xs bg-purple-50 dark:bg-purple-950 border-purple-300 dark:border-purple-700">
+                                Dental Child
                               </Badge>
-                              <Badge variant="outline" className="text-xs h-5 px-2">
-                                {viewingQuote.selectedPlan.type || 'HMO'}
+                            )}
+                            {plan.has_dental_adult_coverage && (
+                              <Badge variant="outline" className="text-xs bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700">
+                                Dental Adult
                               </Badge>
-                              {viewingQuote.selectedPlan.market && (
-                                <Badge variant="outline" className="text-xs h-5 px-2">
-                                  {viewingQuote.selectedPlan.market}
-                                </Badge>
-                              )}
-                            </div>
+                            )}
+                            {plan.hsa_eligible && (
+                              <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700">
+                                HSA
+                              </Badge>
+                            )}
+                            {plan.simple_choice && (
+                              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700">
+                                Simple Choice
+                              </Badge>
+                            )}
                           </div>
-                          {viewingQuote.selectedPlan.issuer?.logo_url && (
-                            <img 
-                              src={viewingQuote.selectedPlan.issuer.logo_url} 
-                              alt={viewingQuote.selectedPlan.issuer.name}
-                              className="h-12 w-auto object-contain flex-shrink-0"
-                            />
-                          )}
                         </div>
                       </div>
-                      <div className="flex gap-1.5 flex-shrink-0">
+                    </div>
+
+                    {/* Main Content Grid */}
+                    <div className="p-6">
+                      {/* Plan Name */}
+                      <h4 className="text-base font-medium mb-4 text-primary">{plan.name}</h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6 mb-6">
+                        {/* Left: Prima mensual */}
+                        <div>
+                          <p className="text-sm font-semibold mb-2">Premium</p>
+                          <p className="text-4xl font-bold mb-1">
+                            {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
+                              ? formatCurrency(plan.premium_w_credit)
+                              : formatCurrency(plan.premium)}
+                          </p>
+                          {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
+                            <>
+                              <p className="text-xs text-green-600 dark:text-green-500">
+                                Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
+                              </p>
+                              <p className="text-xs text-muted-foreground line-through">
+                                Plan was {formatCurrency(plan.premium)}
+                              </p>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Center: Deductible */}
+                        <div>
+                          <p className="text-sm font-semibold mb-2">Deductible</p>
+                          <p className="text-4xl font-bold mb-1">
+                            {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
+                          </p>
+                          {mainDeductible && (
+                            <>
+                              <p className="text-xs text-muted-foreground">
+                                Individual total ({formatCurrency(mainDeductible.amount)} per person)
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Health & drug combined
+                              </p>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Right: Out-of-pocket max */}
+                        <div>
+                          <p className="text-sm font-semibold mb-2">Out-of-pocket max</p>
+                          <p className="text-4xl font-bold mb-1">
+                            {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Individual total</p>
+                          <p className="text-xs text-muted-foreground">
+                            Maximum for Medical and Drug EHB Benefits
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Benefits Grid - 2x3 */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm font-medium mb-1">Primary Doctor visits</p>
+                          <p className="text-sm text-muted-foreground">
+                            {primaryCareCost || 'No Charge After Deductible'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Specialist Visits</p>
+                          <p className="text-sm text-muted-foreground">
+                            {specialistCost || 'No Charge After Deductible'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Urgent care</p>
+                          <p className="text-sm text-muted-foreground">
+                            {urgentCareCost || 'No Charge After Deductible'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Emergencies</p>
+                          <p className="text-sm text-muted-foreground">
+                            {emergencyCost || '40% Coinsurance after deductible'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Mental health</p>
+                          <p className="text-sm text-muted-foreground">
+                            {mentalHealthCost || 'No Charge After Deductible'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Generic drugs</p>
+                          <p className="text-sm text-muted-foreground">
+                            {genericDrugsCost || 'No Charge After Deductible'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer with Actions */}
+                    <div className="px-6 pb-4 pt-2 border-t flex items-center justify-between gap-4">
+                      <div className="text-xs text-muted-foreground">
+                        Selected Plan
+                      </div>
+                      <div className="flex items-center gap-3">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`)}
                           data-testid="button-change-plan"
-                          className="h-7 text-xs px-2"
                         >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Change
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Change Plan
                         </Button>
                         <Button
                           variant="outline"
@@ -6263,71 +6411,15 @@ export default function QuotesPage() {
                             }
                           }}
                           data-testid="button-remove-plan"
-                          className="h-7 text-xs px-2"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4 mr-2" />
+                          Remove Plan
                         </Button>
                       </div>
                     </div>
-
-                    {/* Premium Section */}
-                    <div className="grid grid-cols-2 gap-3 mb-3 pt-3 border-t border-neutral-200">
-                      <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <DollarSign className="h-4 w-4 text-neutral-600" />
-                          <p className="text-xs font-medium text-neutral-600">Monthly Premium</p>
-                        </div>
-                        <p className="text-2xl font-bold text-neutral-900">
-                          ${viewingQuote.selectedPlan.premium ? parseFloat(viewingQuote.selectedPlan.premium).toFixed(2) : '0.00'}
-                        </p>
-                        <p className="text-xs text-neutral-500 mt-0.5">per month</p>
-                      </div>
-                      {viewingQuote.selectedPlan.premium_w_credit && (
-                        <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                          <div className="flex items-center gap-2 mb-1">
-                            <DollarSign className="h-4 w-4 text-green-700" />
-                            <p className="text-xs font-medium text-green-700">With Tax Credit</p>
-                          </div>
-                          <p className="text-2xl font-bold text-green-900">
-                            ${viewingQuote.selectedPlan.premium_w_credit ? parseFloat(viewingQuote.selectedPlan.premium_w_credit).toFixed(2) : '0.00'}
-                          </p>
-                          <p className="text-xs text-green-600 mt-0.5">Savings applied</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Cost Sharing - Compact Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-3 border-t border-neutral-200">
-                      {viewingQuote.selectedPlan.deductibles?.slice(0, 2).map((ded: any, idx: number) => (
-                        <div key={idx} className="bg-neutral-50 rounded p-2 border border-neutral-200">
-                          <p className="text-xs text-neutral-600 mb-1">
-                            {ded.family_cost ? 'Family' : 'Individual'} Deductible
-                          </p>
-                          <p className="text-sm font-bold text-neutral-900">
-                            ${ded.amount ? parseFloat(ded.amount).toLocaleString() : '0'}
-                          </p>
-                          {ded.network_tier && (
-                            <p className="text-xs text-neutral-500 truncate">{ded.network_tier}</p>
-                          )}
-                        </div>
-                      ))}
-                      {viewingQuote.selectedPlan.moops?.slice(0, 2).map((moop: any, idx: number) => (
-                        <div key={idx} className="bg-neutral-50 rounded p-2 border border-neutral-200">
-                          <p className="text-xs text-neutral-600 mb-1">
-                            {moop.family_cost ? 'Family' : 'Individual'} Max OOP
-                          </p>
-                          <p className="text-sm font-bold text-neutral-900">
-                            ${moop.amount ? parseFloat(moop.amount).toLocaleString() : '0'}
-                          </p>
-                          {moop.network_tier && (
-                            <p className="text-xs text-neutral-500 truncate">{moop.network_tier}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </Card>
+                );
+              })()}
 
               {/* Family Members Section - Horizontal Layout */}
               <Card className="bg-accent/5">
