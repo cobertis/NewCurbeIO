@@ -5937,7 +5937,15 @@ export default function PoliciesPage() {
                   >
                     <SelectTrigger className="h-9" data-testid="select-agent">
                       <SelectValue placeholder="Select agent...">
-                        {agent?.firstName || 'Unknown'} {agent?.lastName || ''}
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={agent?.avatar || undefined} />
+                            <AvatarFallback className="text-xs">
+                              {agent?.firstName?.[0]}{agent?.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{agent?.firstName || 'Unknown'} {agent?.lastName || ''}</span>
+                        </div>
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
