@@ -3441,7 +3441,7 @@ export default function PoliciesPage() {
   });
 
   // Fetch quotes
-  const { data: quotesData, isLoading } = useQuery<{ quotes: Quote[] }>({
+  const { data: quotesData, isLoading } = useQuery<{ policies: Quote[] }>({
     queryKey: ["/api/policies"],
   });
 
@@ -3469,7 +3469,7 @@ export default function PoliciesPage() {
   });
 
   // Use the quote from unified detail if available, otherwise fallback to list (for backward compatibility)
-  const viewingQuote = quoteDetail?.quote || quotesData?.quotes?.find(q => q.id === params?.id);
+  const viewingQuote = quoteDetail?.quote || quotesData?.policies?.find(q => q.id === params?.id);
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
 
@@ -4689,7 +4689,7 @@ export default function PoliciesPage() {
   };
 
   const agents = agentsData?.users || [];
-  const allQuotes = quotesData?.quotes || [];
+  const allQuotes = quotesData?.policies || [];
   
   // Fetch members with income and immigration details
   // REPLACED WITH UNIFIED QUERY - membersDetailsData now comes from quoteDetail
