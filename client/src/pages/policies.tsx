@@ -4488,6 +4488,34 @@ export default function PoliciesPage() {
     },
   });
 
+  // Change status mutation
+  const changeStatusMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      if (!params?.id) throw new Error("Policy ID not found");
+      return apiRequest("PATCH", `/api/policies/${params.id}`, {
+        status: newStatus,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+      toast({
+        title: "Status Updated",
+        description: "The status has been successfully changed.",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to change status",
+        duration: 3000,
+      });
+    },
+  });
+
   const deleteMemberMutation = useMutation({
     mutationFn: async (memberId: string) => {
       if (!params?.id) throw new Error("Quote ID not found");
@@ -5973,6 +6001,74 @@ export default function PoliciesPage() {
                           </div>
                         </DropdownMenuItem>
                       ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground mb-2 block">Status</label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild disabled={changeStatusMutation.isPending}>
+                      <button className="w-full h-9 px-3 py-2 bg-background border border-input rounded-md flex items-center justify-between text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed" data-testid="select-status">
+                        <span className="truncate capitalize">{viewingQuote.status?.replace(/_/g, ' ') || "new"}</span>
+                        <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-[320px]">
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("new")}
+                        className="cursor-pointer"
+                      >
+                        New
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("pending_document")}
+                        className="cursor-pointer"
+                      >
+                        Pending Document
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("pending_payment")}
+                        className="cursor-pointer"
+                      >
+                        Pending Payment
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("waiting_on_agent")}
+                        className="cursor-pointer"
+                      >
+                        Waiting on Agent
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("waiting_for_approval")}
+                        className="cursor-pointer"
+                      >
+                        Waiting for Approval
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("updated_by_client")}
+                        className="cursor-pointer"
+                      >
+                        Updated by Client
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("completed")}
+                        className="cursor-pointer"
+                      >
+                        Completed
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("renewed")}
+                        className="cursor-pointer"
+                      >
+                        Renewed
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("canceled")}
+                        className="cursor-pointer"
+                      >
+                        Canceled
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

@@ -4476,6 +4476,33 @@ export default function QuotesPage() {
     },
   });
 
+  // Change status mutation
+  const changeStatusMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      return apiRequest("PATCH", `/api/quotes/${params.id}`, {
+        status: newStatus,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      toast({
+        title: "Status Updated",
+        description: "The status has been successfully changed.",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to change status",
+        duration: 3000,
+      });
+    },
+  });
+
   const submitPolicyMutation = useMutation({
     mutationFn: async () => {
       if (!params?.id) throw new Error("Quote ID not found");
@@ -5985,6 +6012,44 @@ export default function QuotesPage() {
                           </div>
                         </DropdownMenuItem>
                       ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div className="pb-3 border-b">
+                  <label className="text-xs text-muted-foreground mb-2 block">Status</label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild disabled={changeStatusMutation.isPending}>
+                      <button className="w-full h-9 px-3 py-2 bg-background border border-input rounded-md flex items-center justify-between text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed" data-testid="select-status">
+                        <span className="truncate capitalize">{viewingQuote.status?.replace('_', ' ') || "draft"}</span>
+                        <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-[320px]">
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("draft")}
+                        className="cursor-pointer"
+                      >
+                        Draft
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("active")}
+                        className="cursor-pointer"
+                      >
+                        Active
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("submitted")}
+                        className="cursor-pointer"
+                      >
+                        Submitted
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => changeStatusMutation.mutate("converted_to_policy")}
+                        className="cursor-pointer"
+                      >
+                        Converted to Policy
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
