@@ -12209,7 +12209,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12248,7 +12248,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12296,7 +12296,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12347,7 +12347,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12409,7 +12409,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
