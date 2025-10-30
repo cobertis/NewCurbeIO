@@ -13874,44 +13874,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // ==================== QUOTE DOCUMENTS ENDPOINTS ====================
-  
-  // Multer configuration for policy documents
-  const documentStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-      const policyId = req.params.policyId;
-      const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(7);
-      const ext = path.extname(file.originalname);
-      cb(null, `${policyId}_${timestamp}_${randomString}${ext}`);
-    }
-  });
-
-  const documentUpload = multer({
-    storage: documentStorage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-    fileFilter: (req, file, cb) => {
-      const allowedTypes = [
-        'application/pdf',
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-      ];
-      if (allowedTypes.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Invalid file type. Allowed types: PDF, images (JPEG, PNG, GIF, WebP), and Office documents (DOCX, XLSX, PPTX).'));
-      }
-    }
-  });
+  // ==================== POLICY DOCUMENTS ENDPOINTS ====================
 
   // GET /api/policies/:policyId/documents - List all documents for a policy
   app.get("/api/policies/:policyId/documents", requireActiveCompany, async (req: Request, res: Response) => {
@@ -14983,13 +14946,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // ==================== CMS MARKETPLACE API ====================
+  // ==================== CMS MARKETPLACE API (POLICIES) ====================
   
-  // Import CMS Marketplace service
-  const cmsMarketplace = await import('./cms-marketplace.js');
-  const { fetchMarketplacePlans, getCountyFips } = cmsMarketplace;
-  
-  // Get health insurance plans from CMS Marketplace API
+  // Get health insurance plans from CMS Marketplace API (for policies)
   app.post("/api/cms-marketplace/plans", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     
