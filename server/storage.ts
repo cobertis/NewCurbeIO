@@ -537,7 +537,7 @@ export interface IStorage {
   // Unified Quote Detail - Gets all related data in one call
   getQuoteDetail(quoteId: string, companyId: string): Promise<{
     quote: Quote & {
-      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
       creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
     };
     members: Array<{
@@ -638,7 +638,7 @@ export interface IStorage {
   // Unified Policy Detail - Gets all related data in one call
   getPolicyDetail(policyId: string, companyId: string): Promise<{
     policy: Policy & {
-      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
       creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
     };
     members: Array<{
@@ -2780,7 +2780,7 @@ export class DbStorage implements IStorage {
   }
 
   async getQuote(id: string): Promise<(Quote & {
-    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }) | undefined> {
     const result = await db
@@ -2813,6 +2813,7 @@ export class DbStorage implements IStorage {
           firstName: agentUser.firstName,
           lastName: agentUser.lastName,
           email: agentUser.email,
+          avatar: agentUser.avatar,
         };
       }
     }
@@ -2825,7 +2826,7 @@ export class DbStorage implements IStorage {
   }
 
   async getQuotesByCompany(companyId: string): Promise<Array<Quote & {
-    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>> {
     const results = await db
@@ -2854,6 +2855,7 @@ export class DbStorage implements IStorage {
               firstName: agentUser.firstName,
               lastName: agentUser.lastName,
               email: agentUser.email,
+              avatar: agentUser.avatar,
             };
           }
         }
@@ -3796,7 +3798,7 @@ export class DbStorage implements IStorage {
   }
 
   async getPolicy(id: string): Promise<(Policy & {
-    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }) | undefined> {
     const result = await db
@@ -3829,6 +3831,7 @@ export class DbStorage implements IStorage {
           firstName: agentUser.firstName,
           lastName: agentUser.lastName,
           email: agentUser.email,
+          avatar: agentUser.avatar,
         };
       }
     }
@@ -3841,7 +3844,7 @@ export class DbStorage implements IStorage {
   }
 
   async getPoliciesByCompany(companyId: string): Promise<Array<Policy & {
-    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>> {
     const results = await db
@@ -3870,6 +3873,7 @@ export class DbStorage implements IStorage {
               firstName: agentUser.firstName,
               lastName: agentUser.lastName,
               email: agentUser.email,
+              avatar: agentUser.avatar,
             };
           }
         }
@@ -4687,7 +4691,7 @@ export class DbStorage implements IStorage {
   
   async getPolicyDetail(policyId: string, companyId: string): Promise<{
     policy: Policy & {
-      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+      agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
       creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
     };
     members: Array<{
