@@ -654,6 +654,7 @@ export interface IStorage {
   // Policy Reminders
   listPolicyReminders(policyId: string, companyId: string, filters?: { status?: string; priority?: string; userId?: string }): Promise<Array<PolicyReminder & { creator: { firstName: string | null; lastName: string | null } }>>;
   getPolicyReminder(id: string, companyId: string): Promise<PolicyReminder | null>;
+  getPolicyRemindersByCompany(companyId: string): Promise<PolicyReminder[]>;
   createPolicyReminder(data: InsertPolicyReminder): Promise<PolicyReminder>;
   updatePolicyReminder(id: string, companyId: string, data: UpdatePolicyReminder): Promise<PolicyReminder | null>;
   deletePolicyReminder(id: string, companyId: string): Promise<boolean>;
@@ -4813,6 +4814,16 @@ export class DbStorage implements IStorage {
         )
       );
     return reminder || null;
+  }
+  
+  async getPolicyRemindersByCompany(companyId: string): Promise<PolicyReminder[]> {
+    const results = await db
+      .select()
+      .from(policyReminders)
+      .where(eq(policyReminders.companyId, companyId))
+      .orderBy(policyReminders.dueDate);
+    
+    return results;
   }
   
   async createPolicyReminder(data: InsertPolicyReminder): Promise<PolicyReminder> {

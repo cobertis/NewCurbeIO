@@ -9147,12 +9147,12 @@ export default function PoliciesPage() {
                             <TableCell>
                               <div className="space-y-1">
                                 <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
-                                  {product?.name || quote.productType}
+                                  {quote.selectedPlan ? quote.selectedPlan.issuer_name : (product?.name || quote.productType)}
                                 </div>
                                 {quote.selectedPlan ? (
                                   <div className="space-y-0.5">
-                                    <div className="text-xs font-medium text-foreground">
-                                      {quote.selectedPlan.issuer_name}
+                                    <div className="text-xs text-muted-foreground">
+                                      {product?.name || quote.productType}
                                     </div>
                                     <div className="text-xs text-muted-foreground truncate max-w-[200px]">
                                       {quote.selectedPlan.plan_marketing_name}
@@ -9162,9 +9162,22 @@ export default function PoliciesPage() {
                                         {quote.selectedPlan.metal_level || 'N/A'}
                                       </Badge>
                                       {quote.selectedPlan.premium && (
-                                        <span className="text-xs font-semibold text-green-600 dark:text-green-400">
-                                          ${quote.selectedPlan.premium}/mo
-                                        </span>
+                                        <div className="flex items-center gap-1">
+                                          {quote.selectedPlan.aptc_amount > 0 ? (
+                                            <>
+                                              <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                                ${(quote.selectedPlan.premium - quote.selectedPlan.aptc_amount).toFixed(2)}/mo
+                                              </span>
+                                              <span className="text-xs text-muted-foreground line-through">
+                                                ${quote.selectedPlan.premium}
+                                              </span>
+                                            </>
+                                          ) : (
+                                            <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                              ${quote.selectedPlan.premium}/mo
+                                            </span>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
                                   </div>
