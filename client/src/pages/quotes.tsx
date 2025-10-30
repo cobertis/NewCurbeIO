@@ -5954,8 +5954,16 @@ export default function QuotesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {companyAgents.map((agentOption) => (
-                        <SelectItem key={agentOption.id} value={agentOption.id}>
-                          {agentOption.firstName} {agentOption.lastName} ({agentOption.email})
+                        <SelectItem key={agentOption.id} value={agentOption.id} className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={agentOption.avatar || undefined} />
+                              <AvatarFallback className="text-xs">
+                                {agentOption.firstName?.[0]}{agentOption.lastName?.[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{agentOption.firstName} {agentOption.lastName}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
