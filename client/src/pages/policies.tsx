@@ -5938,23 +5938,25 @@ export default function PoliciesPage() {
                     disabled={changeAgentMutation.isPending}
                   >
                     <SelectTrigger className="h-9" data-testid="select-agent">
-                      <SelectValue placeholder="Select agent...">
+                      {agent ? (
                         <div className="flex items-center gap-2">
                           <Avatar className="h-5 w-5">
-                            <AvatarImage src={agent?.avatar || undefined} />
+                            <AvatarImage src={agent.avatar || undefined} />
                             <AvatarFallback className="text-xs">
-                              {agent?.firstName?.[0]}{agent?.lastName?.[0]}
+                              {agent.firstName?.[0]}{agent.lastName?.[0]}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{agent?.firstName || 'Unknown'} {agent?.lastName || ''}</span>
+                          <span>{agent.firstName} {agent.lastName}</span>
                         </div>
-                      </SelectValue>
+                      ) : (
+                        <span className="text-muted-foreground">Select agent...</span>
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       {companyAgents.map((agentOption) => (
-                        <SelectItem key={agentOption.id} value={agentOption.id} className="flex items-center gap-2">
+                        <SelectItem key={agentOption.id} value={agentOption.id}>
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
+                            <Avatar className="h-5 w-5">
                               <AvatarImage src={agentOption.avatar || undefined} />
                               <AvatarFallback className="text-xs">
                                 {agentOption.firstName?.[0]}{agentOption.lastName?.[0]}
