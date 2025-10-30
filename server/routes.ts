@@ -8158,9 +8158,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (currentUser.companyId) {
           quotes = await storage.getQuotesByCompany(currentUser.companyId);
         }
-      } else if (currentUser.companyId) {
-        // Regular users see only their company's quotes
+      } else if (currentUser.role === "admin" && currentUser.companyId) {
+        // Admin can see all quotes from their company
         quotes = await storage.getQuotesByCompany(currentUser.companyId);
+      } else if (currentUser.companyId) {
+        // Regular users see only their own quotes (where they are the agent)
+        quotes = await storage.getQuotesByCompany(currentUser.companyId);
+        quotes = quotes.filter(quote => quote.agentId === currentUser.id);
       }
       
       // Return quotes with plain text SSN (as stored in database)
@@ -11867,9 +11871,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (currentUser.companyId) {
           policies = await storage.getPoliciesByCompany(currentUser.companyId);
         }
-      } else if (currentUser.companyId) {
-        // Regular users see only their company's policys
+      } else if (currentUser.role === "admin" && currentUser.companyId) {
+        // Admin can see all policies from their company
         policies = await storage.getPoliciesByCompany(currentUser.companyId);
+      } else if (currentUser.companyId) {
+        // Regular users see only their own policies (where they are the agent)
+        policies = await storage.getPoliciesByCompany(currentUser.companyId);
+        policies = policies.filter(policy => policy.agentId === currentUser.id);
       }
       
       // Return policies with plain text SSN (as stored in database)
