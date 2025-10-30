@@ -9161,24 +9161,16 @@ export default function PoliciesPage() {
                                       <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                         {quote.selectedPlan.metal_level || 'N/A'}
                                       </Badge>
-                                      {quote.selectedPlan.premium && (
-                                        <div className="flex items-center gap-1">
-                                          {quote.selectedPlan.aptc_amount > 0 ? (
-                                            <>
-                                              <span className="text-xs font-semibold text-green-600 dark:text-green-400">
-                                                ${(quote.selectedPlan.premium - quote.selectedPlan.aptc_amount).toFixed(2)}/mo
-                                              </span>
-                                              <span className="text-xs text-muted-foreground line-through">
-                                                ${quote.selectedPlan.premium}
-                                              </span>
-                                            </>
-                                          ) : (
-                                            <span className="text-xs font-semibold text-green-600 dark:text-green-400">
-                                              ${quote.selectedPlan.premium}/mo
-                                            </span>
-                                          )}
-                                        </div>
-                                      )}
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                          ${quote.selectedPlan.premium_w_credit || quote.selectedPlan.premium}/mo
+                                        </span>
+                                        {quote.selectedPlan.premium_w_credit && quote.selectedPlan.premium > quote.selectedPlan.premium_w_credit && (
+                                          <span className="text-xs text-muted-foreground line-through">
+                                            ${quote.selectedPlan.premium}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 ) : (
