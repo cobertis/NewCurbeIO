@@ -1384,7 +1384,8 @@ export const quotes = pgTable("quotes", {
   
   // Quote Status
   status: text("status").notNull().default("draft"), // draft, submitted, pending_review, approved, rejected, converted_to_policy
-  paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid, paid
+  documentsStatus: text("documents_status").notNull().default("pending"), // pending, processing, declined, completed
+  paymentStatus: text("payment_status").notNull().default("pending"), // pending, auto_pay, failed, paid, not_applicable
   
   // Additional Information
   notes: text("notes"), // Internal notes
@@ -2072,7 +2073,8 @@ export const policies = pgTable("policies", {
   
   // Policy Status
   status: text("status").notNull().default("new"),
-  paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid, paid
+  documentsStatus: text("documents_status").notNull().default("pending"), // pending, processing, declined, completed
+  paymentStatus: text("payment_status").notNull().default("pending"), // pending, auto_pay, failed, paid, not_applicable
   
   // Additional Information
   notes: text("notes"),
