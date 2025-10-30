@@ -4133,9 +4133,10 @@ export class DbStorage implements IStorage {
           category: doc.category,
           fileName: doc.fileName,
           fileSize: doc.fileSize,
-          mimeType: doc.mimeType,
+          fileType: doc.fileType,
           fileUrl: doc.fileUrl,
-          belongsToMemberId: doc.belongsToMemberId,
+          belongsTo: doc.belongsTo,
+          description: doc.description,
         } as any);
       }
       
