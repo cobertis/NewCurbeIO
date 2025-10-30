@@ -5930,7 +5930,7 @@ export default function PoliciesPage() {
   }
 
   // Render Change Status Dialog (ALWAYS rendered when viewing a policy to avoid unmounting issues)
-  const renderChangeStatusDialog = isViewingQuote && (
+  const renderChangeStatusDialog = (
     <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen} modal={true}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
