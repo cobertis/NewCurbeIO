@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -32,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow, format, startOfMonth, addMonths, parseISO } from "date-fns";
+import { policyStatusOptions, documentsStatusOptions, paymentStatusOptions, useUpdateStatuses, statusFormSchema, type StatusFormValues } from "@/lib/status-editor";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { useTabsState } from "@/hooks/use-tabs-state";
 import {
@@ -3451,6 +3453,9 @@ export default function PoliciesPage() {
   // Consent modal state
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   
+  // Status editor state
+  const [statusEditorOpen, setStatusEditorOpen] = useState(false);
+  
   // Consents sheet state
   const [consentsSheetOpen, setConsentsSheetOpen] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false); // Track if we're in form view
@@ -6055,6 +6060,32 @@ export default function PoliciesPage() {
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                </div>
+
+                {/* Status Editor - Inline Collapsible */}
+                <div className="pb-3 border-b">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs text-muted-foreground">Statuses</label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => setStatusEditorOpen(!statusEditorOpen)}
+                      data-testid="button-toggle-status-editor"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  
+                  <StatusEditorInline
+                    type="policy"
+                    id={viewingQuote.id}
+                    currentStatus={viewingQuote.status}
+                    currentDocumentsStatus={viewingQuote.documentsStatus}
+                    currentPaymentStatus={viewingQuote.paymentStatus}
+                    isOpen={statusEditorOpen}
+                    onClose={() => setStatusEditorOpen(false)}
+                  />
                 </div>
 
                 <div className="pb-3 border-b">
@@ -11065,6 +11096,161 @@ export default function PoliciesPage() {
       </Dialog>
 
     </div>
+  );
+}
+
+// StatusEditorInline Component  
+function StatusEditorInline({ 
+  type, 
+  id, 
+  currentStatus, 
+  currentDocumentsStatus, 
+  currentPaymentStatus, 
+  isOpen, 
+  onClose 
+}: {
+  type: "quote" | "policy";
+  id: string;
+  currentStatus: string;
+  currentDocumentsStatus: string;
+  currentPaymentStatus: string;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const form = useForm<StatusFormValues>({
+    resolver: zodResolver(statusFormSchema),
+    defaultValues: {
+      status: currentStatus || "",
+      documentsStatus: currentDocumentsStatus || "",
+      paymentStatus: currentPaymentStatus || "",
+    },
+  });
+
+  const updateMutation = useUpdateStatuses(type, id);
+
+  const onSubmit = (data: StatusFormValues) => {
+    updateMutation.mutate(data, {
+      onSuccess: () => {
+        onClose();
+      },
+    });
+  };
+
+  const statusOptions = type === "quote" ? quoteStatusOptions : policyStatusOptions;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <CollapsibleContent>
+        <Card className="mt-2 border-muted">
+          <CardContent className="p-3 space-y-3">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                {/* Status Field */}
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{type === "quote" ? "Quote" : "Policy"} status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {statusOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Documents Status Field */}
+                <FormField
+                  control={form.control}
+                  name="documentsStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Documents status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-documents-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {documentsStatusOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Payment Status Field */}
+                <FormField
+                  control={form.control}
+                  name="paymentStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Payment status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-payment-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {paymentStatusOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onClose}
+                    className="flex-1"
+                    data-testid="button-cancel-status"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={updateMutation.isPending}
+                    className="flex-1"
+                    data-testid="button-submit-status"
+                  >
+                    {updateMutation.isPending ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
