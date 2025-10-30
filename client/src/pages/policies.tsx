@@ -4734,7 +4734,7 @@ export default function PoliciesPage() {
     });
   };
 
-  const agents = companyAgents.length > 0 ? companyAgents : (agentsData?.users || []);
+  const agents = agentsData?.users || [];
   const allQuotes = quotesData?.policies || [];
   
   // Fetch members with income and immigration details
@@ -5942,8 +5942,16 @@ export default function PoliciesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {companyAgents.map((agentOption) => (
-                        <SelectItem key={agentOption.id} value={agentOption.id}>
-                          {agentOption.firstName} {agentOption.lastName}
+                        <SelectItem key={agentOption.id} value={agentOption.id} className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={agentOption.avatar || undefined} />
+                              <AvatarFallback className="text-xs">
+                                {agentOption.firstName?.[0]}{agentOption.lastName?.[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{agentOption.firstName} {agentOption.lastName}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
