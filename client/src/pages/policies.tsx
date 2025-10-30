@@ -3384,6 +3384,11 @@ export default function PoliciesPage() {
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
   const [previewDocument, setPreviewDocument] = useState<any | null>(null);
+  
+  // Change agent dialog state
+  const [changeAgentDialogOpen, setChangeAgentDialogOpen] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  
   const documentFileInputRef = useRef<HTMLInputElement>(null);
   
   // Reminders sheet state
@@ -3450,6 +3455,12 @@ export default function PoliciesPage() {
   const { data: agentsData } = useQuery<{ users: UserType[] }>({
     queryKey: ["/api/users"],
   });
+
+  // Fetch company agents for reassignment
+  const { data: companyAgentsData } = useQuery<{ agents: Array<{ id: string; firstName: string; lastName: string; email: string; avatar?: string; role: string }> }>({
+    queryKey: ["/api/company/agents"],
+  });
+  const companyAgents = companyAgentsData?.agents || [];
 
   // Fetch quotes
   const { data: quotesData, isLoading } = useQuery<{ policies: Quote[] }>({
@@ -4447,6 +4458,34 @@ export default function PoliciesPage() {
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to delete quote",
+      });
+    },
+  });
+
+  // Change agent mutation
+  const changeAgentMutation = useMutation({
+    mutationFn: async (newAgentId: string) => {
+      if (!params?.id) throw new Error("Policy ID not found");
+      return apiRequest("PATCH", `/api/policies/${params.id}`, {
+        agentId: newAgentId || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+      setChangeAgentDialogOpen(false);
+      toast({
+        title: "Agent Updated",
+        description: "The agent has been successfully changed.",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to change agent",
+        duration: 3000,
       });
     },
   });
@@ -5891,8 +5930,22 @@ export default function PoliciesPage() {
               
               <div className="space-y-3">
                 <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">Agent</label>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-muted-foreground">Agent</label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        setSelectedAgentId(agent?.id || "");
+                        setChangeAgentDialogOpen(true);
+                      }}
+                      data-testid="button-change-agent"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={agent?.avatar || undefined} />
                       <AvatarFallback className="text-xs bg-primary text-primary-foreground">
@@ -11312,6 +11365,58 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Change Agent Dialog */}
+      <Dialog open={changeAgentDialogOpen} onOpenChange={setChangeAgentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Agent</DialogTitle>
+            <DialogDescription>
+              Select a new agent to assign to this policy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Agent</Label>
+              <Select
+                value={selectedAgentId}
+                onValueChange={setSelectedAgentId}
+              >
+                <SelectTrigger data-testid="select-agent">
+                  <SelectValue placeholder="Select an agent..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companyAgents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{agent.firstName} {agent.lastName}</span>
+                        <span className="text-xs text-muted-foreground">({agent.email})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setChangeAgentDialogOpen(false)}
+              data-testid="button-cancel-change-agent"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => changeAgentMutation.mutate(selectedAgentId)}
+              disabled={changeAgentMutation.isPending || !selectedAgentId}
+              data-testid="button-confirm-change-agent"
+            >
+              {changeAgentMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {changeAgentMutation.isPending ? "Updating..." : "Update Agent"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

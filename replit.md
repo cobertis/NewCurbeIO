@@ -119,6 +119,16 @@ Full-screen professional calendar displaying company-wide events with visual dif
 - **Data Source:** GET `/api/calendar/events` endpoint aggregates birthdays from `quotes.clientDateOfBirth` and `quote_members.dateOfBirth`, plus reminders from `quote_reminders` table.
 - **Multi-tenant Isolation:** Events filtered by company, ensuring strict data isolation.
 
+**Agent Assignment System:**
+Flexible agent reassignment capability for quotes and policies with identical implementation in both modules:
+- **Backend Endpoint:** GET `/api/company/agents` returns all users from current user's company with sanitized data (id, name, email, avatar, role)
+- **Sidebar Integration:** "Change" button next to agent name in quote/policy detail sidebar opens agent selection dialog
+- **Professional Dialog:** Clean modal interface with dropdown showing all company agents with name and email
+- **Real-time Updates:** PATCH `/api/quotes/:id` or `/api/policies/:id` with `agentId` parameter updates assignment instantly
+- **Toast Notifications:** Success/error feedback with 3-second auto-dismiss
+- **Query Invalidation:** Automatically refreshes quote/policy detail and list views after update
+- **Authorization:** Company-scoped access ensures users can only assign agents from their own company
+
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL, Drizzle ORM.

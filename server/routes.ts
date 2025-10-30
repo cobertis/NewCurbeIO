@@ -3259,6 +3259,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Get company agents (all users from current user's company)
+  app.get("/api/company/agents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (!currentUser.companyId) {
+      return res.status(403).json({ message: "No company associated with your account" });
+    }
+
+    try {
+      const users = await storage.getUsersByCompany(currentUser.companyId);
+      const agents = users.map(user => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        avatar: user.avatar,
+        role: user.role
+      }));
+      
+      res.json({ agents });
+    } catch (error: any) {
+      console.error("Error fetching company agents:", error);
+      res.status(500).json({ message: "Failed to fetch company agents" });
+    }
+  });
+
   // Toggle company active status (enable/disable)
   app.patch("/api/companies/:id/toggle-status", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
