@@ -6044,7 +6044,7 @@ export default function QuotesPage() {
                       data-testid="button-latest-note"
                     >
                       <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Badge 
                             variant="secondary" 
                             className="text-xs h-4 px-1.5"
@@ -6062,7 +6062,7 @@ export default function QuotesPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm line-clamp-2 text-muted-foreground">
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
                           {latestNote.content}
                         </p>
                         <p className="text-xs text-muted-foreground">
