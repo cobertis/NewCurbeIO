@@ -6015,11 +6015,17 @@ export default function QuotesPage() {
                   </Badge>
                 )}
               </button>
+            </div>
 
+            {/* Coming Soon Section */}
+            <div className="space-y-2 pt-4 border-t">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 mb-2">Coming Soon</h3>
+              
               <button
                 onClick={() => {}}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors opacity-60 cursor-not-allowed"
                 data-testid="button-commissions"
+                disabled
               >
                 <div className="flex items-center gap-2.5">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -6029,8 +6035,9 @@ export default function QuotesPage() {
 
               <button
                 onClick={() => {}}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors opacity-60 cursor-not-allowed"
                 data-testid="button-tasks"
+                disabled
               >
                 <div className="flex items-center gap-2.5">
                   <ListTodo className="h-4 w-4 text-muted-foreground" />
@@ -6040,8 +6047,9 @@ export default function QuotesPage() {
 
               <button
                 onClick={() => {}}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors opacity-60 cursor-not-allowed"
                 data-testid="button-life-changes"
+                disabled
               >
                 <div className="flex items-center gap-2.5">
                   <Heart className="h-4 w-4 text-muted-foreground" />
@@ -6051,8 +6059,9 @@ export default function QuotesPage() {
 
               <button
                 onClick={() => {}}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors opacity-60 cursor-not-allowed"
                 data-testid="button-logs"
+                disabled
               >
                 <div className="flex items-center gap-2.5">
                   <ScrollText className="h-4 w-4 text-muted-foreground" />
