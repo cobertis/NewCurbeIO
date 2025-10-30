@@ -4463,6 +4463,8 @@ export default function QuotesPage() {
         description: "The agent has been successfully changed.",
         duration: 3000,
       });
+      // Close the sheet by navigating back to quotes list
+      setLocation("/quotes");
     },
     onError: (error: any) => {
       toast({

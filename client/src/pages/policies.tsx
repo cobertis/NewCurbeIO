@@ -4475,6 +4475,8 @@ export default function PoliciesPage() {
         description: "The agent has been successfully changed.",
         duration: 3000,
       });
+      // Close the sheet by navigating back to policies list
+      setLocation("/policies");
     },
     onError: (error: any) => {
       toast({
