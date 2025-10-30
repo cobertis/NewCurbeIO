@@ -1054,9 +1054,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       // Step 3 & 4: Save income and immigration data in parallel for faster performance
       // Calculate total annual income based on frequency
       let totalAnnualIncome = null;
-      if (data.annualIncome) {
+      if (data.annualIncome !== undefined && data.annualIncome !== null && data.annualIncome !== '') {
         const amount = parseFloat(data.annualIncome);
-        if (!isNaN(amount) && amount > 0) {
+        if (!isNaN(amount) && amount >= 0) {
           const frequency = data.incomeFrequency || 'annually';
           switch (frequency) {
             case 'weekly':
@@ -1086,7 +1086,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             employerName: data.employerName || null,
             employerPhone: data.employerPhone || null,
             position: data.position || null,
-            annualIncome: data.annualIncome || null,
+            annualIncome: data.annualIncome !== undefined && data.annualIncome !== null && data.annualIncome !== '' ? data.annualIncome : null,
             incomeFrequency: data.incomeFrequency || 'annually',
             totalAnnualIncome: totalAnnualIncome,
             selfEmployed: data.selfEmployed || false,
