@@ -10870,6 +10870,58 @@ export default function QuotesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Change Agent Dialog */}
+      <Dialog open={changeAgentDialogOpen} onOpenChange={setChangeAgentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Agent</DialogTitle>
+            <DialogDescription>
+              Select a new agent to assign to this quote.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Agent</Label>
+              <Select
+                value={selectedAgentId}
+                onValueChange={setSelectedAgentId}
+              >
+                <SelectTrigger data-testid="select-agent">
+                  <SelectValue placeholder="Select an agent..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companyAgents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{agent.firstName} {agent.lastName}</span>
+                        <span className="text-xs text-muted-foreground">({agent.email})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setChangeAgentDialogOpen(false)}
+              data-testid="button-cancel-change-agent"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => changeAgentMutation.mutate(selectedAgentId)}
+              disabled={changeAgentMutation.isPending || !selectedAgentId}
+              data-testid="button-confirm-change-agent"
+            >
+              {changeAgentMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {changeAgentMutation.isPending ? "Updating..." : "Update Agent"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
@@ -11272,58 +11324,6 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Change Agent Dialog */}
-      <Dialog open={changeAgentDialogOpen} onOpenChange={setChangeAgentDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Change Agent</DialogTitle>
-            <DialogDescription>
-              Select a new agent to assign to this quote.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Agent</Label>
-              <Select
-                value={selectedAgentId}
-                onValueChange={setSelectedAgentId}
-              >
-                <SelectTrigger data-testid="select-agent">
-                  <SelectValue placeholder="Select an agent..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {companyAgents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      <div className="flex items-center gap-2">
-                        <span>{agent.firstName} {agent.lastName}</span>
-                        <span className="text-xs text-muted-foreground">({agent.email})</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setChangeAgentDialogOpen(false)}
-              data-testid="button-cancel-change-agent"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => changeAgentMutation.mutate(selectedAgentId)}
-              disabled={changeAgentMutation.isPending || !selectedAgentId}
-              data-testid="button-confirm-change-agent"
-            >
-              {changeAgentMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {changeAgentMutation.isPending ? "Updating..." : "Update Agent"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
