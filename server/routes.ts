@@ -8412,14 +8412,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // 5. Check if agent was changed and send notification to new agent
       if (validatedData.agentId && validatedData.agentId !== existingQuote.agentId) {
+        console.log(`[AGENT CHANGE] Quote ${id}: Agent changed from ${existingQuote.agentId} to ${validatedData.agentId}`);
         try {
           // Get the new agent's information
           const newAgent = await storage.getUser(validatedData.agentId);
+          console.log(`[AGENT CHANGE] New agent found:`, newAgent?.email);
           
           if (newAgent) {
             // Create notification for the new agent
             const clientName = `${existingQuote.clientFirstName} ${existingQuote.clientLastName}`;
             const assignerName = `${currentUser.firstName} ${currentUser.lastName}`;
+            
+            console.log(`[AGENT CHANGE] Creating notification for ${newAgent.email}: ${assignerName} assigned quote for ${clientName}`);
             
             await storage.createNotification({
               userId: validatedData.agentId,
@@ -8429,8 +8433,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               link: `/quotes/${id}`,
             });
             
+            console.log(`[AGENT CHANGE] Broadcasting notification to user ${validatedData.agentId}`);
             // Broadcast notification via WebSocket to the specific user
             await broadcastNotificationUpdate(validatedData.agentId);
+            console.log(`[AGENT CHANGE] Notification sent successfully`);
           }
         } catch (notificationError) {
           console.error("Error creating agent assignment notification:", notificationError);
@@ -12159,14 +12165,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // 5. Check if agent was changed and send notification to new agent
       if (validatedData.agentId && validatedData.agentId !== existingPolicy.agentId) {
+        console.log(`[AGENT CHANGE] Policy ${id}: Agent changed from ${existingPolicy.agentId} to ${validatedData.agentId}`);
         try {
           // Get the new agent's information
           const newAgent = await storage.getUser(validatedData.agentId);
+          console.log(`[AGENT CHANGE] New agent found:`, newAgent?.email);
           
           if (newAgent) {
             // Create notification for the new agent
             const clientName = `${existingPolicy.clientFirstName} ${existingPolicy.clientLastName}`;
             const assignerName = `${currentUser.firstName} ${currentUser.lastName}`;
+            
+            console.log(`[AGENT CHANGE] Creating notification for ${newAgent.email}: ${assignerName} assigned policy for ${clientName}`);
             
             await storage.createNotification({
               userId: validatedData.agentId,
@@ -12176,8 +12186,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               link: `/policies/${id}`,
             });
             
+            console.log(`[AGENT CHANGE] Broadcasting notification to user ${validatedData.agentId}`);
             // Broadcast notification via WebSocket to the specific user
             await broadcastNotificationUpdate(validatedData.agentId);
+            console.log(`[AGENT CHANGE] Notification sent successfully`);
           }
         } catch (notificationError) {
           console.error("Error creating agent assignment notification:", notificationError);
