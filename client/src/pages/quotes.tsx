@@ -6017,58 +6017,63 @@ export default function QuotesPage() {
               </button>
             </div>
 
-            {/* Coming Soon Section */}
-            <div className="space-y-2 pt-4 border-t">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 mb-2">Coming Soon</h3>
-              
-              <button
-                onClick={() => {}}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors opacity-60 cursor-not-allowed"
-                data-testid="button-commissions"
-                disabled
-              >
-                <div className="flex items-center gap-2.5">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Commissions</span>
+            {/* Latest Note Section */}
+            {quoteNotes.length > 0 && (
+              <div className="space-y-2 pt-4 border-t">
+                <div className="flex items-center justify-between px-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Latest Note</h3>
+                  <button
+                    onClick={() => setNotesSheetOpen(true)}
+                    className="text-xs text-primary hover:underline"
+                    data-testid="link-view-all-notes"
+                  >
+                    View All
+                  </button>
                 </div>
-              </button>
-
-              <button
-                onClick={() => {}}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors opacity-60 cursor-not-allowed"
-                data-testid="button-tasks"
-                disabled
-              >
-                <div className="flex items-center gap-2.5">
-                  <ListTodo className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Tasks</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {}}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors opacity-60 cursor-not-allowed"
-                data-testid="button-life-changes"
-                disabled
-              >
-                <div className="flex items-center gap-2.5">
-                  <Heart className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Life Changes</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {}}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors opacity-60 cursor-not-allowed"
-                data-testid="button-logs"
-                disabled
-              >
-                <div className="flex items-center gap-2.5">
-                  <ScrollText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Logs</span>
-                </div>
-              </button>
-            </div>
+                
+                {(() => {
+                  // Get the latest note (most recent)
+                  const latestNote = [...quoteNotes].sort((a: any, b: any) => 
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                  )[0];
+                  
+                  return (
+                    <button
+                      onClick={() => setNotesSheetOpen(true)}
+                      className="w-full px-3 py-2.5 rounded-md hover-elevate active-elevate-2 text-left transition-colors bg-muted/20"
+                      data-testid="button-latest-note"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs h-4 px-1.5"
+                          >
+                            {latestNote.category || 'general'}
+                          </Badge>
+                          {latestNote.isPinned && (
+                            <Badge variant="secondary" className="text-xs h-4 px-1.5 bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                              Pinned
+                            </Badge>
+                          )}
+                          {latestNote.isUrgent && (
+                            <Badge variant="secondary" className="text-xs h-4 px-1.5 bg-red-500/10 text-red-700 dark:text-red-400">
+                              Urgent
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm line-clamp-2 text-muted-foreground">
+                          {latestNote.content}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(latestNote.createdAt), "MMM dd, yyyy 'at' h:mm a")}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         </div>
 
