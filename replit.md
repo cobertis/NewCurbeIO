@@ -67,6 +67,13 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
         - All plan data stored in `quotes.selectedPlan` JSONB column with complete plan object from CMS Marketplace API
 -   **Quote Notes System:** Internal notes system for quotes with professional UI, categorization, pinning, urgent/resolved statuses, search/filtering, user attribution, and image attachments.
 -   **Quote Documents System:** Professional document management system for quotes, supporting upload, preview, download, and deletion of various file types with categorization, search, and secure storage.
+-   **Policies Management System:** Complete quote-to-policy conversion system that migrates quotes with selected health insurance plans into a separate Policies module. Features:
+    -   **Database Structure:** 11 PostgreSQL tables mirroring quote structure (policies, policy_members, policy_member_income, policy_member_immigration, policy_member_documents, policy_documents, policy_payment_methods, policy_reminders, policy_notes, policy_consent_documents, policy_consent_signature_events)
+    -   **Quote Conversion:** "Submit Policy" button (green, visible when selectedPlan exists) converts quote to policy and removes from quotes list
+    -   **Data Migration:** Sequential copy operation (Neon HTTP driver limitation - no transaction support) copying all quote data, family members, documents, payment methods, reminders, notes, and consent documents to policy tables
+    -   **Policy Management:** Identical functionality to Quotes module with same UI components, endpoints (~54 API routes), and features
+    -   **Menu Organization:** Policies appears before Quotes in sidebar navigation
+    -   **8-Character Short IDs:** Policies use same ID generation system as quotes for easy reference
 
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management, account activation, and 2FA. Dates are handled as `yyyy-MM-dd` strings (PostgreSQL `date` type) to prevent timezone issues.

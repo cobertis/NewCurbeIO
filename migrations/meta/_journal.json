@@ -8,6 +8,13 @@
       "when": 1760458071899,
       "tag": "0000_boring_mentor",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1761832226507,
+      "tag": "0001_third_yellowjacket",
+      "breakpoints": true
     }
   ]
 }

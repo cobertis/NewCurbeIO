@@ -4115,8 +4115,12 @@ export class DbStorage implements IStorage {
         await db.insert(policyNotes).values({
           policyId: policyId,
           companyId: note.companyId,
-          userId: note.userId,
+          createdBy: note.createdBy,
           note: note.note,
+          attachments: note.attachments,
+          isImportant: note.isImportant,
+          isPinned: note.isPinned,
+          isResolved: note.isResolved,
         } as any);
       }
       

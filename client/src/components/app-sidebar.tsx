@@ -87,14 +87,14 @@ const superadminMenuItems = [
     icon: Calendar,
   },
   {
-    title: "Quotes",
-    url: "/quotes",
-    icon: ClipboardList,
-  },
-  {
     title: "Policies",
     url: "/policies",
     icon: FileCheck,
+  },
+  {
+    title: "Quotes",
+    url: "/quotes",
+    icon: ClipboardList,
   },
   {
     title: "Settings",
@@ -156,14 +156,14 @@ const regularUserMenuItems = [
     icon: Calendar,
   },
   {
-    title: "Quotes",
-    url: "/quotes",
-    icon: ClipboardList,
-  },
-  {
     title: "Policies",
     url: "/policies",
     icon: FileCheck,
+  },
+  {
+    title: "Quotes",
+    url: "/quotes",
+    icon: ClipboardList,
   },
 ];
 
