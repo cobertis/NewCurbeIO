@@ -4020,7 +4020,9 @@ export class DbStorage implements IStorage {
         } as any)
         .returning();
       
-      // 4. Insert members
+      // 4. Create member ID mapping and insert members
+      const memberIdMap = new Map<string, string>();
+      
       for (const member of members) {
         const [newMember] = await db
           .insert(policyMembers)
@@ -4049,6 +4051,9 @@ export class DbStorage implements IStorage {
             relation: member.relation,
           } as any)
           .returning();
+        
+        // Store mapping: old quote member ID -> new policy member ID
+        memberIdMap.set(member.id, newMember.id);
         
         // Copy member income
         const [income] = await db.select().from(quoteMemberIncome).where(eq(quoteMemberIncome.memberId, member.id));
@@ -4124,7 +4129,7 @@ export class DbStorage implements IStorage {
         } as any);
       }
       
-      // 6. Insert documents
+      // 6. Insert documents (using member ID mapping)
       for (const doc of documents) {
         await db.insert(policyDocuments).values({
           policyId: policyId,
@@ -4135,7 +4140,7 @@ export class DbStorage implements IStorage {
           fileSize: doc.fileSize,
           fileType: doc.fileType,
           fileUrl: doc.fileUrl,
-          belongsTo: doc.belongsTo,
+          belongsTo: doc.belongsTo ? (memberIdMap.get(doc.belongsTo) || null) : null,
           description: doc.description,
         } as any);
       }
