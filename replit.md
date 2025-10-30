@@ -56,7 +56,15 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **CMS Marketplace API Integration:** Real-time health insurance plan quotation from healthcare.gov, calculating household data and retrieving plans with pricing, deductibles, metal levels, and tax credit eligibility.
     -   **HHS Poverty Guidelines Integration:** Year-aware system using official HHS data for APTC eligibility calculations, displaying guidelines with dynamic percentage breakdowns.
     -   **Plan Comparison Feature:** Side-by-side comparison for up to 5 health insurance plans, showing premiums, deductibles, metal levels, and benefits in a professional table.
-    -   **Plan Selection & Display:** Users can select a health insurance plan from the marketplace and save it to the quote. The selected plan is displayed in a professional, corporate-styled card above the Family Members section. The card shows comprehensive plan details including carrier name/logo, metal level, premiums (with and without tax credits), deductibles, out-of-pocket maximums, key benefits, plan type, network, and effective date. Users can change or remove the selected plan with dedicated buttons. All data is stored in the `quotes.selectedPlan` JSONB column.
+    -   **Plan Selection & Display:** Users can select a health insurance plan from the marketplace and save it to the quote. The selected plan is displayed using the identical card design from the marketplace plans page, positioned above the Family Members section. The card includes:
+        - **Header Section:** Insurance carrier name, Plan ID, metal level badge, plan type badge, quality rating, and special feature badges (Dental Child/Adult, HSA Eligible, Simple Choice)
+        - **Plan Name:** Full plan name displayed prominently
+        - **Premium Details:** Shows monthly premium with APTC tax credit (displays "You Pay" price, savings total, and original price with strikethrough)
+        - **Cost Sharing Grid:** Three-column layout showing Premium, Deductible, and Out-of-Pocket Maximum with detailed breakdowns
+        - **Benefits Grid:** Six key benefits displayed in 2x3 grid: Primary Doctor visits, Specialist Visits, Urgent care, Emergencies, Mental health, Generic drugs
+        - **Actions:** "Change Plan" button (navigates to marketplace) and "Remove Plan" button (clears selection)
+        - **Data Mapping:** Uses identical logic as marketplace (`getBenefitCost()`, `formatCurrency()`, deductible extraction, MOOP calculation)
+        - All plan data stored in `quotes.selectedPlan` JSONB column with complete plan object from CMS Marketplace API
 -   **Quote Notes System:** Internal notes system for quotes with professional UI, categorization, pinning, urgent/resolved statuses, search/filtering, user attribution, and image attachments.
 -   **Quote Documents System:** Professional document management system for quotes, supporting upload, preview, download, and deletion of various file types with categorization, search, and secure storage.
 
