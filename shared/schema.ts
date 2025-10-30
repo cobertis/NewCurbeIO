@@ -1384,6 +1384,7 @@ export const quotes = pgTable("quotes", {
   
   // Quote Status
   status: text("status").notNull().default("draft"), // draft, submitted, pending_review, approved, rejected, converted_to_policy
+  paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid, paid
   
   // Additional Information
   notes: text("notes"), // Internal notes
@@ -2071,6 +2072,7 @@ export const policies = pgTable("policies", {
   
   // Policy Status
   status: text("status").notNull().default("new"),
+  paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid, paid
   
   // Additional Information
   notes: text("notes"),
