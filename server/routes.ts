@@ -12710,7 +12710,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12746,7 +12746,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12960,7 +12960,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13010,7 +13010,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13042,7 +13042,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13159,7 +13159,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
