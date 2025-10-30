@@ -3411,15 +3411,15 @@ export default function PoliciesPage() {
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
   
   // Determine if we're in the wizard view based on URL
-  const showWizard = location === "/quotes/new";
+  const showWizard = location === "/policies/new";
   
   // Function to handle viewing a quote - navigates to the quote detail page
   const handleViewQuote = (quote: Quote | any) => {
-    console.log('[handleViewQuote] Navigating to quote:', quote?.id);
+    console.log('[handleViewQuote] Navigating to policy:', quote?.id);
     if (quote?.id) {
-      // Navigate to the quote detail page
-      setLocation(`/quotes/${quote.id}`);
-      console.log('[handleViewQuote] Navigation called to:', `/quotes/${quote.id}`);
+      // Navigate to the policy detail page
+      setLocation(`/policies/${quote.id}`);
+      console.log('[handleViewQuote] Navigation called to:', `/policies/${quote.id}`);
     } else {
       console.error('[handleViewQuote] No quote ID provided');
       toast({
@@ -6137,7 +6137,7 @@ export default function PoliciesPage() {
                               variant: "destructive",
                             });
                           } else {
-                            setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`);
+                            setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
                           }
                         }}
                       >
@@ -6380,7 +6380,7 @@ export default function PoliciesPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`)}
+                          onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
                           data-testid="button-change-plan"
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
@@ -8765,7 +8765,7 @@ export default function PoliciesPage() {
                 <CardTitle>All Policies</CardTitle>
                 <CardDescription>View and manage your insurance policies</CardDescription>
               </div>
-              <Button onClick={() => setLocation("/quotes/new")} data-testid="button-create-quote">
+              <Button onClick={() => setLocation("/policies/new")} data-testid="button-create-quote">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Policy
               </Button>
@@ -8779,7 +8779,7 @@ export default function PoliciesPage() {
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No policies yet</h3>
                 <p className="text-muted-foreground mb-4">Create your first policy to get started</p>
-                <Button onClick={() => setLocation("/quotes/new")} data-testid="button-create-first-quote">
+                <Button onClick={() => setLocation("/policies/new")} data-testid="button-create-first-quote">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Policy
                 </Button>
@@ -9104,7 +9104,7 @@ export default function PoliciesPage() {
                                   <div className="cursor-pointer">
                                     <div 
                                       className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                      onClick={() => setLocation(`/quotes/${quote.id}`)}
+                                      onClick={() => setLocation(`/policies/${quote.id}`)}
                                     >
                                       {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
                                     </div>
@@ -9189,7 +9189,7 @@ export default function PoliciesPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => setLocation(`/quotes/${quote.id}`)}>
+                                  <DropdownMenuItem onClick={() => setLocation(`/policies/${quote.id}`)}>
                                     View Details
                                   </DropdownMenuItem>
                                   <DropdownMenuItem>Edit Quote</DropdownMenuItem>
