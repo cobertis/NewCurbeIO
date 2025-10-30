@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system with integrated iMessage/SMS/RCS capabilities, designed for enterprise messaging and customer relationship management. The admin dashboard provides superadmins with tools to manage companies (tenants) and their users, featuring role-based access, Stripe billing, custom SMTP notifications, and a scalable full-stack architecture.
+Curbe is a multi-tenant CRM system with integrated iMessage/SMS/RCS capabilities, designed for enterprise messaging and customer relationship management. The admin dashboard provides superadmins with tools to manage companies (tenants) and their users, featuring role-based access, Stripe billing, custom SMTP notifications, and a scalable full-stack architecture. It includes comprehensive modules for Quotes, Policies, Campaigns, and a real-time SMS Chat application. The system aims to streamline customer relationship management and communication for businesses.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -33,101 +33,36 @@ if (isLoading || !data) {
 - NO prefetching - let queries load naturally and show full-screen loading
 - Apply consistently across all sheets, dialogs, and async components
 
+**CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
+
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, supporting custom theming (light/dark modes). It features a mobile-first responsive design, with primary navigation via a sidebar and a dynamic three-column layout for the SMS chat application. All interactions are optimized for mobile.
+The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, supporting custom theming (light/dark modes). It features a mobile-first responsive design, with primary navigation via a sidebar and a dynamic three-column layout for the SMS chat application, optimized for mobile interactions.
 
 ### Technical Implementations
-The frontend uses Wouter for routing and TanStack Query for state management. The backend is built with Express.js and TypeScript, offering a RESTful API with session-based authentication and role-based access control.
-
-**Unified Marketplace Plans System:**
-Single reusable component (`marketplace-plans.tsx`) serves both Quotes and Policies modules with dynamic routing:
-- Frontend routes: `/quotes/:id/marketplace-plans` and `/policies/:id/marketplace-plans`
-- Backend endpoints: GET `/api/quotes/:id/marketplace-plans`, GET `/api/policies/:id/marketplace-plans`, POST `/api/quotes/:quoteId/select-plan`, POST `/api/policies/:policyId/select-plan`
-- Component automatically detects context (quote vs policy) using URL path and adjusts all API calls dynamically with `basePath` variable
-- All pricing displays use `formatCurrency()` helper with `Math.round()` for consistency between table and card views
-- Never calculates/modifies pricing - uses exact API values with rounding for display only
+The frontend uses Wouter for routing and TanStack Query for state management. The backend is built with Express.js and TypeScript, offering a RESTful API with session-based authentication and role-based access control. The system employs a unified marketplace plans component for dynamic routing and API calls across Quotes and Policies.
 
 **Key Features:**
--   **User & Company Management:** Comprehensive CRUD for users and companies, including RBAC, 2FA, profile management, and team features.
--   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session management, and password resets.
--   **Multi-tenancy:** Strict data isolation per company, with superadmin oversight.
--   **Email System:** Global SMTP configuration and database-driven templates for system notifications.
+-   **User & Company Management:** Comprehensive CRUD for users and companies, including RBAC, 2FA, and team features.
+-   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session management.
+-   **Multi-tenancy:** Strict data isolation per company with superadmin oversight.
+-   **Email System:** Global SMTP configuration and database-driven templates.
 -   **Modular Feature System:** Superadmins can assign features to companies.
 -   **Audit Logging:** Centralized service for tracking critical actions.
 -   **Campaign System:** Unified interface for managing Email/SMS Campaigns and Contact Lists.
--   **Real-Time Notifications:** WebSocket-based system for instant updates and superadmin broadcasts.
--   **SMS Chat Application:** Bidirectional, real-time SMS chat with conversation management and internal notes.
--   **Billing & Stripe Integration:** Automated customer/subscription management and a professional billing dashboard.
--   **Quotes Management System:** A comprehensive insurance quote management system with a 3-step wizard interface across 11 product types. Features Google Places Autocomplete, multi-tenant isolation, and 8-character short IDs. **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.** Includes professional credit card validation (Luhn algorithm, type detection, dynamic formatting, CVV/expiration validation).
-    -   **CMS Marketplace API Integration:** Real-time health insurance plan quotation from healthcare.gov, calculating household data and retrieving plans with pricing, deductibles, metal levels, and tax credit eligibility.
-    -   **HHS Poverty Guidelines Integration:** Year-aware system using official HHS data for APTC eligibility calculations, displaying guidelines with dynamic percentage breakdowns.
-    -   **Plan Comparison Feature:** Side-by-side comparison for up to 5 health insurance plans, showing premiums, deductibles, metal levels, and benefits in a professional table.
-    -   **Plan Selection & Display:** Users can select a health insurance plan from the marketplace and save it to the quote. The selected plan is displayed using the identical card design from the marketplace plans page, positioned above the Family Members section. The card includes:
-        - **Header Section:** Insurance carrier name, Plan ID, metal level badge, plan type badge, quality rating, and special feature badges (Dental Child/Adult, HSA Eligible, Simple Choice)
-        - **Plan Name:** Full plan name displayed prominently
-        - **Premium Details:** Shows monthly premium with APTC tax credit (displays "You Pay" price, savings total, and original price with strikethrough)
-        - **Cost Sharing Grid:** Three-column layout showing Premium, Deductible, and Out-of-Pocket Maximum with detailed breakdowns
-        - **Benefits Grid:** Six key benefits displayed in 2x3 grid: Primary Doctor visits, Specialist Visits, Urgent care, Emergencies, Mental health, Generic drugs
-        - **Actions:** "Change Plan" button (navigates to marketplace) and "Remove Plan" button (clears selection)
-        - **Data Mapping:** Uses identical logic as marketplace (`getBenefitCost()`, `formatCurrency()`, deductible extraction, MOOP calculation)
-        - All plan data stored in `quotes.selectedPlan` JSONB column with complete plan object from CMS Marketplace API
--   **Quote Notes System:** Internal notes system for quotes with professional UI, categorization, pinning, urgent/resolved statuses, search/filtering, user attribution, and image attachments.
--   **Quote Documents System:** Professional document management system for quotes, supporting upload, preview, download, and deletion of various file types with categorization, search, and secure storage.
--   **Policies Management System:** Complete quote-to-policy conversion system that migrates quotes with selected health insurance plans into a separate Policies module. Features:
-    -   **Database Structure:** 11 PostgreSQL tables mirroring quote structure (policies, policy_members, policy_member_income, policy_member_immigration, policy_member_documents, policy_documents, policy_payment_methods, policy_reminders, policy_notes, policy_consent_documents, policy_consent_signature_events)
-    -   **Quote Conversion:** "Submit Policy" button (green, visible when selectedPlan exists) converts quote to policy and removes from quotes list
-    -   **Data Migration:** Sequential copy operation (Neon HTTP driver limitation - no transaction support) copying all quote data, family members, documents, payment methods, reminders, notes, and consent documents to policy tables
-    -   **Policy Management:** Identical functionality to Quotes module with same UI components, endpoints (~54 API routes), and features
-    -   **Policy Status Management:** Badge display in policy detail page with ten internal statuses: Canceled (red), Completed (green), Migrated (gray), New (blue), Pending Document (cyan), Pending Payment (cyan), Renewed (blue), Updated by Client (cyan), Waiting for Approval (orange), Waiting on Agent (red). Includes endpoint POST `/api/policies/:id/status` with validation, authorization, and audit logging.
-    -   **Menu Organization:** Policies appears before Quotes in sidebar navigation
-    -   **8-Character Short IDs:** Policies use same ID generation system as quotes for easy reference
+-   **Real-Time Notifications:** WebSocket-based system for instant updates.
+-   **SMS Chat Application:** Bidirectional, real-time SMS chat with conversation management.
+-   **Billing & Stripe Integration:** Automated customer/subscription management.
+-   **Quotes Management System:** 3-step wizard for 11 product types, featuring Google Places Autocomplete, CMS Marketplace API integration for health insurance plans (including HHS Poverty Guidelines for APTC calculations), plan comparison, and professional credit card validation.
+    -   **Quote Notes & Documents:** Internal notes system with categories, search, and image attachments. Document management for uploads, previews, and secure storage, linked to family members.
+-   **Policies Management System:** Converts quotes to policies, migrating all associated data. Provides identical functionality to the Quotes module with comprehensive policy status management and agent assignment capabilities.
+-   **Consent Document System:** Generates legal consent documents, supports email/SMS/link delivery, and captures electronic signatures with a full digital audit trail.
+-   **Calendar System:** Full-screen professional calendar displaying company-wide events including birthdays and reminders, with multi-tenant isolation.
+-   **Agent Assignment System:** Flexible agent reassignment for quotes and policies with agent-based filtering for admin users.
 
 ### System Design Choices
-The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management, account activation, and 2FA. Dates are handled as `yyyy-MM-dd` strings (PostgreSQL `date` type) to prevent timezone issues.
-
-**Quote Family Members Display Logic:**
-Displays merged family member data from `quote_members` (normalized) and JSONB columns (`quotes.spouses`, `quotes.dependents`), showing full details for normalized records and basic data for JSONB entries.
-
-**Quote Notes System:**
-Features a clean, corporate design with a single-column layout, search toolbar, and categorized notes (General, Important, Follow Up, Decision, Issue). Includes pin, urgent, and resolved statuses, real-time search, CRUD operations, user attribution, and image attachment support (drag-and-drop, paste, validation). Pinned notes are sorted first, then by creation date (newest first).
-
-**Quote Documents System:**
-Provides a wide Sheet layout with a professional table for documents, supporting uploads, previews, and deletions. Categories include Passport, Driver's License, State ID, Birth Certificate, Parole, Permanent Residence, Work Permit, I-94, and Other. Features real-time search, filter by category, and robust security measures. Documents can be linked to specific family members via the "Belongs To" field, which displays the member's name and role in the documents table. Clicking the Eye icon opens a preview dialog for viewing documents directly instead of downloading them. The upload form includes an optional dropdown to select which family member the document belongs to, populated from the quote's family members list.
-
-**Quote Reminders System:**
-Comprehensive reminder management with scheduled notifications powered by node-cron. When a reminder is snoozed, a background scheduler running every minute automatically creates notifications when the snooze period expires. Features include pending reminders counter badge, compact Actions dropdown menu, and automatic state management from "snoozed" back to "pending" after notification is sent. Background service runs in `server/reminder-scheduler.ts` and starts automatically with the server.
-
-**Consent Document System:**
-Legal consent document generation and electronic signature system with full audit trail compliance. Features include:
-- Document generation with company logo and data (agent name, NPN, company name)
-- Three delivery methods: Email (SMTP), SMS (Twilio), or shareable Link
-- Public signature page at `/consent/:token` (no authentication required)
-- Comprehensive digital audit trail: IP address, timezone, platform, browser, user agent, geolocation, signature timestamp
-- Status tracking: draft → sent → viewed → signed
-- Event logging for all consent lifecycle events
-- Secure token-based access with 30-day expiration
-- Uses existing email (Nodemailer) and SMS (Twilio) services
-
-**Calendar System:**
-Full-screen professional calendar displaying company-wide events with visual differentiation:
-- **Birthday Events:** Automatically displays all family member birthdays (primary clients, spouses, dependents) from all quotes in the company. Shows annually recurring birthdays with cake icon in blue.
-- **Reminder Events:** Displays all active reminders (pending/snoozed) with bell icon. Color-coded by priority: urgent (red), high (orange), medium (yellow), low (gray).
-- **Event Details:** Hover tooltips show full information including person name, role, reminder time, and priority level.
-- **Navigation:** Month-by-month navigation with "Today" quick jump button.
-- **Data Source:** GET `/api/calendar/events` endpoint aggregates birthdays from `quotes.clientDateOfBirth` and `quote_members.dateOfBirth`, plus reminders from `quote_reminders` table.
-- **Multi-tenant Isolation:** Events filtered by company, ensuring strict data isolation.
-
-**Agent Assignment System:**
-Flexible agent reassignment capability for quotes and policies with identical implementation in both modules:
-- **Backend Endpoint:** GET `/api/company/agents` returns all users from current user's company with sanitized data (id, name, email, avatar, role)
-- **Sidebar Integration:** "Change" button next to agent name in quote/policy detail sidebar opens agent selection dialog
-- **Professional Dialog:** Clean modal interface with dropdown showing all company agents with name and email
-- **Real-time Updates:** PATCH `/api/quotes/:id` or `/api/policies/:id` with `agentId` parameter updates assignment instantly
-- **Toast Notifications:** Success/error feedback with 3-second auto-dismiss
-- **Query Invalidation:** Automatically refreshes quote/policy detail and list views after update
-- **Authorization:** Company-scoped access ensures users can only assign agents from their own company
+The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.
 
 ## External Dependencies
 
@@ -139,5 +74,5 @@ Flexible agent reassignment capability for quotes and policies with identical im
 -   **Form Management & Validation:** React Hook Form, Zod.
 -   **Session Management:** `express-session`, `connect-pg-simple`.
 -   **Security:** Bcrypt.
--   **Utilities:** `date-fns`, `node-cron`.
--   **Background Jobs:** Node-cron for scheduled tasks.
+-   **Utilities:** `date-fns`.
+-   **Background Jobs:** `node-cron`.

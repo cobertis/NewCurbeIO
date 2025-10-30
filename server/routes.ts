@@ -8159,8 +8159,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quotes = await storage.getQuotesByCompany(currentUser.companyId);
         }
       } else if (currentUser.companyId) {
-        // Regular users see only their company's quotes
+        // Get all quotes for the company
         quotes = await storage.getQuotesByCompany(currentUser.companyId);
+        
+        // If user is admin (not superadmin), filter by agentId
+        if (currentUser.role === "admin") {
+          quotes = quotes.filter(quote => quote.agentId === currentUser.id);
+        }
       }
       
       // Return quotes with plain text SSN (as stored in database)
@@ -11801,7 +11806,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Get all policies for the company
-      const allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
+      let allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
+      
+      // If user is admin (not superadmin), filter by agentId
+      if (currentUser.role === "admin") {
+        allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
+      }
       
       // Calculate total policies
       const totalPolicies = allPolicies.length;
@@ -11868,8 +11878,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           policies = await storage.getPoliciesByCompany(currentUser.companyId);
         }
       } else if (currentUser.companyId) {
-        // Regular users see only their company's policys
+        // Get all policies for the company
         policies = await storage.getPoliciesByCompany(currentUser.companyId);
+        
+        // If user is admin (not superadmin), filter by agentId
+        if (currentUser.role === "admin") {
+          policies = policies.filter(policy => policy.agentId === currentUser.id);
+        }
       }
       
       // Return policies with plain text SSN (as stored in database)
