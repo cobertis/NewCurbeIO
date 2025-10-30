@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -123,6 +123,52 @@ const formatDateForDisplay = (date: string | null | undefined, formatStr: string
     return date; // Fallback to original string if parsing fails
   }
 };
+
+// Badge variant helper functions for status badges
+function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+    new: "default",
+    pending_document: "secondary",
+    pending_payment: "secondary",
+    waiting_on_agent: "secondary",
+    waiting_for_approval: "secondary",
+    updated_by_client: "default",
+    completed: "outline",
+    renewed: "outline",
+    canceled: "destructive",
+  };
+  return variants[status] || "outline";
+}
+
+function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+    pending: "secondary",
+    processing: "default",
+    declined: "destructive",
+    completed: "outline",
+  };
+  return variants[status] || "secondary";
+}
+
+function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+    pending: "secondary",
+    auto_pay: "outline",
+    failed: "destructive",
+    paid: "outline",
+    not_applicable: "secondary",
+  };
+  return variants[status] || "secondary";
+}
+
+function formatStatusDisplay(status: string): string {
+  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatPaymentStatusDisplay(status: string): string {
+  if (status === "not_applicable") return "Not applicable ($0)";
+  return formatStatusDisplay(status);
+}
 
 // Helper to calculate age from yyyy-MM-dd date string
 const calculateAge = (dateOfBirth: string | null | undefined): number | null => {
@@ -3408,6 +3454,14 @@ export default function PoliciesPage() {
   const [showConsentForm, setShowConsentForm] = useState(false); // Track if we're in form view
   const [viewingConsent, setViewingConsent] = useState<any | null>(null); // Track if we're viewing a consent
   
+  // Status dialog state
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusDialogValues, setStatusDialogValues] = useState({
+    status: "",
+    documentsStatus: "",
+    paymentStatus: "",
+  });
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -4512,6 +4566,32 @@ export default function PoliciesPage() {
         title: "Error",
         description: error.message || "Failed to change status",
         duration: 3000,
+      });
+    },
+  });
+
+  // Update policy statuses mutation
+  const updateStatusesMutation = useMutation({
+    mutationFn: async ({ policyId, status, documentsStatus, paymentStatus }: { policyId: string; status: string; documentsStatus: string; paymentStatus: string }) => {
+      return await apiRequest(`/api/policies/${policyId}/statuses`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, documentsStatus, paymentStatus }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
+      toast({
+        title: "Success",
+        description: "Policy statuses updated successfully",
+      });
+      setStatusDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update policy statuses",
       });
     },
   });
@@ -6005,83 +6085,49 @@ export default function PoliciesPage() {
                   </DropdownMenu>
                 </div>
 
-                <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground mb-2 block">Status</label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild disabled={changeStatusMutation.isPending}>
-                      <button className="w-full h-9 px-3 py-2 bg-background border border-input rounded-md flex items-center justify-between text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed" data-testid="select-status">
-                        <span className="truncate capitalize">{viewingQuote.status?.replace(/_/g, ' ') || "new"}</span>
-                        <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-[320px]">
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("new")}
-                        className="cursor-pointer"
-                      >
-                        New
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("pending_document")}
-                        className="cursor-pointer"
-                      >
-                        Pending Document
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("pending_payment")}
-                        className="cursor-pointer"
-                      >
-                        Pending Payment
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("waiting_on_agent")}
-                        className="cursor-pointer"
-                      >
-                        Waiting on Agent
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("waiting_for_approval")}
-                        className="cursor-pointer"
-                      >
-                        Waiting for Approval
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("updated_by_client")}
-                        className="cursor-pointer"
-                      >
-                        Updated by Client
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("completed")}
-                        className="cursor-pointer"
-                      >
-                        Completed
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("renewed")}
-                        className="cursor-pointer"
-                      >
-                        Renewed
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => changeStatusMutation.mutate("canceled")}
-                        className="cursor-pointer"
-                      >
-                        Canceled
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div className="pb-3 border-b">
-                  <label className="text-xs text-muted-foreground">Documents status</label>
-                  <p className="text-sm font-medium capitalize">
-                    {quoteDocumentsCount > 0 ? (
-                      <span className="text-green-600 dark:text-green-500">Completed</span>
-                    ) : (
-                      <span className="text-amber-600 dark:text-amber-500">Pending</span>
-                    )}
-                  </p>
+                {/* Status Badges with Edit Icon */}
+                <div className="pb-3 border-b space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground">Statuses</label>
+                    <button
+                      onClick={() => {
+                        setStatusDialogValues({
+                          status: viewingQuote.status || "",
+                          documentsStatus: viewingQuote.documentsStatus || "",
+                          paymentStatus: viewingQuote.paymentStatus || "",
+                        });
+                        setStatusDialogOpen(true);
+                      }}
+                      className="text-muted-foreground hover:text-foreground"
+                      data-testid="button-edit-statuses"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </div>
+                  
+                  {/* Policy Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Status:</span>
+                    <Badge variant={getStatusVariant(viewingQuote.status)} data-testid={`badge-status-${viewingQuote.status}`}>
+                      {formatStatusDisplay(viewingQuote.status)}
+                    </Badge>
+                  </div>
+                  
+                  {/* Documents Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Documents status:</span>
+                    <Badge variant={getDocumentsStatusVariant(viewingQuote.documentsStatus)} data-testid={`badge-documents-${viewingQuote.documentsStatus}`}>
+                      {formatStatusDisplay(viewingQuote.documentsStatus)}
+                    </Badge>
+                  </div>
+                  
+                  {/* Payment Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Payment status:</span>
+                    <Badge variant={getPaymentStatusVariant(viewingQuote.paymentStatus)} data-testid={`badge-payment-${viewingQuote.paymentStatus}`}>
+                      {formatPaymentStatusDisplay(viewingQuote.paymentStatus)}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="pb-3 border-b">
@@ -11069,6 +11115,110 @@ export default function PoliciesPage() {
               </>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Status Dialog */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change policy status</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Policy Status */}
+            <div className="space-y-2">
+              <Label htmlFor="policy-status">Policy status</Label>
+              <Select
+                value={statusDialogValues.status}
+                onValueChange={(value) =>
+                  setStatusDialogValues((prev) => ({ ...prev, status: value }))
+                }
+              >
+                <SelectTrigger id="policy-status" data-testid="select-policy-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="pending_document">Pending Document</SelectItem>
+                  <SelectItem value="pending_payment">Pending Payment</SelectItem>
+                  <SelectItem value="waiting_on_agent">Waiting On Agent</SelectItem>
+                  <SelectItem value="waiting_for_approval">Waiting For Approval</SelectItem>
+                  <SelectItem value="updated_by_client">Updated By Client</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="renewed">Renewed</SelectItem>
+                  <SelectItem value="canceled">Canceled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Documents Status */}
+            <div className="space-y-2">
+              <Label htmlFor="documents-status">Documents status</Label>
+              <Select
+                value={statusDialogValues.documentsStatus}
+                onValueChange={(value) =>
+                  setStatusDialogValues((prev) => ({ ...prev, documentsStatus: value }))
+                }
+              >
+                <SelectTrigger id="documents-status" data-testid="select-documents-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="declined">Declined</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Payment Status */}
+            <div className="space-y-2">
+              <Label htmlFor="payment-status">Payment status</Label>
+              <Select
+                value={statusDialogValues.paymentStatus}
+                onValueChange={(value) =>
+                  setStatusDialogValues((prev) => ({ ...prev, paymentStatus: value }))
+                }
+              >
+                <SelectTrigger id="payment-status" data-testid="select-payment-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="auto_pay">Auto pay</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="not_applicable">Not applicable ($0)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setStatusDialogOpen(false)}
+              data-testid="button-close-status-dialog"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                updateStatusesMutation.mutate({
+                  policyId: viewingQuote.id,
+                  status: statusDialogValues.status,
+                  documentsStatus: statusDialogValues.documentsStatus,
+                  paymentStatus: statusDialogValues.paymentStatus,
+                });
+              }}
+              disabled={updateStatusesMutation.isPending}
+              data-testid="button-submit-status"
+            >
+              {updateStatusesMutation.isPending ? "Saving..." : "Submit"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
