@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface CalendarEvent {
   type: 'birthday' | 'reminder';
@@ -22,6 +23,7 @@ interface CalendarEvent {
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [, setLocation] = useLocation();
 
   // Fetch calendar events
   const { data: eventsData, isLoading } = useQuery<{ events: CalendarEvent[] }>({
@@ -199,7 +201,8 @@ export default function Calendar() {
                         <div
                           key={`${event.quoteId}-${eventIndex}`}
                           className="flex items-start gap-1 px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                          title={`${event.title} - ${event.role}`}
+                          title={`${event.title} - ${event.role}\nClick to view quote`}
+                          onClick={() => setLocation(`/quotes/${event.quoteId}`)}
                           data-testid={`event-birthday-${eventIndex}`}
                         >
                           <Cake className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -216,15 +219,26 @@ export default function Calendar() {
                       };
                       const colorClass = priorityColors[event.priority as keyof typeof priorityColors] || priorityColors.medium;
                       
+                      // Show title or description, not just reminder type
+                      const displayText = event.title || event.description || event.reminderType?.replace(/_/g, ' ') || 'Reminder';
+                      const tooltipText = [
+                        displayText,
+                        event.description && event.title !== event.description ? event.description : null,
+                        event.dueTime ? `at ${event.dueTime}` : null,
+                        `${event.priority || 'medium'} priority`,
+                        'Click to view quote'
+                      ].filter(Boolean).join('\n');
+                      
                       return (
                         <div
                           key={`${event.reminderId}-${eventIndex}`}
                           className={`flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-colors ${colorClass}`}
-                          title={`${event.title} ${event.dueTime ? `at ${event.dueTime}` : ''} - ${event.priority || 'medium'} priority`}
+                          title={tooltipText}
+                          onClick={() => setLocation(`/quotes/${event.quoteId}`)}
                           data-testid={`event-reminder-${eventIndex}`}
                         >
                           <Bell className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                          <span className="truncate flex-1">{event.title}</span>
+                          <span className="truncate flex-1">{displayText}</span>
                         </div>
                       );
                     }
