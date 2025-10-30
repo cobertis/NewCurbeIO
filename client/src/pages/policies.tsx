@@ -3464,6 +3464,11 @@ export default function PoliciesPage() {
     paymentStatus: "",
   });
   
+  // Debug: Monitor dialog state changes
+  useEffect(() => {
+    console.log('[STATUS DIALOG STATE] Dialog open changed to:', statusDialogOpen);
+  }, [statusDialogOpen]);
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -6092,23 +6097,22 @@ export default function PoliciesPage() {
                   <div className="flex items-center justify-between">
                     <label className="text-xs text-muted-foreground">Statuses</label>
                     <button
-                      onClick={() => {
-                        console.log('[STATUS EDIT] Button clicked');
-                        console.log('[STATUS EDIT] Current values:', {
-                          status: viewingQuote.status,
-                          documentsStatus: viewingQuote.documentsStatus,
-                          paymentStatus: viewingQuote.paymentStatus,
-                        });
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('[SIDEBAR PENCIL] Clicked!');
+                        console.log('[SIDEBAR PENCIL] Current statusDialogOpen:', statusDialogOpen);
                         setStatusDialogValues({
                           status: viewingQuote.status || "",
                           documentsStatus: viewingQuote.documentsStatus || "",
                           paymentStatus: viewingQuote.paymentStatus || "",
                         });
+                        console.log('[SIDEBAR PENCIL] Calling setStatusDialogOpen(true)');
                         setStatusDialogOpen(true);
-                        console.log('[STATUS EDIT] Dialog should be open now');
                       }}
                       className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       data-testid="button-edit-statuses"
+                      type="button"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -11147,16 +11151,11 @@ export default function PoliciesPage() {
       </Dialog>
 
       {/* Change Status Dialog */}
-      <Dialog open={statusDialogOpen} onOpenChange={(open) => {
-        console.log('[STATUS DIALOG] onOpenChange called with:', open);
-        setStatusDialogOpen(open);
-      }}>
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Change policy status</DialogTitle>
           </DialogHeader>
-          
-          {console.log('[STATUS DIALOG] Rendering dialog, open:', statusDialogOpen, 'values:', statusDialogValues)}
           
           <div className="space-y-4 py-4">
             {/* Policy Status */}

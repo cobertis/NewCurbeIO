@@ -6103,7 +6103,7 @@ export default function QuotesPage() {
                         });
                         setStatusDialogOpen(true);
                       }}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       data-testid="button-edit-statuses"
                     >
                       <Pencil className="h-4 w-4" />
