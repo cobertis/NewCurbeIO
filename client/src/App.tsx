@@ -985,6 +985,20 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/policies/new">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Policies />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/policies/:id/marketplace-plans">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <MarketplacePlans />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/policies/:id">
         <ProtectedRoute>
           <DashboardLayout>

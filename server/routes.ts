@@ -14440,7 +14440,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== PLAN SELECTION ====================
   
-  // POST /api/quotes/:policyId/select-plan - Select a marketplace plan for a quote
+  // POST /api/policies/:policyId/select-plan - Select a marketplace plan for a policy
   app.post("/api/policies/:policyId/select-plan", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -14464,11 +14464,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Update policy with selected plan
-      const updatedQuote = await storage.updatePolicy(policyId, {
+      const updatedPolicy = await storage.updatePolicy(policyId, {
         selectedPlan: plan as any, // Store the complete plan object
       });
       
-      if (!updatedQuote) {
+      if (!updatedPolicy) {
         return res.status(500).json({ message: "Failed to update policy with selected plan" });
       }
       
@@ -14476,7 +14476,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote",
+        entity: "policy",
         entityId: policyId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14486,10 +14486,138 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ quote: updatedQuote });
+      res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error selecting plan:", error);
       res.status(500).json({ message: "Failed to select plan" });
+    }
+  });
+
+  // GET /api/policies/:id/marketplace-plans - Get marketplace plans for a policy
+  app.get("/api/policies/:id/marketplace-plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const policyId = req.params.id;
+    
+    try {
+      // Get pagination parameters from query string
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      
+      if (!policyId) {
+        return res.status(400).json({ message: "Policy ID is required" });
+      }
+      
+      // Get policy details
+      const policy = await storage.getPolicy(policyId);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get policy members
+      const members = await storage.getPolicyMembersByPolicyId(policyId, policy.companyId);
+      
+      // Get household income
+      const incomePromises = members.map(member => 
+        storage.getPolicyMemberIncome(member.id, policy.companyId)
+      );
+      const incomeRecords = await Promise.all(incomePromises);
+      const totalIncome = incomeRecords.reduce((sum, income) => {
+        if (income?.totalAnnualIncome) {
+          return sum + Number(income.totalAnnualIncome);
+        }
+        return sum;
+      }, 0);
+      
+      // Prepare data for CMS API
+      const client = members.find(m => m.role === 'client');
+      const spouses = members.filter(m => m.role === 'spouse');
+      const dependents = members.filter(m => m.role === 'dependent');
+      
+      // If no client in members, check the policy's client fields
+      const clientData = client || {
+        dateOfBirth: policy.clientDateOfBirth,
+        gender: policy.clientGender,
+        tobaccoUser: policy.clientTobaccoUser,
+        pregnant: false,
+      };
+      
+      if (!clientData || !clientData.dateOfBirth) {
+        return res.status(400).json({ message: "Client information incomplete - date of birth required" });
+      }
+      
+      if (!policy.physical_postal_code || !policy.physical_county || !policy.physical_state) {
+        return res.status(400).json({ message: "Policy address information incomplete" });
+      }
+      
+      const policyData = {
+        zipCode: policy.physical_postal_code,
+        county: policy.physical_county,
+        state: policy.physical_state,
+        householdIncome: totalIncome,
+        client: {
+          dateOfBirth: clientData.dateOfBirth,
+          gender: clientData.gender || undefined,
+          pregnant: clientData.pregnant || false,
+          usesTobacco: clientData.tobaccoUser || false,
+        },
+        spouses: spouses.map(s => ({
+          dateOfBirth: s.dateOfBirth!,
+          gender: s.gender || undefined,
+          pregnant: s.pregnant || false,
+          usesTobacco: s.tobaccoUser || false,
+        })),
+        dependents: dependents.map(d => ({
+          dateOfBirth: d.dateOfBirth!,
+          gender: d.gender || undefined,
+          pregnant: d.pregnant || false,
+          usesTobacco: d.tobaccoUser || false,
+        })),
+      };
+      
+      // Dynamic import of CMS Marketplace service
+      const cmsMarketplace = await import('./cms-marketplace.js');
+      const { fetchMarketplacePlans: fetchPlans } = cmsMarketplace;
+      
+      // Fetch plans from CMS Marketplace with pagination
+      const marketplaceData = await fetchPlans(policyData, page, pageSize);
+      
+      // Enrich plans with dental coverage information from benefits
+      if (marketplaceData.plans) {
+        marketplaceData.plans = marketplaceData.plans.map((plan: any) => {
+          const hasDentalChild = plan.benefits?.some((b: any) => 
+            b.type?.toLowerCase().includes('dental') && 
+            b.type?.toLowerCase().includes('child') &&
+            b.covered === true
+          ) || false;
+          
+          const hasDentalAdult = plan.benefits?.some((b: any) => 
+            b.type?.toLowerCase().includes('dental') && 
+            b.type?.toLowerCase().includes('adult') &&
+            b.covered === true
+          ) || false;
+          
+          return {
+            ...plan,
+            has_dental_child_coverage: hasDentalChild,
+            has_dental_adult_coverage: hasDentalAdult,
+          };
+        });
+      }
+      
+      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for policy ${policyId}, page ${page}`);
+      
+      res.json(marketplaceData);
+    } catch (error: any) {
+      console.error("Error fetching marketplace plans for policy:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch marketplace plans",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 

@@ -80,10 +80,17 @@ const calculateAgeFromString = (dateString: string): number => {
 };
 
 export default function MarketplacePlansPage() {
-  const [, params] = useRoute("/quotes/:id/marketplace-plans");
   const [location, setLocation] = useLocation();
+  
+  // Detect if we're in quotes or policies context
+  const isPolicy = location.startsWith('/policies/');
+  const basePath = isPolicy ? 'policies' : 'quotes';
+  
+  const [, quotesParams] = useRoute("/quotes/:id/marketplace-plans");
+  const [, policiesParams] = useRoute("/policies/:id/marketplace-plans");
+  
   const { toast } = useToast();
-  const quoteId = params?.id;
+  const quoteId = quotesParams?.id || policiesParams?.id;
 
   // Filter states
   const [metalLevelFilter, setMetalLevelFilter] = useState<string>("all");
@@ -106,21 +113,22 @@ export default function MarketplacePlansPage() {
   const [selectedPlansForComparison, setSelectedPlansForComparison] = useState<Set<string>>(new Set());
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
 
-  // Fetch quote details
+  // Fetch quote/policy details
   const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
-    queryKey: [`/api/quotes/${quoteId}/detail`],
+    queryKey: [`/api/${basePath}/${quoteId}/detail`],
     enabled: !!quoteId,
   });
 
-  // CRITICAL FIX: Load REAL family members from quote_members table (same as quotes.tsx)
+  // CRITICAL FIX: Load REAL family members from quote_members/policy_members table
   const { data: membersDetailsData } = useQuery<{ members: any[] }>({
-    queryKey: ['/api/quotes', quoteId, 'members'],
+    queryKey: [`/api/${basePath}`, quoteId, 'members'],
     enabled: !!quoteId,
   });
 
   // Fetch Poverty Guidelines from HHS API
   const currentYear = new Date().getFullYear();
-  const quoteState = (quoteData as any)?.quote?.physical_state;
+  const record = (quoteData as any)?.[isPolicy ? 'policy' : 'quote'];
+  const quoteState = record?.physical_state;
   const { data: povertyGuidelines, isLoading: isLoadingPovertyGuidelines, error: povertyGuidelinesError } = useQuery({
     queryKey: ['/api/hhs/poverty-guidelines', currentYear, quoteState],
     queryFn: async () => {
@@ -140,19 +148,19 @@ export default function MarketplacePlansPage() {
   // Mutation for selecting a plan
   const selectPlanMutation = useMutation({
     mutationFn: async (plan: any) => {
-      const response = await apiRequest('POST', `/api/quotes/${quoteId}/select-plan`, { plan });
+      const response = await apiRequest('POST', `/api/${basePath}/${quoteId}/select-plan`, { plan });
       return response;
     },
     onSuccess: () => {
       toast({
         title: "Plan Selected",
-        description: "The plan has been successfully added to your quote.",
+        description: `The plan has been successfully added to your ${isPolicy ? 'policy' : 'quote'}.`,
         duration: 3000,
       });
-      // Invalidate quote data to refresh
-      queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}/detail`] });
-      // Navigate back to quote detail
-      setLocation(`/quotes/${quoteId}`);
+      // Invalidate data to refresh
+      queryClient.invalidateQueries({ queryKey: [`/api/${basePath}/${quoteId}/detail`] });
+      // Navigate back to detail page
+      setLocation(`/${basePath}/${quoteId}`);
     },
     onError: (error: any) => {
       toast({
@@ -182,11 +190,11 @@ export default function MarketplacePlansPage() {
     
     setIsLoadingPlans(true);
     try {
-      console.log(`🚀 Cargando TODOS los planes para Quote: ${quoteId}`);
+      console.log(`🚀 Cargando TODOS los planes para ${isPolicy ? 'Policy' : 'Quote'}: ${quoteId}`);
 
       // Fetch ALL plans in one optimized call - backend handles parallel fetching
       const response = await fetch(
-        `/api/quotes/${quoteId}/marketplace-plans?page=1&pageSize=1000`,
+        `/api/${basePath}/${quoteId}/marketplace-plans?page=1&pageSize=1000`,
         {
           method: 'GET',
           headers: {
@@ -514,11 +522,11 @@ export default function MarketplacePlansPage() {
                     variant="outline"
                     size="sm"
                     className="w-full mb-3"
-                    onClick={() => setLocation(`/quotes/${quoteId}`)}
+                    onClick={() => setLocation(`/${basePath}/${quoteId}`)}
                     data-testid="button-back-to-quote"
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Quote
+                    Back to {isPolicy ? 'Policy' : 'Quote'}
                   </Button>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg border-2 border-green-200 dark:border-green-800">
                     <div className="flex items-center gap-2 mb-3">
@@ -554,7 +562,7 @@ export default function MarketplacePlansPage() {
                     <p className="text-muted-foreground mb-1">Annual income</p>
                     <button
                       className="font-medium flex items-center gap-1 hover:underline"
-                      onClick={() => setLocation(`/quotes/${quoteId}`)}
+                      onClick={() => setLocation(`/${basePath}/${quoteId}`)}
                       data-testid="link-annual-income"
                     >
                       {formatCurrency(marketplacePlans?.household_income || (quoteData as any)?.totalHouseholdIncome || 0)}

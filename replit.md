@@ -41,6 +41,14 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
 ### Technical Implementations
 The frontend uses Wouter for routing and TanStack Query for state management. The backend is built with Express.js and TypeScript, offering a RESTful API with session-based authentication and role-based access control.
 
+**Unified Marketplace Plans System:**
+Single reusable component (`marketplace-plans.tsx`) serves both Quotes and Policies modules with dynamic routing:
+- Frontend routes: `/quotes/:id/marketplace-plans` and `/policies/:id/marketplace-plans`
+- Backend endpoints: GET `/api/quotes/:id/marketplace-plans`, GET `/api/policies/:id/marketplace-plans`, POST `/api/quotes/:quoteId/select-plan`, POST `/api/policies/:policyId/select-plan`
+- Component automatically detects context (quote vs policy) using URL path and adjusts all API calls dynamically with `basePath` variable
+- All pricing displays use `formatCurrency()` helper with `Math.round()` for consistency between table and card views
+- Never calculates/modifies pricing - uses exact API values with rounding for display only
+
 **Key Features:**
 -   **User & Company Management:** Comprehensive CRUD for users and companies, including RBAC, 2FA, profile management, and team features.
 -   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session management, and password resets.
