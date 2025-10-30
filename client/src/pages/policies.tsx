@@ -5930,49 +5930,51 @@ export default function PoliciesPage() {
               <div className="space-y-3">
                 <div className="pb-3 border-b">
                   <label className="text-xs text-muted-foreground mb-2 block">Agent</label>
-                  <Select
-                    value={agent?.id || ""}
-                    onValueChange={(newAgentId) => {
-                      changeAgentMutation.mutate(newAgentId);
-                    }}
-                    disabled={changeAgentMutation.isPending}
-                  >
-                    <SelectTrigger className="h-9" data-testid="select-agent">
-                      {agent ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild disabled={changeAgentMutation.isPending}>
+                      <button className="w-full h-9 px-3 py-2 bg-background border border-input rounded-md flex items-center justify-between text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed" data-testid="select-agent">
                         <div className="flex items-center gap-2">
-                          {agent.avatar ? (
+                          {agent?.avatar ? (
                             <img 
                               src={agent.avatar} 
-                              alt={`${agent.firstName} ${agent.lastName}`}
-                              className="h-6 w-6 rounded-full object-cover border border-border"
+                              alt=""
+                              className="h-6 w-6 rounded-full object-cover border border-border flex-shrink-0"
                             />
-                          ) : (
-                            <div className="h-6 w-6 rounded-full bg-muted border border-border flex items-center justify-center text-[10px] font-semibold">
+                          ) : agent ? (
+                            <div className="h-6 w-6 rounded-full bg-muted border border-border flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
                               {agent.firstName?.[0]}{agent.lastName?.[0]}
                             </div>
-                          )}
-                          <span>{agent.firstName} {agent.lastName}</span>
+                          ) : null}
+                          <span className="truncate">{agent ? `${agent.firstName} ${agent.lastName}` : "Select agent..."}</span>
                         </div>
-                      ) : (
-                        <SelectValue placeholder="Select agent..." />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
+                        <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-[320px]">
                       {companyAgents.map((agentOption) => (
-                        <SelectItem key={agentOption.id} value={agentOption.id}>
+                        <DropdownMenuItem
+                          key={agentOption.id}
+                          onClick={() => changeAgentMutation.mutate(agentOption.id)}
+                          className="cursor-pointer"
+                        >
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-5 w-5">
-                              <AvatarImage src={agentOption.avatar || undefined} />
-                              <AvatarFallback className="text-xs">
+                            {agentOption.avatar ? (
+                              <img 
+                                src={agentOption.avatar} 
+                                alt=""
+                                className="h-6 w-6 rounded-full object-cover border border-border flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="h-6 w-6 rounded-full bg-muted border border-border flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
                                 {agentOption.firstName?.[0]}{agentOption.lastName?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
+                              </div>
+                            )}
                             <span>{agentOption.firstName} {agentOption.lastName}</span>
                           </div>
-                        </SelectItem>
+                        </DropdownMenuItem>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div className="pb-3 border-b">
