@@ -39,7 +39,22 @@ import {
   updatePaymentMethodSchema,
   insertQuoteReminderSchema,
   updateQuoteReminderSchema,
-  quoteNotes
+  quoteNotes,
+  insertPolicySchema,
+  updatePolicySchema,
+  insertPolicyMemberSchema,
+  updatePolicyMemberSchema,
+  insertPolicyMemberIncomeSchema,
+  updatePolicyMemberIncomeSchema,
+  insertPolicyMemberImmigrationSchema,
+  updatePolicyMemberImmigrationSchema,
+  insertPolicyMemberDocumentSchema,
+  insertPolicyDocumentSchema,
+  insertPolicyPaymentMethodSchema,
+  updatePolicyPaymentMethodSchema,
+  insertPolicyReminderSchema,
+  updatePolicyReminderSchema,
+  policyNotes
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq } from "drizzle-orm";
