@@ -5856,7 +5856,8 @@ export default function PoliciesPage() {
     };
     
     const product = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType);
-    const agent = agents.find(a => a.id === viewingQuote.agentId);
+    // Use agent from quoteDetail if available, otherwise fallback to agents list
+    const agent = quoteDetail?.quote?.agent || agents.find(a => a.id === viewingQuote.agentId);
     const totalApplicants = 1 + 
       (viewingQuoteWithMembers.spouses?.filter((s: any) => s.isApplicant).length || 0) + 
       (viewingQuoteWithMembers.dependents?.filter((d: any) => d.isApplicant).length || 0);
