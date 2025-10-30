@@ -4476,7 +4476,15 @@ export default function QuotesPage() {
     },
   });
 
-  // Change status mutation
+  // Status edit dialog state
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusDialogValues, setStatusDialogValues] = useState({
+    status: "",
+    documentsStatus: "",
+    paymentStatus: "",
+  });
+
+  // Change status mutation (legacy - keeping for compatibility)
   const changeStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       if (!params?.id) throw new Error("Quote ID not found");
@@ -4498,6 +4506,32 @@ export default function QuotesPage() {
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to change status",
+        duration: 3000,
+      });
+    },
+  });
+
+  // Update statuses mutation (status, documentsStatus, paymentStatus)
+  const updateStatusesMutation = useMutation({
+    mutationFn: async (statuses: { status?: string; documentsStatus?: string; paymentStatus?: string }) => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      return apiRequest("PATCH", `/api/quotes/${params.id}/statuses`, statuses);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      setStatusDialogOpen(false);
+      toast({
+        title: "Status Updated",
+        description: "The quote statuses have been successfully updated.",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update statuses",
         duration: 3000,
       });
     },

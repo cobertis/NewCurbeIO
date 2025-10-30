@@ -11160,6 +11160,76 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // PATCH /api/quotes/:id/statuses - Update quote statuses (status, documentsStatus, paymentStatus)
+  app.patch("/api/quotes/:id/statuses", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: quoteId } = req.params;
+    
+    try {
+      // Get quote to verify access
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body
+      const statusUpdateSchema = z.object({
+        status: z.enum(["draft", "active", "submitted", "converted_to_policy"]).optional(),
+        documentsStatus: z.enum(["pending", "processing", "declined", "completed"]).optional(),
+        paymentStatus: z.enum(["pending", "auto_pay", "failed", "paid", "not_applicable"]).optional(),
+      }).refine(data => 
+        data.status !== undefined || data.documentsStatus !== undefined || data.paymentStatus !== undefined,
+        { message: "At least one status field must be provided" }
+      );
+      
+      const validatedData = statusUpdateSchema.parse(req.body);
+      
+      // Update quote with new statuses
+      const updatedQuote = await storage.updateQuote(quoteId, validatedData);
+      
+      if (!updatedQuote) {
+        return res.status(500).json({ message: "Failed to update quote statuses" });
+      }
+      
+      // Log the activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote",
+        entityId: quoteId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          action: "update_statuses",
+          previousStatuses: {
+            status: quote.status,
+            documentsStatus: quote.documentsStatus,
+            paymentStatus: quote.paymentStatus,
+          },
+          newStatuses: validatedData,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      // Send WebSocket notification for status change
+      if (validatedData.status || validatedData.documentsStatus || validatedData.paymentStatus) {
+        broadcastNotificationUpdate();
+      }
+      
+      res.json({ quote: updatedQuote });
+    } catch (error: any) {
+      console.error("Error updating quote statuses:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid status values", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update quote statuses" });
+    }
+  });
+
 
   // ==================== CONSENT DOCUMENTS ====================
   
@@ -14862,6 +14932,76 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         message: error.message || "Failed to fetch marketplace plans",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
+    }
+  });
+
+  // PATCH /api/policies/:id/statuses - Update policy statuses (status, documentsStatus, paymentStatus)
+  app.patch("/api/policies/:id/statuses", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: policyId } = req.params;
+    
+    try {
+      // Get policy to verify access
+      const policy = await storage.getPolicy(policyId);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body
+      const statusUpdateSchema = z.object({
+        status: z.enum(["new", "pending_document", "pending_payment", "waiting_on_agent", "waiting_for_approval", "updated_by_client", "completed", "renewed", "canceled"]).optional(),
+        documentsStatus: z.enum(["pending", "processing", "declined", "completed"]).optional(),
+        paymentStatus: z.enum(["pending", "auto_pay", "failed", "paid", "not_applicable"]).optional(),
+      }).refine(data => 
+        data.status !== undefined || data.documentsStatus !== undefined || data.paymentStatus !== undefined,
+        { message: "At least one status field must be provided" }
+      );
+      
+      const validatedData = statusUpdateSchema.parse(req.body);
+      
+      // Update policy with new statuses
+      const updatedPolicy = await storage.updatePolicy(policyId, validatedData);
+      
+      if (!updatedPolicy) {
+        return res.status(500).json({ message: "Failed to update policy statuses" });
+      }
+      
+      // Log the activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "policy",
+        entityId: policyId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          action: "update_statuses",
+          previousStatuses: {
+            status: policy.status,
+            documentsStatus: policy.documentsStatus,
+            paymentStatus: policy.paymentStatus,
+          },
+          newStatuses: validatedData,
+          updatedBy: currentUser.email,
+        },
+      });
+      
+      // Send WebSocket notification for status change
+      if (validatedData.status || validatedData.documentsStatus || validatedData.paymentStatus) {
+        broadcastNotificationUpdate();
+      }
+      
+      res.json({ policy: updatedPolicy });
+    } catch (error: any) {
+      console.error("Error updating policy statuses:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid status values", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update policy statuses" });
     }
   });
 
