@@ -4516,13 +4516,6 @@ export default function QuotesPage() {
     },
   });
 
-  // Status edit dialog state
-  const [statusSheetOpen, setStatusSheetOpen] = useState(false);
-  const [statusDialogValues, setStatusDialogValues] = useState({
-    status: "",
-    documentsStatus: "",
-    paymentStatus: "",
-  });
 
   // Change status mutation (legacy - keeping for compatibility)
   const changeStatusMutation = useMutation({
@@ -4551,31 +4544,6 @@ export default function QuotesPage() {
     },
   });
 
-  // Update statuses mutation (status, documentsStatus, paymentStatus)
-  const updateStatusesMutation = useMutation({
-    mutationFn: async (statuses: { status?: string; documentsStatus?: string; paymentStatus?: string }) => {
-      if (!params?.id) throw new Error("Quote ID not found");
-      return apiRequest("PATCH", `/api/quotes/${params.id}/statuses`, statuses);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', params?.id, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      setStatusDialogOpen(false);
-      toast({
-        title: "Status Updated",
-        description: "The quote statuses have been successfully updated.",
-        duration: 3000,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to update statuses",
-        duration: 3000,
-      });
-    },
-  });
 
   const submitPolicyMutation = useMutation({
     mutationFn: async () => {
@@ -6090,51 +6058,6 @@ export default function QuotesPage() {
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
-
-                {/* Status Badges with Edit Icon */}
-                <div className="pb-3 border-b space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-muted-foreground">Statuses</label>
-                    <button
-                      onClick={() => {
-                        setStatusDialogValues({
-                          status: viewingQuote.status || "",
-                          documentsStatus: viewingQuote.documentsStatus || "",
-                          paymentStatus: viewingQuote.paymentStatus || "",
-                        });
-                        setStatusSheetOpen(true);
-                      }}
-                      className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                      data-testid="button-edit-statuses"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </div>
-                  
-                  {/* Status Badge */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Status:</span>
-                    <Badge variant={getStatusVariant(viewingQuote.status)} data-testid={`badge-status-${viewingQuote.status}`}>
-                      {formatStatusDisplay(viewingQuote.status)}
-                    </Badge>
-                  </div>
-                  
-                  {/* Documents Status Badge */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Documents status:</span>
-                    <Badge variant={getDocumentsStatusVariant(viewingQuote.documentsStatus)} data-testid={`badge-documents-${viewingQuote.documentsStatus}`}>
-                      {formatStatusDisplay(viewingQuote.documentsStatus)}
-                    </Badge>
-                  </div>
-                  
-                  {/* Payment Status Badge */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Payment status:</span>
-                    <Badge variant={getPaymentStatusVariant(viewingQuote.paymentStatus)} data-testid={`badge-payment-${viewingQuote.paymentStatus}`}>
-                      {formatPaymentStatusDisplay(viewingQuote.paymentStatus)}
-                    </Badge>
-                  </div>
                 </div>
 
                 <div className="pb-3 border-b">
@@ -11038,111 +10961,6 @@ export default function QuotesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Change Status Sheet - ALWAYS VISIBLE */}
-      <Sheet open={statusSheetOpen} onOpenChange={setStatusSheetOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Change quote status</SheetTitle>
-            <SheetDescription>
-              Update the quote status, documents status, and payment status below
-            </SheetDescription>
-          </SheetHeader>
-          
-          <div className="space-y-4 py-6">
-            {/* Quote Status */}
-            <div className="space-y-2">
-              <Label htmlFor="quote-status-sheet">Quote status</Label>
-              <Select
-                value={statusDialogValues.status}
-                onValueChange={(value) =>
-                  setStatusDialogValues((prev) => ({ ...prev, status: value }))
-                }
-              >
-                <SelectTrigger id="quote-status-sheet" data-testid="select-quote-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="submitted">Submitted</SelectItem>
-                  <SelectItem value="converted_to_policy">Converted To Policy</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Documents Status */}
-            <div className="space-y-2">
-              <Label htmlFor="documents-status-sheet">Documents status</Label>
-              <Select
-                value={statusDialogValues.documentsStatus}
-                onValueChange={(value) =>
-                  setStatusDialogValues((prev) => ({ ...prev, documentsStatus: value }))
-                }
-              >
-                <SelectTrigger id="documents-status-sheet" data-testid="select-documents-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="declined">Declined</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Payment Status */}
-            <div className="space-y-2">
-              <Label htmlFor="payment-status-sheet">Payment status</Label>
-              <Select
-                value={statusDialogValues.paymentStatus}
-                onValueChange={(value) =>
-                  setStatusDialogValues((prev) => ({ ...prev, paymentStatus: value }))
-                }
-              >
-                <SelectTrigger id="payment-status-sheet" data-testid="select-payment-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="auto_pay">Auto pay</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="not_applicable">Not applicable ($0)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setStatusSheetOpen(false)}
-                className="flex-1"
-                data-testid="button-close-status-sheet"
-              >
-                Close
-              </Button>
-              <Button
-                onClick={() => {
-                  if (viewingQuote?.id) {
-                    updateStatusesMutation.mutate({
-                      quoteId: viewingQuote.id,
-                      status: statusDialogValues.status,
-                      documentsStatus: statusDialogValues.documentsStatus,
-                      paymentStatus: statusDialogValues.paymentStatus,
-                    });
-                  }
-                }}
-                disabled={updateStatusesMutation.isPending || !viewingQuote?.id}
-                className="flex-1"
-                data-testid="button-submit-status"
-              >
-                {updateStatusesMutation.isPending ? "Saving..." : "Submit"}
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
