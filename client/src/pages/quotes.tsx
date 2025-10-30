@@ -6124,11 +6124,6 @@ export default function QuotesPage() {
                   <div className="flex flex-col items-end gap-3">
                     {/* Quote Info - Moved here */}
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Hash className="h-3 w-3" />
-                        {viewingQuote.id.slice(0, 8).toUpperCase()}
-                      </span>
-                      <span className="text-muted-foreground">•</span>
                       <span className="font-medium text-foreground">{product?.name || viewingQuote.productType}</span>
                       <span className="text-muted-foreground">•</span>
                       <span className="flex items-center gap-1">
