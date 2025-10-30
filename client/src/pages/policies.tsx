@@ -11151,10 +11151,13 @@ export default function PoliciesPage() {
       </Dialog>
 
       {/* Change Status Dialog */}
-      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen} modal={true}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Change policy status</DialogTitle>
+            <DialogDescription>
+              Update the policy status, documents status, and payment status below
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
