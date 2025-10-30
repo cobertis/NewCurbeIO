@@ -11618,7 +11618,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Log successful fetch for tracking
-      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}, page ${page}`);
+      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for policy ${quoteId}, page ${page}`);
       
       res.json(marketplaceData);
     } catch (error: any) {
@@ -11697,14 +11697,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       
       // Validate request body using Zod schema
-      const validatedData = insertQuoteSchema.parse(payload);
+      const validatedData = insertPolicySchema.parse(payload);
       
       const policy = await storage.createPolicy(validatedData);
       
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote",
+        entity: "policy",
         entityId: policy.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -11717,9 +11717,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Create notification for the assigned agent and admins
       try {
         const clientName = `${policy.clientFirstName} ${policy.clientLastName}`;
-        const notificationTitle = "New Quote Created";
+        const notificationTitle = "New Policy Created";
         const notificationMessage = `A new policy has been created for client ${clientName}`;
-        const notificationLink = `/quotes/${policy.id}`;
+        const notificationLink = `/policys/${policy.id}`;
         
         // Get all users in the company who should be notified
         const companyUsers = await storage.getUsersByCompany(currentUser.companyId!);
@@ -11738,15 +11738,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
         }
       } catch (notificationError) {
-        console.error("Error creating notifications for new quote:", notificationError);
+        console.error("Error creating notifications for new policy:", notificationError);
         // Don't fail the policy creation if notifications fail
       }
       
       // Return policy with plain text SSN (as stored in database)
       res.status(201).json({ policy });
     } catch (error: any) {
-      console.error("Error creating quote:", error);
-      res.status(400).json({ message: error.message || "Failed to create quote" });
+      console.error("Error creating policy:", error);
+      res.status(400).json({ message: error.message || "Failed to create policy" });
     }
   });
   
@@ -11827,7 +11827,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           policies = await storage.getPoliciesByCompany(currentUser.companyId);
         }
       } else if (currentUser.companyId) {
-        // Regular users see only their company's quotes
+        // Regular users see only their company's policys
         policies = await storage.getPoliciesByCompany(currentUser.companyId);
       }
       
@@ -11835,11 +11835,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (policies.length > 0) {
         await logger.logAuth({
           req,
-          action: "view_quotes",
+          action: "view_policys",
           userId: currentUser.id,
           email: currentUser.email,
           metadata: {
-            entity: "quotes",
+            entity: "policys",
             count: policies.length,
             fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
           },
@@ -11848,8 +11848,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       res.json({ policies });
     } catch (error: any) {
-      console.error("Error fetching quotes:", error);
-      res.status(500).json({ message: "Failed to fetch quotes" });
+      console.error("Error fetching policys:", error);
+      res.status(500).json({ message: "Failed to fetch policys" });
     }
   });
   
@@ -11874,11 +11874,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Return policy with plain text SSN (as stored in database)
       await logger.logAuth({
         req,
-        action: "view_quote",
+        action: "view_policy",
         userId: currentUser.id,
         email: currentUser.email,
         metadata: {
-          entity: "quote",
+          entity: "policy",
           policyId: id,
           fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
         },
@@ -11886,12 +11886,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       res.json({ policy });
     } catch (error: any) {
-      console.error("Error fetching quote:", error);
-      res.status(500).json({ message: "Failed to fetch quote" });
+      console.error("Error fetching policy:", error);
+      res.status(500).json({ message: "Failed to fetch policy" });
     }
   });
   
-  // Get all members with income and immigration data for a quote
+  // Get all members with income and immigration data for a policy
   app.get("/api/policies/:id/members-details", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id } = req.params;
@@ -11908,8 +11908,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get all policy members for this quote
-      const members = await storage.getPolicyMembersByQuoteId(id, currentUser.companyId!);
+      // Get all policy members for this policy
+      const members = await storage.getPolicyMembersByPolicyId(id, currentUser.companyId!);
       
       // Fetch income and immigration data for each member
       const membersWithDetails = await Promise.all(
@@ -11949,8 +11949,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get all policy members for this quote
-      const members = await storage.getPolicyMembersByQuoteId(id, currentUser.companyId!);
+      // Get all policy members for this policy
+      const members = await storage.getPolicyMembersByPolicyId(id, currentUser.companyId!);
       
       // Calculate total income by summing all members' annual income
       let totalIncome = 0;
@@ -11984,24 +11984,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { id } = req.params;
     
     try {
-      // Use the new unified getQuoteDetail function that fetches all data atomically
-      const quoteDetail = await storage.getPolicyDetail(id, currentUser.companyId!);
+      // Use the new unified getPolicyDetail function that fetches all data atomically
+      const policyDetail = await storage.getPolicyDetail(id, currentUser.companyId!);
       
       // Log access to sensitive data
       await logger.logAuth({
         req,
-        action: "view_quote_detail",
+        action: "view_policy_detail",
         userId: currentUser.id,
         email: currentUser.email,
         metadata: {
-          entity: "quote",
+          entity: "policy",
           policyId: id,
           fields: ["clientSsn", "members", "income", "immigration", "paymentMethods"],
         },
       });
       
       // Return the complete policy detail with all related data
-      res.json(quoteDetail);
+      res.json(policyDetail);
     } catch (error: any) {
       console.error("Error fetching unified policy detail:", error);
       
@@ -12022,19 +12022,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     
     try {
       // 1. Get existing policy and verify ownership (SECURITY: tenant-scoped authorization)
-      const existingQuote = await storage.getPolicy(id);
+      const existingPolicy = await storage.getPolicy(id);
       
-      if (!existingQuote) {
+      if (!existingPolicy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
-      // Check access: superadmin can edit any quote, others only their company's quotes
-      if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "You don't have permission to edit this quote" });
+      // Check access: superadmin can edit any policy, others only their company's policys
+      if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to edit this policy" });
       }
       
       // 2. NO date conversions - keep dates as yyyy-MM-dd strings
-      // Apply same address field mapping as in create quote
+      // Apply same address field mapping as in create policy
       const payload = {
         ...req.body,
         // Map address fields consistently with create route
@@ -12068,16 +12068,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // effectiveDate, clientDateOfBirth, spouse.dateOfBirth, dependent.dateOfBirth all stay as strings
       
       // 3. Validate with Zod (strips unknown keys, validates nested arrays)
-      const validatedData = updateQuoteSchema.parse(payload);
+      const validatedData = updatePolicySchema.parse(payload);
       
-      // 4. Update the quote
-      const updatedQuote = await storage.updatePolicy(id, validatedData);
+      // 4. Update the policy
+      const updatedPolicy = await storage.updatePolicy(id, validatedData);
       
       // Log activity (WARNING: Do NOT log the full request body - contains SSN)
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote",
+        entity: "policy",
         entityId: id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12086,9 +12086,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       
       // Return policy with plain text SSN (as stored in database)
-      res.json({ quote: updatedQuote });
+      res.json({ policy: updatedPolicy });
     } catch (error: any) {
-      console.error("Error updating quote:", error);
+      console.error("Error updating policy:", error);
       // Return validation errors with proper details
       if (error.name === 'ZodError') {
         return res.status(400).json({ 
@@ -12096,7 +12096,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           errors: error.errors 
         });
       }
-      res.status(400).json({ message: error.message || "Failed to update quote" });
+      res.status(400).json({ message: error.message || "Failed to update policy" });
     }
   });
   
@@ -12178,13 +12178,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const deleted = await storage.deletePolicy(id);
       
       if (!deleted) {
-        return res.status(500).json({ message: "Failed to delete quote" });
+        return res.status(500).json({ message: "Failed to delete policy" });
       }
       
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote",
+        entity: "policy",
         entityId: id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12194,14 +12194,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       res.json({ message: "Policy deleted successfully" });
     } catch (error: any) {
-      console.error("Error deleting quote:", error);
-      res.status(500).json({ message: "Failed to delete quote" });
+      console.error("Error deleting policy:", error);
+      res.status(500).json({ message: "Failed to delete policy" });
     }
   });
 
   // ==================== QUOTE MEMBERS ====================
   
-  // Get all members for a quote
+  // Get all members for a policy
   app.get("/api/policies/:policyId/members", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -12223,11 +12223,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Return members with plain text SSN (as stored in database)
       await logger.logAuth({
         req,
-        action: "view_quote_members",
+        action: "view_policy_members",
         userId: currentUser.id,
         email: currentUser.email,
         metadata: {
-          entity: "quote_members",
+          entity: "policy_members",
           policyId,
           fields: ["ssn"],
         },
@@ -12262,19 +12262,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Verify member belongs to this quote
+      // Verify member belongs to this policy
       if (member.policyId !== policyId) {
-        return res.status(404).json({ message: "Member not found in this quote" });
+        return res.status(404).json({ message: "Member not found in this policy" });
       }
       
       // Return member with plain text SSN (as stored in database)
       await logger.logAuth({
         req,
-        action: "view_quote_member",
+        action: "view_policy_member",
         userId: currentUser.id,
         email: currentUser.email,
         metadata: {
-          entity: "quote_member",
+          entity: "policy_member",
           memberId,
           policyId,
           fields: ["ssn"],
@@ -12317,7 +12317,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote_member",
+        entity: "policy_member",
         entityId: member.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12361,9 +12361,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Verify member belongs to this quote
+      // Verify member belongs to this policy
       if (member.policyId !== policyId) {
-        return res.status(404).json({ message: "Member not found in this quote" });
+        return res.status(404).json({ message: "Member not found in this policy" });
       }
       
       // Validate request body
@@ -12379,7 +12379,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_member",
+        entity: "policy_member",
         entityId: memberId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12423,9 +12423,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Verify member belongs to this quote
+      // Verify member belongs to this policy
       if (member.policyId !== policyId) {
-        return res.status(404).json({ message: "Member not found in this quote" });
+        return res.status(404).json({ message: "Member not found in this policy" });
       }
       
       const deleted = await storage.deletePolicyMember(memberId, policy.companyId);
@@ -12437,7 +12437,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_member",
+        entity: "policy_member",
         entityId: memberId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12461,7 +12461,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Verify policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12487,7 +12487,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote_member",
+        entity: "policy_member",
         entityId: result.member.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12520,7 +12520,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Verify policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12551,7 +12551,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: result.wasCreated ? "create" : "update",
-        entity: "quote_member",
+        entity: "policy_member",
         entityId: result.member.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12585,7 +12585,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12623,7 +12623,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_member",
+        entity: "policy_member",
         entityId: memberId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12653,7 +12653,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12677,7 +12677,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_member",
+        entity: "policy_member",
         entityId: memberId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12768,7 +12768,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_member_income",
+        entity: "policy_member_income",
         entityId: income.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12804,7 +12804,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12822,7 +12822,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_member_income",
+        entity: "policy_member_income",
         entityId: memberId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12854,7 +12854,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12875,7 +12875,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         userId: currentUser.id,
         email: currentUser.email,
         metadata: {
-          entity: "quote_member_immigration",
+          entity: "policy_member_immigration",
           memberId,
           fields: ["visaNumber", "greenCardNumber", "i94Number"],
         },
@@ -12902,7 +12902,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -12924,7 +12924,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_member_immigration",
+        entity: "policy_member_immigration",
         entityId: immigration.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -12978,7 +12978,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_member_immigration",
+        entity: "policy_member_immigration",
         entityId: memberId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13120,7 +13120,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote_member_document",
+        entity: "policy_member_document",
         entityId: document.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13297,7 +13297,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_member_document",
+        entity: "policy_member_document",
         entityId: docId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13342,7 +13342,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         userId: currentUser.id,
         email: currentUser.email,
         metadata: {
-          entity: "quote_payment_methods",
+          entity: "policy_payment_methods",
           policyId,
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
@@ -13377,9 +13377,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Payment method not found" });
       }
       
-      // Verify payment method belongs to this quote
+      // Verify payment method belongs to this policy
       if (paymentMethod.policyId !== policyId) {
-        return res.status(404).json({ message: "Payment method not found in this quote" });
+        return res.status(404).json({ message: "Payment method not found in this policy" });
       }
       
       // Return payment method with plain text data
@@ -13389,7 +13389,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         userId: currentUser.id,
         email: currentUser.email,
         metadata: {
-          entity: "quote_payment_method",
+          entity: "policy_payment_method",
           paymentMethodId,
           paymentType: paymentMethod.paymentType,
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
@@ -13433,7 +13433,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote_payment_method",
+        entity: "policy_payment_method",
         entityId: paymentMethod.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13473,14 +13473,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Verify payment method exists and belongs to this quote
+      // Verify payment method exists and belongs to this policy
       const existingPaymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
       if (!existingPaymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
       
       if (existingPaymentMethod.policyId !== policyId) {
-        return res.status(404).json({ message: "Payment method not found in this quote" });
+        return res.status(404).json({ message: "Payment method not found in this policy" });
       }
       
       // Validate request body
@@ -13496,7 +13496,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_payment_method",
+        entity: "policy_payment_method",
         entityId: paymentMethodId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13536,14 +13536,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Verify payment method exists and belongs to this quote
+      // Verify payment method exists and belongs to this policy
       const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
       if (!paymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
       
       if (paymentMethod.policyId !== policyId) {
-        return res.status(404).json({ message: "Payment method not found in this quote" });
+        return res.status(404).json({ message: "Payment method not found in this policy" });
       }
       
       // Delete payment method
@@ -13556,7 +13556,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_payment_method",
+        entity: "policy_payment_method",
         entityId: paymentMethodId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13590,14 +13590,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Verify payment method exists and belongs to this quote
+      // Verify payment method exists and belongs to this policy
       const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
       if (!paymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
       
       if (paymentMethod.policyId !== policyId) {
-        return res.status(404).json({ message: "Payment method not found in this quote" });
+        return res.status(404).json({ message: "Payment method not found in this policy" });
       }
       
       // Set as default payment method
@@ -13606,7 +13606,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_payment_method",
+        entity: "policy_payment_method",
         entityId: paymentMethodId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13625,7 +13625,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== QUOTE NOTES ====================
   
-  // Create a new note for a quote
+  // Create a new note for a policy
   app.post("/api/policies/:policyId/notes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -13662,7 +13662,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote_note",
+        entity: "policy_note",
         entityId: newNote.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13680,7 +13680,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // Get all notes for a quote
+  // Get all notes for a policy
   app.get("/api/policies/:policyId/notes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -13727,11 +13727,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get the note to check permissions
       const [existingNote] = await db
         .select()
-        .from(quoteNotes)
+        .from(policyNotes)
         .where(and(
-          eq(quoteNotes.id, noteId),
-          eq(quoteNotes.policyId, policyId),
-          eq(quoteNotes.companyId, policy.companyId)
+          eq(policyNotes.id, noteId),
+          eq(policyNotes.policyId, policyId),
+          eq(policyNotes.companyId, policy.companyId)
         ));
       
       if (!existingNote) {
@@ -13756,18 +13756,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Update the note
-      await db.update(quoteNotes)
+      await db.update(policyNotes)
         .set({ ...updateData, updatedAt: new Date() })
         .where(and(
-          eq(quoteNotes.id, noteId),
-          eq(quoteNotes.policyId, policyId),
-          eq(quoteNotes.companyId, policy.companyId)
+          eq(policyNotes.id, noteId),
+          eq(policyNotes.policyId, policyId),
+          eq(policyNotes.companyId, policy.companyId)
         ));
       
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_note",
+        entity: "policy_note",
         entityId: noteId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13777,7 +13777,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ message: "Quote note updated successfully" });
+      res.json({ message: "Policy note updated successfully" });
     } catch (error: any) {
       console.error("Error updating policy note:", error);
       res.status(500).json({ message: "Failed to update policy note" });
@@ -13804,11 +13804,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get the note to check permissions
       const [existingNote] = await db
         .select()
-        .from(quoteNotes)
+        .from(policyNotes)
         .where(and(
-          eq(quoteNotes.id, noteId),
-          eq(quoteNotes.policyId, policyId),
-          eq(quoteNotes.companyId, policy.companyId)
+          eq(policyNotes.id, noteId),
+          eq(policyNotes.policyId, policyId),
+          eq(policyNotes.companyId, policy.companyId)
         ));
       
       if (!existingNote) {
@@ -13826,7 +13826,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_note",
+        entity: "policy_note",
         entityId: noteId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13835,7 +13835,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ message: "Quote note deleted successfully" });
+      res.json({ message: "Policy note deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy note:", error);
       res.status(500).json({ message: "Failed to delete policy note" });
@@ -13914,7 +13914,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote_note_attachment",
+        entity: "policy_note_attachment",
         entityId: req.file.filename,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -13970,7 +13970,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/quotes/:policyId/documents/upload - Upload a new document
+  // POST /api/policys/:policyId/documents/upload - Upload a new document
   app.post("/api/policies/:policyId/documents/upload", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -14032,7 +14032,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote_document",
+        entity: "policy_document",
         entityId: document.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14051,7 +14051,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/quotes/:policyId/documents/:documentId/download - Download a document
+  // GET /api/policys/:policyId/documents/:documentId/download - Download a document
   app.get("/api/policies/:policyId/documents/:documentId/download", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId, documentId } = req.params;
@@ -14074,9 +14074,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // Verify document belongs to quote
+      // Verify document belongs to policy
       if (document.policyId !== policyId) {
-        return res.status(403).json({ message: "Document does not belong to this quote" });
+        return res.status(403).json({ message: "Document does not belong to this policy" });
       }
 
       // Extract filename from fileUrl
@@ -14105,7 +14105,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "read",
-        entity: "quote_document",
+        entity: "policy_document",
         entityId: documentId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14120,7 +14120,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // DELETE /api/quotes/:policyId/documents/:documentId - Delete a document
+  // DELETE /api/policys/:policyId/documents/:documentId - Delete a document
   app.delete("/api/policies/:policyId/documents/:documentId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId, documentId } = req.params;
@@ -14143,9 +14143,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // Verify document belongs to quote
+      // Verify document belongs to policy
       if (document.policyId !== policyId) {
-        return res.status(403).json({ message: "Document does not belong to this quote" });
+        return res.status(403).json({ message: "Document does not belong to this policy" });
       }
 
       // Delete from database first
@@ -14175,7 +14175,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_document",
+        entity: "policy_document",
         entityId: documentId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14194,7 +14194,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== QUOTE REMINDERS ====================
   
-  // GET /api/quotes/:policyId/reminders - List all reminders for a quote
+  // GET /api/policys/:policyId/reminders - List all reminders for a policy
   app.get("/api/policies/:policyId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -14227,7 +14227,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/quotes/:policyId/reminders/:reminderId - Get a specific reminder
+  // GET /api/policys/:policyId/reminders/:reminderId - Get a specific reminder
   app.get("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId, reminderId } = req.params;
@@ -14249,9 +14249,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Reminder not found" });
       }
 
-      // Verify reminder belongs to quote
+      // Verify reminder belongs to policy
       if (reminder.policyId !== policyId) {
-        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+        return res.status(403).json({ message: "Reminder does not belong to this policy" });
       }
 
       res.json(reminder);
@@ -14261,7 +14261,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/quotes/:policyId/reminders - Create a new reminder
+  // POST /api/policys/:policyId/reminders - Create a new reminder
   app.post("/api/policies/:policyId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -14291,7 +14291,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "create",
-        entity: "quote_reminder",
+        entity: "policy_reminder",
         entityId: reminder.id,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14311,7 +14311,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // PUT /api/quotes/:policyId/reminders/:reminderId - Update a reminder
+  // PUT /api/policys/:policyId/reminders/:reminderId - Update a reminder
   app.put("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId, reminderId } = req.params;
@@ -14328,14 +14328,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
-      // Verify reminder exists and belongs to quote
+      // Verify reminder exists and belongs to policy
       const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
       if (!existingReminder) {
         return res.status(404).json({ message: "Reminder not found" });
       }
 
       if (existingReminder.policyId !== policyId) {
-        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+        return res.status(403).json({ message: "Reminder does not belong to this policy" });
       }
 
       // Validate update data
@@ -14346,7 +14346,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_reminder",
+        entity: "policy_reminder",
         entityId: reminderId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14364,7 +14364,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // DELETE /api/quotes/:policyId/reminders/:reminderId - Delete a reminder
+  // DELETE /api/policys/:policyId/reminders/:reminderId - Delete a reminder
   app.delete("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId, reminderId } = req.params;
@@ -14381,14 +14381,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
-      // Verify reminder exists and belongs to quote
+      // Verify reminder exists and belongs to policy
       const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
       if (!existingReminder) {
         return res.status(404).json({ message: "Reminder not found" });
       }
 
       if (existingReminder.policyId !== policyId) {
-        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+        return res.status(403).json({ message: "Reminder does not belong to this policy" });
       }
 
       const deleted = await storage.deletePolicyReminder(reminderId, policy.companyId);
@@ -14399,7 +14399,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "quote_reminder",
+        entity: "policy_reminder",
         entityId: reminderId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14414,7 +14414,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // PUT /api/quotes/:policyId/reminders/:reminderId/complete - Mark reminder as completed
+  // PUT /api/policys/:policyId/reminders/:reminderId/complete - Mark reminder as completed
   app.put("/api/policies/:policyId/reminders/:reminderId/complete", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId, reminderId } = req.params;
@@ -14431,14 +14431,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
-      // Verify reminder exists and belongs to quote
+      // Verify reminder exists and belongs to policy
       const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
       if (!existingReminder) {
         return res.status(404).json({ message: "Reminder not found" });
       }
 
       if (existingReminder.policyId !== policyId) {
-        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+        return res.status(403).json({ message: "Reminder does not belong to this policy" });
       }
 
       const completedReminder = await storage.completePolicyReminder(reminderId, policy.companyId, currentUser.id);
@@ -14446,7 +14446,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_reminder",
+        entity: "policy_reminder",
         entityId: reminderId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14463,7 +14463,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // PUT /api/quotes/:policyId/reminders/:reminderId/snooze - Snooze reminder
+  // PUT /api/policys/:policyId/reminders/:reminderId/snooze - Snooze reminder
   app.put("/api/policies/:policyId/reminders/:reminderId/snooze", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId, reminderId } = req.params;
@@ -14481,14 +14481,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
-      // Verify reminder exists and belongs to quote
+      // Verify reminder exists and belongs to policy
       const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
       if (!existingReminder) {
         return res.status(404).json({ message: "Reminder not found" });
       }
 
       if (existingReminder.policyId !== policyId) {
-        return res.status(403).json({ message: "Reminder does not belong to this quote" });
+        return res.status(403).json({ message: "Reminder does not belong to this policy" });
       }
 
       if (!duration) {
@@ -14534,7 +14534,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "update",
-        entity: "quote_reminder",
+        entity: "policy_reminder",
         entityId: reminderId,
         companyId: currentUser.companyId || undefined,
         metadata: {
@@ -14739,7 +14739,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== CONSENT DOCUMENTS ====================
   
-  // POST /api/quotes/:id/consents/generate - Generate new consent document
+  // POST /api/policys/:id/consents/generate - Generate new consent document
   app.post("/api/policies/:id/consents/generate", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id: policyId } = req.params;
@@ -14982,7 +14982,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // GET /api/quotes/:id/consents - List all consents for a quote
+  // GET /api/policys/:id/consents - List all consents for a policy
   app.get("/api/policies/:id/consents", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id: policyId } = req.params;
