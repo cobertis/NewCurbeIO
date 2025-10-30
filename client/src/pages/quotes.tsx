@@ -5927,16 +5927,16 @@ export default function QuotesPage() {
     );
   }
 
-  // Render Change Status Dialog (ALWAYS rendered when viewing a quote to avoid unmounting issues)
-  const renderChangeStatusDialog = (
-    <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen} modal={true}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Change quote status</DialogTitle>
-          <DialogDescription>
+  // Render Change Status Dialog using AlertDialog for reliability
+  const renderChangeStatusDialog = isViewingQuote && viewingQuote && (
+    <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+      <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Change quote status</AlertDialogTitle>
+          <AlertDialogDescription>
             Update the quote status, documents status, and payment status below
-          </DialogDescription>
-        </DialogHeader>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
         
         <div className="space-y-4 py-4">
           {/* Quote Status */}
@@ -6004,15 +6004,9 @@ export default function QuotesPage() {
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setStatusDialogOpen(false)}
-            data-testid="button-close-status-dialog"
-          >
-            Close
-          </Button>
-          <Button
+        <AlertDialogFooter>
+          <AlertDialogCancel data-testid="button-close-status-dialog">Close</AlertDialogCancel>
+          <AlertDialogAction
             onClick={() => {
               if (viewingQuote?.id) {
                 updateStatusesMutation.mutate({
@@ -6027,10 +6021,10 @@ export default function QuotesPage() {
             data-testid="button-submit-status"
           >
             {updateStatusesMutation.isPending ? "Saving..." : "Submit"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 
   // If viewing a specific quote, show modern dashboard
