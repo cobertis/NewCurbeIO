@@ -419,6 +419,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     next();
   };
 
+  // ==================== OWNERSHIP VERIFICATION HELPERS ====================
+  // These helper functions verify that the current user has permission to access
+  // a quote or policy and its sub-resources based on their role and ownership
+
+  async function verifyQuoteOwnership(
+    quoteId: string,
+    userId: string,
+    userRole: string,
+    companyId: string
+  ): Promise<void> {
+    // Superadmin can access everything
+    if (userRole === 'superadmin') {
+      return;
+    }
+
+    // Get the quote to check ownership
+    const quote = await storage.getQuote(quoteId);
+    if (!quote) {
+      throw { status: 404, message: "Quote not found" };
+    }
+
+    // Admin can access if quote belongs to their company
+    if (userRole === 'admin' && quote.companyId === companyId) {
+      return;
+    }
+
+    // Regular user can only access if they are the assigned agent
+    if (quote.agentId === userId) {
+      return;
+    }
+
+    // Access denied
+    throw { status: 403, message: "You do not have permission to access this quote" };
+  }
+
+  async function verifyPolicyOwnership(
+    policyId: string,
+    userId: string,
+    userRole: string,
+    companyId: string
+  ): Promise<void> {
+    // Superadmin can access everything
+    if (userRole === 'superadmin') {
+      return;
+    }
+
+    // Get the policy to check ownership
+    const policy = await storage.getPolicy(policyId);
+    if (!policy) {
+      throw { status: 404, message: "Policy not found" };
+    }
+
+    // Admin can access if policy belongs to their company
+    if (userRole === 'admin' && policy.companyId === companyId) {
+      return;
+    }
+
+    // Regular user can only access if they are the assigned agent
+    if (policy.agentId === userId) {
+      return;
+    }
+
+    // Access denied
+    throw { status: 403, message: "You do not have permission to access this policy" };
+  }
+
   // ==================== PUBLIC ROUTES (NO AUTH REQUIRED) ====================
   // These routes MUST be defined BEFORE any authenticated routes to ensure
   // they are accessible without authentication
@@ -8506,15 +8572,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
@@ -8545,15 +8608,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, memberId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const member = await storage.getQuoteMemberById(memberId, quote.companyId);
@@ -8593,15 +8653,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Validate request body
@@ -8644,15 +8701,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, memberId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const member = await storage.getQuoteMemberById(memberId, quote.companyId);
@@ -8706,15 +8760,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, memberId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const member = await storage.getQuoteMemberById(memberId, quote.companyId);
@@ -8758,15 +8809,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
     
     try {
-      // Verify quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const { role, memberData } = req.body;
@@ -9007,15 +9055,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const income = await storage.getQuoteMemberIncome(memberId, quote.companyId);
@@ -9043,15 +9088,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Validate request body (include companyId from member)
@@ -9101,15 +9143,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const deleted = await storage.deleteQuoteMemberIncome(memberId, quote.companyId);
@@ -9151,15 +9190,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const immigration = await storage.getQuoteMemberImmigration(memberId, quote.companyId);
@@ -9199,15 +9235,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Validate request body (include companyId from member)
@@ -9257,15 +9290,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const deleted = await storage.deleteQuoteMemberImmigration(memberId, quote.companyId);
@@ -9307,15 +9337,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const documents = await storage.getQuoteMemberDocuments(memberId, quote.companyId);
@@ -9339,15 +9366,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const { documentType, documentName, fileType, base64Data, description } = req.body;
@@ -9456,15 +9480,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const document = await storage.getQuoteMemberDocumentById(docId, quote.companyId);
@@ -9496,15 +9517,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const document = await storage.getQuoteMemberDocumentById(docId, quote.companyId);
@@ -9559,15 +9577,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get quote to check company ownership
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(member.quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const document = await storage.getQuoteMemberDocumentById(docId, quote.companyId);
@@ -9621,15 +9636,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const paymentMethods = await storage.getQuotePaymentMethods(quoteId, quote.companyId);
@@ -9660,15 +9672,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, paymentMethodId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const paymentMethod = await storage.getQuotePaymentMethodById(paymentMethodId, quote.companyId);
@@ -9708,15 +9717,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Validate request body (include companyId and quoteId)
@@ -9761,15 +9767,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, paymentMethodId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Verify payment method exists and belongs to this quote
@@ -9824,15 +9827,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, paymentMethodId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Verify payment method exists and belongs to this quote
@@ -9878,15 +9878,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, paymentMethodId } = req.params;
     
     try {
-      // Validate quote exists and user has access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Verify payment method exists and belongs to this quote
@@ -9930,15 +9927,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
     
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const { note, isImportant, isPinned, isResolved, attachments } = req.body;
@@ -9985,15 +9979,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
     
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const notes = await storage.getQuoteNotes(quoteId, quote.companyId);
@@ -10012,15 +10003,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { note, isImportant, isPinned, isResolved, attachments } = req.body;
     
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Get the note to check permissions
@@ -10089,15 +10077,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, noteId } = req.params;
     
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Get the note to check permissions
@@ -10147,15 +10132,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
     
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Set up multer for file upload
@@ -10282,15 +10264,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { category, q } = req.query;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // List documents with optional filters
@@ -10312,15 +10291,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Handle upload with promisified multer
@@ -10393,15 +10369,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, documentId } = req.params;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Get document
@@ -10462,15 +10435,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, documentId } = req.params;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Get document
@@ -10537,15 +10507,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { status, priority, userId } = req.query;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Build filters
@@ -10569,15 +10536,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, reminderId } = req.params;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       const reminder = await storage.getQuoteReminder(reminderId, quote.companyId);
@@ -10603,15 +10567,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId } = req.params;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Validate request body
@@ -10653,15 +10614,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, reminderId } = req.params;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Verify reminder exists and belongs to quote
@@ -10706,15 +10664,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, reminderId } = req.params;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Verify reminder exists and belongs to quote
@@ -10756,15 +10711,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { quoteId, reminderId } = req.params;
 
     try {
-      // Get quote to verify access
+      // Verify ownership before proceeding
+      await verifyQuoteOwnership(quoteId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Verify reminder exists and belongs to quote
@@ -12290,15 +12242,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify ownership before proceeding
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const members = await storage.getPolicyMembersByPolicyId(policyId, policy.companyId);
@@ -12329,15 +12278,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, memberId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify ownership before proceeding
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const member = await storage.getPolicyMemberById(memberId, policy.companyId);
@@ -12377,15 +12323,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify ownership before proceeding
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Validate request body
@@ -12428,15 +12371,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, memberId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify ownership before proceeding
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const member = await storage.getPolicyMemberById(memberId, policy.companyId);
@@ -12490,15 +12430,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, memberId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const member = await storage.getPolicyMemberById(memberId, policy.companyId);
@@ -12601,15 +12539,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
     
     try {
-      // Verify policy exists and user has access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const { role, memberData } = req.body;
@@ -12791,15 +12727,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const income = await storage.getPolicyMemberIncome(memberId, policy.companyId);
@@ -12827,15 +12761,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Validate request body (include companyId from member)
@@ -12885,15 +12817,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const deleted = await storage.deletePolicyMemberIncome(memberId, policy.companyId);
@@ -12935,15 +12865,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const immigration = await storage.getPolicyMemberImmigration(memberId, policy.companyId);
@@ -12983,15 +12911,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Validate request body (include companyId from member)
@@ -13041,15 +12967,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const deleted = await storage.deletePolicyMemberImmigration(memberId, policy.companyId);
@@ -13091,15 +13015,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const documents = await storage.getPolicyMemberDocuments(memberId, policy.companyId);
@@ -13123,15 +13045,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const { documentType, documentName, fileType, base64Data, description } = req.body;
@@ -13240,15 +13160,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const document = await storage.getPolicyMemberDocumentById(docId, policy.companyId);
@@ -13280,15 +13198,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const document = await storage.getPolicyMemberDocumentById(docId, policy.companyId);
@@ -13343,15 +13259,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Member not found" });
       }
       
-      // Get policy to check company ownership
+      // Verify policy ownership
+      await verifyPolicyOwnership(member.policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const document = await storage.getPolicyMemberDocumentById(docId, policy.companyId);
@@ -13405,15 +13319,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const paymentMethods = await storage.getPolicyPaymentMethods(policyId, policy.companyId);
@@ -13444,15 +13356,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, paymentMethodId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
@@ -13492,15 +13402,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Validate request body (include companyId and policyId)
@@ -13545,15 +13453,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, paymentMethodId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Verify payment method exists and belongs to this policy
@@ -13608,15 +13514,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, paymentMethodId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Verify payment method exists and belongs to this policy
@@ -13662,15 +13566,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, paymentMethodId } = req.params;
     
     try {
-      // Validate policy exists and user has access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Verify payment method exists and belongs to this policy
@@ -13714,15 +13616,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
     
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const { note, isImportant, isPinned, isResolved, attachments } = req.body;
@@ -13769,15 +13669,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
     
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       const notes = await storage.getPolicyNotes(policyId, policy.companyId);
@@ -13796,15 +13694,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { note, isImportant, isPinned, isResolved, attachments } = req.body;
     
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Get the note to check permissions
@@ -13873,15 +13769,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, noteId } = req.params;
     
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Get the note to check permissions
@@ -13931,15 +13825,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
     
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
       // Set up multer for file upload
@@ -14029,15 +13921,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { category, q } = req.query;
 
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // List documents with optional filters
@@ -14059,15 +13949,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
 
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Handle upload with promisified multer
@@ -14140,15 +14028,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, documentId } = req.params;
 
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Get document
@@ -14209,15 +14095,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, documentId } = req.params;
 
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Get document
@@ -14284,15 +14168,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { status, priority, userId } = req.query;
 
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Build filters
@@ -14316,15 +14198,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId, reminderId } = req.params;
 
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       const reminder = await storage.getPolicyReminder(reminderId, policy.companyId);
@@ -14350,15 +14230,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { policyId } = req.params;
 
     try {
-      // Get policy to verify access
+      // Verify policy ownership
+      await verifyPolicyOwnership(policyId, currentUser.id, currentUser.role, currentUser.companyId!);
+      
+      // Get policy after verification
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
-      }
-
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
       // Validate request body
