@@ -6185,38 +6185,44 @@ export default function QuotesPage() {
 
             <div className="space-y-6">
 
-              {/* Selected Plan Card - Compact Design */}
+              {/* Selected Plan Card - Balanced Design */}
               {viewingQuote.selectedPlan && (
                 <Card className="border border-neutral-300">
-                  <CardContent className="p-3">
+                  <CardContent className="p-4">
+                    {/* Header Section */}
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-2">
                           <Shield className="h-4 w-4 text-neutral-600 flex-shrink-0" />
-                          <p className="text-xs font-semibold text-neutral-600 uppercase">Selected Plan</p>
+                          <p className="text-xs font-semibold text-neutral-600 uppercase">Selected Health Plan</p>
                         </div>
                         <div className="flex items-start gap-3">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-neutral-900 truncate">
+                            <p className="text-base font-bold text-neutral-900 truncate">
                               {viewingQuote.selectedPlan.issuer?.name || 'Insurance Provider'}
                             </p>
-                            <p className="text-xs text-neutral-700 line-clamp-1">
+                            <p className="text-sm text-neutral-700 line-clamp-2 mb-2">
                               {viewingQuote.selectedPlan.name || 'Health Plan'}
                             </p>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <Badge variant="secondary" className="text-xs h-5 px-1.5 bg-neutral-200">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge variant="secondary" className="text-xs h-5 px-2 bg-neutral-200">
                                 {viewingQuote.selectedPlan.metal_level || 'Standard'}
                               </Badge>
-                              <Badge variant="outline" className="text-xs h-5 px-1.5">
+                              <Badge variant="outline" className="text-xs h-5 px-2">
                                 {viewingQuote.selectedPlan.type || 'HMO'}
                               </Badge>
+                              {viewingQuote.selectedPlan.market && (
+                                <Badge variant="outline" className="text-xs h-5 px-2">
+                                  {viewingQuote.selectedPlan.market}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           {viewingQuote.selectedPlan.issuer?.logo_url && (
                             <img 
                               src={viewingQuote.selectedPlan.issuer.logo_url} 
                               alt={viewingQuote.selectedPlan.issuer.name}
-                              className="h-10 w-auto object-contain flex-shrink-0"
+                              className="h-12 w-auto object-contain flex-shrink-0"
                             />
                           )}
                         </div>
@@ -6264,38 +6270,60 @@ export default function QuotesPage() {
                       </div>
                     </div>
 
-                    {/* Premium and Key Info - Horizontal Layout */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-3 border-t border-neutral-200">
-                      <div className="bg-neutral-50 rounded p-2 border border-neutral-200">
-                        <p className="text-xs text-neutral-600 mb-0.5">Monthly Premium</p>
-                        <p className="text-lg font-bold text-neutral-900">
+                    {/* Premium Section */}
+                    <div className="grid grid-cols-2 gap-3 mb-3 pt-3 border-t border-neutral-200">
+                      <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <DollarSign className="h-4 w-4 text-neutral-600" />
+                          <p className="text-xs font-medium text-neutral-600">Monthly Premium</p>
+                        </div>
+                        <p className="text-2xl font-bold text-neutral-900">
                           ${viewingQuote.selectedPlan.premium ? parseFloat(viewingQuote.selectedPlan.premium).toFixed(2) : '0.00'}
                         </p>
+                        <p className="text-xs text-neutral-500 mt-0.5">per month</p>
                       </div>
                       {viewingQuote.selectedPlan.premium_w_credit && (
-                        <div className="bg-green-50 rounded p-2 border border-green-200">
-                          <p className="text-xs text-green-700 mb-0.5">With Tax Credit</p>
-                          <p className="text-lg font-bold text-green-900">
+                        <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                          <div className="flex items-center gap-2 mb-1">
+                            <DollarSign className="h-4 w-4 text-green-700" />
+                            <p className="text-xs font-medium text-green-700">With Tax Credit</p>
+                          </div>
+                          <p className="text-2xl font-bold text-green-900">
                             ${viewingQuote.selectedPlan.premium_w_credit ? parseFloat(viewingQuote.selectedPlan.premium_w_credit).toFixed(2) : '0.00'}
                           </p>
+                          <p className="text-xs text-green-600 mt-0.5">Savings applied</p>
                         </div>
                       )}
-                      {viewingQuote.selectedPlan.deductibles?.[0] && (
-                        <div className="bg-neutral-50 rounded p-2 border border-neutral-200">
-                          <p className="text-xs text-neutral-600 mb-0.5">Deductible</p>
-                          <p className="text-lg font-bold text-neutral-900">
-                            ${viewingQuote.selectedPlan.deductibles[0].amount ? parseFloat(viewingQuote.selectedPlan.deductibles[0].amount).toLocaleString() : '0'}
+                    </div>
+
+                    {/* Cost Sharing - Compact Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-3 border-t border-neutral-200">
+                      {viewingQuote.selectedPlan.deductibles?.slice(0, 2).map((ded: any, idx: number) => (
+                        <div key={idx} className="bg-neutral-50 rounded p-2 border border-neutral-200">
+                          <p className="text-xs text-neutral-600 mb-1">
+                            {ded.family_cost ? 'Family' : 'Individual'} Deductible
                           </p>
-                        </div>
-                      )}
-                      {viewingQuote.selectedPlan.moops?.[0] && (
-                        <div className="bg-neutral-50 rounded p-2 border border-neutral-200">
-                          <p className="text-xs text-neutral-600 mb-0.5">Max OOP</p>
-                          <p className="text-lg font-bold text-neutral-900">
-                            ${viewingQuote.selectedPlan.moops[0].amount ? parseFloat(viewingQuote.selectedPlan.moops[0].amount).toLocaleString() : '0'}
+                          <p className="text-sm font-bold text-neutral-900">
+                            ${ded.amount ? parseFloat(ded.amount).toLocaleString() : '0'}
                           </p>
+                          {ded.network_tier && (
+                            <p className="text-xs text-neutral-500 truncate">{ded.network_tier}</p>
+                          )}
                         </div>
-                      )}
+                      ))}
+                      {viewingQuote.selectedPlan.moops?.slice(0, 2).map((moop: any, idx: number) => (
+                        <div key={idx} className="bg-neutral-50 rounded p-2 border border-neutral-200">
+                          <p className="text-xs text-neutral-600 mb-1">
+                            {moop.family_cost ? 'Family' : 'Individual'} Max OOP
+                          </p>
+                          <p className="text-sm font-bold text-neutral-900">
+                            ${moop.amount ? parseFloat(moop.amount).toLocaleString() : '0'}
+                          </p>
+                          {moop.network_tier && (
+                            <p className="text-xs text-neutral-500 truncate">{moop.network_tier}</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
