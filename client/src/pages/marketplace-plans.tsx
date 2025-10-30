@@ -218,7 +218,7 @@ export default function MarketplacePlansPage() {
       
       // Prepare metadata with all information
       const apiRequestData = data.request_data || {
-        household_income: (quoteData as any)?.quote?.householdIncome,
+        household_income: (quoteData as any)?.totalHouseholdIncome || quote?.householdIncome || 0,
         people_count: totalApplicants,
         location: {
           zip: quote?.zipCode,
