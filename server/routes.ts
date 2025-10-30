@@ -642,10 +642,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(410).json({ message: "Consent document has expired" });
       }
       
-      // Get quote and company details
-      const quote = await storage.getQuote(consent.quoteId);
+      // Check if consent is for quote or policy
+      const isPolicy = 'policyId' in consent && consent.policyId;
+      const quoteOrPolicyId = isPolicy ? (consent as any).policyId : consent.quoteId;
+      
+      // Get quote or policy details
+      const quote = isPolicy 
+        ? await storage.getPolicy(quoteOrPolicyId)
+        : await storage.getQuote(quoteOrPolicyId);
+        
       if (!quote) {
-        return res.status(404).json({ message: "Quote not found" });
+        return res.status(404).json({ message: isPolicy ? "Policy not found" : "Quote not found" });
       }
       
       const company = await storage.getCompany(consent.companyId);
@@ -676,11 +683,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Mark as viewed if first time
       if (consent.status === 'sent' && !consent.viewedAt) {
-        await storage.updateConsentDocument(consent.id, {
-          status: 'viewed',
-          viewedAt: new Date(),
-        });
-        await storage.createConsentEvent(consent.id, 'viewed', {});
+        if (isPolicy) {
+          await storage.updatePolicyConsentDocument(consent.id, {
+            status: 'viewed',
+            viewedAt: new Date(),
+          });
+          await storage.createPolicyConsentEvent(consent.id, 'viewed', {});
+        } else {
+          await storage.updateConsentDocument(consent.id, {
+            status: 'viewed',
+            viewedAt: new Date(),
+          });
+          await storage.createConsentEvent(consent.id, 'viewed', {});
+        }
       }
       
       res.json({

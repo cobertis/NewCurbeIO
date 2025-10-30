@@ -3649,12 +3649,23 @@ export class DbStorage implements IStorage {
   }
   
   async getConsentByToken(token: string): Promise<ConsentDocument | null> {
-    const result = await db
+    // First try to find in quote consents
+    const quoteResult = await db
       .select()
       .from(consentDocuments)
       .where(eq(consentDocuments.token, token));
     
-    return result[0] || null;
+    if (quoteResult[0]) {
+      return quoteResult[0];
+    }
+    
+    // If not found, try policy consents
+    const policyResult = await db
+      .select()
+      .from(policyConsentDocuments)
+      .where(eq(policyConsentDocuments.token, token));
+    
+    return policyResult[0] || null;
   }
   
   async listQuoteConsents(quoteId: string, companyId: string): Promise<ConsentDocument[]> {
