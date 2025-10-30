@@ -6065,14 +6065,14 @@ export default function QuotesPage() {
                   </DropdownMenu>
                 </div>
 
-                {/* Status Badges with Inline Editor */}
+                {/* Status Badges */}
                 <div className="pb-3 border-b space-y-2">
                   {/* Status Badge with Edit Icon */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <span className="text-sm text-muted-foreground">Status:</span>
                       <button
-                        onClick={() => setStatusEditorOpen(!statusEditorOpen)}
+                        onClick={() => setStatusEditorOpen(true)}
                         className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
                         data-testid="button-toggle-status-editor"
                       >
@@ -6099,17 +6099,6 @@ export default function QuotesPage() {
                       {formatPaymentStatusDisplay(viewingQuote.paymentStatus)}
                     </Badge>
                   </div>
-                  
-                  {/* Inline Editor - Expands below badges */}
-                  <StatusEditorInline
-                    type="quote"
-                    id={viewingQuote.id}
-                    currentStatus={viewingQuote.status}
-                    currentDocumentsStatus={viewingQuote.documentsStatus}
-                    currentPaymentStatus={viewingQuote.paymentStatus}
-                    isOpen={statusEditorOpen}
-                    onClose={() => setStatusEditorOpen(false)}
-                  />
                 </div>
 
                 <div className="pb-3 border-b">
@@ -10994,6 +10983,27 @@ export default function QuotesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Status Editor Dialog */}
+      <Dialog open={statusEditorOpen} onOpenChange={setStatusEditorOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-status-editor">
+          <DialogHeader>
+            <DialogTitle>Update Statuses</DialogTitle>
+            <DialogDescription>
+              Update the status values for this quote
+            </DialogDescription>
+          </DialogHeader>
+          
+          <StatusEditorDialogContent
+            type="quote"
+            id={viewingQuote?.id || ''}
+            currentStatus={viewingQuote?.status || ''}
+            currentDocumentsStatus={viewingQuote?.documentsStatus || ''}
+            currentPaymentStatus={viewingQuote?.paymentStatus || ''}
+            onClose={() => setStatusEditorOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Send Consent Modal */}
       <Dialog open={consentModalOpen} onOpenChange={setConsentModalOpen}>
         <DialogContent className="max-w-lg" data-testid="dialog-send-consent">
@@ -11017,14 +11027,13 @@ export default function QuotesPage() {
   );
 }
 
-// StatusEditorInline Component
-function StatusEditorInline({ 
+// StatusEditorDialogContent Component
+function StatusEditorDialogContent({ 
   type, 
   id, 
   currentStatus, 
   currentDocumentsStatus, 
   currentPaymentStatus, 
-  isOpen, 
   onClose 
 }: {
   type: "quote" | "policy";
@@ -11032,7 +11041,6 @@ function StatusEditorInline({
   currentStatus: string;
   currentDocumentsStatus: string;
   currentPaymentStatus: string;
-  isOpen: boolean;
   onClose: () => void;
 }) {
   const form = useForm<StatusFormValues>({
@@ -11057,118 +11065,106 @@ function StatusEditorInline({
   const statusOptions = type === "quote" ? quoteStatusOptions : policyStatusOptions;
 
   return (
-    <Collapsible open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <CollapsibleContent>
-        <Card className="mt-2 border-muted">
-          <CardContent className="p-3 space-y-3">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-                {/* Status Field */}
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">{type === "quote" ? "Quote" : "Policy"} status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-status">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {statusOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* Status Field */}
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{type === "quote" ? "Quote" : "Policy"} status</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {statusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-                {/* Documents Status Field */}
-                <FormField
-                  control={form.control}
-                  name="documentsStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Documents status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-documents-status">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {documentsStatusOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        {/* Documents Status Field */}
+        <FormField
+          control={form.control}
+          name="documentsStatus"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Documents status</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-documents-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {documentsStatusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-                {/* Payment Status Field */}
-                <FormField
-                  control={form.control}
-                  name="paymentStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Payment status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-payment-status">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {paymentStatusOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        {/* Payment Status Field */}
+        <FormField
+          control={form.control}
+          name="paymentStatus"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Payment status</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-payment-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {paymentStatusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={onClose}
-                    className="flex-1"
-                    data-testid="button-cancel-status"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={updateMutation.isPending}
-                    className="flex-1"
-                    data-testid="button-submit-status"
-                  >
-                    {updateMutation.isPending ? "Saving..." : "Save"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </CollapsibleContent>
-    </Collapsible>
+        {/* Action Buttons */}
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            data-testid="button-cancel-status"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={updateMutation.isPending}
+            data-testid="button-submit-status"
+          >
+            {updateMutation.isPending ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 }
 
