@@ -11013,7 +11013,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ policy });
+      res.json({ policy, policyId: policy.id });
     } catch (error: any) {
       console.error("Error submitting quote as policy:", error);
       res.status(500).json({ 
@@ -13027,7 +13027,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13090,7 +13090,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13152,7 +13152,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13191,7 +13191,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13239,7 +13239,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13292,7 +13292,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13355,7 +13355,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13409,7 +13409,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate policy exists and user has access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13461,7 +13461,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13516,7 +13516,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13543,7 +13543,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13620,7 +13620,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13678,7 +13678,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -13776,7 +13776,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -13806,7 +13806,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -13887,7 +13887,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -13956,7 +13956,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -14031,7 +14031,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -14063,7 +14063,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -14097,7 +14097,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -14147,7 +14147,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -14200,7 +14200,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -14250,7 +14250,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -14300,7 +14300,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
 
@@ -14489,7 +14489,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -14539,7 +14539,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -14590,7 +14590,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get policy and company details
       const policy = await storage.getPolicy(consent.policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
@@ -14782,7 +14782,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
-      if (!quote) {
+      if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
       
