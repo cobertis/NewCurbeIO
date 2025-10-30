@@ -8323,6 +8323,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Use the new unified getQuoteDetail function that fetches all data atomically
       const quoteDetail = await storage.getQuoteDetail(id, currentUser.companyId!);
       
+      // Check access: superadmin/admin can see all, regular users only see their own quotes
+      if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+        if (quoteDetail.quote.agentId !== currentUser.id) {
+          return res.status(403).json({ message: "You don't have permission to view this quote" });
+        }
+      }
+      
       // Log access to sensitive data
       await logger.logAuth({
         req,
@@ -12027,7 +12034,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // UNIFIED QUOTE DETAIL - Gets ALL related data in one call to prevent stale cache issues
+  // UNIFIED POLICY DETAIL - Gets ALL related data in one call to prevent stale cache issues
   app.get("/api/policies/:id/detail", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id } = req.params;
@@ -12035,6 +12042,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Use the new unified getPolicyDetail function that fetches all data atomically
       const policyDetail = await storage.getPolicyDetail(id, currentUser.companyId!);
+      
+      // Check access: superadmin/admin can see all, regular users only see their own policies
+      if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+        if (policyDetail.policy.agentId !== currentUser.id) {
+          return res.status(403).json({ message: "You don't have permission to view this policy" });
+        }
+      }
       
       // Log access to sensitive data
       await logger.logAuth({
