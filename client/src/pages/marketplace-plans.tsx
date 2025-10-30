@@ -479,10 +479,10 @@ export default function MarketplacePlansPage() {
     );
   }
 
-  const quote = (quoteData as any)?.quote;
+  const quote = (quoteData as any)?.[isPolicy ? 'policy' : 'quote'];
   
-  // PERMANENT FIX: Show ALL family members from quote_members table (exclude only 'client')
-  // This matches the EXACT same logic as quotes.tsx - loads REAL data from BD
+  // PERMANENT FIX: Show ALL family members from quote_members/policy_members table (exclude only 'client')
+  // This matches the EXACT same logic as quotes.tsx/policies.tsx - loads REAL data from BD
   const allFamilyMembersFromDB = membersDetailsData?.members?.filter(m => m.role !== 'client') || [];
   
   // Build family members list from REAL DATABASE (NOT JSONB fields)
