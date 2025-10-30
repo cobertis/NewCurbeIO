@@ -8424,12 +8424,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             await storage.createNotification({
               userId: validatedData.agentId,
               type: 'info',
-              title: 'Nueva Quote Asignada',
-              message: `${assignerName} te asignó la quote de ${clientName}`,
+              title: 'New Quote Assigned',
+              message: `${assignerName} assigned you the quote for ${clientName}`,
               link: `/quotes/${id}`,
             });
             
-            // Broadcast notification via WebSocket
+            // Broadcast notification via WebSocket to the specific user
             await broadcastNotificationUpdate(validatedData.agentId);
           }
         } catch (notificationError) {
@@ -12171,12 +12171,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             await storage.createNotification({
               userId: validatedData.agentId,
               type: 'info',
-              title: 'Nueva Póliza Asignada',
-              message: `${assignerName} te asignó la póliza de ${clientName}`,
+              title: 'New Policy Assigned',
+              message: `${assignerName} assigned you the policy for ${clientName}`,
               link: `/policies/${id}`,
             });
             
-            // Broadcast notification via WebSocket
+            // Broadcast notification via WebSocket to the specific user
             await broadcastNotificationUpdate(validatedData.agentId);
           }
         } catch (notificationError) {
