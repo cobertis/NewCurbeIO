@@ -1,10 +1,32 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Cake, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+
+interface CalendarEvent {
+  type: 'birthday' | 'reminder';
+  date: string;
+  title: string;
+  description: string;
+  quoteId: string;
+  personName?: string;
+  role?: string;
+  reminderId?: string;
+  reminderType?: string;
+  priority?: string;
+  status?: string;
+  dueTime?: string;
+}
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Fetch calendar events
+  const { data: eventsData, isLoading } = useQuery<{ events: CalendarEvent[] }>({
+    queryKey: ["/api/calendar/events"],
+  });
 
   // Get the start and end of the current month
   const monthStart = startOfMonth(currentDate);
@@ -31,6 +53,54 @@ export default function Calendar() {
   const goToToday = () => {
     setCurrentDate(new Date());
   };
+
+  // Group events by date
+  const eventsByDate: Record<string, CalendarEvent[]> = {};
+  if (eventsData?.events) {
+    eventsData.events.forEach((event) => {
+      // For birthdays, we need to match the month and day only (recurring annually)
+      if (event.type === 'birthday') {
+        const eventDate = new Date(event.date);
+        const eventMonth = eventDate.getMonth();
+        const eventDay = eventDate.getDate();
+        
+        // Check all calendar days to find matching birthdays
+        calendarDays.forEach((day) => {
+          if (day.getMonth() === eventMonth && day.getDate() === eventDay) {
+            const dateKey = format(day, "yyyy-MM-dd");
+            if (!eventsByDate[dateKey]) {
+              eventsByDate[dateKey] = [];
+            }
+            eventsByDate[dateKey].push(event);
+          }
+        });
+      } else {
+        // Reminders are shown only on their exact date
+        const dateKey = event.date;
+        if (!eventsByDate[dateKey]) {
+          eventsByDate[dateKey] = [];
+        }
+        eventsByDate[dateKey].push(event);
+      }
+    });
+  }
+
+  // Get events for a specific day
+  const getEventsForDay = (day: Date): CalendarEvent[] => {
+    const dateKey = format(day, "yyyy-MM-dd");
+    return eventsByDate[dateKey] || [];
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg text-muted-foreground">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen w-full bg-background">
@@ -94,6 +164,7 @@ export default function Calendar() {
           {calendarDays.map((day, index) => {
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isTodayDate = isToday(day);
+            const dayEvents = getEventsForDay(day);
 
             return (
               <div
@@ -116,9 +187,44 @@ export default function Calendar() {
                     {format(day, "d")}
                   </span>
                 </div>
-                {/* Event space - this is where events would be rendered */}
+                {/* Events */}
                 <div className="space-y-1">
-                  {/* Events will go here in the future */}
+                  {dayEvents.map((event, eventIndex) => {
+                    if (event.type === 'birthday') {
+                      return (
+                        <div
+                          key={`${event.quoteId}-${eventIndex}`}
+                          className="flex items-start gap-1 px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                          title={`${event.title} - ${event.role}`}
+                          data-testid={`event-birthday-${eventIndex}`}
+                        >
+                          <Cake className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span className="truncate flex-1">{event.title}</span>
+                        </div>
+                      );
+                    } else {
+                      // Reminder - color based on priority
+                      const priorityColors = {
+                        urgent: 'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-900/50',
+                        high: 'bg-orange-100 dark:bg-orange-900/30 text-orange-900 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-900/50',
+                        medium: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-900/50',
+                        low: 'bg-gray-100 dark:bg-gray-800/30 text-gray-900 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-800/50',
+                      };
+                      const colorClass = priorityColors[event.priority as keyof typeof priorityColors] || priorityColors.medium;
+                      
+                      return (
+                        <div
+                          key={`${event.reminderId}-${eventIndex}`}
+                          className={`flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-colors ${colorClass}`}
+                          title={`${event.title} ${event.dueTime ? `at ${event.dueTime}` : ''} - ${event.priority || 'medium'} priority`}
+                          data-testid={`event-reminder-${eventIndex}`}
+                        >
+                          <Bell className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span className="truncate flex-1">{event.title}</span>
+                        </div>
+                      );
+                    }
+                  })}
                 </div>
               </div>
             );

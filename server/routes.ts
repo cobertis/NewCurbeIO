@@ -10826,6 +10826,80 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== CALENDAR EVENTS ====================
+  
+  // GET /api/calendar/events - Get all calendar events (birthdays + reminders) for the company
+  app.get("/api/calendar/events", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.role === "superadmin" && req.query.companyId 
+      ? String(req.query.companyId) 
+      : currentUser.companyId!;
+
+    try {
+      const events: any[] = [];
+
+      // Get all quotes for the company
+      const quotes = await storage.getQuotesByCompany(companyId);
+
+      // Extract birthdays from all quote members
+      for (const quote of quotes) {
+        // Primary client birthday
+        if (quote.clientDateOfBirth) {
+          events.push({
+            type: 'birthday',
+            date: quote.clientDateOfBirth,
+            title: `${quote.clientFirstName} ${quote.clientLastName}`,
+            description: 'Birthday',
+            quoteId: quote.id,
+            personName: `${quote.clientFirstName} ${quote.clientLastName}`,
+            role: 'Client',
+          });
+        }
+
+        // Get quote members (spouses and dependents)
+        const members = await storage.getQuoteMembersByQuoteId(quote.id, companyId);
+        for (const member of members) {
+          if (member.dateOfBirth) {
+            events.push({
+              type: 'birthday',
+              date: member.dateOfBirth,
+              title: `${member.firstName} ${member.lastName}`,
+              description: 'Birthday',
+              quoteId: quote.id,
+              personName: `${member.firstName} ${member.lastName}`,
+              role: member.role === 'spouse' ? 'Spouse' : member.relation || 'Dependent',
+            });
+          }
+        }
+      }
+
+      // Get all reminders for the company
+      const reminders = await storage.getQuoteRemindersByCompany(companyId);
+      for (const reminder of reminders) {
+        // Only include pending and snoozed reminders
+        if (reminder.status === 'pending' || reminder.status === 'snoozed') {
+          events.push({
+            type: 'reminder',
+            date: reminder.dueDate,
+            title: reminder.title || reminder.reminderType.replace('_', ' '),
+            description: reminder.description || '',
+            quoteId: reminder.quoteId,
+            reminderId: reminder.id,
+            reminderType: reminder.reminderType,
+            priority: reminder.priority,
+            status: reminder.status,
+            dueTime: reminder.dueTime,
+          });
+        }
+      }
+
+      res.json({ events });
+    } catch (error: any) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ message: "Failed to fetch calendar events" });
+    }
+  });
+
   // ==================== CONSENT DOCUMENTS ====================
   
   // POST /api/quotes/:id/consents/generate - Generate new consent document

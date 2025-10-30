@@ -85,6 +85,15 @@ Legal consent document generation and electronic signature system with full audi
 - Secure token-based access with 30-day expiration
 - Uses existing email (Nodemailer) and SMS (Twilio) services
 
+**Calendar System:**
+Full-screen professional calendar displaying company-wide events with visual differentiation:
+- **Birthday Events:** Automatically displays all family member birthdays (primary clients, spouses, dependents) from all quotes in the company. Shows annually recurring birthdays with cake icon in blue.
+- **Reminder Events:** Displays all active reminders (pending/snoozed) with bell icon. Color-coded by priority: urgent (red), high (orange), medium (yellow), low (gray).
+- **Event Details:** Hover tooltips show full information including person name, role, reminder time, and priority level.
+- **Navigation:** Month-by-month navigation with "Today" quick jump button.
+- **Data Source:** GET `/api/calendar/events` endpoint aggregates birthdays from `quotes.clientDateOfBirth` and `quote_members.dateOfBirth`, plus reminders from `quote_reminders` table.
+- **Multi-tenant Isolation:** Events filtered by company, ensuring strict data isolation.
+
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL, Drizzle ORM.

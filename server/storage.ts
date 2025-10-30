@@ -3378,6 +3378,16 @@ export class DbStorage implements IStorage {
     return result[0] || null;
   }
   
+  async getQuoteRemindersByCompany(companyId: string): Promise<QuoteReminder[]> {
+    const results = await db
+      .select()
+      .from(quoteReminders)
+      .where(eq(quoteReminders.companyId, companyId))
+      .orderBy(quoteReminders.dueDate);
+    
+    return results;
+  }
+  
   async createQuoteReminder(data: InsertQuoteReminder): Promise<QuoteReminder> {
     const result = await db
       .insert(quoteReminders)
