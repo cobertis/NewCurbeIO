@@ -6142,14 +6142,31 @@ export default function PoliciesPage() {
                           <h1 className="text-2xl font-bold">
                             {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                           </h1>
-                          <PolicyStatusSelector 
-                            policyId={viewingQuote.id}
-                            currentStatus={viewingQuote.status || 'active'}
-                            onStatusChange={(newStatus) => {
-                              queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                              queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
-                            }}
-                          />
+                          {viewingQuote.status === 'active' ? (
+                            <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
+                              Active
+                            </Badge>
+                          ) : viewingQuote.status === 'pending' ? (
+                            <Badge className="text-xs bg-amber-500 hover:bg-amber-600 text-white">
+                              Pending
+                            </Badge>
+                          ) : viewingQuote.status === 'cancelled' ? (
+                            <Badge className="text-xs bg-red-600 hover:bg-red-700 text-white">
+                              Cancelled
+                            </Badge>
+                          ) : viewingQuote.status === 'expired' ? (
+                            <Badge className="text-xs bg-gray-500 hover:bg-gray-600 text-white">
+                              Expired
+                            </Badge>
+                          ) : viewingQuote.status === 'suspended' ? (
+                            <Badge className="text-xs bg-orange-600 hover:bg-orange-700 text-white">
+                              Suspended
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              {viewingQuote.status || 'Active'}
+                            </Badge>
+                          )}
                         </div>
                         
                         {/* Quick Summary */}
