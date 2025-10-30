@@ -6071,9 +6071,13 @@ export default function QuotesPage() {
                     <div className="flex items-center gap-1">
                       <span className="text-sm text-muted-foreground">Status:</span>
                       <button
-                        onClick={() => setStatusEditorOpen(true)}
+                        onClick={() => {
+                          console.log('[STATUS EDITOR] Button clicked, opening dialog');
+                          setStatusEditorOpen(true);
+                        }}
                         className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
                         data-testid="button-toggle-status-editor"
+                        type="button"
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
@@ -10983,25 +10987,27 @@ export default function QuotesPage() {
       </Dialog>
 
       {/* Status Editor Dialog */}
-      <Dialog open={statusEditorOpen} onOpenChange={setStatusEditorOpen}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-status-editor">
-          <DialogHeader>
-            <DialogTitle>Update Statuses</DialogTitle>
-            <DialogDescription>
-              Update the status values for this quote
-            </DialogDescription>
-          </DialogHeader>
-          
-          <StatusEditorDialogContent
-            type="quote"
-            id={viewingQuote?.id || ''}
-            currentStatus={viewingQuote?.status || ''}
-            currentDocumentsStatus={viewingQuote?.documentsStatus || ''}
-            currentPaymentStatus={viewingQuote?.paymentStatus || ''}
-            onClose={() => setStatusEditorOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {viewingQuote && (
+        <Dialog open={statusEditorOpen} onOpenChange={setStatusEditorOpen}>
+          <DialogContent className="sm:max-w-md" data-testid="dialog-status-editor">
+            <DialogHeader>
+              <DialogTitle>Update Statuses</DialogTitle>
+              <DialogDescription>
+                Update the status values for this quote
+              </DialogDescription>
+            </DialogHeader>
+            
+            <StatusEditorDialogContent
+              type="quote"
+              id={viewingQuote.id}
+              currentStatus={viewingQuote.status}
+              currentDocumentsStatus={viewingQuote.documentsStatus}
+              currentPaymentStatus={viewingQuote.paymentStatus}
+              onClose={() => setStatusEditorOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Send Consent Modal */}
       <Dialog open={consentModalOpen} onOpenChange={setConsentModalOpen}>
