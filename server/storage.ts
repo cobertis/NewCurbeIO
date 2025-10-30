@@ -4066,6 +4066,8 @@ export class DbStorage implements IStorage {
             employerName: income.employerName,
             jobTitle: income.jobTitle,
             annualIncome: income.annualIncome,
+            incomeFrequency: income.incomeFrequency,
+            totalAnnualIncome: income.totalAnnualIncome,
             payFrequency: income.payFrequency,
             hoursPerWeek: income.hoursPerWeek,
             selfEmployed: income.selfEmployed,
