@@ -5936,16 +5936,8 @@ export default function PoliciesPage() {
                     disabled={changeAgentMutation.isPending}
                   >
                     <SelectTrigger className="h-9" data-testid="select-agent">
-                      <SelectValue>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-5 w-5">
-                            <AvatarImage src={agent?.avatar || undefined} />
-                            <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                              {agent?.firstName?.[0] || 'A'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{agent?.firstName || 'Unknown'} {agent?.lastName || ''}</span>
-                        </div>
+                      <SelectValue placeholder="Select agent...">
+                        {agent?.firstName || 'Unknown'} {agent?.lastName || ''}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
