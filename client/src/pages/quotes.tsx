@@ -5950,24 +5950,22 @@ export default function QuotesPage() {
                     disabled={changeAgentMutation.isPending}
                   >
                     <SelectTrigger className="h-9" data-testid="select-agent">
-                      {agent ? (
-                        <div className="flex items-center gap-2">
-                          {agent.avatar ? (
-                            <img 
-                              src={agent.avatar} 
-                              alt={`${agent.firstName} ${agent.lastName}`}
-                              className="h-5 w-5 rounded-full object-cover border border-border"
-                            />
-                          ) : (
-                            <div className="h-5 w-5 rounded-full bg-muted border border-border flex items-center justify-center text-[10px] font-medium">
-                              {agent.firstName?.[0]}{agent.lastName?.[0]}
-                            </div>
-                          )}
-                          <span>{agent.firstName} {agent.lastName}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">Select agent...</span>
-                      )}
+                      <div className="flex items-center gap-2 w-full">
+                        {agent?.avatar ? (
+                          <img 
+                            src={agent.avatar} 
+                            alt=""
+                            className="h-5 w-5 rounded-full object-cover border border-border flex-shrink-0"
+                          />
+                        ) : agent ? (
+                          <div className="h-5 w-5 rounded-full bg-muted border border-border flex items-center justify-center text-[10px] font-medium flex-shrink-0">
+                            {agent.firstName?.[0]}{agent.lastName?.[0]}
+                          </div>
+                        ) : null}
+                        <SelectValue placeholder="Select agent...">
+                          {agent ? `${agent.firstName} ${agent.lastName}` : "Select agent..."}
+                        </SelectValue>
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
                       {companyAgents.map((agentOption) => (
