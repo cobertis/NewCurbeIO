@@ -5929,31 +5929,148 @@ export default function PoliciesPage() {
     );
   }
 
+  // Render Change Status Dialog (ALWAYS rendered when viewing a policy to avoid unmounting issues)
+  const renderChangeStatusDialog = isViewingQuote && (
+    <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen} modal={true}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Change policy status</DialogTitle>
+          <DialogDescription>
+            Update the policy status, documents status, and payment status below
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          {/* Policy Status */}
+          <div className="space-y-2">
+            <Label htmlFor="policy-status-modal">Policy status</Label>
+            <Select
+              value={statusDialogValues.status}
+              onValueChange={(value) =>
+                setStatusDialogValues((prev) => ({ ...prev, status: value }))
+              }
+            >
+              <SelectTrigger id="policy-status-modal" data-testid="select-policy-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="pending_document">Pending Document</SelectItem>
+                <SelectItem value="pending_payment">Pending Payment</SelectItem>
+                <SelectItem value="waiting_on_agent">Waiting On Agent</SelectItem>
+                <SelectItem value="waiting_for_approval">Waiting For Approval</SelectItem>
+                <SelectItem value="updated_by_client">Updated By Client</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="renewed">Renewed</SelectItem>
+                <SelectItem value="canceled">Canceled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Documents Status */}
+          <div className="space-y-2">
+            <Label htmlFor="documents-status-modal">Documents status</Label>
+            <Select
+              value={statusDialogValues.documentsStatus}
+              onValueChange={(value) =>
+                setStatusDialogValues((prev) => ({ ...prev, documentsStatus: value }))
+              }
+            >
+              <SelectTrigger id="documents-status-modal" data-testid="select-documents-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="declined">Declined</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Payment Status */}
+          <div className="space-y-2">
+            <Label htmlFor="payment-status-modal">Payment status</Label>
+            <Select
+              value={statusDialogValues.paymentStatus}
+              onValueChange={(value) =>
+                setStatusDialogValues((prev) => ({ ...prev, paymentStatus: value }))
+              }
+            >
+              <SelectTrigger id="payment-status-modal" data-testid="select-payment-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="auto_pay">Auto pay</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="not_applicable">Not applicable ($0)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setStatusDialogOpen(false)}
+            data-testid="button-close-status-dialog"
+          >
+            Close
+          </Button>
+          <Button
+            onClick={() => {
+              if (viewingQuote?.id) {
+                updateStatusesMutation.mutate({
+                  policyId: viewingQuote.id,
+                  status: statusDialogValues.status,
+                  documentsStatus: statusDialogValues.documentsStatus,
+                  paymentStatus: statusDialogValues.paymentStatus,
+                });
+              }
+            }}
+            disabled={updateStatusesMutation.isPending || !viewingQuote?.id}
+            data-testid="button-submit-status"
+          >
+            {updateStatusesMutation.isPending ? "Saving..." : "Submit"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   // If viewing a specific quote, show modern dashboard
   if (isViewingQuote) {
     // Show loading state until ALL data is ready
     if (isLoadingQuoteDetail || !quoteDetail) {
       return (
-        <div className="flex items-center justify-center h-screen">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg text-muted-foreground">Loading policy details...</p>
+        <>
+          <div className="flex items-center justify-center h-screen">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg text-muted-foreground">Loading policy details...</p>
+            </div>
           </div>
-        </div>
+          {renderChangeStatusDialog}
+        </>
       );
     }
     
     if (!viewingQuote) {
       return (
-        <div className="h-full p-6 flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Policy not found</h2>
-            <p className="text-muted-foreground mb-4">The policy you're looking for doesn't exist or has been deleted.</p>
-            <Button onClick={() => setLocation("/policies")}>
-              Back to Policies
-            </Button>
+        <>
+          <div className="h-full p-6 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-2">Policy not found</h2>
+              <p className="text-muted-foreground mb-4">The policy you're looking for doesn't exist or has been deleted.</p>
+              <Button onClick={() => setLocation("/policies")}>
+                Back to Policies
+              </Button>
+            </div>
           </div>
-        </div>
+          {renderChangeStatusDialog}
+        </>
       );
     }
 
@@ -11150,115 +11267,7 @@ export default function PoliciesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Change Status Dialog */}
-      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen} modal={true}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Change policy status</DialogTitle>
-            <DialogDescription>
-              Update the policy status, documents status, and payment status below
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {/* Policy Status */}
-            <div className="space-y-2">
-              <Label htmlFor="policy-status">Policy status</Label>
-              <Select
-                value={statusDialogValues.status}
-                onValueChange={(value) =>
-                  setStatusDialogValues((prev) => ({ ...prev, status: value }))
-                }
-              >
-                <SelectTrigger id="policy-status" data-testid="select-policy-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="pending_document">Pending Document</SelectItem>
-                  <SelectItem value="pending_payment">Pending Payment</SelectItem>
-                  <SelectItem value="waiting_on_agent">Waiting On Agent</SelectItem>
-                  <SelectItem value="waiting_for_approval">Waiting For Approval</SelectItem>
-                  <SelectItem value="updated_by_client">Updated By Client</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="renewed">Renewed</SelectItem>
-                  <SelectItem value="canceled">Canceled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Documents Status */}
-            <div className="space-y-2">
-              <Label htmlFor="documents-status">Documents status</Label>
-              <Select
-                value={statusDialogValues.documentsStatus}
-                onValueChange={(value) =>
-                  setStatusDialogValues((prev) => ({ ...prev, documentsStatus: value }))
-                }
-              >
-                <SelectTrigger id="documents-status" data-testid="select-documents-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="declined">Declined</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Payment Status */}
-            <div className="space-y-2">
-              <Label htmlFor="payment-status">Payment status</Label>
-              <Select
-                value={statusDialogValues.paymentStatus}
-                onValueChange={(value) =>
-                  setStatusDialogValues((prev) => ({ ...prev, paymentStatus: value }))
-                }
-              >
-                <SelectTrigger id="payment-status" data-testid="select-payment-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="auto_pay">Auto pay</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="not_applicable">Not applicable ($0)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setStatusDialogOpen(false)}
-              data-testid="button-close-status-dialog"
-            >
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                if (viewingQuote?.id) {
-                  updateStatusesMutation.mutate({
-                    policyId: viewingQuote.id,
-                    status: statusDialogValues.status,
-                    documentsStatus: statusDialogValues.documentsStatus,
-                    paymentStatus: statusDialogValues.paymentStatus,
-                  });
-                }
-              }}
-              disabled={updateStatusesMutation.isPending || !viewingQuote?.id}
-              data-testid="button-submit-status"
-            >
-              {updateStatusesMutation.isPending ? "Saving..." : "Submit"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {renderChangeStatusDialog}
     </div>
   );
 }
