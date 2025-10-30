@@ -3457,7 +3457,7 @@ export default function PoliciesPage() {
   const [viewingConsent, setViewingConsent] = useState<any | null>(null); // Track if we're viewing a consent
   
   // Status dialog state
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusSheetOpen, setStatusSheetOpen] = useState(false);
   const [statusDialogValues, setStatusDialogValues] = useState({
     status: "",
     documentsStatus: "",
@@ -6103,14 +6103,14 @@ export default function PoliciesPage() {
                         e.preventDefault();
                         e.stopPropagation();
                         console.log('[SIDEBAR PENCIL] Clicked!');
-                        console.log('[SIDEBAR PENCIL] Current statusDialogOpen:', statusDialogOpen);
+                        console.log('[SIDEBAR PENCIL] Current statusSheetOpen:', statusSheetOpen);
                         setStatusDialogValues({
                           status: viewingQuote.status || "",
                           documentsStatus: viewingQuote.documentsStatus || "",
                           paymentStatus: viewingQuote.paymentStatus || "",
                         });
-                        console.log('[SIDEBAR PENCIL] Calling setStatusDialogOpen(true)');
-                        setStatusDialogOpen(true);
+                        console.log('[SIDEBAR PENCIL] Calling setStatusSheetOpen(true)');
+                        setStatusSheetOpen(true);
                       }}
                       className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       data-testid="button-edit-statuses"
@@ -11152,27 +11152,27 @@ export default function PoliciesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Change Status AlertDialog - Always rendered */}
-      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <AlertDialogContent className="sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Change policy status</AlertDialogTitle>
-            <AlertDialogDescription>
+      {/* Change Status Sheet - ALWAYS VISIBLE */}
+      <Sheet open={statusSheetOpen} onOpenChange={setStatusSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Change policy status</SheetTitle>
+            <SheetDescription>
               Update the policy status, documents status, and payment status below
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </SheetDescription>
+          </SheetHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-6">
             {/* Policy Status */}
             <div className="space-y-2">
-              <Label htmlFor="policy-status-inline">Policy status</Label>
+              <Label htmlFor="policy-status-sheet">Policy status</Label>
               <Select
                 value={statusDialogValues.status}
                 onValueChange={(value) =>
                   setStatusDialogValues((prev) => ({ ...prev, status: value }))
                 }
               >
-                <SelectTrigger id="policy-status-inline" data-testid="select-policy-status">
+                <SelectTrigger id="policy-status-sheet" data-testid="select-policy-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -11191,14 +11191,14 @@ export default function PoliciesPage() {
 
             {/* Documents Status */}
             <div className="space-y-2">
-              <Label htmlFor="documents-status-inline">Documents status</Label>
+              <Label htmlFor="documents-status-sheet">Documents status</Label>
               <Select
                 value={statusDialogValues.documentsStatus}
                 onValueChange={(value) =>
                   setStatusDialogValues((prev) => ({ ...prev, documentsStatus: value }))
                 }
               >
-                <SelectTrigger id="documents-status-inline" data-testid="select-documents-status">
+                <SelectTrigger id="documents-status-sheet" data-testid="select-documents-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -11212,14 +11212,14 @@ export default function PoliciesPage() {
 
             {/* Payment Status */}
             <div className="space-y-2">
-              <Label htmlFor="payment-status-inline">Payment status</Label>
+              <Label htmlFor="payment-status-sheet">Payment status</Label>
               <Select
                 value={statusDialogValues.paymentStatus}
                 onValueChange={(value) =>
                   setStatusDialogValues((prev) => ({ ...prev, paymentStatus: value }))
                 }
               >
-                <SelectTrigger id="payment-status-inline" data-testid="select-payment-status">
+                <SelectTrigger id="payment-status-sheet" data-testid="select-payment-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -11231,29 +11231,37 @@ export default function PoliciesPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-close-status-dialog">Close</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (viewingQuote?.id) {
-                  updateStatusesMutation.mutate({
-                    policyId: viewingQuote.id,
-                    status: statusDialogValues.status,
-                    documentsStatus: statusDialogValues.documentsStatus,
-                    paymentStatus: statusDialogValues.paymentStatus,
-                  });
-                }
-              }}
-              disabled={updateStatusesMutation.isPending || !viewingQuote?.id}
-              data-testid="button-submit-status"
-            >
-              {updateStatusesMutation.isPending ? "Saving..." : "Submit"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setStatusSheetOpen(false)}
+                className="flex-1"
+                data-testid="button-close-status-sheet"
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  if (viewingQuote?.id) {
+                    updateStatusesMutation.mutate({
+                      policyId: viewingQuote.id,
+                      status: statusDialogValues.status,
+                      documentsStatus: statusDialogValues.documentsStatus,
+                      paymentStatus: statusDialogValues.paymentStatus,
+                    });
+                  }
+                }}
+                disabled={updateStatusesMutation.isPending || !viewingQuote?.id}
+                className="flex-1"
+                data-testid="button-submit-status"
+              >
+                {updateStatusesMutation.isPending ? "Saving..." : "Submit"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
