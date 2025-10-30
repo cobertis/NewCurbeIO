@@ -5955,10 +5955,7 @@ export default function QuotesPage() {
                     <SelectContent>
                       {companyAgents.map((agentOption) => (
                         <SelectItem key={agentOption.id} value={agentOption.id}>
-                          <div className="flex items-center gap-2">
-                            <span>{agentOption.firstName} {agentOption.lastName}</span>
-                            <span className="text-xs text-muted-foreground">({agentOption.email})</span>
-                          </div>
+                          {agentOption.firstName} {agentOption.lastName} ({agentOption.email})
                         </SelectItem>
                       ))}
                     </SelectContent>
