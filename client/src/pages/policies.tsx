@@ -3466,8 +3466,8 @@ export default function PoliciesPage() {
   
   // Debug: Monitor dialog state changes
   useEffect(() => {
-    console.log('[STATUS DIALOG STATE] Dialog open changed to:', statusDialogOpen);
-  }, [statusDialogOpen]);
+    console.log('[STATUS SHEET STATE] Sheet open changed to:', statusSheetOpen);
+  }, [statusSheetOpen]);
   
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
