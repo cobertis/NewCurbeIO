@@ -11120,6 +11120,25 @@ export default function PoliciesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Send Consent Modal */}
+      <Dialog open={consentModalOpen} onOpenChange={setConsentModalOpen}>
+        <DialogContent className="max-w-lg" data-testid="dialog-send-consent">
+          <DialogHeader>
+            <DialogTitle>Send Consent Form</DialogTitle>
+            <DialogDescription>
+              Choose how to send the consent form to {viewingQuote?.clientFirstName}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <SendConsentModalContent 
+            quoteId={viewingQuote?.id || ''} 
+            clientEmail={viewingQuote?.clientEmail || ''}
+            clientPhone={viewingQuote?.clientPhone || ''}
+            onClose={() => setConsentModalOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Change Status Dialog */}
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -11208,38 +11227,21 @@ export default function PoliciesPage() {
             </Button>
             <Button
               onClick={() => {
-                updateStatusesMutation.mutate({
-                  policyId: viewingQuote.id,
-                  status: statusDialogValues.status,
-                  documentsStatus: statusDialogValues.documentsStatus,
-                  paymentStatus: statusDialogValues.paymentStatus,
-                });
+                if (viewingQuote?.id) {
+                  updateStatusesMutation.mutate({
+                    policyId: viewingQuote.id,
+                    status: statusDialogValues.status,
+                    documentsStatus: statusDialogValues.documentsStatus,
+                    paymentStatus: statusDialogValues.paymentStatus,
+                  });
+                }
               }}
-              disabled={updateStatusesMutation.isPending}
+              disabled={updateStatusesMutation.isPending || !viewingQuote?.id}
               data-testid="button-submit-status"
             >
               {updateStatusesMutation.isPending ? "Saving..." : "Submit"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Send Consent Modal */}
-      <Dialog open={consentModalOpen} onOpenChange={setConsentModalOpen}>
-        <DialogContent className="max-w-lg" data-testid="dialog-send-consent">
-          <DialogHeader>
-            <DialogTitle>Send Consent Form</DialogTitle>
-            <DialogDescription>
-              Choose how to send the consent form to {viewingQuote?.clientFirstName}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <SendConsentModalContent 
-            quoteId={viewingQuote?.id || ''} 
-            clientEmail={viewingQuote?.clientEmail || ''}
-            clientPhone={viewingQuote?.clientPhone || ''}
-            onClose={() => setConsentModalOpen(false)}
-          />
         </DialogContent>
       </Dialog>
 
