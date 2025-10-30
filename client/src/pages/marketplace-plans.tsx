@@ -140,10 +140,7 @@ export default function MarketplacePlansPage() {
   // Mutation for selecting a plan
   const selectPlanMutation = useMutation({
     mutationFn: async (plan: any) => {
-      const response = await apiRequest(`/api/quotes/${quoteId}/select-plan`, {
-        method: 'POST',
-        body: JSON.stringify({ plan }),
-      });
+      const response = await apiRequest('POST', `/api/quotes/${quoteId}/select-plan`, { plan });
       return response;
     },
     onSuccess: () => {
