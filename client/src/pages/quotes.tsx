@@ -3490,6 +3490,7 @@ export default function QuotesPage() {
   
   // Manual plan dialog state
   const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
+  const [carrierPopoverOpen, setCarrierPopoverOpen] = useState(false);
   const [manualPlanData, setManualPlanData] = useState({
     // Basic Info
     productType: '',
@@ -3553,6 +3554,13 @@ export default function QuotesPage() {
       });
     }
   };
+
+  // Pre-select product type when opening manual plan dialog
+  useEffect(() => {
+    if (manualPlanDialogOpen && viewingQuote?.productType) {
+      setManualPlanData(prev => ({ ...prev, productType: viewingQuote.productType }));
+    }
+  }, [manualPlanDialogOpen, viewingQuote?.productType]);
 
   // Clear carrier when product type changes
   useEffect(() => {
@@ -9403,34 +9411,60 @@ export default function QuotesPage() {
                       <SelectValue placeholder="Select product type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="life">Life Insurance</SelectItem>
-                      <SelectItem value="private">Private</SelectItem>
-                      <SelectItem value="dental">Dental</SelectItem>
-                      <SelectItem value="vision">Vision</SelectItem>
-                      <SelectItem value="supplemental">Supplemental</SelectItem>
+                      <SelectItem value="aca">Health Insurance (ACA)</SelectItem>
                       <SelectItem value="annuities">Annuities</SelectItem>
+                      <SelectItem value="dental">Dental</SelectItem>
                       <SelectItem value="final_expense">Final Expense</SelectItem>
+                      <SelectItem value="life">Life Insurance</SelectItem>
+                      <SelectItem value="medicaid">Medicaid</SelectItem>
+                      <SelectItem value="medicare">Medicare</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                      <SelectItem value="supplemental">Supplemental</SelectItem>
                       <SelectItem value="travel">Travel</SelectItem>
+                      <SelectItem value="vision">Vision</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
-                  <Select
-                    value={manualPlanData.carrier}
-                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, carrier: value })}
-                    disabled={!manualPlanData.productType}
-                  >
-                    <SelectTrigger id="carrier" className="mt-1" data-testid="select-carrier">
-                      <SelectValue placeholder={manualPlanData.productType ? "Select carrier" : "Select product type first"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getCarriersByProductType(manualPlanData.productType).map((carrier) => (
-                        <SelectItem key={carrier} value={carrier}>{carrier}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={carrierPopoverOpen} onOpenChange={setCarrierPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between mt-1"
+                        disabled={!manualPlanData.productType}
+                        data-testid="select-carrier"
+                      >
+                        {manualPlanData.carrier || (manualPlanData.productType ? "Select carrier" : "Select product type first")}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Search carrier..." />
+                        <CommandList>
+                          <CommandEmpty>No carrier found.</CommandEmpty>
+                          <CommandGroup>
+                            {getCarriersByProductType(manualPlanData.productType).map((carrier) => (
+                              <CommandItem
+                                key={carrier}
+                                value={carrier}
+                                onSelect={() => {
+                                  setManualPlanData({ ...manualPlanData, carrier: carrier });
+                                  setCarrierPopoverOpen(false);
+                                }}
+                              >
+                                <Check className={manualPlanData.carrier === carrier ? "mr-2 h-4 w-4" : "mr-2 h-4 w-4 opacity-0"} />
+                                {carrier}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 

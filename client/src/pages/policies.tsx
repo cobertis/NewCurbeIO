@@ -3502,6 +3502,7 @@ export default function PoliciesPage() {
   
   // Manual plan dialog state
   const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
+  const [carrierPopoverOpen, setCarrierPopoverOpen] = useState(false);
   const [manualPlanData, setManualPlanData] = useState({
     // Basic Info
     productType: '',
@@ -3549,6 +3550,13 @@ export default function PoliciesPage() {
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/policies/new";
   
+  // Pre-select product type when opening manual plan dialog
+  useEffect(() => {
+    if (manualPlanDialogOpen && viewingQuote?.productType) {
+      setManualPlanData(prev => ({ ...prev, productType: viewingQuote.productType }));
+    }
+  }, [manualPlanDialogOpen, viewingQuote?.productType]);
+
   // Clear carrier when product type changes
   useEffect(() => {
     if (manualPlanData.productType) {
@@ -9430,7 +9438,7 @@ export default function PoliciesPage() {
 
                 <div>
                   <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
-                  <Popover>
+                  <Popover open={carrierPopoverOpen} onOpenChange={setCarrierPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -9455,6 +9463,7 @@ export default function PoliciesPage() {
                                 value={carrier}
                                 onSelect={() => {
                                   setManualPlanData({ ...manualPlanData, carrier: carrier });
+                                  setCarrierPopoverOpen(false);
                                 }}
                               >
                                 <Check className={manualPlanData.carrier === carrier ? "mr-2 h-4 w-4" : "mr-2 h-4 w-4 opacity-0"} />
