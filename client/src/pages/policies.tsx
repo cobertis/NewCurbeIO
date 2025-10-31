@@ -6621,8 +6621,8 @@ export default function PoliciesPage() {
                               </p>
                               {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
                                 <>
-                                  <p className="text-xs text-green-600 dark:text-green-500">
-                                    Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
+                                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                    APTC received: {formatCurrency(plan.premium - plan.premium_w_credit)}
                                   </p>
                                   <p className="text-xs text-muted-foreground line-through">
                                     Plan was {formatCurrency(plan.premium)}
