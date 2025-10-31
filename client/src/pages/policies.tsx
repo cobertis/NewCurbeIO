@@ -6504,32 +6504,35 @@ export default function PoliciesPage() {
                             <Archive className="h-4 w-4 mr-2" />
                             Archive Policy
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={async () => {
-                            try {
-                              await apiRequest(`/api/policies/${viewingQuote.id}/archive`, {
-                                method: "POST",
-                                body: JSON.stringify({ isArchived: false }),
-                              });
-                              
-                              // Refresh policy details
-                              queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                              queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
-                              queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                              
-                              toast({
-                                title: "Policy Unarchived",
-                                description: "The policy has been unarchived successfully.",
-                                duration: 3000,
-                              });
-                            } catch (error: any) {
-                              toast({
-                                title: "Error",
-                                description: error.message || "Failed to unarchive policy",
-                                variant: "destructive",
-                                duration: 3000,
-                              });
-                            }
-                          }}>
+                          <DropdownMenuItem 
+                            disabled={!viewingQuote.isArchived}
+                            onClick={async () => {
+                              if (!viewingQuote.isArchived) return;
+                              try {
+                                await apiRequest(`/api/policies/${viewingQuote.id}/archive`, {
+                                  method: "POST",
+                                  body: JSON.stringify({ isArchived: false }),
+                                });
+                                
+                                // Refresh policy details
+                                queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                                
+                                toast({
+                                  title: "Policy Unarchived",
+                                  description: "The policy has been unarchived successfully.",
+                                  duration: 3000,
+                                });
+                              } catch (error: any) {
+                                toast({
+                                  title: "Error",
+                                  description: error.message || "Failed to unarchive policy",
+                                  variant: "destructive",
+                                  duration: 3000,
+                                });
+                              }
+                            }}>
                             <Archive className="h-4 w-4 mr-2" />
                             Unarchive Policy
                           </DropdownMenuItem>
