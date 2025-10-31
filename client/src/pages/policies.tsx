@@ -9815,32 +9815,10 @@ export default function PoliciesPage() {
                                   }}
                                 />
                                 <div className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Documents:</span>{' '}
-                                  <StatusBadgeEditor
-                                    type="policy"
-                                    statusType="documentsStatus"
-                                    currentValue={quote.documentsStatus}
-                                    id={quote.id}
-                                    allStatuses={{
-                                      status: quote.status,
-                                      documentsStatus: quote.documentsStatus,
-                                      paymentStatus: quote.paymentStatus,
-                                    }}
-                                  />
+                                  Documents: {quote.documentsStatus === 'completed' ? 'Completed' : quote.documentsStatus === 'pending' ? 'Pending' : quote.documentsStatus === 'in_progress' ? 'In Progress' : quote.documentsStatus === 'reviewed' ? 'Reviewed' : quote.documentsStatus === 'sent_to_client' ? 'Sent to Client' : 'N/A'}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Payments:</span>{' '}
-                                  <StatusBadgeEditor
-                                    type="policy"
-                                    statusType="paymentStatus"
-                                    currentValue={quote.paymentStatus}
-                                    id={quote.id}
-                                    allStatuses={{
-                                      status: quote.status,
-                                      documentsStatus: quote.documentsStatus,
-                                      paymentStatus: quote.paymentStatus,
-                                    }}
-                                  />
+                                  Payments: {quote.paymentStatus === 'paid' ? 'Paid' : quote.paymentStatus === 'pending' ? 'Pending' : quote.paymentStatus === 'unpaid' ? 'Unpaid' : quote.paymentStatus === 'auto_pay' ? 'Auto Pay' : quote.paymentStatus === 'failed' ? 'Failed' : quote.paymentStatus === 'not_applicable' ? 'Not Applicable' : 'N/A'}
                                 </div>
                               </div>
                             </TableCell>
