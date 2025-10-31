@@ -6721,28 +6721,49 @@ export default function PoliciesPage() {
                             </div>
                           </div>
 
-                          {/* Row 2: Sale Type (full width) */}
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">New sale / Renewal</label>
-                            <Select
-                              value={viewingQuote.saleType || ''}
-                              onValueChange={(value) => {
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ saleType: value || null }),
-                                }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
-                            >
-                              <SelectTrigger className="h-8 text-sm" data-testid="select-sale-type">
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="new">New Sale</SelectItem>
-                                <SelectItem value="renewal">Renewal</SelectItem>
-                              </SelectContent>
-                            </Select>
+                          {/* Row 2: Sale Type + Effective Date */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">New sale / Renewal</label>
+                              <Select
+                                value={viewingQuote.saleType || ''}
+                                onValueChange={(value) => {
+                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({ saleType: value || null }),
+                                  }).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-sm" data-testid="select-sale-type">
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="new">New Sale</SelectItem>
+                                  <SelectItem value="renewal">Renewal</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Effective date</label>
+                              <Input
+                                type="date"
+                                value={viewingQuote.effectiveDate || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({ effectiveDate: value || null }),
+                                  }).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                                data-testid="input-effective-date"
+                              />
+                            </div>
                           </div>
 
                           {/* Row 3: Marketplace ID + FFM */}
@@ -6803,27 +6824,7 @@ export default function PoliciesPage() {
                             />
                           </div>
 
-                          {/* Row 5: Effective Date (full width) */}
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Effective date</label>
-                            <Input
-                              type="date"
-                              value={viewingQuote.effectiveDate || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ effectiveDate: value || null }),
-                                }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
-                              className="h-8 text-sm"
-                              data-testid="input-effective-date"
-                            />
-                          </div>
-
-                          {/* Row 6: Cancellation Date + Special Enrollment Date */}
+                          {/* Row 5: Cancellation Date + Special Enrollment Date */}
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="text-xs text-muted-foreground block mb-1">Cancellation date</label>
