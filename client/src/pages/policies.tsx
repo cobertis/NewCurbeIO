@@ -6465,10 +6465,7 @@ export default function PoliciesPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={async () => {
                             try {
-                              const response = await apiRequest(`/api/policies/${viewingQuote.id}/duplicate`, {
-                                method: "POST",
-                              });
-                              const data = await response.json();
+                              const data = await apiRequest("POST", `/api/policies/${viewingQuote.id}/duplicate`, {});
                               
                               toast({
                                 title: "Policy Duplicated",
