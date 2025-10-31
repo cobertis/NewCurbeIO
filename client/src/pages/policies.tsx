@@ -6061,43 +6061,39 @@ export default function PoliciesPage() {
                   </DropdownMenu>
                 </div>
 
-                {/* Status Badges */}
+                {/* Status Badges - Inline Editable */}
                 <div className="pb-3 border-b space-y-2">
-                  {/* Status Badge with Edit Icon */}
+                  {/* Policy Status */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm text-muted-foreground">Status:</span>
-                      <button
-                        onClick={() => {
-                          console.log('[STATUS EDITOR] Button clicked, opening dialog');
-                          setStatusEditorOpen(true);
-                        }}
-                        className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                        data-testid="button-toggle-status-editor"
-                        type="button"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                    </div>
-                    <Badge variant={getStatusVariant(viewingQuote.status)} data-testid={`badge-status-${viewingQuote.status}`}>
-                      {formatStatusDisplay(viewingQuote.status)}
-                    </Badge>
+                    <span className="text-sm text-muted-foreground">Status:</span>
+                    <StatusBadgeEditor
+                      type="policy"
+                      statusType="status"
+                      currentValue={viewingQuote.status}
+                      id={viewingQuote.id}
+                    />
                   </div>
                   
-                  {/* Documents Status Badge */}
+                  {/* Documents Status */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Documents status:</span>
-                    <Badge variant={getDocumentsStatusVariant(viewingQuote.documentsStatus)} data-testid={`badge-documents-${viewingQuote.documentsStatus}`}>
-                      {formatStatusDisplay(viewingQuote.documentsStatus)}
-                    </Badge>
+                    <StatusBadgeEditor
+                      type="policy"
+                      statusType="documentsStatus"
+                      currentValue={viewingQuote.documentsStatus}
+                      id={viewingQuote.id}
+                    />
                   </div>
                   
-                  {/* Payment Status Badge */}
+                  {/* Payment Status */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Payment status:</span>
-                    <Badge variant={getPaymentStatusVariant(viewingQuote.paymentStatus)} data-testid={`badge-payment-${viewingQuote.paymentStatus}`}>
-                      {formatPaymentStatusDisplay(viewingQuote.paymentStatus)}
-                    </Badge>
+                    <StatusBadgeEditor
+                      type="policy"
+                      statusType="paymentStatus"
+                      currentValue={viewingQuote.paymentStatus}
+                      id={viewingQuote.id}
+                    />
                   </div>
                 </div>
 
@@ -11089,34 +11085,6 @@ export default function PoliciesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Status Editor Dialog */}
-      {viewingQuote && statusEditorOpen && (
-        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center" data-testid="status-editor-overlay">
-          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 relative">
-            <button
-              onClick={() => setStatusEditorOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-              data-testid="button-close-status-editor"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            
-            <h2 className="text-lg font-semibold mb-2">Update Statuses</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Update the status values for this policy
-            </p>
-            
-            <StatusEditorDialogContent
-              type="policy"
-              id={viewingQuote.id}
-              currentStatus={viewingQuote.status}
-              currentDocumentsStatus={viewingQuote.documentsStatus}
-              currentPaymentStatus={viewingQuote.paymentStatus}
-              onClose={() => setStatusEditorOpen(false)}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Send Consent Modal */}
       <Dialog open={consentModalOpen} onOpenChange={setConsentModalOpen}>
@@ -11141,7 +11109,129 @@ export default function PoliciesPage() {
   );
 }
 
-// StatusEditorDialogContent Component
+// StatusBadgeEditor Component - Inline clickable badge editor
+function StatusBadgeEditor({
+  type,
+  statusType,
+  currentValue,
+  id,
+}: {
+  type: "quote" | "policy";
+  statusType: "status" | "documentsStatus" | "paymentStatus";
+  currentValue: string;
+  id: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const { toast } = useToast();
+
+  const updateMutation = useMutation({
+    mutationFn: async (newValue: string) => {
+      const endpoint = type === "quote" 
+        ? `/api/quotes/${id}/statuses` 
+        : `/api/policies/${id}/statuses`;
+      
+      // Get current values from the policy/quote detail
+      const detailEndpoint = type === "quote"
+        ? `/api/quotes/${id}`
+        : `/api/policies/${id}/detail`;
+      
+      const response = await fetch(detailEndpoint);
+      const result = await response.json();
+      const current = type === "quote" ? result.quote : result.policy;
+      
+      const data = {
+        status: statusType === "status" ? newValue : current.status,
+        documentsStatus: statusType === "documentsStatus" ? newValue : current.documentsStatus,
+        paymentStatus: statusType === "paymentStatus" ? newValue : current.paymentStatus,
+      };
+      
+      return await apiRequest("PATCH", endpoint, data);
+    },
+    onSuccess: () => {
+      if (type === "quote") {
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes", id] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/policies", id, "detail"] });
+      }
+      
+      toast({
+        title: "Success",
+        description: "Status updated successfully",
+        duration: 3000,
+      });
+      setIsOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update status",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  let options: { value: string; label: string }[] = [];
+  let getVariant: (value: string) => any;
+  let formatDisplay: (value: string) => string;
+
+  if (statusType === "status") {
+    options = type === "quote" ? quoteStatusOptions : policyStatusOptions;
+    getVariant = getStatusVariant;
+    formatDisplay = formatStatusDisplay;
+  } else if (statusType === "documentsStatus") {
+    options = documentsStatusOptions;
+    getVariant = getDocumentsStatusVariant;
+    formatDisplay = formatStatusDisplay;
+  } else {
+    options = paymentStatusOptions;
+    getVariant = getPaymentStatusVariant;
+    formatDisplay = formatPaymentStatusDisplay;
+  }
+
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="cursor-pointer"
+          data-testid={`badge-editor-${statusType}-${currentValue}`}
+        >
+          <Badge variant={getVariant(currentValue)}>
+            {formatDisplay(currentValue)}
+          </Badge>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.value}
+            onClick={() => {
+              if (option.value !== currentValue) {
+                updateMutation.mutate(option.value);
+              } else {
+                setIsOpen(false);
+              }
+            }}
+            disabled={updateMutation.isPending}
+            className={option.value === currentValue ? "bg-muted" : ""}
+            data-testid={`option-${statusType}-${option.value}`}
+          >
+            <Badge variant={getVariant(option.value)} className="mr-2">
+              {option.label}
+            </Badge>
+            {option.value === currentValue && (
+              <Check className="ml-auto h-4 w-4" />
+            )}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// Legacy component (not used anymore but keeping for compatibility)
 function StatusEditorDialogContent({ 
   type, 
   id, 
