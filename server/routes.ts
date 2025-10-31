@@ -15322,8 +15322,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // POST /api/consents/:id/send - Send consent via email/sms/link
-  app.post("/api/consents/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
+  // POST /api/policy-consents/:id/send - Send policy consent via email/sms/link
+  app.post("/api/policy-consents/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id: consentId } = req.params;
     const { channel, target } = req.body;
@@ -15335,7 +15335,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Get consent document
-      const consent = await storage.getConsentById(consentId, currentUser.companyId!);
+      const consent = await storage.getPolicyConsentById(consentId, currentUser.companyId!);
       if (!consent) {
         return res.status(404).json({ message: "Consent document not found" });
       }
@@ -15455,12 +15455,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log('[CONSENT EMAIL] Send result:', sent);
         
         if (!sent) {
-          await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'Email delivery failed' }, currentUser.id);
+          await storage.createPolicyConsentEvent(consentId, 'failed', { channel, target, error: 'Email delivery failed' }, currentUser.id);
           return res.status(500).json({ message: "Failed to send email" });
         }
         
-        await storage.createConsentEvent(consentId, 'sent', { channel, target }, currentUser.id);
-        await storage.createConsentEvent(consentId, 'delivered', { channel, target }, currentUser.id);
+        await storage.createPolicyConsentEvent(consentId, 'sent', { channel, target }, currentUser.id);
+        await storage.createPolicyConsentEvent(consentId, 'delivered', { channel, target }, currentUser.id);
         
       } else if (channel === 'sms') {
         if (!target) {
@@ -15478,15 +15478,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const result = await twilioService.sendSMS(target, smsMessage);
           
           if (!result) {
-            await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'SMS delivery failed' }, currentUser.id);
+            await storage.createPolicyConsentEvent(consentId, 'failed', { channel, target, error: 'SMS delivery failed' }, currentUser.id);
             return res.status(500).json({ message: "Failed to send SMS" });
           }
           
-          await storage.createConsentEvent(consentId, 'sent', { channel, target, sid: result.sid }, currentUser.id);
-          await storage.createConsentEvent(consentId, 'delivered', { channel, target, sid: result.sid }, currentUser.id);
+          await storage.createPolicyConsentEvent(consentId, 'sent', { channel, target, sid: result.sid }, currentUser.id);
+          await storage.createPolicyConsentEvent(consentId, 'delivered', { channel, target, sid: result.sid }, currentUser.id);
           
         } catch (error: any) {
-          await storage.createConsentEvent(consentId, 'failed', { channel, target, error: error.message }, currentUser.id);
+          await storage.createPolicyConsentEvent(consentId, 'failed', { channel, target, error: error.message }, currentUser.id);
           return res.status(500).json({ message: "Failed to send SMS" });
         }
         
@@ -15495,7 +15495,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         deliveryTarget = null;
         sentAt = new Date();
         
-        await storage.createConsentEvent(consentId, 'sent', { channel, url: consentUrl }, currentUser.id);
+        await storage.createPolicyConsentEvent(consentId, 'sent', { channel, url: consentUrl }, currentUser.id);
       }
       
       // Update consent document with delivery info

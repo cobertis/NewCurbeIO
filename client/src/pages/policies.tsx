@@ -11886,7 +11886,7 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
       const { consent } = await generateResponse.json();
       
       // Then send it via the selected channel
-      const sendResponse = await fetch(`/api/consents/${consent.id}/send`, {
+      const sendResponse = await fetch(`/api/policy-consents/${consent.id}/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
