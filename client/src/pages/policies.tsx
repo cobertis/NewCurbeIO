@@ -6350,6 +6350,23 @@ export default function PoliciesPage() {
                       <div>
                         <h1 className="text-2xl font-bold mb-1">
                           {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                          {' - '}
+                          {(() => {
+                            const typeMap: Record<string, string> = {
+                              'aca': 'Health Insurance (ACA)',
+                              'medicare': 'Medicare',
+                              'medicaid': 'Medicaid',
+                              'supplemental': 'Supplemental',
+                              'life': 'Life Insurance',
+                              'dental': 'Dental Insurance',
+                              'vision': 'Vision Insurance',
+                              'private': 'Private Insurance',
+                              'annuities': 'Annuities',
+                              'final_expense': 'Final Expense',
+                              'travel': 'Travel Insurance'
+                            };
+                            return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
+                          })()}
                         </h1>
                         
                         {/* Quick Summary */}
