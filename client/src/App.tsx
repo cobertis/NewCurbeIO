@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -383,10 +383,103 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <header className="h-16 bg-sidebar flex items-center justify-between px-3 sm:px-6 sticky top-0 z-10 border-b border-border">
-            {/* Left: Sidebar Toggle + Page Title */}
+            {/* Left: Sidebar Toggle + Page Title + Create Button */}
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <SidebarTrigger data-testid="button-sidebar-toggle" className="hover-elevate active-elevate-2 rounded-md shrink-0" />
               <h1 className="hidden sm:block text-lg sm:text-xl font-semibold text-foreground truncate">{pageTitle}</h1>
+              
+              {/* Create Button with Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2" data-testid="button-create">
+                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Plus className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="hidden sm:inline">Create</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-96">
+                  <DropdownMenuItem 
+                    onClick={() => setLocation("/users")} 
+                    data-testid="menu-item-new-user"
+                    className="py-3 px-4 cursor-pointer"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
+                      <UserPlus className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">New user</div>
+                      <div className="text-xs text-muted-foreground">Create a new user with access to the portal</div>
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    onClick={() => setLocation("/quotes/new")} 
+                    data-testid="menu-item-new-contact"
+                    className="py-3 px-4 cursor-pointer"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
+                      <UserPlus className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">New contact</div>
+                      <div className="text-xs text-muted-foreground">Add a new client or lead to your contact list</div>
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    onClick={() => setLocation("/policies/new")} 
+                    data-testid="menu-item-new-policy"
+                    className="py-3 px-4 cursor-pointer"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
+                      <Shield className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">New policy</div>
+                      <div className="text-xs text-muted-foreground">Add a new client or lead to your contact list</div>
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      toast({
+                        title: "Coming soon",
+                        description: "Contract creation will be available soon.",
+                      });
+                    }} 
+                    data-testid="menu-item-new-contract"
+                    className="py-3 px-4 cursor-pointer"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">New contract</div>
+                      <div className="text-xs text-muted-foreground">Create a new contract</div>
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      toast({
+                        title: "Coming soon",
+                        description: "Commissions reporting will be available soon.",
+                      });
+                    }} 
+                    data-testid="menu-item-new-commissions"
+                    className="py-3 px-4 cursor-pointer"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
+                      <DollarSign className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">New commissions report</div>
+                      <div className="text-xs text-muted-foreground">Calculate, assign, and reconcile commissions</div>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Right: Action Icons + User Profile */}
