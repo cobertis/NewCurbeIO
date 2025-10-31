@@ -18,7 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer, Save } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer, Save, Lock } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -3461,10 +3461,11 @@ export default function PoliciesPage() {
   const [showConsentForm, setShowConsentForm] = useState(false); // Track if we're in form view
   const [viewingConsent, setViewingConsent] = useState<any | null>(null); // Track if we're viewing a consent
   
-  // Cancel/Archive/Duplicate confirmation dialogs
+  // Cancel/Archive/Duplicate/Block confirmation dialogs
   const [cancelPolicyDialogOpen, setCancelPolicyDialogOpen] = useState(false);
   const [archivePolicyDialogOpen, setArchivePolicyDialogOpen] = useState(false);
   const [duplicatePolicyDialogOpen, setDuplicatePolicyDialogOpen] = useState(false);
+  const [blockPolicyDialogOpen, setBlockPolicyDialogOpen] = useState(false);
   
   // Policy Information fields (local state for editing)
   const [policyInfo, setPolicyInfo] = useState({
@@ -6465,8 +6466,13 @@ export default function PoliciesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <FileText className="h-4 w-4 mr-2" />
+                          <DropdownMenuItem 
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setTimeout(() => setBlockPolicyDialogOpen(true), 100);
+                            }}
+                          >
+                            <Lock className="h-4 w-4 mr-2" />
                             Block Policy
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
@@ -9396,6 +9402,52 @@ export default function PoliciesPage() {
                     data-testid="button-confirm-duplicate-policy"
                   >
                     Duplicate Policy
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Block Policy Confirmation Dialog */}
+            <AlertDialog open={blockPolicyDialogOpen} onOpenChange={setBlockPolicyDialogOpen}>
+              <AlertDialogContent data-testid="dialog-block-policy">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Do you really want to block this policy?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Clicking 'Yes, block it!' will prevent agents to update this policy.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-block-policy">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/block`, {});
+                        
+                        toast({
+                          title: "Policy Blocked",
+                          description: "The policy has been blocked successfully. Agents cannot update this policy.",
+                          duration: 3000,
+                        });
+                        
+                        queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                        
+                        setBlockPolicyDialogOpen(false);
+                      } catch (error: any) {
+                        toast({
+                          title: "Block Failed",
+                          description: error.message || "Failed to block policy",
+                          variant: "destructive",
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-block-policy"
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    Yes, block it!
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
