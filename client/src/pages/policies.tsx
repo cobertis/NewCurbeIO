@@ -3550,13 +3550,6 @@ export default function PoliciesPage() {
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/policies/new";
   
-  // Pre-select product type when opening manual plan dialog
-  useEffect(() => {
-    if (manualPlanDialogOpen && viewingQuote?.productType) {
-      setManualPlanData(prev => ({ ...prev, productType: viewingQuote.productType }));
-    }
-  }, [manualPlanDialogOpen, viewingQuote?.productType]);
-
   // Clear carrier when product type changes
   useEffect(() => {
     if (manualPlanData.productType) {
@@ -3671,6 +3664,13 @@ export default function PoliciesPage() {
     viewingQuote?.cancellationDate,
     viewingQuote?.specialEnrollmentDate
   ]);
+
+  // Pre-select product type when opening manual plan dialog
+  useEffect(() => {
+    if (manualPlanDialogOpen && viewingQuote?.productType) {
+      setManualPlanData(prev => ({ ...prev, productType: viewingQuote.productType }));
+    }
+  }, [manualPlanDialogOpen, viewingQuote?.productType]);
 
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
