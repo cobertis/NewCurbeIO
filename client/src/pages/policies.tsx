@@ -4948,6 +4948,10 @@ export default function PoliciesPage() {
   // });
   const householdIncomeData = quoteDetail ? { totalIncome: quoteDetail.totalHouseholdIncome } : undefined;
   
+  // Determine if we're on ACA/Obamacare route (main /policies, not /policies/medicare)
+  const isACARoute = location === '/policies' || location.startsWith('/policies/aca');
+  const isMedicareRoute = location.startsWith('/policies/medicare');
+  
   // Filter quotes based on search and filters
   const filteredQuotes = allQuotes.filter((quote) => {
     // Search filter
@@ -4985,10 +4989,17 @@ export default function PoliciesPage() {
     const effectiveYear = quote.effectiveDate ? new Date(quote.effectiveDate).getFullYear() : null;
     const matchesEffectiveYear = filters.effectiveYears.length === 0 || (effectiveYear && filters.effectiveYears.includes(effectiveYear));
     
+    // ACA/Obamacare route filter: only show renewal policies with active status
+    const matchesACAFilter = !isACARoute || (
+      quote.saleType === 'renewal' && 
+      quote.status !== 'canceled' && 
+      quote.status !== 'archived'
+    );
+    
     return matchesSearch && matchesStatus && matchesProduct && matchesState && 
            matchesZipCode && matchesAssignedTo && matchesEffectiveDateFrom && 
            matchesEffectiveDateTo && matchesApplicantsFrom && matchesApplicantsTo &&
-           matchesEffectiveYear;
+           matchesEffectiveYear && matchesACAFilter;
   });
   
   // Check if any filters are active
