@@ -503,11 +503,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log("[TWILIO INCOMING] Headers:", JSON.stringify(req.headers));
       
       // Validate Twilio signature
-      // Temporarily disabled for debugging - TODO: Re-enable after fixing URL mismatch
-      // if (!validateTwilioSignature(req)) {
-      //   console.warn("[TWILIO INCOMING] Rejected unauthorized webhook request");
-      //   return res.status(403).send("Forbidden");
-      // }
+      if (!validateTwilioSignature(req)) {
+        console.warn("[TWILIO INCOMING] Rejected unauthorized webhook request");
+        return res.status(403).send("Forbidden");
+      }
 
       const { MessageSid, From, To, Body } = req.body;
       
@@ -1254,12 +1253,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // Public registration endpoint - no auth required
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
-      const { company: companyData, admin: adminData } = req.body;
-      
-      // Validate required fields
-      if (!companyData?.name || !adminData?.email || !adminData?.firstName || !adminData?.lastName) {
-        return res.status(400).json({ message: "Company name, admin first name, last name, and email are required" });
-      }
+      // Zod validation schema for registration
+      const registrationSchema = z.object({
+        company: z.object({
+          name: z.string().min(1, "Company name is required"),
+          slug: z.string().min(1, "Company slug is required"),
+          phone: z.string().optional().nullable(),
+          website: z.string().url().optional().nullable(),
+          address: z.string().optional().nullable(),
+          addressLine2: z.string().optional().nullable(),
+          city: z.string().optional().nullable(),
+          state: z.string().optional().nullable(),
+          postalCode: z.string().optional().nullable(),
+          country: z.string().optional().nullable(),
+        }),
+        admin: z.object({
+          email: z.string().email("Valid email is required"),
+          firstName: z.string().min(1, "First name is required"),
+          lastName: z.string().min(1, "Last name is required"),
+          phone: z.string().optional().nullable(),
+        }),
+      });
+
+      // Validate request body with Zod
+      const validatedData = registrationSchema.parse(req.body);
+      const { company: companyData, admin: adminData } = validatedData;
 
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(adminData.email);
@@ -1345,6 +1363,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
     } catch (error) {
       console.error("Registration error:", error);
+      
+      // Handle Zod validation errors
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      
       res.status(500).json({ message: "Failed to register company. Please try again." });
     }
   });
@@ -7239,15 +7266,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Email is required" });
       }
 
-      // If token is provided, it must be valid
-      if (token) {
-        const { verifyUnsubscribeToken } = await import("./unsubscribe-token");
-        
-        if (!verifyUnsubscribeToken(email, token)) {
-          return res.status(403).json({ message: "Invalid unsubscribe token" });
-        }
+      // Token is REQUIRED for security - prevent abuse
+      if (!token) {
+        return res.status(400).json({ message: "Unsubscribe token is required" });
       }
-      // If no token provided, allow legacy/manual unsubscribe (backward compatibility)
+
+      // Validate the token
+      const { verifyUnsubscribeToken } = await import("./unsubscribe-token");
+      
+      if (!verifyUnsubscribeToken(email, token)) {
+        return res.status(403).json({ message: "Invalid unsubscribe token" });
+      }
 
       const user = await storage.getUserByEmail(email);
 
@@ -7405,6 +7434,36 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const decodedUrl = decodeURIComponent(url as string);
+      
+      // Validate URL against allowlist to prevent open redirect
+      const allowedDomains = [
+        process.env.REPLIT_DOMAINS || '',
+        'localhost',
+        '.replit.dev',
+        'healthcare.gov',
+        'www.healthcare.gov',
+        'marketplace.cms.gov',
+      ].filter(Boolean);
+
+      try {
+        const urlObj = new URL(decodedUrl);
+        const isAllowed = allowedDomains.some(domain => {
+          // Allow exact match or subdomain match (e.g., .replit.dev matches app.replit.dev)
+          if (domain.startsWith('.')) {
+            return urlObj.hostname === domain.slice(1) || urlObj.hostname.endsWith(domain);
+          }
+          return urlObj.hostname === domain;
+        });
+        
+        if (!isAllowed) {
+          console.warn(`[TRACKING] Blocked redirect to untrusted domain: ${urlObj.hostname}`);
+          return res.status(400).json({ message: "Invalid redirect URL - domain not allowed" });
+        }
+      } catch (urlError) {
+        console.error(`[TRACKING] Invalid URL format: ${decodedUrl}`);
+        return res.status(400).json({ message: "Invalid URL format" });
+      }
+
       const userAgent = req.headers['user-agent'];
       const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
 
@@ -7426,6 +7485,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       res.redirect(decodedUrl);
     } catch (error) {
+      console.error("[TRACKING] Error:", error);
       res.status(500).json({ message: "Tracking failed" });
     }
   });
@@ -9097,11 +9157,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      const { role, memberData } = req.body;
+      // Validate request body with Zod
+      const requestSchema = z.object({
+        role: z.string().min(1, "Role is required"),
+        memberData: z.object({
+          firstName: z.string().min(1, "First name is required"),
+          lastName: z.string().min(1, "Last name is required"),
+          email: z.string().email().optional().nullable(),
+          phone: z.string().optional().nullable(),
+          dateOfBirth: z.string().optional().nullable(),
+          ssn: z.string().optional().nullable(),
+          gender: z.string().optional().nullable(),
+        }).passthrough(), // Allow additional fields
+      });
       
-      if (!role || !memberData) {
-        return res.status(400).json({ message: "Missing required fields: role and memberData" });
-      }
+      const validatedData = requestSchema.parse(req.body);
+      const { role, memberData } = validatedData;
       
       // Ensure member exists (this will create a new member)
       const result = await storage.ensureQuoteMember(
@@ -9156,11 +9227,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      const { role, memberData } = req.body;
+      // Validate request body with Zod
+      const requestSchema = z.object({
+        role: z.string().min(1, "Role is required"),
+        memberData: z.object({
+          firstName: z.string().min(1, "First name is required"),
+          lastName: z.string().min(1, "Last name is required"),
+          email: z.string().email().optional().nullable(),
+          phone: z.string().optional().nullable(),
+          dateOfBirth: z.string().optional().nullable(),
+          ssn: z.string().optional().nullable(),
+          gender: z.string().optional().nullable(),
+        }).passthrough(), // Allow additional fields
+      });
       
-      if (!role || !memberData) {
-        return res.status(400).json({ message: "Missing required fields: role and memberData" });
-      }
+      const validatedData = requestSchema.parse(req.body);
+      const { role, memberData } = validatedData;
       
       // Convert dateOfBirth from string to Date if present
       if (memberData.dateOfBirth && typeof memberData.dateOfBirth === 'string') {
@@ -9221,28 +9303,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Validate and prepare update data
-      const updateData = {
-        firstName: req.body.firstName,
-        middleName: req.body.middleName,
-        lastName: req.body.lastName,
-        secondLastName: req.body.secondLastName,
-        email: req.body.email,
-        phone: req.body.phone,
-        dateOfBirth: req.body.dateOfBirth,
-        ssn: req.body.ssn,
-        gender: req.body.gender,
-        isApplicant: req.body.isApplicant,
-        isPrimaryDependent: req.body.isPrimaryDependent,
-        tobaccoUser: req.body.tobaccoUser,
-        pregnant: req.body.pregnant,
-        preferredLanguage: req.body.preferredLanguage,
-        countryOfBirth: req.body.countryOfBirth,
-        maritalStatus: req.body.maritalStatus,
-        weight: req.body.weight,
-        height: req.body.height,
-        relation: req.body.relation,
-      };
+      // Validate request body with Zod - use partial schema for updates
+      const updateMemberSchema = z.object({
+        firstName: z.string().optional(),
+        middleName: z.string().optional().nullable(),
+        lastName: z.string().optional(),
+        secondLastName: z.string().optional().nullable(),
+        email: z.string().email().optional().nullable(),
+        phone: z.string().optional().nullable(),
+        dateOfBirth: z.string().optional().nullable(),
+        ssn: z.string().optional().nullable(),
+        gender: z.string().optional().nullable(),
+        isApplicant: z.boolean().optional().nullable(),
+        isPrimaryDependent: z.boolean().optional().nullable(),
+        tobaccoUser: z.boolean().optional().nullable(),
+        pregnant: z.boolean().optional().nullable(),
+        preferredLanguage: z.string().optional().nullable(),
+        countryOfBirth: z.string().optional().nullable(),
+        maritalStatus: z.string().optional().nullable(),
+        weight: z.number().optional().nullable(),
+        height: z.number().optional().nullable(),
+        relation: z.string().optional().nullable(),
+      }).passthrough(); // Allow additional fields
+      
+      const updateData = updateMemberSchema.parse(req.body);
       
       // Update member
       const updatedMember = await storage.updateQuoteMember(memberId, quote.companyId, updateData as any);
