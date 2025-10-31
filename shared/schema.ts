@@ -2083,6 +2083,9 @@ export const policies = pgTable("policies", {
   // Selected Plan from Marketplace
   selectedPlan: jsonb("selected_plan"),
   
+  // Archive status
+  isArchived: boolean("is_archived").default(false).notNull(),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

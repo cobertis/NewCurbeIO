@@ -6436,7 +6436,36 @@ export default function PoliciesPage() {
                             <X className="h-4 w-4 mr-2" />
                             Cancel Policy
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={async () => {
+                            if (!confirm(`Are you sure you want to archive this policy? You can unarchive it later if needed.`)) {
+                              return;
+                            }
+                            
+                            try {
+                              await apiRequest(`/api/policies/${viewingQuote.id}/archive`, {
+                                method: "POST",
+                                body: JSON.stringify({ isArchived: true }),
+                              });
+                              
+                              // Refresh policy details
+                              queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                              queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                              queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                              
+                              toast({
+                                title: "Policy Archived",
+                                description: "The policy has been archived successfully.",
+                                duration: 3000,
+                              });
+                            } catch (error: any) {
+                              toast({
+                                title: "Error",
+                                description: error.message || "Failed to archive policy",
+                                variant: "destructive",
+                                duration: 3000,
+                              });
+                            }
+                          }}>
                             <Archive className="h-4 w-4 mr-2" />
                             Archive
                           </DropdownMenuItem>

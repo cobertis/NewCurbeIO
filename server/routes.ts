@@ -12574,6 +12574,55 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Archive/Unarchive policy
+  app.post("/api/policies/:id/archive", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { isArchived } = req.body;
+    
+    try {
+      // Validate isArchived value
+      if (typeof isArchived !== "boolean") {
+        return res.status(400).json({ message: "Invalid archive value. Must be true or false" });
+      }
+      
+      // Get existing policy and verify ownership
+      const existingPolicy = await storage.getPolicy(id);
+      
+      if (!existingPolicy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin can edit any policy, others only their company's policies
+      if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to edit this policy" });
+      }
+      
+      // Update the policy archive status
+      const updatedPolicy = await storage.updatePolicy(id, { isArchived });
+      
+      // Log activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "policy",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          updatedBy: currentUser.email,
+          field: "isArchived",
+          oldValue: existingPolicy.isArchived,
+          newValue: isArchived,
+        },
+      });
+      
+      res.json({ policy: updatedPolicy, message: isArchived ? "Policy archived successfully" : "Policy unarchived successfully" });
+    } catch (error: any) {
+      console.error("Error updating policy archive status:", error);
+      res.status(400).json({ message: error.message || "Failed to update policy archive status" });
+    }
+  });
+  
   // Delete policy
   app.delete("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
