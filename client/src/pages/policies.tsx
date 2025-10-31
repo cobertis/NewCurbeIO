@@ -5015,8 +5015,8 @@ export default function PoliciesPage() {
     const matchesApplicantsFrom = !filters.applicantsFrom || (quote.familyGroupSize && quote.familyGroupSize >= parseInt(filters.applicantsFrom));
     const matchesApplicantsTo = !filters.applicantsTo || (quote.familyGroupSize && quote.familyGroupSize <= parseInt(filters.applicantsTo));
     
-    // Effective year filter
-    const effectiveYear = quote.effectiveDate ? new Date(quote.effectiveDate).getFullYear() : null;
+    // Effective year filter (extract year from date string to avoid timezone issues)
+    const effectiveYear = quote.effectiveDate ? parseInt(quote.effectiveDate.split('-')[0]) : null;
     const matchesEffectiveYear = filters.effectiveYears.length === 0 || (effectiveYear && filters.effectiveYears.includes(effectiveYear));
     
     return matchesSearch && matchesStatus && matchesProduct && matchesState && 
