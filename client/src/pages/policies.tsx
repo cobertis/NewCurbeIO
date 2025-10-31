@@ -5433,7 +5433,7 @@ export default function PoliciesPage() {
     // Create Zod schemas for validation
     const cardSchema = z.object({
       companyId: z.string(),
-      quoteId: z.string(),
+      policyId: z.string(),
       paymentType: z.literal('card'),
       cardNumber: z.string().min(1, "Card number is required"),
       cardHolderName: z.string().min(1, "Cardholder name is required"),
@@ -5445,7 +5445,7 @@ export default function PoliciesPage() {
 
     const bankAccountSchema = z.object({
       companyId: z.string(),
-      quoteId: z.string(),
+      policyId: z.string(),
       paymentType: z.literal('bank_account'),
       bankName: z.string().min(1, "Bank name is required"),
       accountNumber: z.string().regex(/^\d{4,17}$/, "Account number must be 4-17 digits"),
@@ -5460,7 +5460,7 @@ export default function PoliciesPage() {
       resolver: zodResolver(cardSchema),
       defaultValues: {
         companyId: quote?.companyId || '',
-        quoteId: quote?.id || '',
+        policyId: quote?.id || '',
         paymentType: 'card' as const,
         cardNumber: '',
         cardHolderName: '',
@@ -5475,7 +5475,7 @@ export default function PoliciesPage() {
       resolver: zodResolver(bankAccountSchema),
       defaultValues: {
         companyId: quote?.companyId || '',
-        quoteId: quote?.id || '',
+        policyId: quote?.id || '',
         paymentType: 'bank_account' as const,
         bankName: '',
         accountNumber: '',
@@ -5498,7 +5498,7 @@ export default function PoliciesPage() {
         setPaymentTab('card');
         cardForm.reset({
           companyId: quote?.companyId || '',
-          quoteId: quote?.id || '',
+          policyId: quote?.id || '',
           paymentType: 'card' as const,
           cardNumber: '',
           cardHolderName: '',
@@ -5509,7 +5509,7 @@ export default function PoliciesPage() {
         });
         bankAccountForm.reset({
           companyId: quote?.companyId || '',
-          quoteId: quote?.id || '',
+          policyId: quote?.id || '',
           paymentType: 'bank_account' as const,
           bankName: '',
           accountNumber: '',
@@ -5531,7 +5531,7 @@ export default function PoliciesPage() {
           setPaymentTab('card');
           cardForm.reset({
             companyId: pm.companyId,
-            quoteId: pm.quoteId,
+            policyId: pm.policyId,
             paymentType: 'card',
             cardNumber: pm.cardNumber || '',
             cardHolderName: pm.cardHolderName || '',
@@ -5544,7 +5544,7 @@ export default function PoliciesPage() {
           setPaymentTab('bank_account');
           bankAccountForm.reset({
             companyId: pm.companyId,
-            quoteId: pm.quoteId,
+            policyId: pm.policyId,
             paymentType: 'bank_account',
             bankName: pm.bankName || '',
             accountNumber: pm.accountNumber || '',
@@ -5588,7 +5588,7 @@ export default function PoliciesPage() {
           }
         }
         
-        // Refresh unified quote detail data
+        // Refresh unified policy detail data
         await queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'] });
         
         toast({
