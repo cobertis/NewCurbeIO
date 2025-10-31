@@ -152,6 +152,7 @@ function getDocumentsStatusVariant(status: string): "default" | "secondary" | "o
 function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
   const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
     pending: "warning",
+    unpaid: "destructive",
     auto_pay: "outline",
     failed: "destructive",
     paid: "success",

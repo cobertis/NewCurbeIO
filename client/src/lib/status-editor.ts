@@ -29,6 +29,7 @@ export const documentsStatusOptions = [
 
 export const paymentStatusOptions = [
   { value: "pending", label: "Pending" },
+  { value: "unpaid", label: "Unpaid" },
   { value: "auto_pay", label: "Auto Pay" },
   { value: "failed", label: "Failed" },
   { value: "paid", label: "Paid" },
