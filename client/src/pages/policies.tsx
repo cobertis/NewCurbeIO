@@ -4952,11 +4952,42 @@ export default function PoliciesPage() {
   const filteredQuotes = allQuotes.filter((quote) => {
     // Search filter
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
+    
+    // Default search: client name, email, phone
+    let matchesSearch = 
       searchQuery === "" ||
       `${quote.clientFirstName} ${quote.clientMiddleName || ''} ${quote.clientLastName} ${quote.clientSecondLastName || ''}`.toLowerCase().includes(searchLower) ||
       quote.clientEmail.toLowerCase().includes(searchLower) ||
       quote.clientPhone.includes(searchQuery);
+    
+    // If "Search by family members" is enabled, also search in spouses and dependents
+    if (filters.searchFamilyMembers && searchQuery !== "" && !matchesSearch) {
+      // Search in spouses
+      if (quote.spouses && Array.isArray(quote.spouses)) {
+        const spouseMatch = quote.spouses.some((spouse: any) => {
+          const spouseName = `${spouse.firstName || ''} ${spouse.middleName || ''} ${spouse.lastName || ''} ${spouse.secondLastName || ''}`.toLowerCase();
+          const spouseEmail = (spouse.email || '').toLowerCase();
+          const spousePhone = spouse.phone || '';
+          return spouseName.includes(searchLower) || 
+                 spouseEmail.includes(searchLower) || 
+                 spousePhone.includes(searchQuery);
+        });
+        if (spouseMatch) matchesSearch = true;
+      }
+      
+      // Search in dependents
+      if (quote.dependents && Array.isArray(quote.dependents)) {
+        const dependentMatch = quote.dependents.some((dependent: any) => {
+          const dependentName = `${dependent.firstName || ''} ${dependent.middleName || ''} ${dependent.lastName || ''} ${dependent.secondLastName || ''}`.toLowerCase();
+          const dependentEmail = (dependent.email || '').toLowerCase();
+          const dependentPhone = dependent.phone || '';
+          return dependentName.includes(searchLower) || 
+                 dependentEmail.includes(searchLower) || 
+                 dependentPhone.includes(searchQuery);
+        });
+        if (dependentMatch) matchesSearch = true;
+      }
+    }
     
     // Status filter
     const matchesStatus = filters.status === "all" || quote.status === filters.status;
