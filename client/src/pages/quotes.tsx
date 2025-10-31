@@ -3387,6 +3387,7 @@ export default function QuotesPage() {
     submissionDateTo: "",
     applicantsFrom: "",
     applicantsTo: "",
+    searchFamilyMembers: false,
   });
   
   // Delete quote dialog state
@@ -5021,11 +5022,42 @@ export default function QuotesPage() {
   const filteredQuotes = allQuotes.filter((quote) => {
     // Search filter
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
+    
+    // Default search: client name, email, phone
+    let matchesSearch = 
       searchQuery === "" ||
       `${quote.clientFirstName} ${quote.clientMiddleName || ''} ${quote.clientLastName} ${quote.clientSecondLastName || ''}`.toLowerCase().includes(searchLower) ||
       quote.clientEmail.toLowerCase().includes(searchLower) ||
       quote.clientPhone.includes(searchQuery);
+    
+    // Search in spouses and dependents ONLY if checkbox is enabled
+    if (!matchesSearch && searchQuery !== "" && filters.searchFamilyMembers) {
+      // Search in spouses
+      if (quote.spouses && Array.isArray(quote.spouses)) {
+        const spouseMatch = quote.spouses.some((spouse: any) => {
+          const spouseName = `${spouse.firstName || ''} ${spouse.middleName || ''} ${spouse.lastName || ''} ${spouse.secondLastName || ''}`.toLowerCase();
+          const spouseEmail = (spouse.email || '').toLowerCase();
+          const spousePhone = spouse.phone || '';
+          return spouseName.includes(searchLower) || 
+                 spouseEmail.includes(searchLower) || 
+                 spousePhone.includes(searchQuery);
+        });
+        if (spouseMatch) matchesSearch = true;
+      }
+      
+      // Search in dependents
+      if (!matchesSearch && quote.dependents && Array.isArray(quote.dependents)) {
+        const dependentMatch = quote.dependents.some((dependent: any) => {
+          const dependentName = `${dependent.firstName || ''} ${dependent.middleName || ''} ${dependent.lastName || ''} ${dependent.secondLastName || ''}`.toLowerCase();
+          const dependentEmail = (dependent.email || '').toLowerCase();
+          const dependentPhone = dependent.phone || '';
+          return dependentName.includes(searchLower) || 
+                 dependentEmail.includes(searchLower) || 
+                 dependentPhone.includes(searchQuery);
+        });
+        if (dependentMatch) matchesSearch = true;
+      }
+    }
     
     // Status filter
     const matchesStatus = filters.status === "all" || quote.status === filters.status;
@@ -5058,7 +5090,8 @@ export default function QuotesPage() {
   // Check if any filters are active
   const hasActiveFilters = filters.status !== "all" || filters.productType !== "all" || 
     filters.state || filters.zipCode || filters.assignedTo || filters.effectiveDateFrom || 
-    filters.effectiveDateTo || filters.applicantsFrom || filters.applicantsTo;
+    filters.effectiveDateTo || filters.applicantsFrom || filters.applicantsTo || 
+    filters.searchFamilyMembers;
   
   // Pagination logic
   const totalItems = filteredQuotes.length;
@@ -5087,6 +5120,7 @@ export default function QuotesPage() {
       submissionDateTo: "",
       applicantsFrom: "",
       applicantsTo: "",
+      searchFamilyMembers: false,
     });
   };
 
@@ -9133,17 +9167,18 @@ export default function QuotesPage() {
             ) : (
               <div className="space-y-4">
                 {/* Search and Filters Button */}
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Search by client name, email, or phone..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full"
-                      data-testid="input-search-quotes"
-                    />
-                  </div>
-                  <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <div className="space-y-3">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Search by client name, email, or phone..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full"
+                        data-testid="input-search-quotes"
+                      />
+                    </div>
+                    <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
                     <SheetTrigger asChild>
                       <Button variant="outline" data-testid="button-filters">
                         <Filter className="h-4 w-4 mr-2" />
@@ -9325,6 +9360,33 @@ export default function QuotesPage() {
                       </div>
                     </SheetContent>
                   </Sheet>
+                  </div>
+                  
+                  {/* Search by Family Members Checkbox */}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="search-family-members"
+                      checked={filters.searchFamilyMembers}
+                      onCheckedChange={(checked) => setFilters(prev => ({ ...prev, searchFamilyMembers: !!checked }))}
+                      data-testid="checkbox-search-family-members"
+                    />
+                    <label
+                      htmlFor="search-family-members"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                    >
+                      Search by family members:
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="h-4 w-4 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground cursor-help">
+                            ?
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">When enabled, search will also include family member names, emails, and phone numbers</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </label>
+                  </div>
                 </div>
 
                 {/* Show selector and pagination info */}

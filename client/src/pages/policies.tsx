@@ -4962,8 +4962,8 @@ export default function PoliciesPage() {
       quote.clientEmail.toLowerCase().includes(searchLower) ||
       quote.clientPhone.includes(searchQuery);
     
-    // ALWAYS search in spouses and dependents (family members)
-    if (!matchesSearch && searchQuery !== "") {
+    // Search in spouses and dependents ONLY if checkbox is enabled
+    if (!matchesSearch && searchQuery !== "" && filters.searchFamilyMembers) {
       // Search in spouses
       if (quote.spouses && Array.isArray(quote.spouses)) {
         const spouseMatch = quote.spouses.some((spouse: any) => {
