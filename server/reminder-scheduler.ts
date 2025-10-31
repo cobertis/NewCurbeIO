@@ -1,12 +1,14 @@
 import cron from 'node-cron';
 import { db } from './db.js';
 import { quoteReminders, notifications } from '../shared/schema.js';
-import { eq, and, lt, sql } from 'drizzle-orm';
+import { eq, and, lt, sql, or } from 'drizzle-orm';
 
 let schedulerRunning = false;
 
 /**
- * Background job that checks for snoozed reminders and creates notifications when snooze time is up
+ * Background job that:
+ * 1. Checks for snoozed reminders and creates notifications when snooze time is up
+ * 2. Checks for pending reminders due today and creates notifications
  * Runs every minute
  */
 export function startReminderScheduler() {
@@ -22,6 +24,7 @@ export function startReminderScheduler() {
     try {
       const now = new Date();
       
+      // ============= PART 1: Handle expired snoozes =============
       // Find all reminders that:
       // 1. Have status "snoozed"
       // 2. snoozedUntil time has passed (is in the past)
@@ -74,9 +77,89 @@ export function startReminderScheduler() {
               })
               .where(eq(quoteReminders.id, reminder.id));
 
-            console.log(`[REMINDER SCHEDULER] Notification created for reminder ${reminder.id}`);
+            console.log(`[REMINDER SCHEDULER] Notification created for expired snooze reminder ${reminder.id}`);
           } catch (error) {
             console.error(`[REMINDER SCHEDULER] Error processing reminder ${reminder.id}:`, error);
+          }
+        }
+      }
+
+      // ============= PART 2: Handle reminders due today =============
+      // Get today's date in yyyy-MM-dd format
+      const today = now.toISOString().split('T')[0];
+      
+      // Find all pending reminders that are due today
+      const todayReminders = await db
+        .select()
+        .from(quoteReminders)
+        .where(
+          and(
+            eq(quoteReminders.status, 'pending'),
+            eq(quoteReminders.dueDate, today)
+          )
+        );
+
+      if (todayReminders.length > 0) {
+        console.log(`[REMINDER SCHEDULER] Found ${todayReminders.length} reminder(s) due today`);
+
+        for (const reminder of todayReminders) {
+          try {
+            // Check if notification already exists for this reminder today
+            const existingNotifications = await db
+              .select()
+              .from(notifications)
+              .where(
+                and(
+                  eq(notifications.userId, reminder.createdBy),
+                  sql`${notifications.message} LIKE ${'%' + reminder.quoteId + '%'}`,
+                  sql`DATE(${notifications.createdAt}) = ${today}`
+                )
+              );
+
+            // Only create notification if one doesn't already exist today
+            if (existingNotifications.length === 0) {
+              // Create notification for the user who created the reminder (always in English)
+              await db.insert(notifications).values({
+                userId: reminder.createdBy,
+                type: 'warning',
+                title: 'Reminder Due Today',
+                message: `Your reminder "${reminder.title || 'Untitled'}" for quote ${reminder.quoteId} is due today${reminder.dueTime ? ` at ${reminder.dueTime}` : ''}.`,
+                link: `/quotes/${reminder.quoteId}`,
+                isRead: false,
+              });
+
+              // Also notify any users in the notifyUsers array (always in English)
+              if (reminder.notifyUsers && reminder.notifyUsers.length > 0) {
+                for (const userId of reminder.notifyUsers) {
+                  // Check if notification already exists for this user
+                  const userExistingNotifications = await db
+                    .select()
+                    .from(notifications)
+                    .where(
+                      and(
+                        eq(notifications.userId, userId),
+                        sql`${notifications.message} LIKE ${'%' + reminder.quoteId + '%'}`,
+                        sql`DATE(${notifications.createdAt}) = ${today}`
+                      )
+                    );
+
+                  if (userExistingNotifications.length === 0) {
+                    await db.insert(notifications).values({
+                      userId: userId,
+                      type: 'warning',
+                      title: 'Reminder Due Today',
+                      message: `The reminder "${reminder.title || 'Untitled'}" for quote ${reminder.quoteId} is due today${reminder.dueTime ? ` at ${reminder.dueTime}` : ''}.`,
+                      link: `/quotes/${reminder.quoteId}`,
+                      isRead: false,
+                    });
+                  }
+                }
+              }
+
+              console.log(`[REMINDER SCHEDULER] Notification created for today's reminder ${reminder.id}`);
+            }
+          } catch (error) {
+            console.error(`[REMINDER SCHEDULER] Error processing today's reminder ${reminder.id}:`, error);
           }
         }
       }

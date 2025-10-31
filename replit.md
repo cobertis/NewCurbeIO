@@ -56,16 +56,21 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **Billing & Stripe Integration:** Automated customer/subscription management.
 -   **Quotes Management System:** 3-step wizard for 11 product types, featuring Google Places Autocomplete, CMS Marketplace API integration for health insurance plans (including HHS Poverty Guidelines for APTC calculations), plan comparison, and professional credit card validation.
     -   **Quote Notes & Documents:** Internal notes system with categories, search, and image attachments. Document management for uploads, previews, and secure storage, linked to family members.
-    -   **Quote Search:** Universal search functionality that searches across client AND all family members (spouses, dependents) by name, email, and phone. Family member search is always active.
+    -   **Quote Search:** Universal search functionality with OPTIONAL family member searching. By default searches only primary client; when checkbox is activated, includes spouses and dependents by name, email, and phone.
     -   **Quote Blocking:** Admins and superadmins can block/unblock quotes. Blocked quotes display yellow warning banner, lock icon on status badge, and prevent updates by agents. Audit trail tracks who blocked and when.
     -   **Quote Options Menu:** Complete functionality including Block/Unblock, New Reminder, Print Quote, Duplicate, Cancel Quote, Archive/Unarchive with confirmation dialogs.
 -   **Policies Management System:** Converts quotes to policies, migrating all associated data. Provides **IDENTICAL functionality** to the Quotes module with comprehensive policy status management and agent assignment capabilities.
-    -   **Policy Search:** Universal search functionality that searches across client AND all family members (spouses, dependents) by name, email, and phone. No checkbox required - family member search is always active.
+    -   **Policy Search:** Universal search functionality with OPTIONAL family member searching. By default searches only primary client; when checkbox is activated, includes spouses and dependents by name, email, and phone.
     -   **Policy Blocking:** Admins and superadmins can block/unblock policies. Blocked policies display yellow warning banner, lock icon on status badge, and prevent updates by agents. Audit trail tracks who blocked and when.
     -   **Policy Display:** Table shows carrier name + insurance type (e.g., "Ambetter - Health Insurance ACA"). Lock icon appears in status column when policy is blocked.
     -   **Policy Options Menu:** Complete functionality including Block/Unblock, New Reminder, Print Policy, Duplicate, Cancel Policy, Archive/Unarchive with confirmation dialogs.
 -   **Consent Document System:** Generates legal consent documents, supports email/SMS/link delivery, and captures electronic signatures with a full digital audit trail.
 -   **Calendar System:** Full-screen professional calendar displaying company-wide events including birthdays and reminders, with multi-tenant isolation.
+-   **Reminder System:** Background scheduler (node-cron) runs every minute to:
+    -   Create notifications for pending reminders due today (appears in notification bell)
+    -   Restore snoozed reminders when snooze time expires
+    -   Prevent duplicate notifications with date-based checking
+    -   **ALL reminder notifications are in ENGLISH**
 -   **Agent Assignment System:** Flexible agent reassignment for quotes and policies with agent-based filtering for admin users. When an agent is reassigned, the new agent automatically receives a notification: "New Quote/Policy Assigned - {AssignerName} assigned you the quote/policy for {ClientName}" with a clickable link. Delivered in real-time via WebSocket. **ALL notifications are in ENGLISH.**
 
 ### System Design Choices
