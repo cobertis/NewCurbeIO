@@ -2022,6 +2022,16 @@ export const policies = pgTable("policies", {
   agentId: varchar("agent_id").references(() => users.id, { onDelete: "set null" }),
   productType: text("product_type").notNull(),
   
+  // Marketplace & Enrollment Information
+  memberId: text("member_id"),
+  npnMarketplace: text("npn_marketplace"),
+  saleType: text("sale_type"), // "new" or "renewal"
+  marketplaceId: text("marketplace_id"),
+  ffmMarketplace: text("ffm_marketplace"),
+  specialEnrollmentReason: text("special_enrollment_reason"),
+  cancellationDate: date("cancellation_date"),
+  specialEnrollmentDate: date("special_enrollment_date"),
+  
   // Step 2: Personal Information (Client)
   clientFirstName: text("client_first_name").notNull(),
   clientMiddleName: text("client_middle_name"),

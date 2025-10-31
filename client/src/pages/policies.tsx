@@ -6576,100 +6576,281 @@ export default function PoliciesPage() {
                       </div>
                     </div>
 
-                    {/* Main Content Grid */}
+                    {/* Main Content Grid - Split into 2 columns */}
                     <div className="p-6">
                       {/* Plan Name */}
                       <h4 className="text-base font-medium mb-4 text-primary">{plan.name}</h4>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6 mb-6">
-                        {/* Left: Prima mensual */}
-                        <div>
-                          <p className="text-sm font-semibold mb-2">Premium</p>
-                          <p className="text-4xl font-bold mb-1">
-                            {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
-                              ? formatCurrency(plan.premium_w_credit)
-                              : formatCurrency(plan.premium)}
-                          </p>
-                          {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
-                            <>
-                              <p className="text-xs text-green-600 dark:text-green-500">
-                                Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
+                      {/* Two Column Layout */}
+                      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+                        {/* LEFT COLUMN: Plan Information */}
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6">
+                            {/* Left: Prima mensual */}
+                            <div>
+                              <p className="text-sm font-semibold mb-2">Premium</p>
+                              <p className="text-4xl font-bold mb-1">
+                                {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
+                                  ? formatCurrency(plan.premium_w_credit)
+                                  : formatCurrency(plan.premium)}
                               </p>
-                              <p className="text-xs text-muted-foreground line-through">
-                                Plan was {formatCurrency(plan.premium)}
-                              </p>
-                            </>
-                          )}
-                        </div>
+                              {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
+                                <>
+                                  <p className="text-xs text-green-600 dark:text-green-500">
+                                    Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground line-through">
+                                    Plan was {formatCurrency(plan.premium)}
+                                  </p>
+                                </>
+                              )}
+                            </div>
 
-                        {/* Center: Deductible */}
-                        <div>
-                          <p className="text-sm font-semibold mb-2">Deductible</p>
-                          <p className="text-4xl font-bold mb-1">
-                            {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
-                          </p>
-                          {mainDeductible && (
-                            <>
+                            {/* Center: Deductible */}
+                            <div>
+                              <p className="text-sm font-semibold mb-2">Deductible</p>
+                              <p className="text-4xl font-bold mb-1">
+                                {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
+                              </p>
+                              {mainDeductible && (
+                                <>
+                                  <p className="text-xs text-muted-foreground">
+                                    Individual total ({formatCurrency(mainDeductible.amount)} per person)
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Health & drug combined
+                                  </p>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Right: Out-of-pocket max */}
+                            <div>
+                              <p className="text-sm font-semibold mb-2">Out-of-pocket max</p>
+                              <p className="text-4xl font-bold mb-1">
+                                {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Individual total</p>
                               <p className="text-xs text-muted-foreground">
-                                Individual total ({formatCurrency(mainDeductible.amount)} per person)
+                                Maximum for Medical and Drug EHB Benefits
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                Health & drug combined
+                            </div>
+                          </div>
+
+                          {/* Benefits Grid - 2x3 */}
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div>
+                              <p className="text-sm font-medium mb-1">Primary Doctor visits</p>
+                              <p className="text-sm text-muted-foreground">
+                                {primaryCareCost || 'No Charge After Deductible'}
                               </p>
-                            </>
-                          )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Specialist Visits</p>
+                              <p className="text-sm text-muted-foreground">
+                                {specialistCost || 'No Charge After Deductible'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Urgent care</p>
+                              <p className="text-sm text-muted-foreground">
+                                {urgentCareCost || 'No Charge After Deductible'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Emergencies</p>
+                              <p className="text-sm text-muted-foreground">
+                                {emergencyCost || '40% Coinsurance after deductible'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Mental health</p>
+                              <p className="text-sm text-muted-foreground">
+                                {mentalHealthCost || 'No Charge After Deductible'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Generic drugs</p>
+                              <p className="text-sm text-muted-foreground">
+                                {genericDrugsCost || 'No Charge After Deductible'}
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Right: Out-of-pocket max */}
-                        <div>
-                          <p className="text-sm font-semibold mb-2">Out-of-pocket max</p>
-                          <p className="text-4xl font-bold mb-1">
-                            {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Individual total</p>
-                          <p className="text-xs text-muted-foreground">
-                            Maximum for Medical and Drug EHB Benefits
-                          </p>
-                        </div>
-                      </div>
+                        {/* RIGHT COLUMN: Policy Metadata */}
+                        <div className="border-l pl-6 space-y-3">
+                          <h5 className="text-sm font-semibold mb-3 text-foreground">Policy Information</h5>
+                          
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Member ID</label>
+                            <Input
+                              value={viewingQuote.memberId || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ memberId: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                              className="h-8 text-sm"
+                              data-testid="input-member-id"
+                            />
+                          </div>
 
-                      {/* Benefits Grid - 2x3 */}
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-sm font-medium mb-1">Primary Doctor visits</p>
-                          <p className="text-sm text-muted-foreground">
-                            {primaryCareCost || 'No Charge After Deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Specialist Visits</p>
-                          <p className="text-sm text-muted-foreground">
-                            {specialistCost || 'No Charge After Deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Urgent care</p>
-                          <p className="text-sm text-muted-foreground">
-                            {urgentCareCost || 'No Charge After Deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Emergencies</p>
-                          <p className="text-sm text-muted-foreground">
-                            {emergencyCost || '40% Coinsurance after deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Mental health</p>
-                          <p className="text-sm text-muted-foreground">
-                            {mentalHealthCost || 'No Charge After Deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Generic drugs</p>
-                          <p className="text-sm text-muted-foreground">
-                            {genericDrugsCost || 'No Charge After Deductible'}
-                          </p>
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">NPN used in marketplace</label>
+                            <Input
+                              value={viewingQuote.npnMarketplace || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ npnMarketplace: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                              className="h-8 text-sm"
+                              data-testid="input-npn-marketplace"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">New sale / Renewal</label>
+                            <Select
+                              value={viewingQuote.saleType || ''}
+                              onValueChange={(value) => {
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ saleType: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-sm" data-testid="select-sale-type">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="new">New Sale</SelectItem>
+                                <SelectItem value="renewal">Renewal</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Marketplace ID</label>
+                            <Input
+                              value={viewingQuote.marketplaceId || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ marketplaceId: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                              className="h-8 text-sm"
+                              data-testid="input-marketplace-id"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">FFM used in marketplace</label>
+                            <Input
+                              value={viewingQuote.ffmMarketplace || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ ffmMarketplace: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                              className="h-8 text-sm"
+                              data-testid="input-ffm-marketplace"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Special enrollment reason</label>
+                            <Input
+                              value={viewingQuote.specialEnrollmentReason || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ specialEnrollmentReason: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                              className="h-8 text-sm"
+                              data-testid="input-special-enrollment-reason"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Effective date</label>
+                            <Input
+                              type="date"
+                              value={viewingQuote.effectiveDate || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ effectiveDate: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                              className="h-8 text-sm"
+                              data-testid="input-effective-date"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Cancellation date</label>
+                            <Input
+                              type="date"
+                              value={viewingQuote.cancellationDate || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ cancellationDate: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                              className="h-8 text-sm"
+                              data-testid="input-cancellation-date"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Special enrollment date</label>
+                            <Input
+                              type="date"
+                              value={viewingQuote.specialEnrollmentDate || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ specialEnrollmentDate: value || null }),
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                });
+                              }}
+                              className="h-8 text-sm"
+                              data-testid="input-special-enrollment-date"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
