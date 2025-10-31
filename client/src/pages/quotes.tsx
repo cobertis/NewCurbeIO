@@ -7105,7 +7105,7 @@ export default function QuotesPage() {
                               await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
                                 selectedPlan: null
                               });
-                              queryClient.invalidateQueries({ queryKey: [`/api/quotes/${viewingQuote.id}/detail`] });
+                              queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
                               toast({
                                 title: "Plan Removed",
                                 description: "The selected plan has been removed from this quote.",

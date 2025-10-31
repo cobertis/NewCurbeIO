@@ -7035,7 +7035,7 @@ export default function PoliciesPage() {
                               await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
                                 selectedPlan: null
                               });
-                              queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                              queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
                               toast({
                                 title: "Plan Removed",
                                 description: "The selected plan has been removed from this policy.",
