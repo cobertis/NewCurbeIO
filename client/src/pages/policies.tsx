@@ -3460,6 +3460,19 @@ export default function PoliciesPage() {
   const [showConsentForm, setShowConsentForm] = useState(false); // Track if we're in form view
   const [viewingConsent, setViewingConsent] = useState<any | null>(null); // Track if we're viewing a consent
   
+  // Policy Information fields (local state for editing)
+  const [policyInfo, setPolicyInfo] = useState({
+    memberId: '',
+    npnMarketplace: '',
+    saleType: '',
+    effectiveDate: '',
+    marketplaceId: '',
+    ffmMarketplace: '',
+    specialEnrollmentReason: '',
+    cancellationDate: '',
+    specialEnrollmentDate: '',
+  });
+  
   
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
@@ -3544,6 +3557,23 @@ export default function PoliciesPage() {
   const viewingQuote = quoteDetail?.quote || quotesData?.policies?.find(q => q.id === params?.id);
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
+  
+  // Initialize policyInfo when viewingQuote changes
+  useEffect(() => {
+    if (viewingQuote) {
+      setPolicyInfo({
+        memberId: viewingQuote.memberId || '',
+        npnMarketplace: viewingQuote.npnMarketplace || '',
+        saleType: viewingQuote.saleType || '',
+        effectiveDate: viewingQuote.effectiveDate || '',
+        marketplaceId: viewingQuote.marketplaceId || '',
+        ffmMarketplace: viewingQuote.ffmMarketplace || '',
+        specialEnrollmentReason: viewingQuote.specialEnrollmentReason || '',
+        cancellationDate: viewingQuote.cancellationDate || '',
+        specialEnrollmentDate: viewingQuote.specialEnrollmentDate || '',
+      });
+    }
+  }, [viewingQuote?.id]);
 
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
@@ -6686,13 +6716,33 @@ export default function PoliciesPage() {
                               size="sm"
                               variant="outline"
                               className="h-7 text-xs"
-                              onClick={() => {
-                                queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                toast({
-                                  title: "Saved",
-                                  description: "Policy information has been saved.",
-                                  duration: 3000,
-                                });
+                              onClick={async () => {
+                                try {
+                                  await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
+                                    memberId: policyInfo.memberId || null,
+                                    npnMarketplace: policyInfo.npnMarketplace || null,
+                                    saleType: policyInfo.saleType || null,
+                                    effectiveDate: policyInfo.effectiveDate || null,
+                                    marketplaceId: policyInfo.marketplaceId || null,
+                                    ffmMarketplace: policyInfo.ffmMarketplace || null,
+                                    specialEnrollmentReason: policyInfo.specialEnrollmentReason || null,
+                                    cancellationDate: policyInfo.cancellationDate || null,
+                                    specialEnrollmentDate: policyInfo.specialEnrollmentDate || null,
+                                  });
+                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  toast({
+                                    title: "Saved",
+                                    description: "Policy information has been saved.",
+                                    duration: 3000,
+                                  });
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Error",
+                                    description: error.message || "Failed to save policy information.",
+                                    variant: "destructive",
+                                    duration: 3000,
+                                  });
+                                }
                               }}
                               data-testid="button-save-policy-info"
                             >
@@ -6706,13 +6756,8 @@ export default function PoliciesPage() {
                             <div>
                               <label className="text-xs text-muted-foreground block mb-1">Member ID</label>
                               <Input
-                                value={viewingQuote.memberId || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { memberId: value || null }).then(() => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                  });
-                                }}
+                                value={policyInfo.memberId}
+                                onChange={(e) => setPolicyInfo({ ...policyInfo, memberId: e.target.value })}
                                 className="h-8 text-sm"
                                 data-testid="input-member-id"
                               />
@@ -6721,13 +6766,8 @@ export default function PoliciesPage() {
                             <div>
                               <label className="text-xs text-muted-foreground block mb-1">NPN marketplace</label>
                               <Input
-                                value={viewingQuote.npnMarketplace || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { npnMarketplace: value || null }).then(() => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                  });
-                                }}
+                                value={policyInfo.npnMarketplace}
+                                onChange={(e) => setPolicyInfo({ ...policyInfo, npnMarketplace: e.target.value })}
                                 className="h-8 text-sm"
                                 data-testid="input-npn-marketplace"
                               />
@@ -6739,12 +6779,8 @@ export default function PoliciesPage() {
                             <div>
                               <label className="text-xs text-muted-foreground block mb-1">New sale / Renewal</label>
                               <Select
-                                value={viewingQuote.saleType || ''}
-                                onValueChange={(value) => {
-                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { saleType: value || null }).then(() => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                  });
-                                }}
+                                value={policyInfo.saleType}
+                                onValueChange={(value) => setPolicyInfo({ ...policyInfo, saleType: value })}
                               >
                                 <SelectTrigger className="h-8 text-sm" data-testid="select-sale-type">
                                   <SelectValue placeholder="Select type" />
@@ -6760,13 +6796,8 @@ export default function PoliciesPage() {
                               <label className="text-xs text-muted-foreground block mb-1">Effective date</label>
                               <Input
                                 type="date"
-                                value={viewingQuote.effectiveDate || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { effectiveDate: value || null }).then(() => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                  });
-                                }}
+                                value={policyInfo.effectiveDate}
+                                onChange={(e) => setPolicyInfo({ ...policyInfo, effectiveDate: e.target.value })}
                                 className="h-8 text-sm"
                                 data-testid="input-effective-date"
                               />
@@ -6778,13 +6809,8 @@ export default function PoliciesPage() {
                             <div>
                               <label className="text-xs text-muted-foreground block mb-1">Marketplace ID</label>
                               <Input
-                                value={viewingQuote.marketplaceId || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { marketplaceId: value || null }).then(() => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                  });
-                                }}
+                                value={policyInfo.marketplaceId}
+                                onChange={(e) => setPolicyInfo({ ...policyInfo, marketplaceId: e.target.value })}
                                 className="h-8 text-sm"
                                 data-testid="input-marketplace-id"
                               />
@@ -6793,13 +6819,8 @@ export default function PoliciesPage() {
                             <div>
                               <label className="text-xs text-muted-foreground block mb-1">FFM marketplace</label>
                               <Input
-                                value={viewingQuote.ffmMarketplace || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { ffmMarketplace: value || null }).then(() => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                  });
-                                }}
+                                value={policyInfo.ffmMarketplace}
+                                onChange={(e) => setPolicyInfo({ ...policyInfo, ffmMarketplace: e.target.value })}
                                 className="h-8 text-sm"
                                 data-testid="input-ffm-marketplace"
                               />
@@ -6810,13 +6831,8 @@ export default function PoliciesPage() {
                           <div>
                             <label className="text-xs text-muted-foreground block mb-1">Special enrollment reason</label>
                             <Input
-                              value={viewingQuote.specialEnrollmentReason || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { specialEnrollmentReason: value || null }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
+                              value={policyInfo.specialEnrollmentReason}
+                              onChange={(e) => setPolicyInfo({ ...policyInfo, specialEnrollmentReason: e.target.value })}
                               className="h-8 text-sm"
                               data-testid="input-special-enrollment-reason"
                             />
@@ -6828,13 +6844,8 @@ export default function PoliciesPage() {
                               <label className="text-xs text-muted-foreground block mb-1">Cancellation date</label>
                               <Input
                                 type="date"
-                                value={viewingQuote.cancellationDate || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { cancellationDate: value || null }).then(() => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                  });
-                                }}
+                                value={policyInfo.cancellationDate}
+                                onChange={(e) => setPolicyInfo({ ...policyInfo, cancellationDate: e.target.value })}
                                 className="h-8 text-sm"
                                 data-testid="input-cancellation-date"
                               />
@@ -6844,13 +6855,8 @@ export default function PoliciesPage() {
                               <label className="text-xs text-muted-foreground block mb-1">Special enrollment date</label>
                               <Input
                                 type="date"
-                                value={viewingQuote.specialEnrollmentDate || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { specialEnrollmentDate: value || null }).then(() => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                  });
-                                }}
+                                value={policyInfo.specialEnrollmentDate}
+                                onChange={(e) => setPolicyInfo({ ...policyInfo, specialEnrollmentDate: e.target.value })}
                                 className="h-8 text-sm"
                                 data-testid="input-special-enrollment-date"
                               />
