@@ -13895,7 +13895,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Validate request body (include companyId and policyId)
-      const validatedData = insertPaymentMethodSchema.parse({
+      const validatedData = insertPolicyPaymentMethodSchema.parse({
         ...req.body,
         policyId,
         companyId: policy.companyId,
@@ -13958,7 +13958,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Validate request body
-      const validatedData = updatePaymentMethodSchema.parse(req.body);
+      const validatedData = updatePolicyPaymentMethodSchema.parse(req.body);
       
       // Update payment method as plain text (no encryption)
       const updated = await storage.updatePolicyPaymentMethod(paymentMethodId, validatedData, policy.companyId);

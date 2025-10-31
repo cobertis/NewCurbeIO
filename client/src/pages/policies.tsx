@@ -5521,7 +5521,7 @@ export default function PoliciesPage() {
       }
       
       prevOpenRef.current = open;
-    }, [open, quote?.companyId, quote?.id]);
+    }, [open]);
 
     // Populate form with existing data when editing
     useEffect(() => {
