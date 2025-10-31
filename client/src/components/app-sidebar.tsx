@@ -285,22 +285,41 @@ export function AppSidebar() {
                       className="group/collapsible"
                     >
                       <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
+                        <div className="flex items-center w-full gap-1">
+                          {/* Main clickable link to /policies */}
                           <SidebarMenuButton
+                            asChild
                             data-testid={`link-${item.title.toLowerCase()}`}
                             className={`
-                              h-11 rounded-md transition-colors
+                              flex-1 h-11 rounded-md transition-colors
                               ${location === item.url || location.startsWith('/policies')
                                 ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
                                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                               }
                             `}
                           >
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            <span className="flex-1">{item.title}</span>
-                            <ChevronRight className={`h-4 w-4 shrink-0 transition-transform duration-200 ${policiesOpen ? 'rotate-90' : ''}`} />
+                            <Link href={item.url} className="flex items-center gap-3 px-3 w-full" onClick={(e) => { if (isMobile) { setOpenMobile(false); } }}>
+                              <item.icon className="h-5 w-5 shrink-0" />
+                              <span className="flex-1">{item.title}</span>
+                            </Link>
                           </SidebarMenuButton>
-                        </CollapsibleTrigger>
+                          
+                          {/* Separate chevron button to toggle submenu */}
+                          <CollapsibleTrigger asChild>
+                            <button 
+                              className={`
+                                h-11 w-9 rounded-md flex items-center justify-center transition-colors
+                                ${location === item.url || location.startsWith('/policies')
+                                  ? 'text-primary-foreground hover:bg-primary/80' 
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                                }
+                              `}
+                              aria-label="Toggle policies submenu"
+                            >
+                              <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${policiesOpen ? 'rotate-90' : ''}`} />
+                            </button>
+                          </CollapsibleTrigger>
+                        </div>
                         <CollapsibleContent>
                           <SidebarMenuSub className="ml-6 mt-1 space-y-0.5">
                             {/* ACA/Obamacare */}
