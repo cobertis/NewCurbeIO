@@ -2828,6 +2828,8 @@ export class DbStorage implements IStorage {
   async getQuotesByCompany(companyId: string): Promise<Array<Quote & {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    spouses?: Array<{ firstName: string; middleName?: string; lastName: string; secondLastName?: string; email?: string; phone?: string; }>;
+    dependents?: Array<{ firstName: string; middleName?: string; lastName: string; secondLastName?: string; email?: string; phone?: string; }>;
   }>> {
     const results = await db
       .select({
@@ -2860,10 +2862,46 @@ export class DbStorage implements IStorage {
           }
         }
 
+        // Get all quote members for this quote
+        const allMembers = await db
+          .select()
+          .from(quoteMembers)
+          .where(
+            and(
+              eq(quoteMembers.quoteId, result.quote.id),
+              eq(quoteMembers.companyId, companyId)
+            )
+          );
+
+        // Separate spouses and dependents
+        const spouses = allMembers
+          .filter(m => m.role === 'spouse')
+          .map(m => ({
+            firstName: m.firstName,
+            middleName: m.middleName || undefined,
+            lastName: m.lastName,
+            secondLastName: m.secondLastName || undefined,
+            email: m.email || undefined,
+            phone: m.phone || undefined,
+          }));
+
+        const dependents = allMembers
+          .filter(m => m.role === 'dependent')
+          .map(m => ({
+            firstName: m.firstName,
+            middleName: m.middleName || undefined,
+            lastName: m.lastName,
+            secondLastName: m.secondLastName || undefined,
+            email: m.email || undefined,
+            phone: m.phone || undefined,
+          }));
+
         return {
           ...result.quote,
           creator: result.creator,
           agent,
+          spouses,
+          dependents,
         } as any;
       })
     );

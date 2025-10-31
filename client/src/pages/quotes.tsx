@@ -3393,6 +3393,12 @@ export default function QuotesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<{ id: string; clientName: string } | null>(null);
   
+  // Quote action dialog states
+  const [cancelQuoteDialogOpen, setCancelQuoteDialogOpen] = useState(false);
+  const [archiveQuoteDialogOpen, setArchiveQuoteDialogOpen] = useState(false);
+  const [duplicateQuoteDialogOpen, setDuplicateQuoteDialogOpen] = useState(false);
+  const [blockQuoteDialogOpen, setBlockQuoteDialogOpen] = useState(false);
+  
   // Notes sheet state
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
@@ -4569,6 +4575,112 @@ export default function QuotesPage() {
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to submit policy",
+      });
+    },
+  });
+
+  const blockQuoteMutation = useMutation({
+    mutationFn: async () => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      return apiRequest("POST", `/api/quotes/${params.id}/block`);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      setBlockQuoteDialogOpen(false);
+      toast({
+        title: data.quote?.isBlocked ? "Quote Blocked" : "Quote Unblocked",
+        description: data.message || (data.quote?.isBlocked ? "Quote has been blocked successfully." : "Quote has been unblocked successfully."),
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update quote block status",
+        duration: 3000,
+      });
+    },
+  });
+
+  const duplicateQuoteMutation = useMutation({
+    mutationFn: async () => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      return apiRequest("POST", `/api/quotes/${params.id}/duplicate`);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      setDuplicateQuoteDialogOpen(false);
+      toast({
+        title: "Quote Duplicated",
+        description: data.message || "Quote has been duplicated successfully.",
+        duration: 3000,
+      });
+      if (data.quote?.id) {
+        setLocation(`/quotes/${data.quote.id}`);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to duplicate quote",
+        duration: 3000,
+      });
+    },
+  });
+
+  const cancelQuoteMutation = useMutation({
+    mutationFn: async () => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      return apiRequest("PATCH", `/api/quotes/${params.id}`, {
+        status: 'void',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      setCancelQuoteDialogOpen(false);
+      toast({
+        title: "Quote Cancelled",
+        description: "Quote has been cancelled successfully.",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to cancel quote",
+        duration: 3000,
+      });
+    },
+  });
+
+  const archiveQuoteMutation = useMutation({
+    mutationFn: async (isArchived: boolean) => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      return apiRequest("PATCH", `/api/quotes/${params.id}`, {
+        isArchived: isArchived,
+      });
+    },
+    onSuccess: (_, isArchived) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      setArchiveQuoteDialogOpen(false);
+      toast({
+        title: isArchived ? "Quote Archived" : "Quote Unarchived",
+        description: isArchived ? "Quote has been archived successfully." : "Quote has been unarchived successfully.",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update quote archive status",
+        duration: 3000,
       });
     },
   });
@@ -6069,17 +6181,22 @@ export default function QuotesPage() {
                   {/* Quote Status */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Status:</span>
-                    <StatusBadgeEditor
-                      type="quote"
-                      statusType="status"
-                      currentValue={viewingQuote.status}
-                      id={viewingQuote.id}
-                      allStatuses={{
-                        status: viewingQuote.status,
-                        documentsStatus: viewingQuote.documentsStatus,
-                        paymentStatus: viewingQuote.paymentStatus,
-                      }}
-                    />
+                    <div className="flex items-center gap-2">
+                      {viewingQuote.isBlocked && (
+                        <Lock className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-500" />
+                      )}
+                      <StatusBadgeEditor
+                        type="quote"
+                        statusType="status"
+                        currentValue={viewingQuote.status}
+                        id={viewingQuote.id}
+                        allStatuses={{
+                          status: viewingQuote.status,
+                          documentsStatus: viewingQuote.documentsStatus,
+                          paymentStatus: viewingQuote.paymentStatus,
+                        }}
+                      />
+                    </div>
                   </div>
                   
                   {/* Documents Status */}
@@ -6245,6 +6362,16 @@ export default function QuotesPage() {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
+            {/* Block Warning Banner */}
+            {viewingQuote.isBlocked && (
+              <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  An authorized person from your Agency blocked updates on this quote.
+                </p>
+              </div>
+            )}
+            
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
@@ -6369,29 +6496,62 @@ export default function QuotesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Block Policy
+                          <DropdownMenuItem 
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setTimeout(() => setBlockQuoteDialogOpen(true), 100);
+                            }}
+                          >
+                            <Lock className="h-4 w-4 mr-2" />
+                            {viewingQuote.isBlocked ? 'Unblock Quote' : 'Block Quote'}
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setRemindersSheetOpen(true);
+                            setSelectedReminder(null);
+                            setReminderFormOpen(true);
+                          }}>
                             <Bell className="h-4 w-4 mr-2" />
                             New Reminder
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            window.open(`/quotes/${viewingQuote.id}/print`, '_blank');
+                          }}>
                             <FileText className="h-4 w-4 mr-2" />
-                            Print Policy
+                            Print Quote
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onSelect={(e) => {
+                            e.preventDefault();
+                            setTimeout(() => setDuplicateQuoteDialogOpen(true), 100);
+                          }}>
                             <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
+                            Duplicate Quote
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onSelect={(e) => {
+                            e.preventDefault();
+                            setTimeout(() => setCancelQuoteDialogOpen(true), 100);
+                          }}>
                             <X className="h-4 w-4 mr-2" />
-                            Cancel Policy
+                            Cancel Quote
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onSelect={(e) => {
+                            e.preventDefault();
+                            setTimeout(() => setArchiveQuoteDialogOpen(true), 100);
+                          }}>
                             <Archive className="h-4 w-4 mr-2" />
-                            Archive
+                            Archive Quote
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            disabled={!viewingQuote.isArchived}
+                            onClick={async () => {
+                              if (!viewingQuote.isArchived) return;
+                              try {
+                                await archiveQuoteMutation.mutateAsync(false);
+                              } catch (error) {
+                                // Error handled by mutation
+                              }
+                            }}>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Unarchive Quote
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -10892,6 +11052,107 @@ export default function QuotesPage() {
               data-testid="button-confirm-delete"
             >
               {deleteQuoteMutation.isPending ? 'Deleting...' : 'Delete Permanently'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Quote Confirmation Dialog */}
+      <AlertDialog open={cancelQuoteDialogOpen} onOpenChange={setCancelQuoteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-cancel-quote">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Do you really want to cancel this quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Clicking 'Yes, cancel it!' will change the quote status to void (cancelled). This action can be undone by changing the status later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-cancel-quote">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                cancelQuoteMutation.mutate();
+              }}
+              disabled={cancelQuoteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-cancel-quote"
+            >
+              {cancelQuoteMutation.isPending ? 'Cancelling...' : 'Yes, cancel it!'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive Quote Confirmation Dialog */}
+      <AlertDialog open={archiveQuoteDialogOpen} onOpenChange={setArchiveQuoteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-archive-quote">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Do you really want to archive this quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Archived quotes can be unarchived later if needed. This helps keep your active quotes list clean.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-archive-quote">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                archiveQuoteMutation.mutate(true);
+              }}
+              disabled={archiveQuoteMutation.isPending}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              data-testid="button-confirm-archive-quote"
+            >
+              {archiveQuoteMutation.isPending ? 'Archiving...' : 'Yes, archive it!'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Duplicate Quote Confirmation Dialog */}
+      <AlertDialog open={duplicateQuoteDialogOpen} onOpenChange={setDuplicateQuoteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-duplicate-quote">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Do you really want to duplicate this quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create a new quote with all the information from the current quote, including client details, family members, and selected plan. You will be redirected to the new quote.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-duplicate-quote">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                duplicateQuoteMutation.mutate();
+              }}
+              disabled={duplicateQuoteMutation.isPending}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              data-testid="button-confirm-duplicate-quote"
+            >
+              {duplicateQuoteMutation.isPending ? 'Duplicating...' : 'Duplicate Quote'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Block Quote Confirmation Dialog */}
+      <AlertDialog open={blockQuoteDialogOpen} onOpenChange={setBlockQuoteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-block-quote">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Do you really want to block this quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Clicking 'Yes, block it!' will prevent agents to update this quote. Only administrators can block or unblock quotes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-block-quote">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                blockQuoteMutation.mutate();
+              }}
+              disabled={blockQuoteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-block-quote"
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              {blockQuoteMutation.isPending ? 'Processing...' : 'Yes, block it!'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

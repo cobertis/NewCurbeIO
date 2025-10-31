@@ -8562,6 +8562,269 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to delete quote" });
     }
   });
+  
+  // Block/Unblock quote
+  app.post("/api/quotes/:id/block", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Get existing quote and verify ownership
+      const existingQuote = await storage.getQuote(id);
+      
+      if (!existingQuote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check access: only superadmin and admin can block quotes
+      if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - Admin or Superadmin only" });
+      }
+      
+      if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to block this quote" });
+      }
+      
+      // Toggle block status
+      const newBlockStatus = !existingQuote.isBlocked;
+      const updatedQuote = await storage.updateQuote(id, { 
+        isBlocked: newBlockStatus,
+        blockedBy: newBlockStatus ? currentUser.id : null,
+        blockedAt: newBlockStatus ? new Date() : null,
+      });
+      
+      // Log activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          updatedBy: currentUser.email,
+          field: "isBlocked",
+          oldValue: existingQuote.isBlocked,
+          newValue: newBlockStatus,
+        },
+      });
+      
+      res.json({ 
+        quote: updatedQuote, 
+        message: newBlockStatus ? "Quote blocked successfully" : "Quote unblocked successfully" 
+      });
+    } catch (error: any) {
+      console.error("Error updating quote block status:", error);
+      res.status(400).json({ message: error.message || "Failed to update quote block status" });
+    }
+  });
+  
+  // Duplicate quote - creates a complete copy with new ID
+  app.post("/api/quotes/:id/duplicate", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // 1. Get complete quote detail including all related data
+      const quoteDetail = await storage.getQuoteDetail(id, currentUser.companyId!);
+      
+      // Verify quote exists
+      if (!quoteDetail || !quoteDetail.quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check access: superadmin can duplicate any quote, others only their company's quotes
+      if (currentUser.role !== "superadmin" && quoteDetail.quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to duplicate this quote" });
+      }
+      
+      // 2. Generate a new unique quote ID
+      const { generateShortId } = await import("./id-generator");
+      let newQuoteId = generateShortId();
+      
+      // Ensure the ID is unique (check for collisions)
+      let existingQuote = await storage.getQuote(newQuoteId);
+      while (existingQuote) {
+        newQuoteId = generateShortId();
+        existingQuote = await storage.getQuote(newQuoteId);
+      }
+      
+      console.log(`[DUPLICATE QUOTE] Duplicating quote ${id} to new quote ${newQuoteId}`);
+      
+      // 3. Create the new quote with copied data (excluding ID and timestamps)
+      const originalQuote = quoteDetail.quote;
+      const newQuoteData = {
+        id: newQuoteId,
+        companyId: originalQuote.companyId,
+        createdBy: currentUser.id, // Set creator to current user
+        agentId: currentUser.id, // Assign to current user as agent
+        effectiveDate: originalQuote.effectiveDate,
+        productType: originalQuote.productType,
+        clientFirstName: originalQuote.clientFirstName,
+        clientMiddleName: originalQuote.clientMiddleName,
+        clientLastName: originalQuote.clientLastName,
+        clientSecondLastName: originalQuote.clientSecondLastName,
+        clientEmail: originalQuote.clientEmail,
+        clientPhone: originalQuote.clientPhone,
+        clientDateOfBirth: originalQuote.clientDateOfBirth,
+        clientGender: originalQuote.clientGender,
+        clientIsApplicant: originalQuote.clientIsApplicant,
+        clientTobaccoUser: originalQuote.clientTobaccoUser,
+        clientPregnant: originalQuote.clientPregnant,
+        clientSsn: originalQuote.clientSsn,
+        isPrimaryDependent: originalQuote.isPrimaryDependent,
+        physical_street: originalQuote.physical_street,
+        physical_city: originalQuote.physical_city,
+        physical_state: originalQuote.physical_state,
+        physical_postal_code: originalQuote.physical_postal_code,
+        physical_county: originalQuote.physical_county,
+        mailing_street: originalQuote.mailing_street,
+        mailing_city: originalQuote.mailing_city,
+        mailing_state: originalQuote.mailing_state,
+        mailing_postal_code: originalQuote.mailing_postal_code,
+        mailing_county: originalQuote.mailing_county,
+        selectedPlan: originalQuote.selectedPlan,
+        internalCode: originalQuote.internalCode,
+        status: 'new', // Reset status to 'new' for duplicated quote
+        documentsStatus: originalQuote.documentsStatus,
+        paymentStatus: originalQuote.paymentStatus,
+        spouses: originalQuote.spouses, // Copy spouse array
+        dependents: originalQuote.dependents, // Copy dependents array
+      };
+      
+      // Insert quote directly into database with our custom ID
+      const { db } = await import("./db");
+      const { quotes } = await import("@shared/schema");
+      const [newQuote] = await db.insert(quotes).values(newQuoteData as any).returning();
+      console.log(`[DUPLICATE QUOTE] Created new quote ${newQuoteId}`);
+      
+      // 4. Copy all members (includes applicant, spouses, and dependents)
+      if (quoteDetail.members && quoteDetail.members.length > 0) {
+        for (const memberDetail of quoteDetail.members) {
+          const member = memberDetail.member;
+          
+          // Create the member
+          const newMember = await storage.createQuoteMember({
+            quoteId: newQuoteId,
+            companyId: originalQuote.companyId,
+            role: member.role,
+            firstName: member.firstName,
+            middleName: member.middleName,
+            lastName: member.lastName,
+            secondLastName: member.secondLastName,
+            dateOfBirth: member.dateOfBirth,
+            gender: member.gender,
+            ssn: member.ssn,
+            isApplicant: member.isApplicant,
+            isPrimaryDependent: member.isPrimaryDependent,
+            tobaccoUser: member.tobaccoUser,
+            pregnant: member.pregnant,
+            relation: member.relation,
+          });
+          
+          // Copy income data if exists
+          if (memberDetail.income) {
+            await storage.createOrUpdateQuoteMemberIncome({
+              memberId: newMember.id,
+              companyId: originalQuote.companyId,
+              annualIncome: memberDetail.income.annualIncome,
+              incomeFrequency: memberDetail.income.incomeFrequency,
+              employmentStatus: memberDetail.income.employmentStatus,
+              employerName: memberDetail.income.employerName,
+              totalAnnualIncome: memberDetail.income.totalAnnualIncome,
+            });
+          }
+          
+          // Copy immigration data if exists
+          if (memberDetail.immigration) {
+            await storage.createOrUpdateQuoteMemberImmigration({
+              memberId: newMember.id,
+              companyId: originalQuote.companyId,
+              immigrationStatus: memberDetail.immigration.immigrationStatus,
+              alienNumber: memberDetail.immigration.alienNumber,
+              i94Number: memberDetail.immigration.i94Number,
+              passportNumber: memberDetail.immigration.passportNumber,
+              passportCountry: memberDetail.immigration.passportCountry,
+              visaNumber: memberDetail.immigration.visaNumber,
+              visaType: memberDetail.immigration.visaType,
+              sevisId: memberDetail.immigration.sevisId,
+              naturalizationNumber: memberDetail.immigration.naturalizationNumber,
+              citizenshipNumber: memberDetail.immigration.citizenshipNumber,
+              countryOfBirth: memberDetail.immigration.countryOfBirth,
+              entryDate: memberDetail.immigration.entryDate,
+              expirationDate: memberDetail.immigration.expirationDate,
+            });
+          }
+          
+          // Note: Member documents are NOT copied as they contain file uploads
+        }
+        console.log(`[DUPLICATE QUOTE] Copied ${quoteDetail.members.length} member(s)`);
+      }
+      
+      // 5. Get and copy all notes (but mark them as copied)
+      const notes = await storage.getQuoteNotes(id, currentUser.companyId!);
+      if (notes && notes.length > 0) {
+        for (const note of notes) {
+          await storage.createQuoteNote({
+            quoteId: newQuoteId,
+            companyId: originalQuote.companyId,
+            authorId: currentUser.id,
+            category: note.category,
+            content: `[Copied from Quote ${id}] ${note.content}`,
+            memberId: note.memberId,
+            imageUrl: note.imageUrl,
+          });
+        }
+        console.log(`[DUPLICATE QUOTE] Copied ${notes.length} note(s)`);
+      }
+      
+      // 6. Get and copy all reminders
+      const reminders = await storage.listQuoteReminders(id, currentUser.companyId!);
+      if (reminders && reminders.length > 0) {
+        for (const reminder of reminders) {
+          await storage.createQuoteReminder({
+            quoteId: newQuoteId,
+            companyId: originalQuote.companyId,
+            createdBy: currentUser.id,
+            assignedTo: reminder.assignedTo,
+            dueDate: reminder.dueDate,
+            dueTime: reminder.dueTime,
+            title: reminder.title,
+            description: reminder.description,
+            priority: reminder.priority,
+            status: 'pending', // Reset to pending for duplicated quote
+            category: reminder.category,
+          });
+        }
+        console.log(`[DUPLICATE QUOTE] Copied ${reminders.length} reminder(s)`);
+      }
+      
+      // Note: Documents and consents are NOT copied as they contain file uploads
+      // and digital signatures that should be unique per quote
+      
+      // 7. Log activity
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote",
+        entityId: newQuoteId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          createdBy: currentUser.email,
+          duplicatedFrom: id,
+        },
+      });
+      
+      console.log(`[DUPLICATE QUOTE] Successfully duplicated quote ${id} to ${newQuoteId}`);
+      
+      res.json({ 
+        quote: newQuote,
+        message: `Quote duplicated successfully. New Quote ID: ${newQuoteId}`,
+      });
+    } catch (error: any) {
+      console.error("Error duplicating quote:", error);
+      res.status(500).json({ message: error.message || "Failed to duplicate quote" });
+    }
+  });
 
   // ==================== QUOTE MEMBERS ====================
   
