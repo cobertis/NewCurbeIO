@@ -6551,7 +6551,7 @@ export default function PoliciesPage() {
                             }
                           }}>
                             <Archive className="h-4 w-4 mr-2" />
-                            Archive
+                            Unarchive Policy
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
