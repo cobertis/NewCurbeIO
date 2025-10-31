@@ -3394,6 +3394,8 @@ export default function PoliciesPage() {
     submissionDateTo: "",
     applicantsFrom: "",
     applicantsTo: "",
+    effectiveYears: [] as number[],
+    searchFamilyMembers: false,
   });
   
   // Delete quote dialog state
@@ -4979,15 +4981,21 @@ export default function PoliciesPage() {
     const matchesApplicantsFrom = !filters.applicantsFrom || (quote.familyGroupSize && quote.familyGroupSize >= parseInt(filters.applicantsFrom));
     const matchesApplicantsTo = !filters.applicantsTo || (quote.familyGroupSize && quote.familyGroupSize <= parseInt(filters.applicantsTo));
     
+    // Effective year filter
+    const effectiveYear = quote.effectiveDate ? new Date(quote.effectiveDate).getFullYear() : null;
+    const matchesEffectiveYear = filters.effectiveYears.length === 0 || (effectiveYear && filters.effectiveYears.includes(effectiveYear));
+    
     return matchesSearch && matchesStatus && matchesProduct && matchesState && 
            matchesZipCode && matchesAssignedTo && matchesEffectiveDateFrom && 
-           matchesEffectiveDateTo && matchesApplicantsFrom && matchesApplicantsTo;
+           matchesEffectiveDateTo && matchesApplicantsFrom && matchesApplicantsTo &&
+           matchesEffectiveYear;
   });
   
   // Check if any filters are active
   const hasActiveFilters = filters.status !== "all" || filters.productType !== "all" || 
     filters.state || filters.zipCode || filters.assignedTo || filters.effectiveDateFrom || 
-    filters.effectiveDateTo || filters.applicantsFrom || filters.applicantsTo;
+    filters.effectiveDateTo || filters.applicantsFrom || filters.applicantsTo ||
+    filters.effectiveYears.length > 0 || filters.searchFamilyMembers;
   
   // Pagination logic
   const totalItems = filteredQuotes.length;
@@ -5016,6 +5024,8 @@ export default function PoliciesPage() {
       submissionDateTo: "",
       applicantsFrom: "",
       applicantsTo: "",
+      effectiveYears: [],
+      searchFamilyMembers: false,
     });
   };
 
@@ -9317,29 +9327,74 @@ export default function PoliciesPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Search and Filters Button */}
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Search by client name, email, or phone..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full"
-                      data-testid="input-search-quotes"
-                    />
+                {/* Enhanced Search Bar with Year Filters */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-base font-semibold">Policies</h3>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-muted-foreground">Effective year:</span>
+                      <div className="flex items-center gap-3">
+                        {[2026, 2025, 2024].map((year) => (
+                          <div key={year} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`year-${year}`}
+                              checked={filters.effectiveYears.includes(year)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setFilters(prev => ({ ...prev, effectiveYears: [...prev.effectiveYears, year] }));
+                                } else {
+                                  setFilters(prev => ({ ...prev, effectiveYears: prev.effectiveYears.filter(y => y !== year) }));
+                                }
+                              }}
+                              data-testid={`checkbox-year-${year}`}
+                            />
+                            <label
+                              htmlFor={`year-${year}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {year}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-                    <SheetTrigger asChild>
-                      <Button variant="outline" data-testid="button-filters">
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filters
-                        {hasActiveFilters && (
-                          <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full">
-                            !
-                          </Badge>
-                        )}
-                      </Button>
-                    </SheetTrigger>
+                  
+                  {/* Search and Filters Row */}
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Type here to search..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full h-10"
+                        data-testid="input-search-quotes"
+                      />
+                    </div>
+                    <Button 
+                      variant="default"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      data-testid="button-search"
+                    >
+                      <Search className="h-4 w-4 mr-2" />
+                      Search
+                    </Button>
+                    <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                      <SheetTrigger asChild>
+                        <Button 
+                          variant="default"
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          data-testid="button-filters"
+                        >
+                          <Filter className="h-4 w-4 mr-2" />
+                          Filters
+                          {hasActiveFilters && (
+                            <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-white text-purple-600">
+                              !
+                            </Badge>
+                          )}
+                        </Button>
+                      </SheetTrigger>
                     <SheetContent className="w-full sm:max-w-md overflow-y-auto">
                       <SheetHeader>
                         <SheetTitle>Filter your quotes by</SheetTitle>
@@ -9511,6 +9566,33 @@ export default function PoliciesPage() {
                     </SheetContent>
                   </Sheet>
                 </div>
+                
+                {/* Search by Family Members Checkbox */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="search-family-members"
+                    checked={filters.searchFamilyMembers}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, searchFamilyMembers: !!checked }))}
+                    data-testid="checkbox-search-family-members"
+                  />
+                  <label
+                    htmlFor="search-family-members"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                  >
+                    Search by family members:
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="h-4 w-4 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground cursor-help">
+                          ?
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">When enabled, search will also include family member names, emails, and phone numbers</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </label>
+                </div>
+              </div>
 
                 {/* Show selector and pagination info */}
                 <div className="flex items-center justify-between">
