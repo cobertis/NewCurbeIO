@@ -9300,19 +9300,7 @@ export default function PoliciesPage() {
 
           {/* Policies Table */}
           <Card className="overflow-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>All Policies</CardTitle>
-                  <CardDescription>View and manage your insurance policies</CardDescription>
-                </div>
-                <Button onClick={() => setLocation("/policies/new")} data-testid="button-create-quote">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Policy
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading policies...</div>
             ) : allQuotes.length === 0 ? (
