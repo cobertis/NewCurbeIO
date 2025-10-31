@@ -3857,6 +3857,8 @@ export class DbStorage implements IStorage {
   async getPoliciesByCompany(companyId: string): Promise<Array<Policy & {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+    spouses?: Array<{ firstName: string; middleName?: string; lastName: string; secondLastName?: string; email?: string; phone?: string; }>;
+    dependents?: Array<{ firstName: string; middleName?: string; lastName: string; secondLastName?: string; email?: string; phone?: string; }>;
   }>> {
     const results = await db
       .select({
@@ -3889,10 +3891,46 @@ export class DbStorage implements IStorage {
           }
         }
 
+        // Get all policy members for this policy
+        const allMembers = await db
+          .select()
+          .from(policyMembers)
+          .where(
+            and(
+              eq(policyMembers.policyId, result.policy.id),
+              eq(policyMembers.companyId, companyId)
+            )
+          );
+
+        // Separate spouses and dependents
+        const spouses = allMembers
+          .filter(m => m.role === 'spouse')
+          .map(m => ({
+            firstName: m.firstName,
+            middleName: m.middleName || undefined,
+            lastName: m.lastName,
+            secondLastName: m.secondLastName || undefined,
+            email: m.email || undefined,
+            phone: m.phone || undefined,
+          }));
+
+        const dependents = allMembers
+          .filter(m => m.role === 'dependent')
+          .map(m => ({
+            firstName: m.firstName,
+            middleName: m.middleName || undefined,
+            lastName: m.lastName,
+            secondLastName: m.secondLastName || undefined,
+            email: m.email || undefined,
+            phone: m.phone || undefined,
+          }));
+
         return {
           ...result.policy,
           creator: result.creator,
           agent,
+          spouses,
+          dependents,
         } as any;
       })
     );
