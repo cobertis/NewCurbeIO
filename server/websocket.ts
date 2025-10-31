@@ -4,7 +4,11 @@ import type { IncomingMessage } from 'http';
 import type { SessionData } from './types';
 import signature from 'cookie-signature';
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "curbe-admin-secret-key-2024";
+if (!process.env.SESSION_SECRET) {
+  throw new Error('CRITICAL: SESSION_SECRET environment variable must be set for production security');
+}
+
+const SESSION_SECRET = process.env.SESSION_SECRET;
 
 // Parse cookies from request headers
 function parseCookies(cookieHeader?: string): Record<string, string> {

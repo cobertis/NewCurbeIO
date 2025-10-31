@@ -7,6 +7,10 @@ import { setupVite, serveStatic, log } from "./vite";
 import "./stripe"; // Force Stripe initialization to show which mode we're using
 import { startReminderScheduler } from "./reminder-scheduler";
 
+if (!process.env.SESSION_SECRET) {
+  throw new Error('CRITICAL: SESSION_SECRET environment variable must be set for production security');
+}
+
 const app = express();
 
 // Trust proxy to get real client IP (required when behind Replit proxy)
@@ -50,7 +54,7 @@ const pgStore = new PgStore({
 app.use(
   session({
     store: pgStore,
-    secret: process.env.SESSION_SECRET || "curbe-admin-secret-key-2024",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
