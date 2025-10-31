@@ -386,7 +386,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             {/* Left: Sidebar Toggle + Page Title + Create Button */}
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <SidebarTrigger data-testid="button-sidebar-toggle" className="hover-elevate active-elevate-2 rounded-md shrink-0" />
-              <h1 className="hidden sm:block text-lg sm:text-xl font-semibold text-foreground truncate">{pageTitle}</h1>
+              <h1 className="hidden sm:block text-lg sm:text-xl font-semibold text-foreground truncate">Dashboard</h1>
               
               {/* Create Button with Dropdown */}
               <DropdownMenu>
