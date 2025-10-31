@@ -63,7 +63,7 @@ export default function PolicyPrintPage() {
     );
   }
 
-  const policyYear = new Date(policy.effectiveDate).getFullYear();
+  const policyYear = policy.effectiveDate ? new Date(policy.effectiveDate).getFullYear() : new Date().getFullYear();
   const plan = policy.selectedPlan;
 
   // Extract plan details
@@ -139,15 +139,15 @@ export default function PolicyPrintPage() {
               </div>
               <div className="border border-foreground p-3">
                 <p className="text-xs font-semibold mb-1">EFFECTIVE DATE</p>
-                <p className="text-sm font-medium">{formatDateForDisplay(policy.effectiveDate)}</p>
+                <p className="text-sm font-medium">{policy.effectiveDate ? formatDateForDisplay(policy.effectiveDate) : 'Not Set'}</p>
               </div>
               <div className="border border-foreground p-3">
                 <p className="text-xs font-semibold mb-1">PRODUCT TYPE</p>
-                <p className="text-sm font-medium uppercase">{policy.productType}</p>
+                <p className="text-sm font-medium uppercase">{policy.productType || 'N/A'}</p>
               </div>
               <div className="border border-foreground p-3">
                 <p className="text-xs font-semibold mb-1">COVERAGE YEAR</p>
-                <p className="text-sm font-medium">{policyYear}</p>
+                <p className="text-sm font-medium">{policyYear || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -161,16 +161,16 @@ export default function PolicyPrintPage() {
               <div className="border border-foreground p-3">
                 <p className="text-xs font-semibold mb-1">FULL NAME</p>
                 <p className="text-sm font-medium">
-                  {policy.clientFirstName} {policy.clientMiddleName} {policy.clientLastName} {policy.clientSecondLastName}
+                  {[policy.clientFirstName, policy.clientMiddleName, policy.clientLastName, policy.clientSecondLastName].filter(Boolean).join(' ') || 'N/A'}
                 </p>
               </div>
               <div className="border border-foreground p-3">
                 <p className="text-xs font-semibold mb-1">DATE OF BIRTH</p>
-                <p className="text-sm font-medium">{formatDateForDisplay(policy.clientDateOfBirth)}</p>
+                <p className="text-sm font-medium">{policy.clientDateOfBirth ? formatDateForDisplay(policy.clientDateOfBirth) : 'N/A'}</p>
               </div>
               <div className="border border-foreground p-3">
                 <p className="text-xs font-semibold mb-1">AGE</p>
-                <p className="text-sm font-medium">{calculateAge(policy.clientDateOfBirth)} years</p>
+                <p className="text-sm font-medium">{policy.clientDateOfBirth ? `${calculateAge(policy.clientDateOfBirth)} years` : 'N/A'}</p>
               </div>
               <div className="border border-foreground p-3">
                 <p className="text-xs font-semibold mb-1">GENDER</p>
@@ -201,8 +201,8 @@ export default function PolicyPrintPage() {
             <div className="mt-4 border border-foreground p-3">
               <p className="text-xs font-semibold mb-1">RESIDENTIAL ADDRESS</p>
               <p className="text-sm font-medium">
-                {policy.physical_street}<br />
-                {policy.physical_city}, {policy.physical_state} {policy.physical_postal_code}
+                {policy.physical_street || 'N/A'}<br />
+                {[policy.physical_city, policy.physical_state, policy.physical_postal_code].filter(Boolean).join(', ') || '-'}
               </p>
             </div>
           </div>
