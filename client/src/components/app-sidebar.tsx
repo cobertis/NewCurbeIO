@@ -175,7 +175,7 @@ const regularUserMenuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const [cachedLogo, setCachedLogo] = useState<string | null>(null);
-  const [quotesOpen, setQuotesOpen] = useState(true);
+  const [policiesOpen, setPoliciesOpen] = useState(true);
   const { isMobile, setOpenMobile } = useSidebar();
   
   const { data: userData } = useQuery<{ user: User & { companyName?: string } }>({
@@ -273,13 +273,13 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {menuItems.map((item) => {
-                // Special handling for Quotes with submenu
-                if (item.title === "Quotes") {
+                // Special handling for Policies with submenu
+                if (item.title === "Policies") {
                   return (
                     <Collapsible
                       key={item.title}
-                      open={quotesOpen}
-                      onOpenChange={setQuotesOpen}
+                      open={policiesOpen}
+                      onOpenChange={setPoliciesOpen}
                       className="group/collapsible"
                     >
                       <SidebarMenuItem>
@@ -288,7 +288,7 @@ export function AppSidebar() {
                             data-testid={`link-${item.title.toLowerCase()}`}
                             className={`
                               h-11 rounded-md transition-colors
-                              ${location === item.url || location.startsWith('/quotes')
+                              ${location === item.url || location.startsWith('/policies')
                                 ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
                                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                               }
@@ -296,7 +296,7 @@ export function AppSidebar() {
                           >
                             <item.icon className="h-5 w-5 shrink-0" />
                             <span className="flex-1">{item.title}</span>
-                            <ChevronRight className={`h-4 w-4 shrink-0 transition-transform duration-200 ${quotesOpen ? 'rotate-90' : ''}`} />
+                            <ChevronRight className={`h-4 w-4 shrink-0 transition-transform duration-200 ${policiesOpen ? 'rotate-90' : ''}`} />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
@@ -310,16 +310,16 @@ export function AppSidebar() {
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 asChild
-                                isActive={location === '/quotes' || location === '/quotes/aca'}
+                                isActive={location === '/policies' || location === '/policies/aca'}
                                 className={`
                                   relative
-                                  ${location === '/quotes' || location === '/quotes/aca'
+                                  ${location === '/policies' || location === '/policies/aca'
                                     ? 'bg-accent text-accent-foreground font-medium'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                                   }
                                 `}
                               >
-                                <Link href="/quotes" className="flex items-center gap-2 w-full">
+                                <Link href="/policies" className="flex items-center gap-2 w-full">
                                   <span>ACA/Obamacare</span>
                                 </Link>
                               </SidebarMenuSubButton>
@@ -329,16 +329,16 @@ export function AppSidebar() {
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 asChild
-                                isActive={location === '/quotes/medicare'}
+                                isActive={location === '/policies/medicare'}
                                 className={`
                                   relative
-                                  ${location === '/quotes/medicare'
+                                  ${location === '/policies/medicare'
                                     ? 'bg-accent text-accent-foreground font-medium'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                                   }
                                 `}
                               >
-                                <Link href="/quotes/medicare" className="flex items-center gap-2 w-full">
+                                <Link href="/policies/medicare" className="flex items-center gap-2 w-full">
                                   <span>Medicare</span>
                                 </Link>
                               </SidebarMenuSubButton>
