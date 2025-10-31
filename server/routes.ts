@@ -15226,7 +15226,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const statusUpdateSchema = z.object({
         status: z.enum(["new", "pending_document", "pending_payment", "waiting_on_agent", "waiting_for_approval", "updated_by_client", "completed", "renewed", "canceled"]).optional(),
         documentsStatus: z.enum(["pending", "processing", "declined", "completed"]).optional(),
-        paymentStatus: z.enum(["pending", "auto_pay", "failed", "paid", "not_applicable"]).optional(),
+        paymentStatus: z.enum(["pending", "unpaid", "auto_pay", "failed", "paid", "not_applicable"]).optional(),
       }).refine(data => 
         data.status !== undefined || data.documentsStatus !== undefined || data.paymentStatus !== undefined,
         { message: "At least one status field must be provided" }
