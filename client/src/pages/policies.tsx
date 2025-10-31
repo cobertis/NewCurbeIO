@@ -9278,6 +9278,96 @@ export default function PoliciesPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            {/* Cancel Policy Confirmation Dialog */}
+            <AlertDialog open={cancelPolicyDialogOpen} onOpenChange={setCancelPolicyDialogOpen}>
+              <AlertDialogContent data-testid="dialog-cancel-policy">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel Policy?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to cancel this policy? This action can be undone by changing the status later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-cancel-policy">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/status`, { status: "canceled" });
+                        
+                        queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                        
+                        toast({
+                          title: "Policy Canceled",
+                          description: "The policy status has been changed to canceled.",
+                          duration: 3000,
+                        });
+                        
+                        setCancelPolicyDialogOpen(false);
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to cancel policy",
+                          variant: "destructive",
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-cancel-policy"
+                  >
+                    Cancel Policy
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Archive Policy Confirmation Dialog */}
+            <AlertDialog open={archivePolicyDialogOpen} onOpenChange={setArchivePolicyDialogOpen}>
+              <AlertDialogContent data-testid="dialog-archive-policy">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Archive Policy?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to archive this policy? You can unarchive it later if needed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-archive-policy">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/archive`, { isArchived: true });
+                        
+                        queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                        
+                        toast({
+                          title: "Policy Archived",
+                          description: "The policy has been archived successfully.",
+                          duration: 3000,
+                        });
+                        
+                        setArchivePolicyDialogOpen(false);
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to archive policy",
+                          variant: "destructive",
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    data-testid="button-confirm-archive-policy"
+                  >
+                    Archive Policy
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
       </div>
     );
   }
@@ -11407,98 +11497,6 @@ export default function PoliciesPage() {
               data-testid="button-confirm-delete"
             >
               {deleteQuoteMutation.isPending ? 'Deleting...' : 'Delete Permanently'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Cancel Policy Confirmation Dialog */}
-      <AlertDialog open={cancelPolicyDialogOpen} onOpenChange={setCancelPolicyDialogOpen}>
-        <AlertDialogContent data-testid="dialog-cancel-policy">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Policy?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this policy? This action can be undone by changing the status later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-cancel-policy">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                try {
-                  await apiRequest("POST", `/api/policies/${viewingQuote.id}/status`, { status: "canceled" });
-                  
-                  // Refresh policy details
-                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                  
-                  toast({
-                    title: "Policy Canceled",
-                    description: "The policy status has been changed to canceled.",
-                    duration: 3000,
-                  });
-                  
-                  setCancelPolicyDialogOpen(false);
-                } catch (error: any) {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to cancel policy",
-                    variant: "destructive",
-                    duration: 3000,
-                  });
-                }
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-cancel-policy"
-            >
-              Cancel Policy
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Archive Policy Confirmation Dialog */}
-      <AlertDialog open={archivePolicyDialogOpen} onOpenChange={setArchivePolicyDialogOpen}>
-        <AlertDialogContent data-testid="dialog-archive-policy">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Archive Policy?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to archive this policy? You can unarchive it later if needed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-archive-policy">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                try {
-                  await apiRequest("POST", `/api/policies/${viewingQuote.id}/archive`, { isArchived: true });
-                  
-                  // Refresh policy details
-                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                  
-                  toast({
-                    title: "Policy Archived",
-                    description: "The policy has been archived successfully.",
-                    duration: 3000,
-                  });
-                  
-                  setArchivePolicyDialogOpen(false);
-                } catch (error: any) {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to archive policy",
-                    variant: "destructive",
-                    duration: 3000,
-                  });
-                }
-              }}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              data-testid="button-confirm-archive-policy"
-            >
-              Archive Policy
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
