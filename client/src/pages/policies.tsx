@@ -9666,7 +9666,6 @@ export default function PoliciesPage() {
                         <TableHead>Client</TableHead>
                         <TableHead>Policy</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Tags</TableHead>
                         <TableHead>Assigned to</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -9829,9 +9828,6 @@ export default function PoliciesPage() {
                                   />
                                 </div>
                               </div>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              -
                             </TableCell>
                             <TableCell>
                               {assignedAgent ? (
