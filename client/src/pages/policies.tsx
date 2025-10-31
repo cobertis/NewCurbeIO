@@ -4022,7 +4022,7 @@ export default function PoliciesPage() {
   // Delete consent mutation
   const deleteConsentMutation = useMutation({
     mutationFn: async (consentId: string) => {
-      return apiRequest('DELETE', `/api/consents/${consentId}`);
+      return apiRequest('DELETE', `/api/policy-consents/${consentId}`);
     },
     onSuccess: () => {
       if (params?.id) {

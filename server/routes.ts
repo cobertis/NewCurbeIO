@@ -726,33 +726,65 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Use header user-agent (more reliable) or fallback to body if needed
       const signerUserAgent = req.headers['user-agent'] || userAgent || '';
       
-      // Sign the consent
-      const signedConsent = await storage.signConsent(token, {
-        signatureImage,
-        signerIp,
-        signerUserAgent,
-        signerTimezone: timezone,
-        signerLocation: location,
-        signerPlatform: platform,
-        signerBrowser: browser,
-      });
+      // First check which type of consent this is
+      const consentCheck = await storage.getConsentByToken(token);
+      if (!consentCheck) {
+        return res.status(404).json({ message: "Consent document not found" });
+      }
+      
+      const isPolicy = 'policyId' in consentCheck && consentCheck.policyId;
+      
+      // Sign the consent using the appropriate method
+      const signedConsent = isPolicy
+        ? await storage.signPolicyConsent(token, {
+            signatureImage,
+            signerIp,
+            signerUserAgent,
+            signerTimezone: timezone,
+            signerLocation: location,
+            signerPlatform: platform,
+            signerBrowser: browser,
+          })
+        : await storage.signConsent(token, {
+            signatureImage,
+            signerIp,
+            signerUserAgent,
+            signerTimezone: timezone,
+            signerLocation: location,
+            signerPlatform: platform,
+            signerBrowser: browser,
+          });
       
       if (!signedConsent) {
         return res.status(404).json({ message: "Consent document not found or expired" });
       }
       
-      // Get quote information to send notification to the user who sent the consent
+      // Get quote or policy information to send notification to the user who sent the consent
       try {
-        const quote = await storage.getQuote(signedConsent.quoteId);
-        if (quote && signedConsent.signedAt && signedConsent.createdBy) {
-          const clientName = `${quote.clientFirstName || ''} ${quote.clientLastName || ''}`.trim() || 'Client';
-          // Notify the user who sent the consent (createdBy), not the assigned user
-          await notificationService.notifyConsentSigned(
-            quote.id,
-            clientName,
-            signedConsent.signedAt,
-            signedConsent.createdBy
-          );
+        if (isPolicy) {
+          const policy = await storage.getPolicy((signedConsent as any).policyId);
+          if (policy && signedConsent.signedAt && signedConsent.createdBy) {
+            const clientName = `${policy.clientFirstName || ''} ${policy.clientLastName || ''}`.trim() || 'Client';
+            // Notify the user who sent the consent (createdBy)
+            await notificationService.notifyConsentSigned(
+              policy.id,
+              clientName,
+              signedConsent.signedAt,
+              signedConsent.createdBy
+            );
+          }
+        } else {
+          const quote = await storage.getQuote((signedConsent as any).quoteId);
+          if (quote && signedConsent.signedAt && signedConsent.createdBy) {
+            const clientName = `${quote.clientFirstName || ''} ${quote.clientLastName || ''}`.trim() || 'Client';
+            // Notify the user who sent the consent (createdBy), not the assigned user
+            await notificationService.notifyConsentSigned(
+              quote.id,
+              clientName,
+              signedConsent.signedAt,
+              signedConsent.createdBy
+            );
+          }
         }
       } catch (notificationError) {
         // Log but don't fail the request if notification fails
@@ -15552,14 +15584,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // DELETE /api/consents/:id - Delete consent document
-  app.delete("/api/consents/:id", requireActiveCompany, async (req: Request, res: Response) => {
+  // DELETE /api/policy-consents/:id - Delete policy consent document
+  app.delete("/api/policy-consents/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id: consentId } = req.params;
     
     try {
       // Get consent to verify ownership
-      const consent = await storage.getConsentById(consentId, currentUser.companyId!);
+      const consent = await storage.getPolicyConsentById(consentId, currentUser.companyId!);
       if (!consent) {
         return res.status(404).json({ message: "Consent document not found" });
       }
@@ -15578,14 +15610,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await logger.logCrud({
         req,
         operation: "delete",
-        entity: "consent_document",
+        entity: "policy_consent_document",
         entityId: consentId,
         companyId: currentUser.companyId || undefined,
       });
       
       res.json({ message: "Consent document deleted successfully" });
     } catch (error: any) {
-      console.error("Error deleting consent:", error);
+      console.error("Error deleting policy consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
     }
   });
