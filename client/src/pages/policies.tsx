@@ -9665,7 +9665,7 @@ export default function PoliciesPage() {
                         <TableHead className="w-16">Agent</TableHead>
                         <TableHead>Client</TableHead>
                         <TableHead>Policy</TableHead>
-                        <TableHead>Created</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Tags</TableHead>
                         <TableHead>Assigned to</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -9803,7 +9803,32 @@ export default function PoliciesPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-sm">
-                              {format(new Date(quote.createdAt), "MMM dd, yyyy h:mm a")}
+                              <div className="space-y-1.5">
+                                <StatusBadge
+                                  type="status"
+                                  value={quote.status}
+                                  policyId={quote.id}
+                                  size="sm"
+                                />
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Documents:</span>{' '}
+                                  <StatusBadge
+                                    type="documentsStatus"
+                                    value={quote.documentsStatus}
+                                    policyId={quote.id}
+                                    size="xs"
+                                  />
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Payments:</span>{' '}
+                                  <StatusBadge
+                                    type="paymentStatus"
+                                    value={quote.paymentStatus}
+                                    policyId={quote.id}
+                                    size="xs"
+                                  />
+                                </div>
+                              </div>
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               -
