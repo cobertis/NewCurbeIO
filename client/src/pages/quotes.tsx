@@ -3304,32 +3304,32 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
 }
 
 // Badge variant helper functions for status display
-function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
     draft: "secondary",
     active: "default",
     submitted: "default",
-    converted_to_policy: "outline",
+    converted_to_policy: "success",
   };
   return variants[status] || "outline";
 }
 
-function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
     pending: "secondary",
     processing: "default",
     declined: "destructive",
-    completed: "outline",
+    completed: "success",
   };
   return variants[status] || "secondary";
 }
 
-function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
     pending: "secondary",
     auto_pay: "outline",
     failed: "destructive",
-    paid: "outline",
+    paid: "success",
     not_applicable: "secondary",
   };
   return variants[status] || "secondary";

@@ -126,37 +126,37 @@ const formatDateForDisplay = (date: string | null | undefined, formatStr: string
 };
 
 // Badge variant helper functions for status badges
-function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
     new: "default",
     pending_document: "secondary",
     pending_payment: "secondary",
     waiting_on_agent: "secondary",
     waiting_for_approval: "secondary",
     updated_by_client: "default",
-    completed: "outline",
+    completed: "success",
     renewed: "outline",
     canceled: "destructive",
   };
   return variants[status] || "outline";
 }
 
-function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
     pending: "secondary",
     processing: "default",
     declined: "destructive",
-    completed: "outline",
+    completed: "success",
   };
   return variants[status] || "secondary";
 }
 
-function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
     pending: "secondary",
     auto_pay: "outline",
     failed: "destructive",
-    paid: "outline",
+    paid: "success",
     not_applicable: "secondary",
   };
   return variants[status] || "secondary";
