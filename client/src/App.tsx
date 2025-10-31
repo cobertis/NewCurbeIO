@@ -55,6 +55,7 @@ import EmailConfiguration from "@/pages/email-configuration";
 import Quotes from "@/pages/quotes";
 import Policies from "@/pages/policies";
 import MarketplacePlans from "@/pages/marketplace-plans";
+import PolicyPrintPage from "@/pages/policy-print";
 import PublicConsentPage from "@/pages/public-consent";
 import Calendar from "@/pages/calendar";
 import NotFound from "@/pages/not-found";
@@ -1001,6 +1002,11 @@ function Router() {
           <DashboardLayout>
             <MarketplacePlans />
           </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/policies/:id/print">
+        <ProtectedRoute>
+          <PolicyPrintPage />
         </ProtectedRoute>
       </Route>
       <Route path="/policies/:id">

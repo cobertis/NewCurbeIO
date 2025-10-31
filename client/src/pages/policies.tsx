@@ -6366,7 +6366,9 @@ export default function PoliciesPage() {
                             <Bell className="h-4 w-4 mr-2" />
                             New Reminder
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            window.open(`/policies/${viewingQuote.id}/print`, '_blank');
+                          }}>
                             <FileText className="h-4 w-4 mr-2" />
                             Print Policy
                           </DropdownMenuItem>
