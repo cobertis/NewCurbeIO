@@ -4962,6 +4962,14 @@ export default function PoliciesPage() {
     
     // If "Search by family members" is enabled AND checkbox is checked, also search in spouses and dependents
     if (filters.searchFamilyMembers && searchQuery !== "") {
+      // Debug log
+      if (searchQuery.toLowerCase() === 'carlos' || searchQuery.toLowerCase() === 'roylan') {
+        console.log('[FAMILY SEARCH DEBUG] Policy:', quote.id, 'Client:', quote.clientFirstName, quote.clientLastName);
+        console.log('[FAMILY SEARCH DEBUG] Spouses:', quote.spouses);
+        console.log('[FAMILY SEARCH DEBUG] Dependents:', quote.dependents);
+        console.log('[FAMILY SEARCH DEBUG] Match in main?', matchesSearch);
+      }
+      
       // Only search in family members if main search didn't match
       if (!matchesSearch) {
         // Search in spouses
