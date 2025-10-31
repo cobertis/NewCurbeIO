@@ -6009,7 +6009,10 @@ export default function PoliciesPage() {
           <div className="space-y-6">
             {/* Summary Card */}
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Summary</h2>
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold">Policy #{viewingQuote.id}</h2>
+                <p className="text-xs text-muted-foreground">internal code</p>
+              </div>
               
               <div className="space-y-3">
                 <div className="pb-3 border-b">
