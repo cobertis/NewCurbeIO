@@ -84,6 +84,15 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.
 
+### Security Architecture
+**Critical Security Implementations (October 2025):**
+-   **Session Security:** SESSION_SECRET environment variable is MANDATORY. Application fails immediately at startup if not configured to prevent session hijacking in production.
+-   **Webhook Validation:** Twilio webhook signature validation fully enabled to prevent unauthorized SMS injection and data tampering.
+-   **Input Validation:** All public-facing endpoints (registration, quote/policy member mutations) enforce mandatory Zod schema validation to prevent malicious payloads.
+-   **Open Redirect Protection:** Tracking endpoint validates redirect URLs against strict allowlist (REPLIT_DOMAINS, healthcare.gov, marketplace.cms.gov) to prevent phishing attacks.
+-   **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens to prevent unauthorized mass unsubscriptions.
+-   **Code Organization:** Shared carrier/product type data centralized in `shared/carriers.ts` for consistency across Quotes and Policies modules.
+
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL, Drizzle ORM.
