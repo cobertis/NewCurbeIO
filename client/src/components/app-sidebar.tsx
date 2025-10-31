@@ -19,7 +19,10 @@ import {
   MessageSquare,
   AlertTriangle,
   Calendar,
-  FileCheck
+  FileCheck,
+  Heart,
+  Stethoscope,
+  ChevronRight
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -40,7 +43,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronRight } from "lucide-react";
 import type { User } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 
@@ -300,27 +302,23 @@ export function AppSidebar() {
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <SidebarMenuSub className="ml-0 border-l-2 border-border pl-4 mt-1">
-                            {/* OEP2026 Label */}
-                            <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">
-                              OEP2026
-                            </div>
-                            
+                          <SidebarMenuSub className="ml-6 mt-1 space-y-0.5">
                             {/* ACA/Obamacare */}
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 asChild
                                 isActive={location === '/policies' || location === '/policies/aca'}
                                 className={`
-                                  relative
+                                  h-9 rounded-md transition-colors
                                   ${location === '/policies' || location === '/policies/aca'
-                                    ? 'bg-accent text-accent-foreground font-medium'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                                   }
                                 `}
                               >
-                                <Link href="/policies" className="flex items-center gap-2 w-full">
-                                  <span>ACA/Obamacare</span>
+                                <Link href="/policies" className="flex items-center gap-2 w-full px-2">
+                                  <Heart className="h-4 w-4 shrink-0" />
+                                  <span className="text-sm">ACA Plans</span>
                                 </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
@@ -331,15 +329,16 @@ export function AppSidebar() {
                                 asChild
                                 isActive={location === '/policies/medicare'}
                                 className={`
-                                  relative
+                                  h-9 rounded-md transition-colors
                                   ${location === '/policies/medicare'
-                                    ? 'bg-accent text-accent-foreground font-medium'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                                   }
                                 `}
                               >
-                                <Link href="/policies/medicare" className="flex items-center gap-2 w-full">
-                                  <span>Medicare</span>
+                                <Link href="/policies/medicare" className="flex items-center gap-2 w-full px-2">
+                                  <Stethoscope className="h-4 w-4 shrink-0" />
+                                  <span className="text-sm">Medicare</span>
                                 </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
