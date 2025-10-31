@@ -10012,7 +10012,6 @@ export default function PoliciesPage() {
                                   <DropdownMenuItem onClick={() => setLocation(`/policies/${quote.id}`)}>
                                     View Details
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>Edit Quote</DropdownMenuItem>
                                   <DropdownMenuItem 
                                     className="text-destructive"
                                     onClick={() => {
