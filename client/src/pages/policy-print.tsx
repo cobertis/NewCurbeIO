@@ -466,12 +466,14 @@ export default function PolicyPrintPage() {
           body {
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           
-          /* Page setup for US Letter (8.5" x 11") */
+          /* Page setup for US Letter (8.5" x 11") - minimal margins */
           @page {
             size: letter portrait;
-            margin: 0.4in 0.5in;
+            margin: 0.3in 0.4in;
           }
           
           /* Prevent page breaks inside elements */
@@ -500,119 +502,149 @@ export default function PolicyPrintPage() {
             box-shadow: none !important;
           }
           
-          /* Compact font sizes for print */
+          /* Very compact font sizes for print */
           html {
-            font-size: 9pt !important;
+            font-size: 7.5pt !important;
+            line-height: 1.2 !important;
           }
           
           h1 {
-            font-size: 16pt !important;
-            margin-bottom: 0.25rem !important;
+            font-size: 13pt !important;
+            margin-bottom: 0.15rem !important;
+            line-height: 1.1 !important;
           }
           
           h2 {
-            font-size: 13pt !important;
-            margin-bottom: 0.25rem !important;
+            font-size: 11pt !important;
+            margin-bottom: 0.15rem !important;
+            line-height: 1.1 !important;
           }
           
           h3 {
-            font-size: 11pt !important;
-            margin-bottom: 0.25rem !important;
+            font-size: 9.5pt !important;
+            margin-bottom: 0.1rem !important;
+            line-height: 1.1 !important;
           }
           
           h4 {
-            font-size: 10pt !important;
-            margin-bottom: 0.25rem !important;
+            font-size: 8.5pt !important;
+            margin-bottom: 0.1rem !important;
+            line-height: 1.1 !important;
           }
           
-          /* Ultra-compact spacing */
-          .mb-1, .my-1 { margin-bottom: 0.1rem !important; }
-          .mb-2, .my-2 { margin-bottom: 0.2rem !important; }
-          .mb-3, .my-3 { margin-bottom: 0.3rem !important; }
-          .mb-4, .my-4 { margin-bottom: 0.4rem !important; }
-          .mb-6, .my-6 { margin-bottom: 0.5rem !important; }
-          .mb-8, .my-8 { margin-bottom: 0.6rem !important; }
+          /* Ultra-minimal spacing */
+          .mb-1, .my-1 { margin-bottom: 0.05rem !important; }
+          .mb-2, .my-2 { margin-bottom: 0.1rem !important; }
+          .mb-3, .my-3 { margin-bottom: 0.15rem !important; }
+          .mb-4, .my-4 { margin-bottom: 0.2rem !important; }
+          .mb-6, .my-6 { margin-bottom: 0.25rem !important; }
+          .mb-8, .my-8 { margin-bottom: 0.3rem !important; }
           
-          .mt-2, .my-2 { margin-top: 0.2rem !important; }
-          .mt-4, .my-4 { margin-top: 0.4rem !important; }
-          .mt-8, .my-8 { margin-top: 0.6rem !important; }
+          .mt-2, .my-2 { margin-top: 0.1rem !important; }
+          .mt-4, .my-4 { margin-top: 0.2rem !important; }
+          .mt-8, .my-8 { margin-top: 0.3rem !important; }
           
-          .p-3 { padding: 0.3rem !important; }
-          .p-4 { padding: 0.4rem !important; }
-          .p-6 { padding: 0.5rem !important; }
+          .p-3 { padding: 0.15rem !important; }
+          .p-4 { padding: 0.2rem !important; }
+          .p-6 { padding: 0.25rem !important; }
           
-          .px-6 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
-          .py-4 { padding-top: 0.3rem !important; padding-bottom: 0.3rem !important; }
-          .py-6 { padding-top: 0.4rem !important; padding-bottom: 0.4rem !important; }
-          .py-8 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+          .px-6 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+          .py-4 { padding-top: 0.15rem !important; padding-bottom: 0.15rem !important; }
+          .py-6 { padding-top: 0.2rem !important; padding-bottom: 0.2rem !important; }
+          .py-8 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
           
-          .pb-3 { padding-bottom: 0.3rem !important; }
-          .pb-6 { padding-bottom: 0.5rem !important; }
-          .pt-6 { padding-top: 0.5rem !important; }
+          .pb-3 { padding-bottom: 0.15rem !important; }
+          .pb-6 { padding-bottom: 0.25rem !important; }
+          .pt-6 { padding-top: 0.25rem !important; }
           
-          .gap-2 { gap: 0.2rem !important; }
-          .gap-3 { gap: 0.25rem !important; }
-          .gap-4 { gap: 0.3rem !important; }
-          .gap-6 { gap: 0.4rem !important; }
+          .gap-2 { gap: 0.1rem !important; }
+          .gap-3 { gap: 0.15rem !important; }
+          .gap-4 { gap: 0.2rem !important; }
+          .gap-6 { gap: 0.25rem !important; }
           
-          .space-y-2 > * + * { margin-top: 0.2rem !important; }
-          .space-y-3 > * + * { margin-top: 0.3rem !important; }
-          .space-y-4 > * + * { margin-top: 0.3rem !important; }
-          .space-y-6 > * + * { margin-top: 0.4rem !important; }
+          .space-y-2 > * + * { margin-top: 0.1rem !important; }
+          .space-y-3 > * + * { margin-top: 0.15rem !important; }
+          .space-y-4 > * + * { margin-top: 0.2rem !important; }
+          .space-y-6 > * + * { margin-top: 0.25rem !important; }
           
-          /* Compact text sizes */
-          .text-xs { font-size: 7pt !important; }
-          .text-sm { font-size: 8pt !important; }
-          .text-base { font-size: 9pt !important; }
-          .text-lg { font-size: 10pt !important; }
-          .text-xl { font-size: 11pt !important; }
-          .text-2xl { font-size: 12pt !important; }
-          .text-3xl { font-size: 14pt !important; }
-          .text-4xl { font-size: 16pt !important; }
+          /* Very compact text sizes */
+          .text-xs { font-size: 6pt !important; line-height: 1.2 !important; }
+          .text-sm { font-size: 6.5pt !important; line-height: 1.2 !important; }
+          .text-base { font-size: 7.5pt !important; line-height: 1.2 !important; }
+          .text-lg { font-size: 8.5pt !important; line-height: 1.2 !important; }
+          .text-xl { font-size: 9.5pt !important; line-height: 1.2 !important; }
+          .text-2xl { font-size: 10pt !important; line-height: 1.2 !important; }
+          .text-3xl { font-size: 11pt !important; line-height: 1.2 !important; }
+          .text-4xl { font-size: 13pt !important; line-height: 1.1 !important; }
           
-          /* Compact icons */
+          /* Very compact icons */
           .lucide, svg {
-            width: 10pt !important;
-            height: 10pt !important;
+            width: 8pt !important;
+            height: 8pt !important;
           }
           
-          /* Compact badges */
+          /* Very compact badges */
           .inline-flex.items-center {
-            padding: 0.05rem 0.3rem !important;
-            font-size: 7pt !important;
+            padding: 0.02rem 0.2rem !important;
+            font-size: 6pt !important;
+            line-height: 1.1 !important;
           }
           
-          /* Remove excessive borders and backgrounds for cleaner print */
+          /* Remove ALL borders and backgrounds */
+          .border,
+          .border-t,
+          .border-b,
+          .border-l,
+          .border-r {
+            border-color: #e5e7eb !important;
+            border-width: 0.5px !important;
+          }
+          
           .bg-muted\\/20,
-          .bg-accent\\/5 {
-            background-color: transparent !important;
-          }
-          
-          .border-l {
-            border-left-width: 1px !important;
+          .bg-accent\\/5,
+          .bg-primary\\/5 {
+            background-color: #fafafa !important;
           }
           
           .pl-6 {
-            padding-left: 0.5rem !important;
+            padding-left: 0.3rem !important;
           }
           
-          /* Print header compact */
+          /* Print header very compact */
           .print\\:mb-3 {
-            margin-bottom: 0.3rem !important;
+            margin-bottom: 0.15rem !important;
           }
           
           .print\\:text-2xl {
-            font-size: 14pt !important;
+            font-size: 11pt !important;
           }
           
           .print\\:text-sm {
-            font-size: 8pt !important;
+            font-size: 6.5pt !important;
           }
           
-          /* Ensure good contrast */
+          /* Compact card content */
+          .rounded-lg,
+          .rounded-md,
+          .rounded-sm {
+            border-radius: 0 !important;
+          }
+          
+          /* Reduce line heights everywhere */
           * {
+            line-height: 1.2 !important;
             color-adjust: exact;
             -webkit-print-color-adjust: exact;
+          }
+          
+          /* Make grids more compact */
+          .grid {
+            gap: 0.2rem !important;
+          }
+          
+          /* Compact flex gaps */
+          .flex {
+            gap: 0.15rem !important;
           }
         }
         
