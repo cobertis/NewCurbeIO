@@ -9765,7 +9765,7 @@ export default function PoliciesPage() {
                             <TableCell>
                               <div className="space-y-1">
                                 <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
-                                  {quote.selectedPlan ? quote.selectedPlan.issuer_name : (product?.name || quote.productType)}
+                                  {quote.selectedPlan ? (quote.selectedPlan.issuer?.name || quote.selectedPlan.issuer_name) : (product?.name || quote.productType)}
                                 </div>
                                 {quote.selectedPlan ? (
                                   <div className="space-y-0.5">
