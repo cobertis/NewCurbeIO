@@ -6403,7 +6403,36 @@ export default function PoliciesPage() {
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicate
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={async () => {
+                            if (!confirm(`Are you sure you want to cancel this policy? This action can be undone by changing the status later.`)) {
+                              return;
+                            }
+                            
+                            try {
+                              await apiRequest(`/api/policies/${viewingQuote.id}/status`, {
+                                method: "POST",
+                                body: JSON.stringify({ status: "canceled" }),
+                              });
+                              
+                              // Refresh policy details
+                              queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                              queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                              queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                              
+                              toast({
+                                title: "Policy Canceled",
+                                description: "The policy status has been changed to canceled.",
+                                duration: 3000,
+                              });
+                            } catch (error: any) {
+                              toast({
+                                title: "Error",
+                                description: error.message || "Failed to cancel policy",
+                                variant: "destructive",
+                                duration: 3000,
+                              });
+                            }
+                          }}>
                             <X className="h-4 w-4 mr-2" />
                             Cancel Policy
                           </DropdownMenuItem>
