@@ -4439,8 +4439,8 @@ export default function PoliciesPage() {
           queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
           
           toast({
-            title: "Quote Created Successfully!",
-            description: `Quote ID: ${quoteId}`,
+            title: "Policy Created Successfully!",
+            description: `Policy ID: ${quoteId}`,
           });
         } else {
           // Fallback: if we don't get the ID, show error
@@ -4492,8 +4492,8 @@ export default function PoliciesPage() {
           await queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
           
           toast({
-            title: "Quote Created",
-            description: "The quote was created successfully. You can find it in the quotes list.",
+            title: "Policy Created",
+            description: "The policy was created successfully. You can find it in the policies list.",
           });
         }
       } catch (error) {
@@ -4508,8 +4508,8 @@ export default function PoliciesPage() {
         queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
         
         toast({
-          title: "Quote Created",
-          description: "The quote was created but there was an issue navigating to it. Please check the quotes list.",
+          title: "Policy Created",
+          description: "The policy was created but there was an issue navigating to it. Please check the policies list.",
         });
       }
       
