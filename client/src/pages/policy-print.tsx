@@ -145,11 +145,11 @@ export default function PolicyPrintPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8 print:px-8 print:py-6">
+      <div className="max-w-7xl mx-auto px-6 py-8 print:px-4 print:py-2 print:max-w-none">
         {/* Print-only Company Header */}
-        <div className="print-only text-center mb-8 pb-6 border-b-2">
-          <h1 className="text-4xl font-bold mb-2">HEALTH INSURANCE POLICY</h1>
-          <p className="text-lg text-muted-foreground">Official Policy Summary</p>
+        <div className="print-only text-center mb-4 pb-3 border-b-2 print:mb-3">
+          <h1 className="text-3xl font-bold mb-1 print:text-2xl">HEALTH INSURANCE POLICY</h1>
+          <p className="text-base text-muted-foreground print:text-sm">Official Policy Summary</p>
         </div>
 
         {/* Enhanced Header with Client Info */}
@@ -452,25 +452,96 @@ export default function PolicyPrintPage() {
       {/* Print Styles */}
       <style>{`
         @media print {
+          /* Hide screen-only elements */
           .no-print {
             display: none !important;
           }
+          
+          /* Show print-only elements */
           .print-only {
             display: block !important;
           }
+          
+          /* Exact color reproduction */
           body {
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
+          
+          /* Page setup for US Letter (8.5" x 11") */
           @page {
-            margin: 0.75in;
-            size: letter;
+            size: letter portrait;
+            margin: 0.5in 0.75in;
           }
+          
+          /* Prevent page breaks inside elements */
           .print\\:break-inside-avoid {
             break-inside: avoid;
             page-break-inside: avoid;
           }
+          
+          /* Optimize spacing for print */
+          .print\\:px-8 {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+          }
+          
+          .print\\:py-6 {
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+          }
+          
+          /* Ensure shadows don't print */
+          .print\\:shadow-none {
+            box-shadow: none !important;
+          }
+          
+          /* Font size optimization for print */
+          html {
+            font-size: 11pt;
+          }
+          
+          h1 {
+            font-size: 20pt;
+          }
+          
+          h2 {
+            font-size: 16pt;
+          }
+          
+          h3 {
+            font-size: 14pt;
+          }
+          
+          h4 {
+            font-size: 12pt;
+          }
+          
+          /* Tighter spacing for print */
+          .mb-6, .my-6 {
+            margin-bottom: 1rem !important;
+          }
+          
+          .mb-8, .my-8 {
+            margin-bottom: 1.25rem !important;
+          }
+          
+          .p-6 {
+            padding: 1rem !important;
+          }
+          
+          .gap-6 {
+            gap: 0.75rem !important;
+          }
+          
+          /* Ensure good contrast */
+          * {
+            color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
         }
+        
+        /* Hide print-only on screen */
         .print-only {
           display: none;
         }
