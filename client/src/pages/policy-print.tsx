@@ -10,10 +10,15 @@ export default function PolicyPrintPage() {
   const [, params] = useRoute("/policies/:id/print");
   const policyId = params?.id;
 
-  const { data: policy, isLoading } = useQuery<any>({
+  const { data, isLoading } = useQuery<any>({
     queryKey: [`/api/policies/${policyId}/detail`],
     enabled: !!policyId,
   });
+  
+  // Extract data from response structure
+  const policy = data?.policy;
+  const members = data?.members || [];
+  const selectedPlan = policy?.selectedPlan;
 
   const formatDateForDisplay = (dateString: string, formatStr = "MM/dd/yyyy") => {
     if (!dateString) return "";
@@ -63,31 +68,45 @@ export default function PolicyPrintPage() {
     );
   }
 
-  const policyYear = policy.effectiveDate ? new Date(policy.effectiveDate).getFullYear() : new Date().getFullYear();
-  const plan = policy.selectedPlan;
+  const policyYear = policy?.effectiveDate ? new Date(policy.effectiveDate).getFullYear() : new Date().getFullYear();
+  const plan = selectedPlan;
 
   // Extract plan details
   const individualDeductible = plan?.deductibles?.find((d: any) => !d.family);
   const individualMoop = plan?.moops?.find((m: any) => !m.family);
   
-  // Collect all members
+  // Collect all members from the new backend structure
   const allMembers = [
+    // Primary client from policy root
     {
       type: 'Primary',
-      firstName: policy.clientFirstName,
-      middleName: policy.clientMiddleName,
-      lastName: policy.clientLastName,
-      secondLastName: policy.clientSecondLastName,
-      dateOfBirth: policy.clientDateOfBirth,
-      gender: policy.clientGender,
-      ssn: policy.clientSsn,
-      phone: policy.clientPhone,
-      email: policy.clientEmail,
-      isApplicant: policy.clientIsApplicant,
-      isPrimaryDependent: policy.isPrimaryDependent,
+      firstName: policy?.clientFirstName,
+      middleName: policy?.clientMiddleName,
+      lastName: policy?.clientLastName,
+      secondLastName: policy?.clientSecondLastName,
+      dateOfBirth: policy?.clientDateOfBirth,
+      gender: policy?.clientGender,
+      ssn: policy?.clientSsn,
+      phone: policy?.clientPhone,
+      email: policy?.clientEmail,
+      isApplicant: policy?.clientIsApplicant,
+      isPrimaryDependent: policy?.isPrimaryDependent,
     },
-    ...(policy.spouses || []).map((s: any) => ({ ...s, type: 'Spouse' })),
-    ...(policy.dependents || []).map((d: any) => ({ ...d, type: d.relation || 'Dependent' })),
+    // Additional members from members array
+    ...members.map((m: any) => ({
+      type: m.member.relation === 'spouse' ? 'Spouse' : (m.member.relation === 'child' ? 'Child' : 'Dependent'),
+      firstName: m.member.firstName,
+      middleName: m.member.middleName,
+      lastName: m.member.lastName,
+      secondLastName: m.member.secondLastName,
+      dateOfBirth: m.member.dateOfBirth,
+      gender: m.member.gender,
+      ssn: m.member.ssn,
+      phone: m.member.phone,
+      email: m.member.email,
+      isApplicant: m.member.isApplicant,
+      isPrimaryDependent: m.member.isPrimaryDependent,
+    })),
   ];
 
   const handlePrint = () => {
