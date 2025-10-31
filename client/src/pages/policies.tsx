@@ -6372,7 +6372,34 @@ export default function PoliciesPage() {
                             <FileText className="h-4 w-4 mr-2" />
                             Print Policy
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={async () => {
+                            try {
+                              const response = await apiRequest(`/api/policies/${viewingQuote.id}/duplicate`, {
+                                method: "POST",
+                              });
+                              const data = await response.json();
+                              
+                              toast({
+                                title: "Policy Duplicated",
+                                description: data.message || `New policy created with ID: ${data.policy.id}`,
+                                duration: 3000,
+                              });
+                              
+                              // Refresh policies list
+                              queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                              queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                              
+                              // Navigate to the new policy
+                              setLocation(`/policies/${data.policy.id}`);
+                            } catch (error: any) {
+                              toast({
+                                title: "Duplication Failed",
+                                description: error.message || "Failed to duplicate policy",
+                                variant: "destructive",
+                                duration: 3000,
+                              });
+                            }
+                          }}>
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicate
                           </DropdownMenuItem>

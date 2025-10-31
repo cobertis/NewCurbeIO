@@ -12314,6 +12314,212 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Duplicate policy - creates a complete copy with new ID
+  app.post("/api/policies/:id/duplicate", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // 1. Get complete policy detail including all related data
+      const policyDetail = await storage.getPolicyDetail(id, currentUser.companyId!);
+      
+      // Verify policy exists
+      if (!policyDetail || !policyDetail.policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin can duplicate any policy, others only their company's policies
+      if (currentUser.role !== "superadmin" && policyDetail.policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to duplicate this policy" });
+      }
+      
+      // 2. Generate a new unique policy ID
+      const { generateShortId } = await import("./id-generator");
+      let newPolicyId = generateShortId();
+      
+      // Ensure the ID is unique (check for collisions)
+      let existingPolicy = await storage.getPolicy(newPolicyId);
+      while (existingPolicy) {
+        newPolicyId = generateShortId();
+        existingPolicy = await storage.getPolicy(newPolicyId);
+      }
+      
+      console.log(`[DUPLICATE POLICY] Duplicating policy ${id} to new policy ${newPolicyId}`);
+      
+      // 3. Create the new policy with copied data (excluding ID and timestamps)
+      const originalPolicy = policyDetail.policy;
+      const newPolicyData = {
+        id: newPolicyId,
+        companyId: originalPolicy.companyId,
+        createdBy: currentUser.id, // Set creator to current user
+        agentId: currentUser.id, // Assign to current user as agent
+        effectiveDate: originalPolicy.effectiveDate,
+        productType: originalPolicy.productType,
+        clientFirstName: originalPolicy.clientFirstName,
+        clientMiddleName: originalPolicy.clientMiddleName,
+        clientLastName: originalPolicy.clientLastName,
+        clientSecondLastName: originalPolicy.clientSecondLastName,
+        clientEmail: originalPolicy.clientEmail,
+        clientPhone: originalPolicy.clientPhone,
+        clientDateOfBirth: originalPolicy.clientDateOfBirth,
+        clientGender: originalPolicy.clientGender,
+        clientIsApplicant: originalPolicy.clientIsApplicant,
+        clientTobaccoUser: originalPolicy.clientTobaccoUser,
+        clientPregnant: originalPolicy.clientPregnant,
+        clientSsn: originalPolicy.clientSsn,
+        isPrimaryDependent: originalPolicy.isPrimaryDependent,
+        physical_street: originalPolicy.physical_street,
+        physical_city: originalPolicy.physical_city,
+        physical_state: originalPolicy.physical_state,
+        physical_postal_code: originalPolicy.physical_postal_code,
+        physical_county: originalPolicy.physical_county,
+        mailing_street: originalPolicy.mailing_street,
+        mailing_city: originalPolicy.mailing_city,
+        mailing_state: originalPolicy.mailing_state,
+        mailing_postal_code: originalPolicy.mailing_postal_code,
+        mailing_county: originalPolicy.mailing_county,
+        selectedPlan: originalPolicy.selectedPlan,
+        internalCode: originalPolicy.internalCode,
+        status: 'new', // Reset status to 'new' for duplicated policy
+        documentsStatus: originalPolicy.documentsStatus,
+        paymentStatus: originalPolicy.paymentStatus,
+      };
+      
+      // Insert policy directly into database with our custom ID
+      const { db } = await import("./db");
+      const { policies } = await import("@shared/schema");
+      const [newPolicy] = await db.insert(policies).values(newPolicyData as any).returning();
+      console.log(`[DUPLICATE POLICY] Created new policy ${newPolicyId}`);
+      
+      // 4. Copy all members (includes applicant, spouses, and dependents)
+      if (policyDetail.members && policyDetail.members.length > 0) {
+        for (const memberDetail of policyDetail.members) {
+          const member = memberDetail.member;
+          
+          // Create the member
+          const newMember = await storage.createPolicyMember({
+            policyId: newPolicyId,
+            companyId: originalPolicy.companyId,
+            role: member.role,
+            firstName: member.firstName,
+            middleName: member.middleName,
+            lastName: member.lastName,
+            secondLastName: member.secondLastName,
+            dateOfBirth: member.dateOfBirth,
+            gender: member.gender,
+            ssn: member.ssn,
+            isApplicant: member.isApplicant,
+            isPrimaryDependent: member.isPrimaryDependent,
+            tobaccoUser: member.tobaccoUser,
+            pregnant: member.pregnant,
+            relation: member.relation,
+          });
+          
+          // Copy income data if exists
+          if (memberDetail.income) {
+            await storage.createOrUpdatePolicyMemberIncome({
+              memberId: newMember.id,
+              companyId: originalPolicy.companyId,
+              annualIncome: memberDetail.income.annualIncome,
+              incomeFrequency: memberDetail.income.incomeFrequency,
+              employmentStatus: memberDetail.income.employmentStatus,
+              employerName: memberDetail.income.employerName,
+              totalAnnualIncome: memberDetail.income.totalAnnualIncome,
+            });
+          }
+          
+          // Copy immigration data if exists
+          if (memberDetail.immigration) {
+            await storage.createOrUpdatePolicyMemberImmigration({
+              memberId: newMember.id,
+              companyId: originalPolicy.companyId,
+              immigrationStatus: memberDetail.immigration.immigrationStatus,
+              alienNumber: memberDetail.immigration.alienNumber,
+              i94Number: memberDetail.immigration.i94Number,
+              passportNumber: memberDetail.immigration.passportNumber,
+              passportCountry: memberDetail.immigration.passportCountry,
+              visaNumber: memberDetail.immigration.visaNumber,
+              visaType: memberDetail.immigration.visaType,
+              sevisId: memberDetail.immigration.sevisId,
+              naturalizationNumber: memberDetail.immigration.naturalizationNumber,
+              citizenshipNumber: memberDetail.immigration.citizenshipNumber,
+              countryOfBirth: memberDetail.immigration.countryOfBirth,
+              entryDate: memberDetail.immigration.entryDate,
+              expirationDate: memberDetail.immigration.expirationDate,
+            });
+          }
+          
+          // Note: Member documents are NOT copied as they contain file uploads
+        }
+        console.log(`[DUPLICATE POLICY] Copied ${policyDetail.members.length} member(s)`);
+      }
+      
+      // 5. Get and copy all notes (but mark them as copied)
+      const notes = await storage.getPolicyNotes(id, currentUser.companyId!);
+      if (notes && notes.length > 0) {
+        for (const note of notes) {
+          await storage.createPolicyNote({
+            policyId: newPolicyId,
+            companyId: originalPolicy.companyId,
+            authorId: currentUser.id,
+            category: note.category,
+            content: `[Copied from Policy ${id}] ${note.content}`,
+            memberId: note.memberId,
+            imageUrl: note.imageUrl,
+          });
+        }
+        console.log(`[DUPLICATE POLICY] Copied ${notes.length} note(s)`);
+      }
+      
+      // 6. Get and copy all reminders
+      const reminders = await storage.listPolicyReminders(id, currentUser.companyId!);
+      if (reminders && reminders.length > 0) {
+        for (const reminder of reminders) {
+          await storage.createPolicyReminder({
+            policyId: newPolicyId,
+            companyId: originalPolicy.companyId,
+            createdBy: currentUser.id,
+            assignedTo: reminder.assignedTo,
+            dueDate: reminder.dueDate,
+            dueTime: reminder.dueTime,
+            title: reminder.title,
+            description: reminder.description,
+            priority: reminder.priority,
+            status: 'pending', // Reset to pending for duplicated policy
+            category: reminder.category,
+          });
+        }
+        console.log(`[DUPLICATE POLICY] Copied ${reminders.length} reminder(s)`);
+      }
+      
+      // Note: Documents and consents are NOT copied as they contain file uploads
+      // and digital signatures that should be unique per policy
+      
+      // 7. Log activity
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "policy",
+        entityId: newPolicyId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          createdBy: currentUser.email,
+          duplicatedFrom: id,
+        },
+      });
+      
+      console.log(`[DUPLICATE POLICY] Successfully duplicated policy ${id} to ${newPolicyId}`);
+      
+      res.json({ 
+        policy: newPolicy,
+        message: `Policy duplicated successfully. New Policy ID: ${newPolicyId}`,
+      });
+    } catch (error: any) {
+      console.error("Error duplicating policy:", error);
+      res.status(500).json({ message: error.message || "Failed to duplicate policy" });
+    }
+  });
+  
   // Update policy status
   app.post("/api/policies/:id/status", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
