@@ -29,11 +29,10 @@ export const documentsStatusOptions = [
 
 export const paymentStatusOptions = [
   { value: "pending", label: "Pending" },
-  { value: "unpaid", label: "Unpaid" },
-  { value: "auto_pay", label: "Auto Pay" },
+  { value: "auto_pay", label: "Auto pay" },
   { value: "failed", label: "Failed" },
   { value: "paid", label: "Paid" },
-  { value: "not_applicable", label: "Not Applicable ($0)" },
+  { value: "not_applicable", label: "Not applicable ($0)" },
 ];
 
 export const statusFormSchema = z.object({
