@@ -3344,6 +3344,22 @@ function formatPaymentStatusDisplay(status: string): string {
   return formatStatusDisplay(status);
 }
 
+// Carrier lists by product type
+const CARRIERS_BY_TYPE: Record<string, string[]> = {
+  life: ["A-Care", "A-MyCall", "Aflac", "AIG", "Allstate", "American Amicable", "American International Group", "American Life Insurance Company", "American National", "Americo", "Ameritas", "Anico", "Assure", "Assurity", "Athene", "Atlantic Coast", "Banner", "Best Meridian Insurance (BMI)", "Columbian Financial Group", "Ethos Life", "Fidelity", "Foresters", "Global Life", "Great Western", "IHC Group", "John Hancock", "Lincoln Heritage", "Modern Woodmen", "Mutual of Omaha", "Mutual Trust", "National Life", "Nationwide", "New York", "Occidental", "Old American", "Ole", "Pan-American Life", "Prudential", "Quility", "Royal Neighbors of America", "Sagicor", "SBLI", "Security National", "Senior", "Sentinel Security", "Simply Better", "The Chesapeake", "Transamerica", "Triple-S", "United Health One", "United Healthcare", "Vumi"],
+  private: ["A-MyCall", "Allstate", "Americas Choice", "Enroll Prime", "GTL", "Kanguro Insurance", "MultiPlan", "National General", "New Era", "Orange Travel", "Pivot Health", "SunCare", "SunHealth", "United Healthcare", "VSP Global", "VSP Vision", "Vumi"],
+  dental: ["1Dental Broker", "A-MyCall", "Aetna", "Allstate", "Ameritas", "Anthem", "Best Life and Health Insurance Company", "BestOne", "BlueCare", "Careington", "Cigna", "Delta Dental", "Florida Blue", "Humana", "Hunity", "Managed DentalGuard", "Manhattan Life", "National Care Dental", "Solstice", "SunHealth", "TruAssure Insurance", "United Health One"],
+  vision: ["Allstate", "Ameritas", "Cigna", "Humana", "Solstice", "United Health", "VSP"],
+  supplemental: ["Allstate", "Alpha Dental Programs", "Assurity", "Cigna", "Combined", "Delta Dental", "DentaQuest USA", "Family Heritage", "IHC Group", "LifeRaft", "Renaissance Life & Health", "Rocky Mountain", "SureBridge", "Surebridge", "The Guardian Life Insurance", "United Health One", "United Healthcare", "Usable Life", "Washington National"],
+  annuities: ["Ameritas", "Atlantic Coast Life (ACLICO)", "National Life", "Silac"],
+  final_expense: ["Aflac", "American International Group", "Assure for Life", "Atlantic Coast", "Cica", "Division Funeral Plan", "Ethos Life", "Foresters", "Global Life", "Homesteaders", "Infinity Protections", "Liberty Bankers", "Lincoln Heritage", "Manhattan Life", "Mutual of Omaha", "Security National", "Senior Life", "Serenity", "Transamerica", "Triple-S", "Wellabe"],
+  travel: ["Assurance Travel Assist", "BAC Assist", "Continental Assist", "GeoBlue Travel", "International Medical Group (IMG)", "Orange Travel Assist", "Runaway", "Trawick Travel Insurance", "Vista Travel", "World Trips"]
+};
+
+function getCarriersByProductType(productType: string): string[] {
+  return CARRIERS_BY_TYPE[productType] || [];
+}
+
 export default function QuotesPage() {
   const [location, setLocation] = useLocation();
   const [, params] = useRoute("/quotes/:id");
@@ -3537,6 +3553,16 @@ export default function QuotesPage() {
       });
     }
   };
+
+  // Clear carrier when product type changes
+  useEffect(() => {
+    if (manualPlanData.productType) {
+      const validCarriers = getCarriersByProductType(manualPlanData.productType);
+      if (!validCarriers.includes(manualPlanData.carrier)) {
+        setManualPlanData(prev => ({ ...prev, carrier: '' }));
+      }
+    }
+  }, [manualPlanData.productType, manualPlanData.carrier]);
 
   // Fetch current user
   const { data: userData } = useQuery<{ user: UserType }>({
@@ -9377,27 +9403,34 @@ export default function QuotesPage() {
                       <SelectValue placeholder="Select product type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="aca">Health Insurance (ACA)</SelectItem>
-                      <SelectItem value="supplemental">Supplemental</SelectItem>
+                      <SelectItem value="life">Life Insurance</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
                       <SelectItem value="dental">Dental</SelectItem>
                       <SelectItem value="vision">Vision</SelectItem>
-                      <SelectItem value="life">Life Insurance</SelectItem>
-                      <SelectItem value="medicare">Medicare</SelectItem>
-                      <SelectItem value="medicaid">Medicaid</SelectItem>
+                      <SelectItem value="supplemental">Supplemental</SelectItem>
+                      <SelectItem value="annuities">Annuities</SelectItem>
+                      <SelectItem value="final_expense">Final Expense</SelectItem>
+                      <SelectItem value="travel">Travel</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="carrier"
+                  <Select
                     value={manualPlanData.carrier}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, carrier: e.target.value })}
-                    placeholder="e.g., United Healthcare"
-                    className="mt-1"
-                    data-testid="input-carrier"
-                  />
+                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, carrier: value })}
+                    disabled={!manualPlanData.productType}
+                  >
+                    <SelectTrigger id="carrier" className="mt-1" data-testid="select-carrier">
+                      <SelectValue placeholder={manualPlanData.productType ? "Select carrier" : "Select product type first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getCarriersByProductType(manualPlanData.productType).map((carrier) => (
+                        <SelectItem key={carrier} value={carrier}>{carrier}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
