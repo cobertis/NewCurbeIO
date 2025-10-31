@@ -2492,7 +2492,7 @@ export const policyConsentDocuments = pgTable("policy_consent_documents", {
   deliveryChannel: text("deliveryChannel"),
   deliveryTarget: text("deliveryTarget"),
   
-  token: varchar("token", { length: 8 }).notNull().unique(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
   
   signedByName: text("signedByName"),
   signedByEmail: text("signedByEmail"),
