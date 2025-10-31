@@ -9803,28 +9803,43 @@ export default function PoliciesPage() {
                             </TableCell>
                             <TableCell className="text-sm">
                               <div className="space-y-1.5">
-                                <StatusBadge
-                                  type="status"
-                                  value={quote.status}
-                                  policyId={quote.id}
-                                  size="sm"
+                                <StatusBadgeEditor
+                                  type="policy"
+                                  statusType="status"
+                                  currentValue={quote.status}
+                                  id={quote.id}
+                                  allStatuses={{
+                                    status: quote.status,
+                                    documentsStatus: quote.documentsStatus,
+                                    paymentStatus: quote.paymentStatus,
+                                  }}
                                 />
                                 <div className="text-xs text-muted-foreground">
                                   <span className="font-medium">Documents:</span>{' '}
-                                  <StatusBadge
-                                    type="documentsStatus"
-                                    value={quote.documentsStatus}
-                                    policyId={quote.id}
-                                    size="xs"
+                                  <StatusBadgeEditor
+                                    type="policy"
+                                    statusType="documentsStatus"
+                                    currentValue={quote.documentsStatus}
+                                    id={quote.id}
+                                    allStatuses={{
+                                      status: quote.status,
+                                      documentsStatus: quote.documentsStatus,
+                                      paymentStatus: quote.paymentStatus,
+                                    }}
                                   />
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   <span className="font-medium">Payments:</span>{' '}
-                                  <StatusBadge
-                                    type="paymentStatus"
-                                    value={quote.paymentStatus}
-                                    policyId={quote.id}
-                                    size="xs"
+                                  <StatusBadgeEditor
+                                    type="policy"
+                                    statusType="paymentStatus"
+                                    currentValue={quote.paymentStatus}
+                                    id={quote.id}
+                                    allStatuses={{
+                                      status: quote.status,
+                                      documentsStatus: quote.documentsStatus,
+                                      paymentStatus: quote.paymentStatus,
+                                    }}
                                   />
                                 </div>
                               </div>
