@@ -3399,6 +3399,7 @@ export default function QuotesPage() {
   const [archiveQuoteDialogOpen, setArchiveQuoteDialogOpen] = useState(false);
   const [duplicateQuoteDialogOpen, setDuplicateQuoteDialogOpen] = useState(false);
   const [blockQuoteDialogOpen, setBlockQuoteDialogOpen] = useState(false);
+  const [removePlanDialogOpen, setRemovePlanDialogOpen] = useState(false);
   
   // Quote information state (for editing plan metadata)
   const [quoteInfo, setQuoteInfo] = useState({
@@ -7100,26 +7101,7 @@ export default function QuotesPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={async () => {
-                            try {
-                              await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
-                                selectedPlan: null
-                              });
-                              queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
-                              toast({
-                                title: "Plan Removed",
-                                description: "The selected plan has been removed from this quote.",
-                                duration: 3000,
-                              });
-                            } catch (error: any) {
-                              toast({
-                                title: "Error",
-                                description: error.message || "Failed to remove plan.",
-                                variant: "destructive",
-                                duration: 3000,
-                              });
-                            }
-                          }}
+                          onClick={() => setRemovePlanDialogOpen(true)}
                           data-testid="button-remove-plan"
                         >
                           <X className="h-4 w-4 mr-2" />
@@ -11513,6 +11495,49 @@ export default function QuotesPage() {
             >
               <Lock className="h-4 w-4 mr-2" />
               {blockQuoteMutation.isPending ? 'Processing...' : 'Yes, block it!'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Plan Confirmation Dialog */}
+      <AlertDialog open={removePlanDialogOpen} onOpenChange={setRemovePlanDialogOpen}>
+        <AlertDialogContent data-testid="dialog-remove-plan">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove selected plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the currently selected plan from this quote. You can add a new plan afterwards.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-remove-plan">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try {
+                  await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
+                    selectedPlan: null
+                  });
+                  queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
+                  toast({
+                    title: "Plan Removed",
+                    description: "The selected plan has been removed from this quote.",
+                    duration: 3000,
+                  });
+                  setRemovePlanDialogOpen(false);
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to remove plan.",
+                    variant: "destructive",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-remove-plan"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Remove Plan
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

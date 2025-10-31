@@ -3466,6 +3466,7 @@ export default function PoliciesPage() {
   const [archivePolicyDialogOpen, setArchivePolicyDialogOpen] = useState(false);
   const [duplicatePolicyDialogOpen, setDuplicatePolicyDialogOpen] = useState(false);
   const [blockPolicyDialogOpen, setBlockPolicyDialogOpen] = useState(false);
+  const [removePlanDialogOpen, setRemovePlanDialogOpen] = useState(false);
   
   // Policy Information fields (local state for editing)
   const [policyInfo, setPolicyInfo] = useState({
@@ -7030,26 +7031,7 @@ export default function PoliciesPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={async () => {
-                            try {
-                              await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
-                                selectedPlan: null
-                              });
-                              queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                              toast({
-                                title: "Plan Removed",
-                                description: "The selected plan has been removed from this policy.",
-                                duration: 3000,
-                              });
-                            } catch (error: any) {
-                              toast({
-                                title: "Error",
-                                description: error.message || "Failed to remove plan.",
-                                variant: "destructive",
-                                duration: 3000,
-                              });
-                            }
-                          }}
+                          onClick={() => setRemovePlanDialogOpen(true)}
                           data-testid="button-remove-plan"
                         >
                           <X className="h-4 w-4 mr-2" />
@@ -9550,6 +9532,49 @@ export default function PoliciesPage() {
                   >
                     <Lock className="h-4 w-4 mr-2" />
                     Yes, block it!
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Remove Plan Confirmation Dialog */}
+            <AlertDialog open={removePlanDialogOpen} onOpenChange={setRemovePlanDialogOpen}>
+              <AlertDialogContent data-testid="dialog-remove-plan">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove selected plan?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove the currently selected plan from this policy. You can add a new plan afterwards.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-remove-plan">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
+                          selectedPlan: null
+                        });
+                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                        toast({
+                          title: "Plan Removed",
+                          description: "The selected plan has been removed from this policy.",
+                          duration: 3000,
+                        });
+                        setRemovePlanDialogOpen(false);
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to remove plan.",
+                          variant: "destructive",
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-remove-plan"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Remove Plan
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
