@@ -6533,10 +6533,7 @@ export default function QuotesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem 
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              setTimeout(() => setBlockQuoteDialogOpen(true), 100);
-                            }}
+                            onClick={() => setBlockQuoteDialogOpen(true)}
                           >
                             <Lock className="h-4 w-4 mr-2" />
                             {viewingQuote.isBlocked ? 'Unblock Quote' : 'Block Quote'}
@@ -6555,24 +6552,15 @@ export default function QuotesPage() {
                             <FileText className="h-4 w-4 mr-2" />
                             Print Quote
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={(e) => {
-                            e.preventDefault();
-                            setTimeout(() => setDuplicateQuoteDialogOpen(true), 100);
-                          }}>
+                          <DropdownMenuItem onClick={() => setDuplicateQuoteDialogOpen(true)}>
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicate Quote
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={(e) => {
-                            e.preventDefault();
-                            setTimeout(() => setCancelQuoteDialogOpen(true), 100);
-                          }}>
+                          <DropdownMenuItem onClick={() => setCancelQuoteDialogOpen(true)}>
                             <X className="h-4 w-4 mr-2" />
                             Cancel Quote
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={(e) => {
-                            e.preventDefault();
-                            setTimeout(() => setArchiveQuoteDialogOpen(true), 100);
-                          }}>
+                          <DropdownMenuItem onClick={() => setArchiveQuoteDialogOpen(true)}>
                             <Archive className="h-4 w-4 mr-2" />
                             Archive Quote
                           </DropdownMenuItem>

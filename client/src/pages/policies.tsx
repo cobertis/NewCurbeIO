@@ -6479,10 +6479,7 @@ export default function PoliciesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem 
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              setTimeout(() => setBlockPolicyDialogOpen(true), 100);
-                            }}
+                            onClick={() => setBlockPolicyDialogOpen(true)}
                           >
                             <Lock className="h-4 w-4 mr-2" />
                             {viewingQuote.isBlocked ? 'Unblock Policy' : 'Block Policy'}
@@ -6501,24 +6498,15 @@ export default function PoliciesPage() {
                             <FileText className="h-4 w-4 mr-2" />
                             Print Policy
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={(e) => {
-                            e.preventDefault();
-                            setTimeout(() => setDuplicatePolicyDialogOpen(true), 100);
-                          }}>
+                          <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicate
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={(e) => {
-                            e.preventDefault();
-                            setTimeout(() => setCancelPolicyDialogOpen(true), 100);
-                          }}>
+                          <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)}>
                             <X className="h-4 w-4 mr-2" />
                             Cancel Policy
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={(e) => {
-                            e.preventDefault();
-                            setTimeout(() => setArchivePolicyDialogOpen(true), 100);
-                          }}>
+                          <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
                             <Archive className="h-4 w-4 mr-2" />
                             Archive Policy
                           </DropdownMenuItem>
