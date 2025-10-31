@@ -50,7 +50,7 @@ export default function PolicyPrintPage() {
 
   if (isLoading || !policy) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
           <p className="text-lg text-muted-foreground">Loading policy information...</p>
@@ -93,48 +93,41 @@ export default function PolicyPrintPage() {
   const genericDrugsCost = getBenefitCost('Generic Drugs');
   const mentalHealthCost = getBenefitCost('Mental');
   
-  // Collect all members from the new backend structure
-  const allMembers = [
-    // Primary client from policy root
-    {
-      type: 'Primary',
-      firstName: policy?.clientFirstName,
-      middleName: policy?.clientMiddleName,
-      lastName: policy?.clientLastName,
-      secondLastName: policy?.clientSecondLastName,
-      dateOfBirth: policy?.clientDateOfBirth,
-      gender: policy?.clientGender,
-      ssn: policy?.clientSsn,
-      phone: policy?.clientPhone,
-      email: policy?.clientEmail,
-      isApplicant: policy?.clientIsApplicant,
-      isPrimaryDependent: policy?.isPrimaryDependent,
-    },
-    // Additional members from members array
-    ...members.map((m: any) => ({
-      type: m.member.relation === 'spouse' ? 'Spouse' : (m.member.relation === 'child' ? 'Child' : 'Dependent'),
-      firstName: m.member.firstName,
-      middleName: m.member.middleName,
-      lastName: m.member.lastName,
-      secondLastName: m.member.secondLastName,
-      dateOfBirth: m.member.dateOfBirth,
-      gender: m.member.gender,
-      ssn: m.member.ssn,
-      phone: m.member.phone,
-      email: m.member.email,
-      isApplicant: m.member.isApplicant,
-      isPrimaryDependent: m.member.isPrimaryDependent,
-    })),
-  ];
+  // Map relation to display type
+  const getRelationType = (relation: string, isApplicant: boolean) => {
+    if (relation === 'client' || relation === 'primary') return 'Primary';
+    if (relation === 'spouse') return 'Spouse';
+    if (relation === 'child') return 'Child';
+    if (relation === 'dependent') return 'Dependent';
+    if (relation === 'parent') return 'Parent';
+    if (relation === 'sibling') return 'Sibling';
+    return 'Dependent'; // fallback
+  };
+  
+  // Use ONLY members from API, no manual duplication
+  const allMembers = members.map((m: any) => ({
+    type: getRelationType(m.member.relation, m.member.isApplicant),
+    firstName: m.member.firstName,
+    middleName: m.member.middleName,
+    lastName: m.member.lastName,
+    secondLastName: m.member.secondLastName,
+    dateOfBirth: m.member.dateOfBirth,
+    gender: m.member.gender,
+    ssn: m.member.ssn,
+    phone: m.member.phone,
+    email: m.member.email,
+    isApplicant: m.member.isApplicant,
+    isPrimaryDependent: m.member.isPrimaryDependent,
+  }));
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white print:bg-white">
       {/* Screen-only header with print button */}
-      <div className="no-print sticky top-0 z-10 bg-background border-b shadow-sm">
+      <div className="no-print sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Policy Summary - Print View</h1>
           <Button onClick={handlePrint} size="lg" data-testid="button-print-page">
@@ -147,19 +140,19 @@ export default function PolicyPrintPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8 print:px-4 print:py-2 print:max-w-none">
         {/* Print-only Company Header */}
-        <div className="print-only text-center mb-4 pb-3 border-b-2 print:mb-3">
-          <h1 className="text-3xl font-bold mb-1 print:text-2xl">HEALTH INSURANCE POLICY</h1>
-          <p className="text-base text-muted-foreground print:text-sm">Official Policy Summary</p>
+        <div className="print-only text-center mb-4 pb-3 border-b-2 border-neutral-300 print:mb-3">
+          <h1 className="text-3xl font-bold mb-1 text-neutral-900 print:text-2xl">HEALTH INSURANCE POLICY</h1>
+          <p className="text-base text-neutral-600 print:text-sm">Official Policy Summary</p>
         </div>
 
         {/* Enhanced Header with Client Info */}
-        <Card className="mb-6 bg-muted/20 print:shadow-none">
+        <Card className="mb-6 bg-white border-neutral-200 print:shadow-none print:bg-white">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row justify-between items-start gap-6">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 bg-primary/10 rounded-lg print:bg-muted">
-                    <Shield className="h-8 w-8 text-primary" />
+                  <div className="p-3 bg-neutral-100 rounded-lg print:bg-neutral-50">
+                    <Shield className="h-8 w-8 text-neutral-900" />
                   </div>
                   <div>
                     <h2 className="text-3xl font-bold mb-1">
@@ -237,7 +230,7 @@ export default function PolicyPrintPage() {
                 </div>
                 
                 {/* Policy Year - IRS Style */}
-                <div className="inline-flex items-center justify-center border-2 border-foreground px-6 py-2 bg-background rounded-sm mt-2">
+                <div className="inline-flex items-center justify-center border-2 border-neutral-900 px-6 py-2 bg-white rounded-sm mt-2">
                   <span className="text-3xl font-bold tracking-wide" style={{ fontFamily: 'monospace' }}>
                     {policyYear}
                   </span>
@@ -249,12 +242,12 @@ export default function PolicyPrintPage() {
 
         {/* Selected Plan Card */}
         {plan && (
-          <Card className="mb-6 overflow-hidden print:shadow-none print:break-inside-avoid">
+          <Card className="mb-6 overflow-hidden bg-white border-neutral-200 print:shadow-none print:break-inside-avoid print:bg-white">
             {/* Header with Logo */}
-            <div className="flex items-start justify-between gap-4 p-6 border-b bg-muted/20">
+            <div className="flex items-start justify-between gap-4 p-6 border-b border-neutral-200 bg-neutral-50">
               <div className="flex items-center gap-3 flex-1">
-                <div className="h-12 w-12 rounded-lg bg-background border flex items-center justify-center flex-shrink-0">
-                  <Shield className="h-7 w-7 text-primary" />
+                <div className="h-12 w-12 rounded-lg bg-white border border-neutral-200 flex items-center justify-center flex-shrink-0">
+                  <Shield className="h-7 w-7 text-neutral-900" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-lg mb-1">{plan.issuer?.name || 'Insurance Provider'}</h3>
@@ -308,8 +301,8 @@ export default function PolicyPrintPage() {
               {/* Cost Information Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 {/* Premium */}
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <p className="text-sm font-semibold mb-2 text-muted-foreground">Monthly Premium</p>
+                <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-lg">
+                  <p className="text-sm font-semibold mb-2 text-neutral-600">Monthly Premium</p>
                   <p className="text-4xl font-bold mb-1">
                     {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
                       ? formatCurrency(plan.premium_w_credit)
@@ -328,8 +321,8 @@ export default function PolicyPrintPage() {
                 </div>
 
                 {/* Deductible */}
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <p className="text-sm font-semibold mb-2 text-muted-foreground">Annual Deductible</p>
+                <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-lg">
+                  <p className="text-sm font-semibold mb-2 text-neutral-600">Annual Deductible</p>
                   <p className="text-4xl font-bold mb-1">
                     {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
                   </p>
@@ -342,8 +335,8 @@ export default function PolicyPrintPage() {
                 </div>
 
                 {/* Out-of-pocket max */}
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <p className="text-sm font-semibold mb-2 text-muted-foreground">Out-of-Pocket Max</p>
+                <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-lg">
+                  <p className="text-sm font-semibold mb-2 text-neutral-600">Out-of-Pocket Max</p>
                   <p className="text-4xl font-bold mb-1">
                     {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
                   </p>
@@ -400,17 +393,17 @@ export default function PolicyPrintPage() {
 
         {/* Covered Members */}
         {allMembers.length > 0 && (
-          <Card className="mb-6 print:shadow-none print:break-inside-avoid">
+          <Card className="mb-6 bg-white border-neutral-200 print:shadow-none print:break-inside-avoid print:bg-white">
             <div className="p-6">
               <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
+                <Shield className="h-5 w-5 text-neutral-900" />
                 Covered Members ({allMembers.length})
               </h3>
               
-              <div className="border rounded overflow-hidden">
+              <div className="border border-neutral-200 rounded overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/20">
-                    <tr className="border-b">
+                  <thead className="bg-neutral-50">
+                    <tr className="border-b border-neutral-200">
                       <th className="text-left p-2 font-semibold">Name</th>
                       <th className="text-left p-2 font-semibold">Type</th>
                       <th className="text-left p-2 font-semibold">DOB</th>
@@ -421,7 +414,7 @@ export default function PolicyPrintPage() {
                   </thead>
                   <tbody>
                     {allMembers.map((member, index) => (
-                      <tr key={index} className="border-b last:border-b-0 hover:bg-muted/5">
+                      <tr key={index} className="border-b border-neutral-200 last:border-b-0 hover:bg-neutral-50">
                         <td className="p-2 font-medium">
                           {[member.firstName, member.middleName, member.lastName, member.secondLastName].filter(Boolean).join(' ')}
                         </td>
@@ -604,10 +597,12 @@ export default function PolicyPrintPage() {
             border-width: 0.5px !important;
           }
           
-          .bg-muted\\/20,
-          .bg-accent\\/5,
-          .bg-primary\\/5 {
+          .bg-neutral-50 {
             background-color: #fafafa !important;
+          }
+          
+          .bg-white {
+            background-color: #ffffff !important;
           }
           
           .pl-6 {
