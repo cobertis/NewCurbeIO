@@ -4386,11 +4386,17 @@ export default function PoliciesPage() {
         console.log('[CREATE QUOTE] Extracted policy ID:', quoteId);
         console.log('[CREATE QUOTE] Full response structure:', JSON.stringify(response, null, 2));
         
-        // IMMEDIATELY navigate to the created quote
+        // Navigate to the created policy after invalidating queries
         if (quoteId) {
-          console.log('[CREATE QUOTE] Navigating to quote:', quoteId);
+          console.log('[CREATE QUOTE] Navigating to policy:', quoteId);
           
-          // Navigate to the quote detail page
+          // Invalidate queries first to ensure fresh data
+          await queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+          
+          // Small delay to ensure the policy is available in the database
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Navigate to the policy detail page
           handleViewQuote({ id: quoteId });
           
           // Reset the form for next time
@@ -4434,9 +4440,6 @@ export default function PoliciesPage() {
           });
           setCurrentStep(1);
           setIsCreatingQuote(false);
-          
-          // Invalidate queries to refresh data in the background
-          queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
           
           toast({
             title: "Policy Created Successfully!",
