@@ -174,15 +174,17 @@ function formatPaymentStatusDisplay(status: string | undefined): string {
 
 // Carrier lists by product type
 const CARRIERS_BY_TYPE: Record<string, string[]> = {
-  life: ["A-Care", "A-MyCall", "Aflac", "AIG", "Allstate", "American Amicable", "American International Group", "American Life Insurance Company", "American National", "Americo", "Ameritas", "Anico", "Assure", "Assurity", "Athene", "Atlantic Coast", "Banner", "Best Meridian Insurance (BMI)", "Columbian Financial Group", "Ethos Life", "Fidelity", "Foresters", "Global Life", "Great Wester", "Great Western", "IHC Group", "John Hancock", "Lincoln Heritage", "Modern Woodmen", "Mutual of Omaha", "Mutual Trust", "National Life", "Nationwide", "New York", "Occidental", "Old American", "Ole", "Pan-American Life", "Prudential", "Quility", "Royal Neighbors of America", "Sagicor", "SBLI", "Security National", "Senior", "Sentinel Security", "Simply Better", "The Chesapeake", "Transamerica", "Triple-S", "United Health One", "United Healthcare", "Vumi"],
-  private: ["A-MyCall", "Allstate", "Americas Choice", "Enroll Prime", "GTL", "Kanguro Insurance", "MultiPlan", "National General", "New Era", "Orange Travel", "Pivot Health", "SunCare", "SunHealth", "United Healthcare", "VSP Global", "VSP Vision", "Vumi"],
-  dental: ["1Dental Broker", "A-MyCall", "Aetna", "Allstate", "Ameritas", "Anthem", "Best Life and Health Insurance Company", "BestOne", "BlueCare", "Careington", "Cigna", "Delta Dental", "Florida Blue", "Humana", "Hunity", "Managed DentalGuard", "Manhattan Life", "National Care Dental", "Solstice", "SunHealth", "TruAssure Insurance", "United Health One"],
-  vision: ["Allstate", "Ameritas", "Cigna", "Humana", "Solstice", "United Health", "VSP"],
-  supplemental: ["Allstate", "Alpha Dental Programs", "Assurity", "Cigna", "Combined", "Delta Dental", "DentaQuest USA", "Family Heritage", "IHC Group", "LifeRaft", "Renaissance Life & Health", "Rocky Mountain", "SureBridge", "Surebridge", "The Guardian Life Insurance", "United Health One", "United Healthcare", "Usable Life", "Washington National"],
-  annuities: ["Ameritas", "Atlantic Coast Life (ACLICO)", "National Life", "Silac"],
-  final_expense: ["Aflac", "American International Group", "Assure for Life", "Atlantic Coast", "Cica", "Division Funeral Plan", "Ethos Life", "Foresters", "Global Life", "Homesteaders", "Infinity Protections", "Liberty Bankers", "Lincoln Heritage", "Manhattan Life", "Mutual of Omaha", "Security National", "Senior Life", "Serenity", "Transamerica", "Triple-S", "Wellabe"],
-  travel: ["Assurance Travel Assist", "BAC Assist", "Continental Assist", "GeoBlue Travel", "International Medical Group (IMG)", "Orange Travel Assist", "Runaway", "Trawick Travel Insurance", "Vista Travel", "World Trips"],
-  aca: ["A-Care", "A-MyCall", "Aetna", "Alliant Health Plans", "Ambetter", "American Health", "AmeriHealth", "AmeriHealth Caritas", "Ameriplan", "Ameritas", "Anthem", "Antido+e Health", "Ascension Personalized Care", "Aspirus Health", "Avera Health Plans", "Avmed", "Banner Health", "Baylor Scott & White Health Plan", "Best Meridian Insurance (BMI)", "Blue Cross and Blue Shield", "Blue Cross and Blue Shield (Georgia)", "Blue Cross and Blue Shield (Illinois)", "Blue Cross and Blue Shield (Michigan)", "Blue Cross and Blue Shield (North Carolina)", "Blue Cross and Blue Shield (South Carolina)", "Blue Cross and Blue Shield (Texas)", "Blue Shield of California", "BlueCare", "BridgeSpan Health", "Bright Health", "Capital Advantage Assurance", "Capital Health Plan", "CareFirst BlueChoice", "CareSource", "Celtic Insurance Co", "Children Community", "Chorus Community Health Plan", "Christus Health Plan", "Cigna", "Common Ground Healthcare", "Community First Health Plans", "Community Health Choice", "CommunityCare", "Connecticare", "Cox HealthPlans", "Danconia Health", "Dean Health Plan", "Denver Health", "Elevance Health", "Elevate Health", "Fallon Health - ACA", "Fidelis Care", "First Care Healthcare", "First Choice Next", "FL Healthcare Plans", "Florida Blue", "Florida Health Care", "Florida Health Solutions", "Friday", "Friday Health Plan", "Geisinger", "Harbor Health", "Harvard Pilgrim Health Care", "Health Alliance", "Health First", "Health First - ACA", "Health Net", "Health Options Inc", "Health Plan of Nevada", "HealthKeepers", "HealthPartners", "HealthSun Health Plans", "Highmark", "Horizon", "Husky Health", "IdealCare", "Imperial Health Plan", "Independence", "Inland Empire Health Plan", "Innovation Health Plan", "InStil Health", "Jefferson Health - ACA", "Kaiser Permanente", "Keystone", "LA Care", "LACare Health", "McLaren Health Plan Community", "Med Mutual", "Medblue", "Medica", "MedPlan", "Mending Healthcare - ACA", "MercyCare", "Moda Health Plan", "Molina", "Mountain Health", "Octave Health", "OmniSalud Health Insurance", "One Dental", "OneShare Health", "Optima Health", "Oscar", "PacificSource Health Plans", "Philadelphia American Life", "Physicians", "Piedmont Community HealthCare", "Presbyterian", "Priority Health", "ProMedical Plan", "Providence Health Plan", "QualChoice", "Quartz", "Regence", "Rocky Mountain Health Plans", "Sanford Health Plan", "SanitasCare", "Saudemax - MPB Health", "Scott & White Health Plan", "Security Health Plan", "Select Health", "Sendero Health Plans", "Sentara Health Plans", "Sharp Health - ACA", "StateSide Health Plans", "SummaCare", "Sun Health & Dental", "SunHealth", "Total Health Care", "Trawick International Health Insurance", "True Health New Mexico", "Tufts Health Plan", "United Health One", "United Healthcare", "University of Michigan", "University of Pittsburgh Medical Center (UPMC)", "University of Utah", "UPMC Health Plan", "US Health and Life", "Usable - Accidents", "Usable - Critical Illness", "Usable - Hospitalization", "Valley Health Plan", "Vantage Health Plan", "Washington National", "Wellmark", "Wellpoint", "WellSense", "Western Sky Community Care"]
+  aca: ["A-Care", "A-MyCall", "Aetna", "Alliant Health Plans", "Ambetter", "American Health", "AmeriHealth", "AmeriHealth Caritas", "Ameriplan", "Ameritas", "Anthem", "Antido+e Health", "Ascension Personalized Care", "Aspirus Health", "Avera Health Plans", "Avmed", "Banner Health", "Baylor Scott & White Health Plan", "Best Meridian Insurance (BMI)", "Blue Cross and Blue Shield", "Blue Cross and Blue Shield (Georgia)", "Blue Cross and Blue Shield (Illinois)", "Blue Cross and Blue Shield (Michigan)", "Blue Cross and Blue Shield (North Carolina)", "Blue Cross and Blue Shield (South Carolina)", "Blue Cross and Blue Shield (Texas)", "Blue Shield of California", "BlueCare", "BridgeSpan Health", "Bright Health", "Capital Advantage Assurance", "Capital Health Plan", "CareFirst BlueChoice", "CareSource", "Celtic Insurance Co", "Children Community", "Chorus Community Health Plan", "Christus Health Plan", "Cigna", "Common Ground Healthcare", "Community First Health Plans", "Community Health Choice", "CommunityCare", "Connecticare", "Cox HealthPlans", "Danconia Health", "Dean Health Plan", "Denver Health", "Elevance Health", "Elevate Health", "Fallon Health - ACA", "Fidelis Care", "First Care Healthcare", "First Choice Next", "FL Healthcare Plans", "Florida Blue", "Florida Health Care", "Florida Health Solutions", "Friday", "Friday Health Plan", "Geisinger", "Harbor Health", "Harvard Pilgrim Health Care", "Health Alliance", "Health First", "Health First - ACA", "Health Net", "Health Options Inc", "Health Plan of Nevada", "HealthKeepers", "HealthPartners", "HealthSun Health Plans", "Highmark", "Horizon", "Husky Health", "IdealCare", "Imperial Health Plan", "Independence", "Inland Empire Health Plan", "Innovation Health Plan", "InStil Health", "Jefferson Health - ACA", "Kaiser Permanente", "Keystone", "LA Care", "LACare Health", "McLaren Health Plan Community", "Med Mutual", "Medblue", "Medica", "MedPlan", "Mending Healthcare - ACA", "MercyCare", "Moda Health Plan", "Molina", "Mountain Health", "Octave Health", "OmniSalud Health Insurance", "One Dental", "OneShare Health", "Optima Health", "Oscar", "PacificSource Health Plans", "Philadelphia American Life", "Physicians", "Piedmont Community HealthCare", "Presbyterian", "Priority Health", "ProMedical Plan", "Providence Health Plan", "QualChoice", "Quartz", "Regence", "Rocky Mountain Health Plans", "Sanford Health Plan", "SanitasCare", "Saudemax - MPB Health", "Scott & White Health Plan", "Security Health Plan", "Select Health", "Sendero Health Plans", "Sentara Health Plans", "Sharp Health - ACA", "StateSide Health Plans", "SummaCare", "Sun Health & Dental", "SunHealth", "Total Health Care", "Trawick International Health Insurance", "True Health New Mexico", "Tufts Health Plan", "United Health One", "United Healthcare", "University of Michigan", "University of Pittsburgh Medical Center (UPMC)", "University of Utah", "UPMC Health Plan", "US Health and Life", "Usable - Accidents", "Usable - Critical Illness", "Usable - Hospitalization", "Valley Health Plan", "Vantage Health Plan", "Washington National", "Wellmark", "Wellpoint", "WellSense", "Western Sky Community Care"].sort(),
+  annuities: ["Ameritas", "Atlantic Coast Life (ACLICO)", "National Life", "Silac"].sort(),
+  dental: ["1Dental Broker", "A-MyCall", "Aetna", "Allstate", "Ameritas", "Anthem", "Best Life and Health Insurance Company", "BestOne", "BlueCare", "Careington", "Cigna", "Delta Dental", "Florida Blue", "Humana", "Hunity", "Managed DentalGuard", "Manhattan Life", "National Care Dental", "Solstice", "SunHealth", "TruAssure Insurance", "United Health One"].sort(),
+  final_expense: ["Aflac", "American International Group", "Assure for Life", "Atlantic Coast", "Cica", "Division Funeral Plan", "Ethos Life", "Foresters", "Global Life", "Homesteaders", "Infinity Protections", "Liberty Bankers", "Lincoln Heritage", "Manhattan Life", "Mutual of Omaha", "Security National", "Senior Life", "Serenity", "Transamerica", "Triple-S", "Wellabe"].sort(),
+  life: ["A-Care", "A-MyCall", "Aflac", "AIG", "Allstate", "American Amicable", "American International Group", "American Life Insurance Company", "American National", "Americo", "Ameritas", "Anico", "Assure", "Assurity", "Athene", "Atlantic Coast", "Banner", "Best Meridian Insurance (BMI)", "Columbian Financial Group", "Ethos Life", "Fidelity", "Foresters", "Global Life", "Great Wester", "Great Western", "IHC Group", "John Hancock", "Lincoln Heritage", "Modern Woodmen", "Mutual of Omaha", "Mutual Trust", "National Life", "Nationwide", "New York", "Occidental", "Old American", "Ole", "Pan-American Life", "Prudential", "Quility", "Royal Neighbors of America", "Sagicor", "SBLI", "Security National", "Senior", "Sentinel Security", "Simply Better", "The Chesapeake", "Transamerica", "Triple-S", "United Health One", "United Healthcare", "Vumi"].sort(),
+  medicaid: ["CareSource", "EmblemHealth", "Medicaid", "Molina"].sort(),
+  medicare: ["A-Care", "A-MyCall", "Aetna", "Alignment", "Allstate", "Amerigroup", "AmeriHealth Caritas", "Ameritas", "Anthem", "Avera Health Plans", "AWB Insurance Group", "Banner", "Blue Cross and Blue Shield", "Bright Health", "CareComplete", "CareFree", "CareNeeds Plus", "CarePlus", "Christus Health Plan", "Cigna", "Clover", "Devoted", "Doctors HealthCare Plans", "EmblemHealth", "Florida Blue", "Freedom Health", "HealhtSpring Medicare Advantage", "Health Net", "HealthFirst", "Healthsun Medicare Advantage", "Humana", "Jefferson Health", "Kelsey Care Advantage", "Kelsey Seybold", "Medicare", "Memorial Hermann", "Molina", "Mutual of Omaha", "Omaha", "Optimum Healthcare", "Oscar", "Priority Health", "Scan", "Select Health", "Simply", "Solis", "Transamerica", "Ultimate", "United Healthcare", "Verda Healthcare", "VNS Health", "Wellcare", "Wellpoint"].sort(),
+  private: ["A-MyCall", "Allstate", "Americas Choice", "Enroll Prime", "GTL", "Kanguro Insurance", "MultiPlan", "National General", "New Era", "Orange Travel", "Pivot Health", "SunCare", "SunHealth", "United Healthcare", "VSP Global", "VSP Vision", "Vumi"].sort(),
+  supplemental: ["Allstate", "Alpha Dental Programs", "Assurity", "Cigna", "Combined", "Delta Dental", "DentaQuest USA", "Family Heritage", "IHC Group", "LifeRaft", "Renaissance Life & Health", "Rocky Mountain", "SureBridge", "Surebridge", "The Guardian Life Insurance", "United Health One", "United Healthcare", "Usable Life", "Washington National"].sort(),
+  travel: ["Assurance Travel Assist", "BAC Assist", "Continental Assist", "GeoBlue Travel", "International Medical Group (IMG)", "Orange Travel Assist", "Runaway", "Trawick Travel Insurance", "Vista Travel", "World Trips"].sort(),
+  vision: ["Allstate", "Ameritas", "Cigna", "Humana", "Solstice", "United Health", "VSP"].sort(),
 };
 
 function getCarriersByProductType(productType: string): string[] {
@@ -350,19 +352,25 @@ const COUNTRIES = [
   "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
-// Product types with descriptions
+// Product types with descriptions (sorted alphabetically by name)
 const PRODUCT_TYPES = [
   {
-    id: "medicare",
-    name: "Medicare",
-    description: "Government health insurance for individuals 65+ or with certain disabilities",
-    icon: Shield,
+    id: "annuities",
+    name: "Annuities",
+    description: "Financial products that provide guaranteed income, typically for retirement",
+    icon: PiggyBank,
   },
   {
-    id: "medicaid",
-    name: "Medicaid",
-    description: "State and federal program offering health coverage for low-income individuals and families",
-    icon: Heart,
+    id: "dental",
+    name: "Dental",
+    description: "Coverage for preventive, basic, and major dental care services",
+    icon: Smile,
+  },
+  {
+    id: "final_expense",
+    name: "Final Expense",
+    description: "Affordable life insurance to cover funeral and end-of-life costs",
+    icon: DollarSign,
   },
   {
     id: "aca",
@@ -377,22 +385,22 @@ const PRODUCT_TYPES = [
     icon: Heart,
   },
   {
+    id: "medicaid",
+    name: "Medicaid",
+    description: "State and federal program offering health coverage for low-income individuals and families",
+    icon: Heart,
+  },
+  {
+    id: "medicare",
+    name: "Medicare",
+    description: "Government health insurance for individuals 65+ or with certain disabilities",
+    icon: Shield,
+  },
+  {
     id: "private",
     name: "Private",
     description: "Health plans offered outside of government programs, with customizable coverage options",
     icon: Building2,
-  },
-  {
-    id: "dental",
-    name: "Dental",
-    description: "Coverage for preventive, basic, and major dental care services",
-    icon: Smile,
-  },
-  {
-    id: "vision",
-    name: "Vision",
-    description: "Insurance for eye exams, glasses, contact lenses, and more",
-    icon: Smile,
   },
   {
     id: "supplemental",
@@ -401,22 +409,16 @@ const PRODUCT_TYPES = [
     icon: Plus,
   },
   {
-    id: "annuities",
-    name: "Annuities",
-    description: "Financial products that provide guaranteed income, typically for retirement",
-    icon: PiggyBank,
-  },
-  {
-    id: "final_expense",
-    name: "Final Expense",
-    description: "Affordable life insurance to cover funeral and end-of-life costs",
-    icon: DollarSign,
-  },
-  {
     id: "travel",
     name: "Travel",
     description: "Coverage for medical emergencies, trip cancellations, and travel-related issues",
     icon: Plane,
+  },
+  {
+    id: "vision",
+    name: "Vision",
+    description: "Insurance for eye exams, glasses, contact lenses, and more",
+    icon: Smile,
   },
 ];
 
@@ -9408,34 +9410,58 @@ export default function PoliciesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="aca">Health Insurance (ACA)</SelectItem>
-                      <SelectItem value="life">Life Insurance</SelectItem>
-                      <SelectItem value="private">Private</SelectItem>
-                      <SelectItem value="dental">Dental</SelectItem>
-                      <SelectItem value="vision">Vision</SelectItem>
-                      <SelectItem value="supplemental">Supplemental</SelectItem>
                       <SelectItem value="annuities">Annuities</SelectItem>
+                      <SelectItem value="dental">Dental</SelectItem>
                       <SelectItem value="final_expense">Final Expense</SelectItem>
+                      <SelectItem value="life">Life Insurance</SelectItem>
+                      <SelectItem value="medicaid">Medicaid</SelectItem>
+                      <SelectItem value="medicare">Medicare</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                      <SelectItem value="supplemental">Supplemental</SelectItem>
                       <SelectItem value="travel">Travel</SelectItem>
+                      <SelectItem value="vision">Vision</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
-                  <Select
-                    value={manualPlanData.carrier}
-                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, carrier: value })}
-                    disabled={!manualPlanData.productType}
-                  >
-                    <SelectTrigger id="carrier" className="mt-1" data-testid="select-carrier">
-                      <SelectValue placeholder={manualPlanData.productType ? "Select carrier" : "Select product type first"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getCarriersByProductType(manualPlanData.productType).map((carrier) => (
-                        <SelectItem key={carrier} value={carrier}>{carrier}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between mt-1"
+                        disabled={!manualPlanData.productType}
+                        data-testid="select-carrier"
+                      >
+                        {manualPlanData.carrier || (manualPlanData.productType ? "Select carrier" : "Select product type first")}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Search carrier..." />
+                        <CommandList>
+                          <CommandEmpty>No carrier found.</CommandEmpty>
+                          <CommandGroup>
+                            {getCarriersByProductType(manualPlanData.productType).map((carrier) => (
+                              <CommandItem
+                                key={carrier}
+                                value={carrier}
+                                onSelect={() => {
+                                  setManualPlanData({ ...manualPlanData, carrier: carrier });
+                                }}
+                              >
+                                <Check className={manualPlanData.carrier === carrier ? "mr-2 h-4 w-4" : "mr-2 h-4 w-4 opacity-0"} />
+                                {carrier}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
