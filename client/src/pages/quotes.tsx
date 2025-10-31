@@ -6074,6 +6074,11 @@ export default function QuotesPage() {
                       statusType="status"
                       currentValue={viewingQuote.status}
                       id={viewingQuote.id}
+                      allStatuses={{
+                        status: viewingQuote.status,
+                        documentsStatus: viewingQuote.documentsStatus,
+                        paymentStatus: viewingQuote.paymentStatus,
+                      }}
                     />
                   </div>
                   
@@ -6085,6 +6090,11 @@ export default function QuotesPage() {
                       statusType="documentsStatus"
                       currentValue={viewingQuote.documentsStatus}
                       id={viewingQuote.id}
+                      allStatuses={{
+                        status: viewingQuote.status,
+                        documentsStatus: viewingQuote.documentsStatus,
+                        paymentStatus: viewingQuote.paymentStatus,
+                      }}
                     />
                   </div>
                   
@@ -6096,6 +6106,11 @@ export default function QuotesPage() {
                       statusType="paymentStatus"
                       currentValue={viewingQuote.paymentStatus}
                       id={viewingQuote.id}
+                      allStatuses={{
+                        status: viewingQuote.status,
+                        documentsStatus: viewingQuote.documentsStatus,
+                        paymentStatus: viewingQuote.paymentStatus,
+                      }}
                     />
                   </div>
                 </div>
@@ -11012,11 +11027,17 @@ function StatusBadgeEditor({
   statusType,
   currentValue,
   id,
+  allStatuses,
 }: {
   type: "quote" | "policy";
   statusType: "status" | "documentsStatus" | "paymentStatus";
   currentValue: string;
   id: string;
+  allStatuses: {
+    status: string;
+    documentsStatus: string;
+    paymentStatus: string;
+  };
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
@@ -11027,19 +11048,10 @@ function StatusBadgeEditor({
         ? `/api/quotes/${id}/statuses` 
         : `/api/policies/${id}/statuses`;
       
-      // Get current values from the policy/quote detail
-      const detailEndpoint = type === "quote"
-        ? `/api/quotes/${id}`
-        : `/api/policies/${id}/detail`;
-      
-      const response = await fetch(detailEndpoint);
-      const result = await response.json();
-      const current = type === "quote" ? result.quote : result.policy;
-      
       const data = {
-        status: statusType === "status" ? newValue : current.status,
-        documentsStatus: statusType === "documentsStatus" ? newValue : current.documentsStatus,
-        paymentStatus: statusType === "paymentStatus" ? newValue : current.paymentStatus,
+        status: statusType === "status" ? newValue : allStatuses.status,
+        documentsStatus: statusType === "documentsStatus" ? newValue : allStatuses.documentsStatus,
+        paymentStatus: statusType === "paymentStatus" ? newValue : allStatuses.paymentStatus,
       };
       
       return await apiRequest("PATCH", endpoint, data);
