@@ -6516,34 +6516,36 @@ export default function PoliciesPage() {
                     
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        data-testid="button-search-plans"
-                        onClick={() => {
-                          const missingFields = validateMarketplaceData();
-                          if (missingFields.length > 0) {
-                            toast({
-                              title: "Missing Required Data",
-                              description: (
-                                <div>
-                                  <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
-                                  <ul className="list-disc pl-4 space-y-1">
-                                    {missingFields.map((field, index) => (
-                                      <li key={index}>{field}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ),
-                              variant: "destructive",
-                            });
-                          } else {
-                            setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
-                          }
-                        }}
-                      >
-                        Search plans
-                      </Button>
+                      {viewingQuote.productType === 'aca' && (
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          data-testid="button-search-plans"
+                          onClick={() => {
+                            const missingFields = validateMarketplaceData();
+                            if (missingFields.length > 0) {
+                              toast({
+                                title: "Missing Required Data",
+                                description: (
+                                  <div>
+                                    <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
+                                    <ul className="list-disc pl-4 space-y-1">
+                                      {missingFields.map((field, index) => (
+                                        <li key={index}>{field}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ),
+                                variant: "destructive",
+                              });
+                            } else {
+                              setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                            }
+                          }}
+                        >
+                          Search plans
+                        </Button>
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -7051,15 +7053,17 @@ export default function PoliciesPage() {
                         Selected Plan
                       </div>
                       <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
-                          data-testid="button-change-plan"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Change Plan
-                        </Button>
+                        {viewingQuote.productType === 'aca' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
+                            data-testid="button-change-plan"
+                          >
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Change Plan
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
