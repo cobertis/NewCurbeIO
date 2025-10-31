@@ -6582,7 +6582,7 @@ export default function PoliciesPage() {
                       <h4 className="text-base font-medium mb-4 text-primary">{plan.name}</h4>
                       
                       {/* Two Column Layout */}
-                      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
                         {/* LEFT COLUMN: Plan Information */}
                         <div className="space-y-6">
                           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6">
@@ -6682,42 +6682,46 @@ export default function PoliciesPage() {
                         <div className="border-l pl-6 space-y-3">
                           <h5 className="text-sm font-semibold mb-3 text-foreground">Policy Information</h5>
                           
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Member ID</label>
-                            <Input
-                              value={viewingQuote.memberId || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ memberId: value || null }),
-                                }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
-                              className="h-8 text-sm"
-                              data-testid="input-member-id"
-                            />
+                          {/* Row 1: Member ID + NPN */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Member ID</label>
+                              <Input
+                                value={viewingQuote.memberId || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({ memberId: value || null }),
+                                  }).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                                data-testid="input-member-id"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">NPN marketplace</label>
+                              <Input
+                                value={viewingQuote.npnMarketplace || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({ npnMarketplace: value || null }),
+                                  }).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                                data-testid="input-npn-marketplace"
+                              />
+                            </div>
                           </div>
 
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">NPN used in marketplace</label>
-                            <Input
-                              value={viewingQuote.npnMarketplace || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ npnMarketplace: value || null }),
-                                }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
-                              className="h-8 text-sm"
-                              data-testid="input-npn-marketplace"
-                            />
-                          </div>
-
+                          {/* Row 2: Sale Type (full width) */}
                           <div>
                             <label className="text-xs text-muted-foreground block mb-1">New sale / Renewal</label>
                             <Select
@@ -6741,42 +6745,46 @@ export default function PoliciesPage() {
                             </Select>
                           </div>
 
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Marketplace ID</label>
-                            <Input
-                              value={viewingQuote.marketplaceId || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ marketplaceId: value || null }),
-                                }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
-                              className="h-8 text-sm"
-                              data-testid="input-marketplace-id"
-                            />
+                          {/* Row 3: Marketplace ID + FFM */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Marketplace ID</label>
+                              <Input
+                                value={viewingQuote.marketplaceId || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({ marketplaceId: value || null }),
+                                  }).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                                data-testid="input-marketplace-id"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">FFM marketplace</label>
+                              <Input
+                                value={viewingQuote.ffmMarketplace || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({ ffmMarketplace: value || null }),
+                                  }).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                                data-testid="input-ffm-marketplace"
+                              />
+                            </div>
                           </div>
 
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">FFM used in marketplace</label>
-                            <Input
-                              value={viewingQuote.ffmMarketplace || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ ffmMarketplace: value || null }),
-                                }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
-                              className="h-8 text-sm"
-                              data-testid="input-ffm-marketplace"
-                            />
-                          </div>
-
+                          {/* Row 4: Special Enrollment Reason (full width) */}
                           <div>
                             <label className="text-xs text-muted-foreground block mb-1">Special enrollment reason</label>
                             <Input
@@ -6795,6 +6803,7 @@ export default function PoliciesPage() {
                             />
                           </div>
 
+                          {/* Row 5: Effective Date (full width) */}
                           <div>
                             <label className="text-xs text-muted-foreground block mb-1">Effective date</label>
                             <Input
@@ -6814,42 +6823,45 @@ export default function PoliciesPage() {
                             />
                           </div>
 
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Cancellation date</label>
-                            <Input
-                              type="date"
-                              value={viewingQuote.cancellationDate || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ cancellationDate: value || null }),
-                                }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
-                              className="h-8 text-sm"
-                              data-testid="input-cancellation-date"
-                            />
-                          </div>
+                          {/* Row 6: Cancellation Date + Special Enrollment Date */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Cancellation date</label>
+                              <Input
+                                type="date"
+                                value={viewingQuote.cancellationDate || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({ cancellationDate: value || null }),
+                                  }).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                                data-testid="input-cancellation-date"
+                              />
+                            </div>
 
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Special enrollment date</label>
-                            <Input
-                              type="date"
-                              value={viewingQuote.specialEnrollmentDate || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ specialEnrollmentDate: value || null }),
-                                }).then(() => {
-                                  queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
-                                });
-                              }}
-                              className="h-8 text-sm"
-                              data-testid="input-special-enrollment-date"
-                            />
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Special enrollment date</label>
+                              <Input
+                                type="date"
+                                value={viewingQuote.specialEnrollmentDate || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({ specialEnrollmentDate: value || null }),
+                                  }).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                                data-testid="input-special-enrollment-date"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
