@@ -4962,14 +4962,6 @@ export default function PoliciesPage() {
     
     // If "Search by family members" is enabled AND checkbox is checked, also search in spouses and dependents
     if (filters.searchFamilyMembers && searchQuery !== "") {
-      // Debug log
-      if (searchQuery.toLowerCase() === 'carlos' || searchQuery.toLowerCase() === 'roylan') {
-        console.log('[FAMILY SEARCH DEBUG] Policy:', quote.id, 'Client:', quote.clientFirstName, quote.clientLastName);
-        console.log('[FAMILY SEARCH DEBUG] Spouses:', quote.spouses);
-        console.log('[FAMILY SEARCH DEBUG] Dependents:', quote.dependents);
-        console.log('[FAMILY SEARCH DEBUG] Match in main?', matchesSearch);
-      }
-      
       // Only search in family members if main search didn't match
       if (!matchesSearch) {
         // Search in spouses
@@ -6325,14 +6317,17 @@ export default function PoliciesPage() {
                   <FileSignature className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Signature Forms</span>
                 </div>
-                {consents.length > 0 && (
-                  <Badge 
-                    variant="secondary" 
-                    className="text-xs h-5 px-1.5 border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
-                  >
-                    {consents.length}
-                  </Badge>
-                )}
+                <Badge 
+                  variant="secondary" 
+                  className={`text-xs h-5 px-1.5 ${
+                    consents.length > 0 
+                      ? "border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
+                      : "border border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400"
+                  }`}
+                  data-testid="badge-signature-forms"
+                >
+                  {consents.length > 0 ? consents.length : "Pending"}
+                </Badge>
               </button>
             </div>
           </div>
