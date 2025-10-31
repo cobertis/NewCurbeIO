@@ -6159,17 +6159,22 @@ export default function PoliciesPage() {
                   {/* Policy Status */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Status:</span>
-                    <StatusBadgeEditor
-                      type="policy"
-                      statusType="status"
-                      currentValue={viewingQuote.status}
-                      id={viewingQuote.id}
-                      allStatuses={{
-                        status: viewingQuote.status,
-                        documentsStatus: viewingQuote.documentsStatus,
-                        paymentStatus: viewingQuote.paymentStatus,
-                      }}
-                    />
+                    <div className="flex items-center gap-2">
+                      {viewingQuote.isBlocked && (
+                        <Lock className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <StatusBadgeEditor
+                        type="policy"
+                        statusType="status"
+                        currentValue={viewingQuote.status}
+                        id={viewingQuote.id}
+                        allStatuses={{
+                          status: viewingQuote.status,
+                          documentsStatus: viewingQuote.documentsStatus,
+                          paymentStatus: viewingQuote.paymentStatus,
+                        }}
+                      />
+                    </div>
                   </div>
                   
                   {/* Documents Status */}
