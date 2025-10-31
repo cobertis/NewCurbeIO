@@ -4380,10 +4380,10 @@ export default function PoliciesPage() {
       console.log('[CREATE QUOTE] onSuccess called with response:', response);
       
       try {
-        // Get the created quote ID
-        const quoteId = response?.quote?.id || response?.id;
+        // Get the created policy ID
+        const quoteId = response?.policy?.id || response?.id;
         
-        console.log('[CREATE QUOTE] Extracted quote ID:', quoteId);
+        console.log('[CREATE QUOTE] Extracted policy ID:', quoteId);
         console.log('[CREATE QUOTE] Full response structure:', JSON.stringify(response, null, 2));
         
         // IMMEDIATELY navigate to the created quote
