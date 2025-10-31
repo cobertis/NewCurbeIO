@@ -8977,19 +8977,7 @@ export default function QuotesPage() {
     <div className="h-full p-6 flex flex-col overflow-hidden">
       {!showWizard ? (
         <Card className="overflow-auto">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>All Quotes</CardTitle>
-                <CardDescription>View and manage your insurance quotes</CardDescription>
-              </div>
-              <Button onClick={() => setLocation("/quotes/new")} data-testid="button-create-quote">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Quote
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading quotes...</div>
             ) : allQuotes.length === 0 ? (
