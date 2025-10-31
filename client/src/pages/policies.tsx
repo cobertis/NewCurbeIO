@@ -9750,6 +9750,23 @@ export default function PoliciesPage() {
                                       onClick={() => setLocation(`/policies/${quote.id}`)}
                                     >
                                       {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
+                                      {' - '}
+                                      {(() => {
+                                        const typeMap: Record<string, string> = {
+                                          'aca': 'Health Insurance (ACA)',
+                                          'medicare': 'Medicare',
+                                          'medicaid': 'Medicaid',
+                                          'supplemental': 'Supplemental',
+                                          'life': 'Life Insurance',
+                                          'dental': 'Dental Insurance',
+                                          'vision': 'Vision Insurance',
+                                          'private': 'Private Insurance',
+                                          'annuities': 'Annuities',
+                                          'final_expense': 'Final Expense',
+                                          'travel': 'Travel Insurance'
+                                        };
+                                        return typeMap[quote.productType?.toLowerCase()] || quote.productType;
+                                      })()}
                                     </div>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                       <Badge variant="secondary" className="text-xs px-1.5 py-0">
