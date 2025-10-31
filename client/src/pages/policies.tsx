@@ -11586,11 +11586,15 @@ function StatusBadgeEditor({
         ? `/api/quotes/${id}/statuses` 
         : `/api/policies/${id}/statuses`;
       
-      const data = {
-        status: statusType === "status" ? newValue : allStatuses.status,
-        documentsStatus: statusType === "documentsStatus" ? newValue : allStatuses.documentsStatus,
-        paymentStatus: statusType === "paymentStatus" ? newValue : allStatuses.paymentStatus,
-      };
+      // Only send the field being edited, not all fields
+      const data: any = {};
+      if (statusType === "status") {
+        data.status = newValue;
+      } else if (statusType === "documentsStatus") {
+        data.documentsStatus = newValue;
+      } else if (statusType === "paymentStatus") {
+        data.paymentStatus = newValue;
+      }
       
       return await apiRequest("PATCH", endpoint, data);
     },

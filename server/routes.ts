@@ -11818,6 +11818,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         createdBy: currentUser.id,
         // effectiveDate and clientDateOfBirth remain as strings (yyyy-MM-dd)
         
+        // Set default statuses for new policies (converted from quotes)
+        status: req.body.status || "waiting_on_agent",
+        documentsStatus: req.body.documentsStatus || "pending",
+        paymentStatus: req.body.paymentStatus || "unpaid",
+        
         // Map frontend address fields to database fields
         // Frontend already sends fields WITH mailing_ prefix, so use them directly
         mailing_street: req.body.mailing_street,
