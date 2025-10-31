@@ -400,29 +400,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-96">
                   <DropdownMenuItem 
-                    onClick={() => setLocation("/users")} 
-                    data-testid="menu-item-new-user"
-                    className="py-3 px-4 cursor-pointer"
-                  >
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
-                      <UserPlus className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">New user</div>
-                      <div className="text-xs text-muted-foreground">Create a new user with access to the portal</div>
-                    </div>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem 
                     onClick={() => setLocation("/quotes/new")} 
-                    data-testid="menu-item-new-contact"
+                    data-testid="menu-item-new-quote"
                     className="py-3 px-4 cursor-pointer"
                   >
                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
                       <UserPlus className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-sm">New contact</div>
+                      <div className="font-semibold text-sm">New Quote</div>
                       <div className="text-xs text-muted-foreground">Add a new client or lead to your contact list</div>
                     </div>
                   </DropdownMenuItem>
@@ -436,46 +422,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                       <Shield className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-sm">New policy</div>
-                      <div className="text-xs text-muted-foreground">Add a new client or lead to your contact list</div>
-                    </div>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem 
-                    onClick={() => {
-                      toast({
-                        title: "Coming soon",
-                        description: "Contract creation will be available soon.",
-                      });
-                    }} 
-                    data-testid="menu-item-new-contract"
-                    className="py-3 px-4 cursor-pointer"
-                  >
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">New contract</div>
-                      <div className="text-xs text-muted-foreground">Create a new contract</div>
-                    </div>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem 
-                    onClick={() => {
-                      toast({
-                        title: "Coming soon",
-                        description: "Commissions reporting will be available soon.",
-                      });
-                    }} 
-                    data-testid="menu-item-new-commissions"
-                    className="py-3 px-4 cursor-pointer"
-                  >
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
-                      <DollarSign className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">New commissions report</div>
-                      <div className="text-xs text-muted-foreground">Calculate, assign, and reconcile commissions</div>
+                      <div className="font-semibold text-sm">New Policy</div>
+                      <div className="text-xs text-muted-foreground">Add a new insurance policy for a client</div>
                     </div>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
