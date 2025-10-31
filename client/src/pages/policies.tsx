@@ -7466,28 +7466,6 @@ export default function PoliciesPage() {
 
               {/* CMS Marketplace Plans - Navigation to dedicated page */}
 
-              {/* Notes or Comments */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle>Notes or comments</CardTitle>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => setEditingNotes(true)}
-                    data-testid="button-edit-notes"
-                  >
-                    Edit
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    placeholder="Add any notes or comments about this quote..."
-                    className="min-h-[100px]"
-                    data-testid="textarea-notes"
-                  />
-                </CardContent>
-              </Card>
-
               {/* Other Policies */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
