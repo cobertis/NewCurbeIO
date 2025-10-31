@@ -2096,6 +2096,11 @@ export const policies = pgTable("policies", {
   // Archive status
   isArchived: boolean("is_archived").default(false).notNull(),
   
+  // Block status
+  isBlocked: boolean("is_blocked").default(false).notNull(),
+  blockedBy: varchar("blocked_by").references(() => users.id, { onDelete: "set null" }),
+  blockedAt: timestamp("blocked_at"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

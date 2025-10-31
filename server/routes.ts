@@ -12660,6 +12660,61 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Block/Unblock policy
+  app.post("/api/policies/:id/block", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Get existing policy and verify ownership
+      const existingPolicy = await storage.getPolicy(id);
+      
+      if (!existingPolicy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: only superadmin and admin can block policies
+      if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - Admin or Superadmin only" });
+      }
+      
+      if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to block this policy" });
+      }
+      
+      // Toggle block status
+      const newBlockStatus = !existingPolicy.isBlocked;
+      const updatedPolicy = await storage.updatePolicy(id, { 
+        isBlocked: newBlockStatus,
+        blockedBy: newBlockStatus ? currentUser.id : null,
+        blockedAt: newBlockStatus ? new Date() : null,
+      });
+      
+      // Log activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "policy",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          updatedBy: currentUser.email,
+          field: "isBlocked",
+          oldValue: existingPolicy.isBlocked,
+          newValue: newBlockStatus,
+        },
+      });
+      
+      res.json({ 
+        policy: updatedPolicy, 
+        message: newBlockStatus ? "Policy blocked successfully" : "Policy unblocked successfully" 
+      });
+    } catch (error: any) {
+      console.error("Error updating policy block status:", error);
+      res.status(400).json({ message: error.message || "Failed to update policy block status" });
+    }
+  });
+  
   // Delete policy
   app.delete("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;

@@ -6340,6 +6340,16 @@ export default function PoliciesPage() {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
+            {/* Block Warning Banner */}
+            {viewingQuote.isBlocked && (
+              <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  An authorized person from your Agency blocked updates on this policy.
+                </p>
+              </div>
+            )}
+            
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
               <CardContent className="p-6">
