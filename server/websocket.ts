@@ -1,8 +1,17 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import type { IncomingMessage } from 'http';
-import type { SessionData } from './types';
 import signature from 'cookie-signature';
+
+// Session data structure
+interface SessionData {
+  user?: {
+    id: string;
+    companyId: string | null;
+    role: string;
+  };
+  passport?: any;
+}
 
 if (!process.env.SESSION_SECRET) {
   throw new Error('CRITICAL: SESSION_SECRET environment variable must be set for production security');
@@ -79,7 +88,7 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
 
       // Validate session exists in store
       sessionStore.get(sessionId, (err: any, session: SessionData) => {
-        if (err || !session || !session.userId) {
+        if (err || !session || !session.user?.id) {
           console.log('[WebSocket] Rejecting connection with invalid/expired session');
           callback(false, 401, 'Unauthorized');
           return;
@@ -106,7 +115,7 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
     }
     
     sessionStore.get(sessionId, async (err: any, session: SessionData) => {
-      if (err || !session || !session.userId) {
+      if (err || !session || !session.user?.id) {
         console.log('[WebSocket] Invalid session in connection handler - closing');
         ws.close(1008, 'Unauthorized');
         return;
@@ -114,7 +123,7 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
       
       // Get user from storage to get full user data
       const { storage } = await import('./storage');
-      const user = await storage.getUser(session.userId);
+      const user = await storage.getUser(session.user.id);
       
       if (!user) {
         console.log('[WebSocket] User not found for session - closing');
