@@ -9376,8 +9376,10 @@ export default function PoliciesPage() {
                         
                         setDuplicatePolicyDialogOpen(false);
                         
-                        // Navigate to the new policy
-                        setLocation(`/policies/${data.policy.id}`);
+                        // Wait a moment for the database to fully commit before navigating
+                        setTimeout(() => {
+                          setLocation(`/policies/${data.policy.id}`);
+                        }, 300);
                       } catch (error: any) {
                         toast({
                           title: "Duplication Failed",
