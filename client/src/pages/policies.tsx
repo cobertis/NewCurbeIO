@@ -6358,7 +6358,11 @@ export default function PoliciesPage() {
                             <FileText className="h-4 w-4 mr-2" />
                             Block Policy
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setRemindersSheetOpen(true)}>
+                          <DropdownMenuItem onClick={() => {
+                            setRemindersSheetOpen(true);
+                            setSelectedReminder(null);
+                            setReminderFormOpen(true);
+                          }}>
                             <Bell className="h-4 w-4 mr-2" />
                             New Reminder
                           </DropdownMenuItem>
