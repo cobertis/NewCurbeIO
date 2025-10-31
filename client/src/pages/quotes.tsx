@@ -9421,6 +9421,150 @@ export default function QuotesPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            {/* Cancel Quote Confirmation Dialog */}
+            <AlertDialog open={cancelQuoteDialogOpen} onOpenChange={setCancelQuoteDialogOpen}>
+              <AlertDialogContent data-testid="dialog-cancel-quote">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Do you really want to cancel this quote?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Clicking 'Yes, cancel it!' will change the quote status to void (cancelled). This action can be undone by changing the status later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-cancel-quote">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      cancelQuoteMutation.mutate();
+                    }}
+                    disabled={cancelQuoteMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-cancel-quote"
+                  >
+                    {cancelQuoteMutation.isPending ? 'Cancelling...' : 'Yes, cancel it!'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Archive Quote Confirmation Dialog */}
+            <AlertDialog open={archiveQuoteDialogOpen} onOpenChange={setArchiveQuoteDialogOpen}>
+              <AlertDialogContent data-testid="dialog-archive-quote">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Do you really want to archive this quote?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Archived quotes can be unarchived later if needed. This helps keep your active quotes list clean.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-archive-quote">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      archiveQuoteMutation.mutate(true);
+                    }}
+                    disabled={archiveQuoteMutation.isPending}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    data-testid="button-confirm-archive-quote"
+                  >
+                    {archiveQuoteMutation.isPending ? 'Archiving...' : 'Yes, archive it!'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Duplicate Quote Confirmation Dialog */}
+            <AlertDialog open={duplicateQuoteDialogOpen} onOpenChange={setDuplicateQuoteDialogOpen}>
+              <AlertDialogContent data-testid="dialog-duplicate-quote">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Do you really want to duplicate this quote?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will create a new quote with all the information from the current quote, including client details, family members, and selected plan. You will be redirected to the new quote.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-duplicate-quote">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      duplicateQuoteMutation.mutate();
+                    }}
+                    disabled={duplicateQuoteMutation.isPending}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    data-testid="button-confirm-duplicate-quote"
+                  >
+                    {duplicateQuoteMutation.isPending ? 'Duplicating...' : 'Duplicate Quote'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Block Quote Confirmation Dialog */}
+            <AlertDialog open={blockQuoteDialogOpen} onOpenChange={setBlockQuoteDialogOpen}>
+              <AlertDialogContent data-testid="dialog-block-quote">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Do you really want to block this quote?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Clicking 'Yes, block it!' will prevent agents to update this quote. Only administrators can block or unblock quotes.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-block-quote">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      blockQuoteMutation.mutate();
+                    }}
+                    disabled={blockQuoteMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-block-quote"
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    {blockQuoteMutation.isPending ? 'Processing...' : 'Yes, block it!'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Remove Plan Confirmation Dialog */}
+            <AlertDialog open={removePlanDialogOpen} onOpenChange={setRemovePlanDialogOpen}>
+              <AlertDialogContent data-testid="dialog-remove-plan">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove selected plan?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove the currently selected plan from this quote. You can add a new plan afterwards.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-remove-plan">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
+                          selectedPlan: null
+                        });
+                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
+                        toast({
+                          title: "Plan Removed",
+                          description: "The selected plan has been removed from this quote.",
+                          duration: 3000,
+                        });
+                        setRemovePlanDialogOpen(false);
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to remove plan.",
+                          variant: "destructive",
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-remove-plan"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Remove Plan
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
       </div>
     );
   }
@@ -11394,150 +11538,6 @@ export default function QuotesPage() {
               data-testid="button-confirm-delete"
             >
               {deleteQuoteMutation.isPending ? 'Deleting...' : 'Delete Permanently'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Cancel Quote Confirmation Dialog */}
-      <AlertDialog open={cancelQuoteDialogOpen} onOpenChange={setCancelQuoteDialogOpen}>
-        <AlertDialogContent data-testid="dialog-cancel-quote">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Do you really want to cancel this quote?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Clicking 'Yes, cancel it!' will change the quote status to void (cancelled). This action can be undone by changing the status later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-cancel-quote">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                cancelQuoteMutation.mutate();
-              }}
-              disabled={cancelQuoteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-cancel-quote"
-            >
-              {cancelQuoteMutation.isPending ? 'Cancelling...' : 'Yes, cancel it!'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Archive Quote Confirmation Dialog */}
-      <AlertDialog open={archiveQuoteDialogOpen} onOpenChange={setArchiveQuoteDialogOpen}>
-        <AlertDialogContent data-testid="dialog-archive-quote">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Do you really want to archive this quote?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Archived quotes can be unarchived later if needed. This helps keep your active quotes list clean.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-archive-quote">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                archiveQuoteMutation.mutate(true);
-              }}
-              disabled={archiveQuoteMutation.isPending}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              data-testid="button-confirm-archive-quote"
-            >
-              {archiveQuoteMutation.isPending ? 'Archiving...' : 'Yes, archive it!'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Duplicate Quote Confirmation Dialog */}
-      <AlertDialog open={duplicateQuoteDialogOpen} onOpenChange={setDuplicateQuoteDialogOpen}>
-        <AlertDialogContent data-testid="dialog-duplicate-quote">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Do you really want to duplicate this quote?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will create a new quote with all the information from the current quote, including client details, family members, and selected plan. You will be redirected to the new quote.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-duplicate-quote">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                duplicateQuoteMutation.mutate();
-              }}
-              disabled={duplicateQuoteMutation.isPending}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              data-testid="button-confirm-duplicate-quote"
-            >
-              {duplicateQuoteMutation.isPending ? 'Duplicating...' : 'Duplicate Quote'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Block Quote Confirmation Dialog */}
-      <AlertDialog open={blockQuoteDialogOpen} onOpenChange={setBlockQuoteDialogOpen}>
-        <AlertDialogContent data-testid="dialog-block-quote">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Do you really want to block this quote?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Clicking 'Yes, block it!' will prevent agents to update this quote. Only administrators can block or unblock quotes.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-block-quote">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                blockQuoteMutation.mutate();
-              }}
-              disabled={blockQuoteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-block-quote"
-            >
-              <Lock className="h-4 w-4 mr-2" />
-              {blockQuoteMutation.isPending ? 'Processing...' : 'Yes, block it!'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Remove Plan Confirmation Dialog */}
-      <AlertDialog open={removePlanDialogOpen} onOpenChange={setRemovePlanDialogOpen}>
-        <AlertDialogContent data-testid="dialog-remove-plan">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove selected plan?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the currently selected plan from this quote. You can add a new plan afterwards.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-remove-plan">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                try {
-                  await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
-                    selectedPlan: null
-                  });
-                  queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
-                  toast({
-                    title: "Plan Removed",
-                    description: "The selected plan has been removed from this quote.",
-                    duration: 3000,
-                  });
-                  setRemovePlanDialogOpen(false);
-                } catch (error: any) {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to remove plan.",
-                    variant: "destructive",
-                    duration: 3000,
-                  });
-                }
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-remove-plan"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Remove Plan
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
