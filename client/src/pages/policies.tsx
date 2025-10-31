@@ -9981,7 +9981,7 @@ export default function PoliciesPage() {
                                 <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
                                   {(() => {
                                     const typeMap: Record<string, string> = {
-                                      'aca': 'Health Insurance (ACA)',
+                                      'aca': 'Health Insurance ACA',
                                       'medicare': 'Medicare',
                                       'medicaid': 'Medicaid',
                                       'supplemental': 'Supplemental',
@@ -9993,7 +9993,10 @@ export default function PoliciesPage() {
                                       'final_expense': 'Final Expense',
                                       'travel': 'Travel Insurance'
                                     };
-                                    return typeMap[quote.productType?.toLowerCase()] || quote.productType;
+                                    const insuranceType = typeMap[quote.productType?.toLowerCase()] || quote.productType;
+                                    const carrierName = quote.selectedPlan ? (quote.selectedPlan.issuer?.name || quote.selectedPlan.issuer_name) : null;
+                                    
+                                    return carrierName ? `${carrierName} - ${insuranceType}` : insuranceType;
                                   })()}
                                 </div>
                                 {quote.selectedPlan ? (
