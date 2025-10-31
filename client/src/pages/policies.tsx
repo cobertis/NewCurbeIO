@@ -6403,7 +6403,7 @@ export default function PoliciesPage() {
                       <span className="text-muted-foreground">•</span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        Effective {formatDateForDisplay(viewingQuote.effectiveDate, "MMM dd, yyyy")}
+                        Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMM dd, yyyy")}
                       </span>
                     </div>
                     
