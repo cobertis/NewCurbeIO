@@ -6488,7 +6488,7 @@ export default function PoliciesPage() {
                             }}
                           >
                             <Lock className="h-4 w-4 mr-2" />
-                            Block Policy
+                            {viewingQuote.isBlocked ? 'Unblock Policy' : 'Block Policy'}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
                             setRemindersSheetOpen(true);
@@ -9939,23 +9939,6 @@ export default function PoliciesPage() {
                                       onClick={() => setLocation(`/policies/${quote.id}`)}
                                     >
                                       {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
-                                      {' - '}
-                                      {(() => {
-                                        const typeMap: Record<string, string> = {
-                                          'aca': 'Health Insurance (ACA)',
-                                          'medicare': 'Medicare',
-                                          'medicaid': 'Medicaid',
-                                          'supplemental': 'Supplemental',
-                                          'life': 'Life Insurance',
-                                          'dental': 'Dental Insurance',
-                                          'vision': 'Vision Insurance',
-                                          'private': 'Private Insurance',
-                                          'annuities': 'Annuities',
-                                          'final_expense': 'Final Expense',
-                                          'travel': 'Travel Insurance'
-                                        };
-                                        return typeMap[quote.productType?.toLowerCase()] || quote.productType;
-                                      })()}
                                     </div>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                       <Badge variant="secondary" className="text-xs px-1.5 py-0">
@@ -9996,7 +9979,22 @@ export default function PoliciesPage() {
                             <TableCell>
                               <div className="space-y-1">
                                 <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
-                                  {quote.selectedPlan ? (quote.selectedPlan.issuer?.name || quote.selectedPlan.issuer_name) : (product?.name || quote.productType)}
+                                  {(() => {
+                                    const typeMap: Record<string, string> = {
+                                      'aca': 'Health Insurance (ACA)',
+                                      'medicare': 'Medicare',
+                                      'medicaid': 'Medicaid',
+                                      'supplemental': 'Supplemental',
+                                      'life': 'Life Insurance',
+                                      'dental': 'Dental Insurance',
+                                      'vision': 'Vision Insurance',
+                                      'private': 'Private Insurance',
+                                      'annuities': 'Annuities',
+                                      'final_expense': 'Final Expense',
+                                      'travel': 'Travel Insurance'
+                                    };
+                                    return typeMap[quote.productType?.toLowerCase()] || quote.productType;
+                                  })()}
                                 </div>
                                 {quote.selectedPlan ? (
                                   <div className="space-y-0.5">
