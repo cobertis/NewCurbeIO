@@ -177,7 +177,6 @@ const regularUserMenuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const [cachedLogo, setCachedLogo] = useState<string | null>(null);
-  const [policiesOpen, setPoliciesOpen] = useState(true);
   const { isMobile, setOpenMobile } = useSidebar();
   
   const { data: userData } = useQuery<{ user: User & { companyName?: string } }>({
@@ -278,93 +277,69 @@ export function AppSidebar() {
                 // Special handling for Policies with submenu
                 if (item.title === "Policies") {
                   return (
-                    <Collapsible
-                      key={item.title}
-                      open={policiesOpen}
-                      onOpenChange={setPoliciesOpen}
-                      className="group/collapsible"
-                    >
+                    <div key={item.title}>
                       <SidebarMenuItem>
-                        <div className="flex items-center w-full gap-1">
-                          {/* Main clickable link to /policies */}
-                          <SidebarMenuButton
+                        <SidebarMenuButton
+                          asChild
+                          data-testid={`link-${item.title.toLowerCase()}`}
+                          className={`
+                            h-11 rounded-md transition-colors
+                            ${location === item.url || location.startsWith('/policies')
+                              ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                            }
+                          `}
+                        >
+                          <Link href={item.url} className="flex items-center gap-3 px-3 w-full" onClick={(e) => { if (isMobile) { setOpenMobile(false); } }}>
+                            <item.icon className="h-5 w-5 shrink-0" />
+                            <span className="flex-1">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      
+                      {/* Always visible submenu */}
+                      <SidebarMenuSub className="ml-6 mt-1 space-y-0.5">
+                        {/* ACA/Obamacare */}
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton
                             asChild
-                            data-testid={`link-${item.title.toLowerCase()}`}
+                            isActive={location === '/policies' || location === '/policies/aca'}
                             className={`
-                              flex-1 h-11 rounded-md transition-colors
-                              ${location === item.url || location.startsWith('/policies')
-                                ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                              h-9 rounded-md transition-colors
+                              ${location === '/policies' || location === '/policies/aca'
+                                ? 'bg-primary/10 text-primary font-medium'
                                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                               }
                             `}
                           >
-                            <Link href={item.url} className="flex items-center gap-3 px-3 w-full" onClick={(e) => { if (isMobile) { setOpenMobile(false); } }}>
-                              <item.icon className="h-5 w-5 shrink-0" />
-                              <span className="flex-1">{item.title}</span>
+                            <Link href="/policies" className="flex items-center gap-2 w-full px-2" onClick={(e) => { if (isMobile) { setOpenMobile(false); } }}>
+                              <Heart className="h-4 w-4 shrink-0" />
+                              <span className="text-sm">ACA Plans</span>
                             </Link>
-                          </SidebarMenuButton>
-                          
-                          {/* Separate chevron button to toggle submenu */}
-                          <CollapsibleTrigger asChild>
-                            <button 
-                              className={`
-                                h-11 w-9 rounded-md flex items-center justify-center transition-colors
-                                ${location === item.url || location.startsWith('/policies')
-                                  ? 'text-primary-foreground hover:bg-primary/80' 
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                                }
-                              `}
-                              aria-label="Toggle policies submenu"
-                            >
-                              <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${policiesOpen ? 'rotate-90' : ''}`} />
-                            </button>
-                          </CollapsibleTrigger>
-                        </div>
-                        <CollapsibleContent>
-                          <SidebarMenuSub className="ml-6 mt-1 space-y-0.5">
-                            {/* ACA/Obamacare */}
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={location === '/policies' || location === '/policies/aca'}
-                                className={`
-                                  h-9 rounded-md transition-colors
-                                  ${location === '/policies' || location === '/policies/aca'
-                                    ? 'bg-primary/10 text-primary font-medium'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                                  }
-                                `}
-                              >
-                                <Link href="/policies" className="flex items-center gap-2 w-full px-2">
-                                  <Heart className="h-4 w-4 shrink-0" />
-                                  <span className="text-sm">ACA Plans</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            
-                            {/* Medicare */}
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={location === '/policies/medicare'}
-                                className={`
-                                  h-9 rounded-md transition-colors
-                                  ${location === '/policies/medicare'
-                                    ? 'bg-primary/10 text-primary font-medium'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                                  }
-                                `}
-                              >
-                                <Link href="/policies/medicare" className="flex items-center gap-2 w-full px-2">
-                                  <Stethoscope className="h-4 w-4 shrink-0" />
-                                  <span className="text-sm">Medicare</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                        
+                        {/* Medicare */}
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={location === '/policies/medicare'}
+                            className={`
+                              h-9 rounded-md transition-colors
+                              ${location === '/policies/medicare'
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                              }
+                            `}
+                          >
+                            <Link href="/policies/medicare" className="flex items-center gap-2 w-full px-2" onClick={(e) => { if (isMobile) { setOpenMobile(false); } }}>
+                              <Stethoscope className="h-4 w-4 shrink-0" />
+                              <span className="text-sm">Medicare</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      </SidebarMenuSub>
+                    </div>
                   );
                 }
                 
