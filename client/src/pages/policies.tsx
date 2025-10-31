@@ -3573,7 +3573,18 @@ export default function PoliciesPage() {
         specialEnrollmentDate: viewingQuote.specialEnrollmentDate || '',
       });
     }
-  }, [viewingQuote?.id]);
+  }, [
+    viewingQuote?.id, 
+    viewingQuote?.memberId,
+    viewingQuote?.npnMarketplace,
+    viewingQuote?.saleType,
+    viewingQuote?.effectiveDate,
+    viewingQuote?.marketplaceId,
+    viewingQuote?.ffmMarketplace,
+    viewingQuote?.specialEnrollmentReason,
+    viewingQuote?.cancellationDate,
+    viewingQuote?.specialEnrollmentDate
+  ]);
 
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
