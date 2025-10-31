@@ -6510,14 +6510,16 @@ export default function PoliciesPage() {
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicate
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setCancelPolicyDialogOpen(true);
+                          <DropdownMenuItem onSelect={(e) => {
+                            e.preventDefault();
+                            setTimeout(() => setCancelPolicyDialogOpen(true), 0);
                           }}>
                             <X className="h-4 w-4 mr-2" />
                             Cancel Policy
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setArchivePolicyDialogOpen(true);
+                          <DropdownMenuItem onSelect={(e) => {
+                            e.preventDefault();
+                            setTimeout(() => setArchivePolicyDialogOpen(true), 0);
                           }}>
                             <Archive className="h-4 w-4 mr-2" />
                             Archive Policy
