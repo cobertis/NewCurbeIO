@@ -3471,6 +3471,28 @@ export default function QuotesPage() {
   const [showConsentForm, setShowConsentForm] = useState(false); // Track if we're in form view
   const [viewingConsent, setViewingConsent] = useState<any | null>(null); // Track if we're viewing a consent
   
+  // Manual plan dialog state
+  const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
+  const [manualPlanData, setManualPlanData] = useState({
+    productType: '',
+    carrier: '',
+    planName: '',
+    effectiveDate: '',
+    cancellationDate: '',
+    metal: '',
+    marketplaceId: '',
+    memberId: '',
+    cmsPlanId: '',
+    policyTotalCost: '',
+    taxCredit: '',
+    premium: '',
+    saleType: '',
+    ffmMarketplace: '',
+    npnMarketplace: '',
+    specialEnrollmentDate: '',
+    specialEnrollmentReason: '',
+  });
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -6536,27 +6558,28 @@ export default function QuotesPage() {
                         </Button>
                       )}
                       {viewingQuote.productType === "aca" && (
-                        <Button 
-                          variant="default" 
-                          size="sm" 
-                          data-testid="button-search-plans"
-                          onClick={() => {
-                            const missingFields = validateMarketplaceData();
-                            if (missingFields.length > 0) {
-                              toast({
-                                title: "Missing Required Data",
-                                description: (
-                                  <div>
-                                    <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
-                                    <ul className="list-disc pl-4 space-y-1">
-                                      {missingFields.map((field, index) => (
-                                        <li key={index}>{field}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                ),
-                                variant: "destructive",
-                              });
+                        <>
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            data-testid="button-search-plans"
+                            onClick={() => {
+                              const missingFields = validateMarketplaceData();
+                              if (missingFields.length > 0) {
+                                toast({
+                                  title: "Missing Required Data",
+                                  description: (
+                                    <div>
+                                      <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
+                                      <ul className="list-disc pl-4 space-y-1">
+                                        {missingFields.map((field, index) => (
+                                          <li key={index}>{field}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ),
+                                  variant: "destructive",
+                                });
                             } else {
                               setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`);
                             }
@@ -6564,6 +6587,16 @@ export default function QuotesPage() {
                         >
                           Search plans
                         </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            data-testid="button-add-plan-manually"
+                            onClick={() => setManualPlanDialogOpen(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Plan Manually
+                          </Button>
+                        </>
                       )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -11481,6 +11514,375 @@ export default function QuotesPage() {
             clientPhone={viewingQuote?.clientPhone || ''}
             onClose={() => setConsentModalOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Plan Dialog */}
+      <Dialog open={manualPlanDialogOpen} onOpenChange={setManualPlanDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-manual-plan">
+          <DialogHeader>
+            <DialogTitle>Insurance Information</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Coverage Information */}
+            <div>
+              <h3 className="text-sm font-semibold text-primary mb-3">Coverage Information</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="productType" className="text-sm">Product type <span className="text-red-500">(required)</span></Label>
+                  <Select
+                    value={manualPlanData.productType}
+                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, productType: value })}
+                  >
+                    <SelectTrigger id="productType" className="mt-1" data-testid="select-product-type">
+                      <SelectValue placeholder="Select product type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="supplemental">Supplemental</SelectItem>
+                      <SelectItem value="aca">Health Insurance (ACA)</SelectItem>
+                      <SelectItem value="dental">Dental</SelectItem>
+                      <SelectItem value="vision">Vision</SelectItem>
+                      <SelectItem value="life">Life Insurance</SelectItem>
+                      <SelectItem value="disability">Disability</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">(required)</span></Label>
+                  <Input
+                    id="carrier"
+                    value={manualPlanData.carrier}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, carrier: e.target.value })}
+                    placeholder="United Healthcare - Supplemental"
+                    className="mt-1"
+                    data-testid="input-carrier"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label htmlFor="planName" className="text-sm">Plan name</Label>
+                <Input
+                  id="planName"
+                  value={manualPlanData.planName}
+                  onChange={(e) => setManualPlanData({ ...manualPlanData, planName: e.target.value })}
+                  placeholder="VISION PLAN A"
+                  className="mt-1"
+                  data-testid="input-plan-name"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="effectiveDate" className="text-sm">Effective date <span className="text-red-500">(required)</span></Label>
+                  <Input
+                    id="effectiveDate"
+                    type="date"
+                    value={manualPlanData.effectiveDate}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, effectiveDate: e.target.value })}
+                    className="mt-1"
+                    data-testid="input-effective-date-manual"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="cancellationDate" className="text-sm">Cancellation date</Label>
+                  <Input
+                    id="cancellationDate"
+                    type="date"
+                    value={manualPlanData.cancellationDate}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, cancellationDate: e.target.value })}
+                    className="mt-1"
+                    data-testid="input-cancellation-date-manual"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="metal" className="text-sm">Metal</Label>
+                  <Select
+                    value={manualPlanData.metal}
+                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, metal: value })}
+                  >
+                    <SelectTrigger id="metal" className="mt-1" data-testid="select-metal">
+                      <SelectValue placeholder="Select metal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bronze">Bronze</SelectItem>
+                      <SelectItem value="silver">Silver</SelectItem>
+                      <SelectItem value="gold">Gold</SelectItem>
+                      <SelectItem value="platinum">Platinum</SelectItem>
+                      <SelectItem value="catastrophic">Catastrophic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="marketplaceId" className="text-sm">Marketplace ID</Label>
+                  <Input
+                    id="marketplaceId"
+                    value={manualPlanData.marketplaceId}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, marketplaceId: e.target.value })}
+                    placeholder="Enter marketplace ID"
+                    className="mt-1"
+                    data-testid="input-marketplace-id-manual"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="memberId" className="text-sm">Member ID</Label>
+                  <Input
+                    id="memberId"
+                    value={manualPlanData.memberId}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, memberId: e.target.value })}
+                    placeholder="441414053"
+                    className="mt-1"
+                    data-testid="input-member-id-manual"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="cmsPlanId" className="text-sm">CMS Plan ID</Label>
+                  <Input
+                    id="cmsPlanId"
+                    value={manualPlanData.cmsPlanId}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, cmsPlanId: e.target.value })}
+                    placeholder="Enter CMS Plan ID"
+                    className="mt-1"
+                    data-testid="input-cms-plan-id"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="policyTotalCost" className="text-sm">Policy total cost</Label>
+                  <Input
+                    id="policyTotalCost"
+                    type="number"
+                    step="0.01"
+                    value={manualPlanData.policyTotalCost}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, policyTotalCost: e.target.value })}
+                    placeholder="Enter policy total cost"
+                    className="mt-1"
+                    data-testid="input-policy-total-cost"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="taxCredit" className="text-sm">Tax Credit / Subsidy</Label>
+                  <Input
+                    id="taxCredit"
+                    type="number"
+                    step="0.01"
+                    value={manualPlanData.taxCredit}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, taxCredit: e.target.value })}
+                    placeholder="Enter tax credit or subsidy"
+                    className="mt-1"
+                    data-testid="input-tax-credit"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="premium" className="text-sm">Premium (monthly payment)</Label>
+                  <Input
+                    id="premium"
+                    type="number"
+                    step="0.01"
+                    value={manualPlanData.premium}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, premium: e.target.value })}
+                    placeholder="17.00"
+                    className="mt-1"
+                    data-testid="input-premium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Enrollment Information */}
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-semibold text-primary mb-3">Enrollment Information</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="saleType" className="text-sm">Type of sale</Label>
+                  <Select
+                    value={manualPlanData.saleType}
+                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, saleType: value })}
+                  >
+                    <SelectTrigger id="saleType" className="mt-1" data-testid="select-sale-type-manual">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">New sale</SelectItem>
+                      <SelectItem value="renewal">Renewal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="ffmMarketplace" className="text-sm">FFM used in marketplace</Label>
+                  <Input
+                    id="ffmMarketplace"
+                    value={manualPlanData.ffmMarketplace}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, ffmMarketplace: e.target.value })}
+                    placeholder="Enter FFM used in marketplace"
+                    className="mt-1"
+                    data-testid="input-ffm-marketplace-manual"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="npnMarketplace" className="text-sm">NPN used in marketplace</Label>
+                  <Input
+                    id="npnMarketplace"
+                    value={manualPlanData.npnMarketplace}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, npnMarketplace: e.target.value })}
+                    placeholder="17925766"
+                    className="mt-1"
+                    data-testid="input-npn-marketplace-manual"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="specialEnrollmentDate" className="text-sm">Special enrollment period date</Label>
+                  <Input
+                    id="specialEnrollmentDate"
+                    type="date"
+                    value={manualPlanData.specialEnrollmentDate}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, specialEnrollmentDate: e.target.value })}
+                    className="mt-1"
+                    data-testid="input-special-enrollment-date-manual"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label htmlFor="specialEnrollmentReason" className="text-sm">Special enrollment period reason</Label>
+                <Input
+                  id="specialEnrollmentReason"
+                  value={manualPlanData.specialEnrollmentReason}
+                  onChange={(e) => setManualPlanData({ ...manualPlanData, specialEnrollmentReason: e.target.value })}
+                  placeholder="Enter special enrollment period reason"
+                  className="mt-1"
+                  data-testid="input-special-enrollment-reason-manual"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setManualPlanDialogOpen(false);
+                  setManualPlanData({
+                    productType: '',
+                    carrier: '',
+                    planName: '',
+                    effectiveDate: '',
+                    cancellationDate: '',
+                    metal: '',
+                    marketplaceId: '',
+                    memberId: '',
+                    cmsPlanId: '',
+                    policyTotalCost: '',
+                    taxCredit: '',
+                    premium: '',
+                    saleType: '',
+                    ffmMarketplace: '',
+                    npnMarketplace: '',
+                    specialEnrollmentDate: '',
+                    specialEnrollmentReason: '',
+                  });
+                }}
+                className="flex-1"
+                data-testid="button-close-manual-plan"
+              >
+                Close
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!manualPlanData.productType || !manualPlanData.carrier || !manualPlanData.effectiveDate) {
+                    toast({
+                      title: "Validation Error",
+                      description: "Please fill in all required fields (Product type, Carrier, and Effective date).",
+                      variant: "destructive",
+                      duration: 3000,
+                    });
+                    return;
+                  }
+
+                  try {
+                    await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
+                      selectedPlan: {
+                        name: manualPlanData.planName || `${manualPlanData.carrier} Plan`,
+                        issuer: { name: manualPlanData.carrier },
+                        metal_level: manualPlanData.metal,
+                        type: manualPlanData.productType,
+                        premium: parseFloat(manualPlanData.premium) || 0,
+                        premium_w_credit: manualPlanData.taxCredit ? (parseFloat(manualPlanData.premium) || 0) - (parseFloat(manualPlanData.taxCredit) || 0) : null,
+                        id: manualPlanData.cmsPlanId || 'MANUAL',
+                        manual: true,
+                      },
+                      memberId: manualPlanData.memberId || null,
+                      npnMarketplace: manualPlanData.npnMarketplace || null,
+                      saleType: manualPlanData.saleType || null,
+                      effectiveDate: manualPlanData.effectiveDate,
+                      marketplaceId: manualPlanData.marketplaceId || null,
+                      ffmMarketplace: manualPlanData.ffmMarketplace || null,
+                      specialEnrollmentReason: manualPlanData.specialEnrollmentReason || null,
+                      cancellationDate: manualPlanData.cancellationDate || null,
+                      specialEnrollmentDate: manualPlanData.specialEnrollmentDate || null,
+                    });
+                    queryClient.invalidateQueries({ queryKey: [`/api/quotes/${viewingQuote.id}/detail`] });
+                    toast({
+                      title: "Plan Added",
+                      description: "Manual plan has been added successfully.",
+                      duration: 3000,
+                    });
+                    setManualPlanDialogOpen(false);
+                    setManualPlanData({
+                      productType: '',
+                      carrier: '',
+                      planName: '',
+                      effectiveDate: '',
+                      cancellationDate: '',
+                      metal: '',
+                      marketplaceId: '',
+                      memberId: '',
+                      cmsPlanId: '',
+                      policyTotalCost: '',
+                      taxCredit: '',
+                      premium: '',
+                      saleType: '',
+                      ffmMarketplace: '',
+                      npnMarketplace: '',
+                      specialEnrollmentDate: '',
+                      specialEnrollmentReason: '',
+                    });
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to add manual plan.",
+                      variant: "destructive",
+                      duration: 3000,
+                    });
+                  }
+                }}
+                className="flex-1"
+                data-testid="button-submit-manual-plan"
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

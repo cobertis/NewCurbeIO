@@ -59,11 +59,19 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **Quote Search:** Universal search functionality with OPTIONAL family member searching. By default searches only primary client; when checkbox is activated, includes spouses and dependents by name, email, and phone.
     -   **Quote Blocking:** Admins and superadmins can block/unblock quotes. Blocked quotes display yellow warning banner, lock icon on status badge, and prevent updates by agents. Audit trail tracks who blocked and when.
     -   **Quote Options Menu:** Complete functionality including Block/Unblock, New Reminder, Print Quote, Duplicate, Cancel Quote, Archive/Unarchive with confirmation dialogs.
+    -   **Manual Plan Entry:** "Add Plan Manually" button opens comprehensive dialog for entering insurance plans for states without marketplace API connectivity. Features two sections:
+        -   **Coverage Information:** Product type (required), Carrier (required), Plan name, Effective date (required), Cancellation date, Metal level, Marketplace ID, Member ID, CMS Plan ID, Policy total cost, Tax Credit/Subsidy, Premium (monthly payment)
+        -   **Enrollment Information:** Type of sale, FFM used in marketplace, NPN used in marketplace, Special enrollment period date, Special enrollment period reason
+        -   Form validation ensures all required fields (Product type, Carrier, Effective date) are filled before submission
 -   **Policies Management System:** Converts quotes to policies, migrating all associated data. Provides **IDENTICAL functionality** to the Quotes module with comprehensive policy status management and agent assignment capabilities.
     -   **Policy Search:** Universal search functionality with OPTIONAL family member searching. By default searches only primary client; when checkbox is activated, includes spouses and dependents by name, email, and phone.
     -   **Policy Blocking:** Admins and superadmins can block/unblock policies. Blocked policies display yellow warning banner, lock icon on status badge, and prevent updates by agents. Audit trail tracks who blocked and when.
     -   **Policy Display:** Table shows carrier name + insurance type (e.g., "Ambetter - Health Insurance ACA"). Lock icon appears in status column when policy is blocked.
     -   **Policy Options Menu:** Complete functionality including Block/Unblock, New Reminder, Print Policy, Duplicate, Cancel Policy, Archive/Unarchive with confirmation dialogs.
+    -   **Manual Plan Entry:** "Add Plan Manually" button opens comprehensive dialog for entering insurance plans for states without marketplace API connectivity. Features two sections:
+        -   **Coverage Information:** Product type (required), Carrier (required), Plan name, Effective date (required), Cancellation date, Metal level, Marketplace ID, Member ID, CMS Plan ID, Policy total cost, Tax Credit/Subsidy, Premium (monthly payment)
+        -   **Enrollment Information:** Type of sale, FFM used in marketplace, NPN used in marketplace, Special enrollment period date, Special enrollment period reason
+        -   Form validation ensures all required fields (Product type, Carrier, Effective date) are filled before submission
 -   **Consent Document System:** Generates legal consent documents, supports email/SMS/link delivery, and captures electronic signatures with a full digital audit trail.
 -   **Calendar System:** Full-screen professional calendar displaying company-wide events including birthdays and reminders, with multi-tenant isolation.
 -   **Reminder System:** Background scheduler (node-cron) runs every minute to:
