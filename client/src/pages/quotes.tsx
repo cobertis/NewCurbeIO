@@ -6460,34 +6460,36 @@ export default function QuotesPage() {
                           {submitPolicyMutation.isPending ? "Submitting..." : "Submit Policy"}
                         </Button>
                       )}
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        data-testid="button-search-plans"
-                        onClick={() => {
-                          const missingFields = validateMarketplaceData();
-                          if (missingFields.length > 0) {
-                            toast({
-                              title: "Missing Required Data",
-                              description: (
-                                <div>
-                                  <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
-                                  <ul className="list-disc pl-4 space-y-1">
-                                    {missingFields.map((field, index) => (
-                                      <li key={index}>{field}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ),
-                              variant: "destructive",
-                            });
-                          } else {
-                            setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`);
-                          }
-                        }}
-                      >
-                        Search plans
-                      </Button>
+                      {viewingQuote.productType === "aca" && (
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          data-testid="button-search-plans"
+                          onClick={() => {
+                            const missingFields = validateMarketplaceData();
+                            if (missingFields.length > 0) {
+                              toast({
+                                title: "Missing Required Data",
+                                description: (
+                                  <div>
+                                    <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
+                                    <ul className="list-disc pl-4 space-y-1">
+                                      {missingFields.map((field, index) => (
+                                        <li key={index}>{field}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ),
+                                variant: "destructive",
+                              });
+                            } else {
+                              setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`);
+                            }
+                          }}
+                        >
+                          Search plans
+                        </Button>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" data-testid="button-options">
