@@ -6690,10 +6690,7 @@ export default function PoliciesPage() {
                                 value={viewingQuote.memberId || ''}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({ memberId: value || null }),
-                                  }).then(() => {
+                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { memberId: value || null }).then(() => {
                                     queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                   });
                                 }}
@@ -6708,10 +6705,7 @@ export default function PoliciesPage() {
                                 value={viewingQuote.npnMarketplace || ''}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({ npnMarketplace: value || null }),
-                                  }).then(() => {
+                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { npnMarketplace: value || null }).then(() => {
                                     queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                   });
                                 }}
@@ -6728,10 +6722,7 @@ export default function PoliciesPage() {
                               <Select
                                 value={viewingQuote.saleType || ''}
                                 onValueChange={(value) => {
-                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({ saleType: value || null }),
-                                  }).then(() => {
+                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { saleType: value || null }).then(() => {
                                     queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                   });
                                 }}
@@ -6753,10 +6744,7 @@ export default function PoliciesPage() {
                                 value={viewingQuote.effectiveDate || ''}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({ effectiveDate: value || null }),
-                                  }).then(() => {
+                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { effectiveDate: value || null }).then(() => {
                                     queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                   });
                                 }}
@@ -6774,10 +6762,7 @@ export default function PoliciesPage() {
                                 value={viewingQuote.marketplaceId || ''}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({ marketplaceId: value || null }),
-                                  }).then(() => {
+                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { marketplaceId: value || null }).then(() => {
                                     queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                   });
                                 }}
@@ -6792,10 +6777,7 @@ export default function PoliciesPage() {
                                 value={viewingQuote.ffmMarketplace || ''}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({ ffmMarketplace: value || null }),
-                                  }).then(() => {
+                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { ffmMarketplace: value || null }).then(() => {
                                     queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                   });
                                 }}
@@ -6812,10 +6794,7 @@ export default function PoliciesPage() {
                               value={viewingQuote.specialEnrollmentReason || ''}
                               onChange={(e) => {
                                 const value = e.target.value;
-                                apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ specialEnrollmentReason: value || null }),
-                                }).then(() => {
+                                apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { specialEnrollmentReason: value || null }).then(() => {
                                   queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                 });
                               }}
@@ -6833,10 +6812,7 @@ export default function PoliciesPage() {
                                 value={viewingQuote.cancellationDate || ''}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({ cancellationDate: value || null }),
-                                  }).then(() => {
+                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { cancellationDate: value || null }).then(() => {
                                     queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                   });
                                 }}
@@ -6852,10 +6828,7 @@ export default function PoliciesPage() {
                                 value={viewingQuote.specialEnrollmentDate || ''}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({ specialEnrollmentDate: value || null }),
-                                  }).then(() => {
+                                  apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, { specialEnrollmentDate: value || null }).then(() => {
                                     queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                                   });
                                 }}
