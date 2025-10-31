@@ -3400,6 +3400,19 @@ export default function QuotesPage() {
   const [duplicateQuoteDialogOpen, setDuplicateQuoteDialogOpen] = useState(false);
   const [blockQuoteDialogOpen, setBlockQuoteDialogOpen] = useState(false);
   
+  // Quote information state (for editing plan metadata)
+  const [quoteInfo, setQuoteInfo] = useState({
+    memberId: '',
+    npnMarketplace: '',
+    saleType: '',
+    effectiveDate: '',
+    marketplaceId: '',
+    ffmMarketplace: '',
+    specialEnrollmentReason: '',
+    cancellationDate: '',
+    specialEnrollmentDate: '',
+  });
+  
   // Notes sheet state
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
@@ -3530,6 +3543,34 @@ export default function QuotesPage() {
   const viewingQuote = quoteDetail?.quote || quotesData?.quotes?.find(q => q.id === params?.id);
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
+
+  // Load quote info when viewing a quote
+  useEffect(() => {
+    if (viewingQuote) {
+      setQuoteInfo({
+        memberId: viewingQuote.memberId || '',
+        npnMarketplace: viewingQuote.npnMarketplace || '',
+        saleType: viewingQuote.saleType || '',
+        effectiveDate: viewingQuote.effectiveDate || '',
+        marketplaceId: viewingQuote.marketplaceId || '',
+        ffmMarketplace: viewingQuote.ffmMarketplace || '',
+        specialEnrollmentReason: viewingQuote.specialEnrollmentReason || '',
+        cancellationDate: viewingQuote.cancellationDate || '',
+        specialEnrollmentDate: viewingQuote.specialEnrollmentDate || '',
+      });
+    }
+  }, [
+    viewingQuote?.id, 
+    viewingQuote?.memberId,
+    viewingQuote?.npnMarketplace,
+    viewingQuote?.saleType,
+    viewingQuote?.effectiveDate,
+    viewingQuote?.marketplaceId,
+    viewingQuote?.ffmMarketplace,
+    viewingQuote?.specialEnrollmentReason,
+    viewingQuote?.cancellationDate,
+    viewingQuote?.specialEnrollmentDate,
+  ]);
 
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
@@ -6675,100 +6716,262 @@ export default function QuotesPage() {
                       </div>
                     </div>
 
-                    {/* Main Content Grid */}
+                    {/* Main Content Grid - Split into 2 columns */}
                     <div className="p-6">
                       {/* Plan Name */}
                       <h4 className="text-base font-medium mb-4 text-primary">{plan.name}</h4>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6 mb-6">
-                        {/* Left: Prima mensual */}
-                        <div>
-                          <p className="text-sm font-semibold mb-2">Premium</p>
-                          <p className="text-4xl font-bold mb-1">
-                            {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
-                              ? formatCurrency(plan.premium_w_credit)
-                              : formatCurrency(plan.premium)}
-                          </p>
-                          {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
-                            <>
-                              <p className="text-xs text-green-600 dark:text-green-500">
-                                Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
+                      {/* Two Column Layout */}
+                      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+                        {/* LEFT COLUMN: Plan Information */}
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6">
+                            {/* Left: Prima mensual */}
+                            <div>
+                              <p className="text-sm font-semibold mb-2">Premium</p>
+                              <p className="text-4xl font-bold mb-1">
+                                {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
+                                  ? formatCurrency(plan.premium_w_credit)
+                                  : formatCurrency(plan.premium)}
                               </p>
-                              <p className="text-xs text-muted-foreground line-through">
-                                Plan was {formatCurrency(plan.premium)}
-                              </p>
-                            </>
-                          )}
-                        </div>
+                              {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
+                                <>
+                                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                    APTC received: {formatCurrency(plan.premium - plan.premium_w_credit)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground line-through">
+                                    Plan was {formatCurrency(plan.premium)}
+                                  </p>
+                                </>
+                              )}
+                            </div>
 
-                        {/* Center: Deductible */}
-                        <div>
-                          <p className="text-sm font-semibold mb-2">Deductible</p>
-                          <p className="text-4xl font-bold mb-1">
-                            {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
-                          </p>
-                          {mainDeductible && (
-                            <>
+                            {/* Center: Deductible */}
+                            <div>
+                              <p className="text-sm font-semibold mb-2">Deductible</p>
+                              <p className="text-4xl font-bold mb-1">
+                                {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
+                              </p>
+                              {mainDeductible && (
+                                <>
+                                  <p className="text-xs text-muted-foreground">
+                                    Individual total ({formatCurrency(mainDeductible.amount)} per person)
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Health & drug combined
+                                  </p>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Right: Out-of-pocket max */}
+                            <div>
+                              <p className="text-sm font-semibold mb-2">Out-of-pocket max</p>
+                              <p className="text-4xl font-bold mb-1">
+                                {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Individual total</p>
                               <p className="text-xs text-muted-foreground">
-                                Individual total ({formatCurrency(mainDeductible.amount)} per person)
+                                Maximum for Medical and Drug EHB Benefits
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                Health & drug combined
+                            </div>
+                          </div>
+
+                          {/* Benefits Grid - 2x3 */}
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div>
+                              <p className="text-sm font-medium mb-1">Primary Doctor visits</p>
+                              <p className="text-sm text-muted-foreground">
+                                {primaryCareCost || 'No Charge After Deductible'}
                               </p>
-                            </>
-                          )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Specialist Visits</p>
+                              <p className="text-sm text-muted-foreground">
+                                {specialistCost || 'No Charge After Deductible'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Urgent care</p>
+                              <p className="text-sm text-muted-foreground">
+                                {urgentCareCost || 'No Charge After Deductible'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Emergencies</p>
+                              <p className="text-sm text-muted-foreground">
+                                {emergencyCost || '40% Coinsurance after deductible'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Mental health</p>
+                              <p className="text-sm text-muted-foreground">
+                                {mentalHealthCost || 'No Charge After Deductible'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">Generic drugs</p>
+                              <p className="text-sm text-muted-foreground">
+                                {genericDrugsCost || 'No Charge After Deductible'}
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Right: Out-of-pocket max */}
-                        <div>
-                          <p className="text-sm font-semibold mb-2">Out-of-pocket max</p>
-                          <p className="text-4xl font-bold mb-1">
-                            {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Individual total</p>
-                          <p className="text-xs text-muted-foreground">
-                            Maximum for Medical and Drug EHB Benefits
-                          </p>
-                        </div>
-                      </div>
+                        {/* RIGHT COLUMN: Quote Information */}
+                        <div className="border-l pl-6 space-y-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="text-sm font-semibold text-foreground">Quote Information</h5>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={async () => {
+                                try {
+                                  await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
+                                    memberId: quoteInfo.memberId || null,
+                                    npnMarketplace: quoteInfo.npnMarketplace || null,
+                                    saleType: quoteInfo.saleType || null,
+                                    effectiveDate: quoteInfo.effectiveDate || null,
+                                    marketplaceId: quoteInfo.marketplaceId || null,
+                                    ffmMarketplace: quoteInfo.ffmMarketplace || null,
+                                    specialEnrollmentReason: quoteInfo.specialEnrollmentReason || null,
+                                    cancellationDate: quoteInfo.cancellationDate || null,
+                                    specialEnrollmentDate: quoteInfo.specialEnrollmentDate || null,
+                                  });
+                                  queryClient.invalidateQueries({ queryKey: [`/api/quotes/${viewingQuote.id}/detail`] });
+                                  toast({
+                                    title: "Saved",
+                                    description: "Quote information has been saved.",
+                                    duration: 3000,
+                                  });
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Error",
+                                    description: error.message || "Failed to save quote information.",
+                                    variant: "destructive",
+                                    duration: 3000,
+                                  });
+                                }
+                              }}
+                              data-testid="button-save-quote-info"
+                            >
+                              <Save className="h-3 w-3 mr-1" />
+                              Save
+                            </Button>
+                          </div>
+                          
+                          {/* Row 1: Member ID + NPN */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Member ID</label>
+                              <Input
+                                value={quoteInfo.memberId}
+                                onChange={(e) => setQuoteInfo({ ...quoteInfo, memberId: e.target.value })}
+                                className="h-8 text-sm"
+                                data-testid="input-member-id"
+                              />
+                            </div>
 
-                      {/* Benefits Grid - 2x3 */}
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-sm font-medium mb-1">Primary Doctor visits</p>
-                          <p className="text-sm text-muted-foreground">
-                            {primaryCareCost || 'No Charge After Deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Specialist Visits</p>
-                          <p className="text-sm text-muted-foreground">
-                            {specialistCost || 'No Charge After Deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Urgent care</p>
-                          <p className="text-sm text-muted-foreground">
-                            {urgentCareCost || 'No Charge After Deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Emergencies</p>
-                          <p className="text-sm text-muted-foreground">
-                            {emergencyCost || '40% Coinsurance after deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Mental health</p>
-                          <p className="text-sm text-muted-foreground">
-                            {mentalHealthCost || 'No Charge After Deductible'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">Generic drugs</p>
-                          <p className="text-sm text-muted-foreground">
-                            {genericDrugsCost || 'No Charge After Deductible'}
-                          </p>
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">NPN marketplace</label>
+                              <Input
+                                value={quoteInfo.npnMarketplace}
+                                onChange={(e) => setQuoteInfo({ ...quoteInfo, npnMarketplace: e.target.value })}
+                                className="h-8 text-sm"
+                                data-testid="input-npn-marketplace"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Row 2: Sale Type + Effective Date */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">New sale / Renewal</label>
+                              <Select
+                                value={quoteInfo.saleType}
+                                onValueChange={(value) => setQuoteInfo({ ...quoteInfo, saleType: value })}
+                              >
+                                <SelectTrigger className="h-8 text-sm" data-testid="select-sale-type">
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="new">New Sale</SelectItem>
+                                  <SelectItem value="renewal">Renewal</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Effective date</label>
+                              <Input
+                                type="date"
+                                value={quoteInfo.effectiveDate}
+                                onChange={(e) => setQuoteInfo({ ...quoteInfo, effectiveDate: e.target.value })}
+                                className="h-8 text-sm"
+                                data-testid="input-effective-date"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Row 3: Marketplace ID + FFM */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Marketplace ID</label>
+                              <Input
+                                value={quoteInfo.marketplaceId}
+                                onChange={(e) => setQuoteInfo({ ...quoteInfo, marketplaceId: e.target.value })}
+                                className="h-8 text-sm"
+                                data-testid="input-marketplace-id"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">FFM marketplace</label>
+                              <Input
+                                value={quoteInfo.ffmMarketplace}
+                                onChange={(e) => setQuoteInfo({ ...quoteInfo, ffmMarketplace: e.target.value })}
+                                className="h-8 text-sm"
+                                data-testid="input-ffm-marketplace"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Row 4: Special Enrollment Reason (full width) */}
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Special enrollment reason</label>
+                            <Input
+                              value={quoteInfo.specialEnrollmentReason}
+                              onChange={(e) => setQuoteInfo({ ...quoteInfo, specialEnrollmentReason: e.target.value })}
+                              className="h-8 text-sm"
+                              data-testid="input-special-enrollment-reason"
+                            />
+                          </div>
+
+                          {/* Row 5: Cancellation Date + Special Enrollment Date */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Cancellation date</label>
+                              <Input
+                                type="date"
+                                value={quoteInfo.cancellationDate}
+                                onChange={(e) => setQuoteInfo({ ...quoteInfo, cancellationDate: e.target.value })}
+                                className="h-8 text-sm"
+                                data-testid="input-cancellation-date"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Special enrollment date</label>
+                              <Input
+                                type="date"
+                                value={quoteInfo.specialEnrollmentDate}
+                                onChange={(e) => setQuoteInfo({ ...quoteInfo, specialEnrollmentDate: e.target.value })}
+                                className="h-8 text-sm"
+                                data-testid="input-special-enrollment-date"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
