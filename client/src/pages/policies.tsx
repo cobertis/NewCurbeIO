@@ -2132,13 +2132,17 @@ interface ReminderFormProps {
 }
 
 const reminderFormSchema = insertQuoteReminderSchema
-  .omit({ companyId: true, quoteId: true, createdBy: true, id: true, createdAt: true, updatedAt: true, status: true, snoozeUntil: true })
+  .omit({ companyId: true, quoteId: true, createdBy: true, status: true, snoozedUntil: true, reminderBefore: true })
   .extend({
     title: z.string().min(1, "Title is required"),
+    description: z.string().optional(),
     dueDate: z.string().min(1, "Due date is required"),
     dueTime: z.string().min(1, "Due time is required"),
+    timezone: z.string().optional(),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
     reminderType: z.enum(['follow_up', 'document_request', 'payment_due', 'policy_renewal', 'call_client', 'send_email', 'review_application', 'other']),
+    notifyUsers: z.array(z.string()).optional(),
+    isPrivate: z.boolean().optional(),
     // Temporary fields for form UI (will be combined before submission)
     reminderBeforeValue: z.number().optional(),
     reminderBeforeUnit: z.string().optional(),
@@ -2160,8 +2164,8 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
       timezone: reminder?.timezone || 'America/New_York',
       reminderBeforeValue: parsedReminder.value,
       reminderBeforeUnit: parsedReminder.unit,
-      reminderType: reminder?.reminderType || 'follow_up',
-      priority: reminder?.priority || 'medium',
+      reminderType: (reminder?.reminderType || 'follow_up') as 'follow_up' | 'document_request' | 'payment_due' | 'policy_renewal' | 'call_client' | 'send_email' | 'review_application' | 'other',
+      priority: (reminder?.priority || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
       notifyUsers: reminder?.notifyUsers || [],
       isPrivate: reminder?.isPrivate || false,
     },
