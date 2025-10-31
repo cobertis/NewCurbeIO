@@ -219,6 +219,14 @@ export default function PolicyPrintPage() {
                   <p className="font-mono text-lg font-semibold">{policy.id}</p>
                 </div>
                 
+                {/* Internal Code */}
+                {policy.internalCode && (
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground mb-1">Internal Code</p>
+                    <p className="font-mono text-base font-semibold">{policy.internalCode}</p>
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-3 text-sm">
                   <span className="font-medium">{policy.productType || 'Health Insurance'}</span>
                   <span className="text-muted-foreground">•</span>
