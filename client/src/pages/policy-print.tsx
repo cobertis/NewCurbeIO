@@ -73,7 +73,13 @@ export default function PolicyPrintPage() {
     );
   }
 
-  const policyYear = policy?.effectiveDate ? new Date(policy.effectiveDate).getFullYear() : new Date().getFullYear();
+  // Parse effectiveDate as local time to avoid timezone issues
+  const policyYear = policy?.effectiveDate 
+    ? (() => {
+        const [year] = policy.effectiveDate.split('-').map(Number);
+        return year;
+      })()
+    : new Date().getFullYear();
   const plan = selectedPlan;
 
   // Extract plan details
