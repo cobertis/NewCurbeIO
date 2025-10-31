@@ -1,8 +1,8 @@
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Loader2, Shield, Users, FileText, Calendar } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Loader2, Shield, Phone, Mail, User, Calendar, IdCard, MapPin, FileText } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -42,24 +42,10 @@ export default function PolicyPrintPage() {
     return age;
   };
 
-  const getImmigrationStatusDisplay = (immigration: any) => {
-    if (!immigration) return 'N/A';
-    const status = immigration.status || immigration.immigrationStatus;
-    if (status === 'us_citizen') return 'US Citizen';
-    if (status === 'lawfully_present') return 'Lawfully Present';
-    if (status === 'not_lawfully_present') return 'Not Lawfully Present';
-    return status || 'N/A';
-  };
-
   const formatCurrency = (value: any) => {
     if (value === null || value === undefined) return 'N/A';
     const num = typeof value === 'string' ? parseFloat(value) : value;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
+    return `$${Math.round(num)}`;
   };
 
   if (isLoading || !policy) {
@@ -80,11 +66,32 @@ export default function PolicyPrintPage() {
         return year;
       })()
     : new Date().getFullYear();
+
   const plan = selectedPlan;
 
   // Extract plan details
   const individualDeductible = plan?.deductibles?.find((d: any) => !d.family);
+  const familyDeductible = plan?.deductibles?.find((d: any) => d.family);
+  const mainDeductible = individualDeductible || familyDeductible || plan?.deductibles?.[0];
   const individualMoop = plan?.moops?.find((m: any) => !m.family);
+  const outOfPocketMax = individualMoop?.amount || plan?.out_of_pocket_limit;
+
+  // Extract benefits with cost sharing info
+  const getBenefitCost = (benefitName: string) => {
+    const benefit = plan?.benefits?.find((b: any) => 
+      b.name?.toLowerCase().includes(benefitName.toLowerCase())
+    );
+    if (!benefit) return null;
+    const costSharing = benefit.cost_sharings?.[0];
+    return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+  };
+
+  const primaryCareCost = getBenefitCost('Primary Care') || (plan?.copay_primary ? formatCurrency(plan.copay_primary) : null);
+  const specialistCost = getBenefitCost('Specialist') || (plan?.copay_specialist ? formatCurrency(plan.copay_specialist) : null);
+  const urgentCareCost = getBenefitCost('Urgent Care') || (plan?.copay_urgent_care ? formatCurrency(plan.copay_urgent_care) : null);
+  const emergencyCost = getBenefitCost('Emergency') || (plan?.copay_emergency ? formatCurrency(plan.copay_emergency) : null);
+  const genericDrugsCost = getBenefitCost('Generic Drugs');
+  const mentalHealthCost = getBenefitCost('Mental');
   
   // Collect all members from the new backend structure
   const allMembers = [
@@ -126,15 +133,9 @@ export default function PolicyPrintPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Print Header - Only shows when printing */}
-      <div className="print-only text-center mb-6 pb-4 border-b-2 border-foreground">
-        <h1 className="text-3xl font-bold mb-2">HEALTH INSURANCE POLICY SUMMARY</h1>
-        <p className="text-sm text-muted-foreground">Official Policy Documentation</p>
-      </div>
-
       {/* Screen-only header with print button */}
       <div className="no-print sticky top-0 z-10 bg-background border-b shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Policy Summary - Print View</h1>
           <Button onClick={handlePrint} size="lg" data-testid="button-print-page">
             <FileText className="h-5 w-5 mr-2" />
@@ -144,153 +145,245 @@ export default function PolicyPrintPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8 print:px-0">
-        {/* Policy Header Section - IRS Style */}
-        <Card className="mb-6 border-2 border-foreground print:shadow-none">
-          <div className="p-6 space-y-4">
-            {/* Year Banner - IRS Style */}
-            <div className="flex items-center justify-between border-b-2 border-foreground pb-4">
-              <div>
-                <h2 className="text-xl font-bold mb-1">POLICY INFORMATION</h2>
-                <p className="text-sm text-muted-foreground">Policy ID: {policy.id}</p>
-              </div>
-              <div className="inline-flex items-center justify-center border-2 border-foreground px-6 py-2 bg-background">
-                <span className="text-4xl font-bold tracking-wide" style={{ fontFamily: 'monospace' }}>
-                  {policyYear}
-                </span>
-              </div>
-            </div>
+      <div className="max-w-7xl mx-auto px-6 py-8 print:px-8 print:py-6">
+        {/* Print-only Company Header */}
+        <div className="print-only text-center mb-8 pb-6 border-b-2">
+          <h1 className="text-4xl font-bold mb-2">HEALTH INSURANCE POLICY</h1>
+          <p className="text-lg text-muted-foreground">Official Policy Summary</p>
+        </div>
 
-            {/* Policy Details Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">POLICY STATUS</p>
-                <p className="text-sm font-medium uppercase">{policy.status || 'ACTIVE'}</p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">EFFECTIVE DATE</p>
-                <p className="text-sm font-medium">{policy.effectiveDate ? formatDateForDisplay(policy.effectiveDate) : 'Not Set'}</p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">PRODUCT TYPE</p>
-                <p className="text-sm font-medium uppercase">{policy.productType || 'N/A'}</p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">COVERAGE YEAR</p>
-                <p className="text-sm font-medium">{policyYear || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Primary Policyholder */}
-        <Card className="mb-6 border-2 border-foreground print:shadow-none">
-          <div className="p-6">
-            <h2 className="text-lg font-bold mb-4 border-b-2 border-foreground pb-2">PRIMARY POLICYHOLDER</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">FULL NAME</p>
-                <p className="text-sm font-medium">
-                  {[policy.clientFirstName, policy.clientMiddleName, policy.clientLastName, policy.clientSecondLastName].filter(Boolean).join(' ') || 'N/A'}
-                </p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">DATE OF BIRTH</p>
-                <p className="text-sm font-medium">{policy.clientDateOfBirth ? formatDateForDisplay(policy.clientDateOfBirth) : 'N/A'}</p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">AGE</p>
-                <p className="text-sm font-medium">{policy.clientDateOfBirth ? `${calculateAge(policy.clientDateOfBirth)} years` : 'N/A'}</p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">GENDER</p>
-                <p className="text-sm font-medium uppercase">{policy.clientGender || 'N/A'}</p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">SSN</p>
-                <p className="text-sm font-medium font-mono">{policy.clientSsn || 'N/A'}</p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">PHONE</p>
-                <p className="text-sm font-medium">{policy.clientPhone || 'N/A'}</p>
-              </div>
-              <div className="border border-foreground p-3 md:col-span-2">
-                <p className="text-xs font-semibold mb-1">EMAIL</p>
-                <p className="text-sm font-medium">{policy.clientEmail || 'N/A'}</p>
-              </div>
-              <div className="border border-foreground p-3">
-                <p className="text-xs font-semibold mb-1">STATUS</p>
-                <div className="flex gap-1 flex-wrap mt-1">
-                  {policy.clientIsApplicant && <Badge variant="default" className="text-xs">APPLICANT</Badge>}
-                  {policy.isPrimaryDependent && <Badge variant="outline" className="text-xs">DEPENDENT</Badge>}
+        {/* Enhanced Header with Client Info */}
+        <Card className="mb-6 bg-muted/20 print:shadow-none">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-primary/10 rounded-lg print:bg-muted">
+                    <Shield className="h-8 w-8 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold mb-1">
+                      {[policy.clientFirstName, policy.clientMiddleName, policy.clientLastName, policy.clientSecondLastName].filter(Boolean).join(' ')}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">Primary Policyholder</p>
+                  </div>
+                </div>
+                
+                {/* Quick Summary */}
+                <div className="mt-4 space-y-2 text-sm">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      {policy.clientPhone || 'N/A'}
+                    </span>
+                    <span className="text-muted-foreground">|</span>
+                    <span className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      {policy.clientEmail || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {policy.clientGender ? policy.clientGender.charAt(0).toUpperCase() + policy.clientGender.slice(1) : 'N/A'}
+                    </span>
+                    <span className="text-muted-foreground">|</span>
+                    <span className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {policy.clientDateOfBirth ? (
+                        <>
+                          {formatDateForDisplay(policy.clientDateOfBirth, "MMM dd, yyyy")}
+                          <span className="text-foreground/60">
+                            ({calculateAge(policy.clientDateOfBirth) || 0} years)
+                          </span>
+                        </>
+                      ) : 'N/A'}
+                    </span>
+                    <span className="text-muted-foreground">|</span>
+                    <span className="flex items-center gap-2 font-mono">
+                      <IdCard className="h-4 w-4" />
+                      {policy.clientSsn || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {policy.physical_street}, {policy.physical_city}, {policy.physical_state} {policy.physical_postal_code}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Address */}
-            <div className="mt-4 border border-foreground p-3">
-              <p className="text-xs font-semibold mb-1">RESIDENTIAL ADDRESS</p>
-              <p className="text-sm font-medium">
-                {policy.physical_street || 'N/A'}<br />
-                {[policy.physical_city, policy.physical_state, policy.physical_postal_code].filter(Boolean).join(', ') || '-'}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Selected Plan */}
-        {plan && (
-          <Card className="mb-6 border-2 border-foreground print:shadow-none">
-            <div className="p-6">
-              <h2 className="text-lg font-bold mb-4 border-b-2 border-foreground pb-2">SELECTED HEALTH PLAN</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="border border-foreground p-3">
-                  <p className="text-xs font-semibold mb-1">PLAN NAME</p>
-                  <p className="text-sm font-medium">{plan.name}</p>
+              <div className="flex flex-col items-end gap-3">
+                {/* Policy Info */}
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground mb-1">Policy ID</p>
+                  <p className="font-mono text-lg font-semibold">{policy.id}</p>
                 </div>
-                <div className="border border-foreground p-3">
-                  <p className="text-xs font-semibold mb-1">INSURANCE PROVIDER</p>
-                  <p className="text-sm font-medium">{plan.issuer?.name || 'N/A'}</p>
+                
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="font-medium">{policy.productType || 'Health Insurance'}</span>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Effective {formatDateForDisplay(policy.effectiveDate, "MMM dd, yyyy")}
+                  </span>
                 </div>
-                <div className="border border-foreground p-3">
-                  <p className="text-xs font-semibold mb-1">PLAN ID</p>
-                  <p className="text-sm font-medium font-mono">{plan.id}</p>
-                </div>
-                <div className="border border-foreground p-3">
-                  <p className="text-xs font-semibold mb-1">METAL LEVEL</p>
-                  <p className="text-sm font-medium uppercase">{plan.metal_level || 'N/A'}</p>
+                
+                {/* Policy Year - IRS Style */}
+                <div className="inline-flex items-center justify-center border-2 border-foreground px-6 py-2 bg-background rounded-sm mt-2">
+                  <span className="text-3xl font-bold tracking-wide" style={{ fontFamily: 'monospace' }}>
+                    {policyYear}
+                  </span>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Premium & Costs */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="border-2 border-foreground p-4 bg-muted/20">
-                  <p className="text-xs font-semibold mb-2">MONTHLY PREMIUM</p>
-                  <p className="text-3xl font-bold">
-                    {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null
+        {/* Selected Plan Card */}
+        {plan && (
+          <Card className="mb-6 overflow-hidden print:shadow-none print:break-inside-avoid">
+            {/* Header with Logo */}
+            <div className="flex items-start justify-between gap-4 p-6 border-b bg-muted/20">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="h-12 w-12 rounded-lg bg-background border flex items-center justify-center flex-shrink-0">
+                  <Shield className="h-7 w-7 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-lg mb-1">{plan.issuer?.name || 'Insurance Provider'}</h3>
+                  <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="text-xs font-semibold">
+                      {plan.metal_level || 'N/A'}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {plan.type || 'N/A'}
+                    </Badge>
+                    {plan.quality_rating?.available ? (
+                      <span className="text-xs">
+                        Rating: {plan.quality_rating.global_rating > 0 
+                          ? `${plan.quality_rating.global_rating}/5` 
+                          : 'New/Ineligible'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Rating: N/A</span>
+                    )}
+                    {plan.has_dental_child_coverage && (
+                      <Badge variant="outline" className="text-xs bg-purple-50 dark:bg-purple-950 border-purple-300 dark:border-purple-700">
+                        Dental Child
+                      </Badge>
+                    )}
+                    {plan.has_dental_adult_coverage && (
+                      <Badge variant="outline" className="text-xs bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700">
+                        Dental Adult
+                      </Badge>
+                    )}
+                    {plan.hsa_eligible && (
+                      <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700">
+                        HSA
+                      </Badge>
+                    )}
+                    {plan.simple_choice && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700">
+                        Simple Choice
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="p-6">
+              {/* Plan Name */}
+              <h4 className="text-lg font-semibold mb-6 text-primary">{plan.name}</h4>
+              
+              {/* Cost Information Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                {/* Premium */}
+                <div className="bg-muted/30 p-4 rounded-lg">
+                  <p className="text-sm font-semibold mb-2 text-muted-foreground">Monthly Premium</p>
+                  <p className="text-4xl font-bold mb-1">
+                    {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
                       ? formatCurrency(plan.premium_w_credit)
                       : formatCurrency(plan.premium)}
                   </p>
                   {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
-                    <p className="text-xs text-green-600 mt-1">
-                      Savings: {formatCurrency(plan.premium - plan.premium_w_credit)}
-                    </p>
+                    <>
+                      <p className="text-xs text-green-600 dark:text-green-500">
+                        Savings: {formatCurrency(plan.premium - plan.premium_w_credit)}
+                      </p>
+                      <p className="text-xs text-muted-foreground line-through">
+                        Was {formatCurrency(plan.premium)}
+                      </p>
+                    </>
                   )}
                 </div>
-                <div className="border-2 border-foreground p-4 bg-muted/20">
-                  <p className="text-xs font-semibold mb-2">ANNUAL DEDUCTIBLE</p>
-                  <p className="text-3xl font-bold">
-                    {individualDeductible ? formatCurrency(individualDeductible.amount) : '$0'}
+
+                {/* Deductible */}
+                <div className="bg-muted/30 p-4 rounded-lg">
+                  <p className="text-sm font-semibold mb-2 text-muted-foreground">Annual Deductible</p>
+                  <p className="text-4xl font-bold mb-1">
+                    {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Individual</p>
+                  {mainDeductible && (
+                    <>
+                      <p className="text-xs text-muted-foreground">Individual</p>
+                      <p className="text-xs text-muted-foreground">Health & drug combined</p>
+                    </>
+                  )}
                 </div>
-                <div className="border-2 border-foreground p-4 bg-muted/20">
-                  <p className="text-xs font-semibold mb-2">OUT-OF-POCKET MAX</p>
-                  <p className="text-3xl font-bold">
-                    {individualMoop ? formatCurrency(individualMoop.amount) : 'N/A'}
+
+                {/* Out-of-pocket max */}
+                <div className="bg-muted/30 p-4 rounded-lg">
+                  <p className="text-sm font-semibold mb-2 text-muted-foreground">Out-of-Pocket Max</p>
+                  <p className="text-4xl font-bold mb-1">
+                    {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Individual</p>
+                  <p className="text-xs text-muted-foreground">Individual total</p>
+                  <p className="text-xs text-muted-foreground">Medical and Drug EHB Benefits</p>
+                </div>
+              </div>
+
+              {/* Benefits Section */}
+              <div className="border-t pt-6">
+                <h5 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wide">Coverage Benefits</h5>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-sm font-medium mb-1">Primary Doctor Visits</p>
+                    <p className="text-sm text-muted-foreground">
+                      {primaryCareCost || 'No Charge After Deductible'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-1">Specialist Visits</p>
+                    <p className="text-sm text-muted-foreground">
+                      {specialistCost || 'No Charge After Deductible'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-1">Urgent Care</p>
+                    <p className="text-sm text-muted-foreground">
+                      {urgentCareCost || 'No Charge After Deductible'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-1">Emergency Room</p>
+                    <p className="text-sm text-muted-foreground">
+                      {emergencyCost || '40% Coinsurance after deductible'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-1">Mental Health</p>
+                    <p className="text-sm text-muted-foreground">
+                      {mentalHealthCost || 'No Charge After Deductible'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-1">Generic Drugs</p>
+                    <p className="text-sm text-muted-foreground">
+                      {genericDrugsCost || 'No Charge After Deductible'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -299,44 +392,45 @@ export default function PolicyPrintPage() {
 
         {/* Covered Members */}
         {allMembers.length > 0 && (
-          <Card className="mb-6 border-2 border-foreground print:shadow-none">
+          <Card className="mb-6 print:shadow-none print:break-inside-avoid">
             <div className="p-6">
-              <h2 className="text-lg font-bold mb-4 border-b-2 border-foreground pb-2">
-                COVERED MEMBERS ({allMembers.length})
-              </h2>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                Covered Members ({allMembers.length})
+              </h3>
               
               <div className="space-y-4">
                 {allMembers.map((member, index) => (
-                  <div key={index} className="border border-foreground p-4">
+                  <div key={index} className="border rounded-lg p-4 bg-muted/10">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-bold text-sm">
-                          {member.firstName} {member.middleName || ''} {member.lastName} {member.secondLastName || ''}
+                        <p className="font-semibold text-base">
+                          {[member.firstName, member.middleName, member.lastName, member.secondLastName].filter(Boolean).join(' ')}
                         </p>
                         <div className="flex gap-2 mt-1">
                           <Badge variant="outline" className="text-xs">{member.type}</Badge>
-                          {member.isApplicant && <Badge variant="default" className="text-xs">APPLICANT</Badge>}
-                          {member.isPrimaryDependent && <Badge variant="outline" className="text-xs">DEPENDENT</Badge>}
+                          {member.isApplicant && <Badge variant="default" className="text-xs">Applicant</Badge>}
+                          {member.isPrimaryDependent && <Badge variant="outline" className="text-xs">Dependent</Badge>}
                         </div>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <p className="font-semibold">DOB:</p>
-                        <p className="font-mono">{formatDateForDisplay(member.dateOfBirth)}</p>
+                        <p className="font-semibold text-muted-foreground mb-1">Date of Birth</p>
+                        <p className="font-medium">{member.dateOfBirth ? formatDateForDisplay(member.dateOfBirth, "MMM dd, yyyy") : 'N/A'}</p>
                       </div>
                       <div>
-                        <p className="font-semibold">AGE:</p>
-                        <p>{calculateAge(member.dateOfBirth)} years</p>
+                        <p className="font-semibold text-muted-foreground mb-1">Age</p>
+                        <p className="font-medium">{member.dateOfBirth ? `${calculateAge(member.dateOfBirth)} years` : 'N/A'}</p>
                       </div>
                       <div>
-                        <p className="font-semibold">GENDER:</p>
-                        <p className="uppercase">{member.gender || 'N/A'}</p>
+                        <p className="font-semibold text-muted-foreground mb-1">Gender</p>
+                        <p className="font-medium capitalize">{member.gender || 'N/A'}</p>
                       </div>
                       <div>
-                        <p className="font-semibold">SSN:</p>
-                        <p className="font-mono">{member.ssn || 'N/A'}</p>
+                        <p className="font-semibold text-muted-foreground mb-1">SSN</p>
+                        <p className="font-medium font-mono">{member.ssn || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
@@ -347,10 +441,11 @@ export default function PolicyPrintPage() {
         )}
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t-2 border-foreground text-center text-sm text-muted-foreground">
+        <div className="mt-8 pt-6 border-t text-center text-sm text-muted-foreground print:border-t-2">
           <p className="font-semibold mb-2">This document is an official summary of your health insurance policy</p>
           <p>Generated on {format(new Date(), "MMMM dd, yyyy 'at' h:mm a")}</p>
-          <p className="mt-2">Policy ID: {policy.id}</p>
+          <p className="mt-2 font-mono">Policy ID: {policy.id}</p>
+          <p className="mt-4 text-xs">For questions or assistance, please contact your insurance agent</p>
         </div>
       </div>
 
@@ -368,7 +463,12 @@ export default function PolicyPrintPage() {
             -webkit-print-color-adjust: exact;
           }
           @page {
-            margin: 1cm;
+            margin: 0.75in;
+            size: letter;
+          }
+          .print\\:break-inside-avoid {
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
         }
         .print-only {
