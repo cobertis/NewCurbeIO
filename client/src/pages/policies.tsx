@@ -6383,13 +6383,10 @@ export default function PoliciesPage() {
                     </div>
 
                     {/* Policy Year - IRS Style */}
-                    <div className="mt-3 flex items-center justify-end">
-                      <div className="inline-flex items-baseline border-2 border-foreground px-2 py-1 bg-background">
-                        <span className="text-2xl font-medium tracking-tight">
-                          {new Date(viewingQuote.effectiveDate).getFullYear().toString().slice(0, -1)}
-                        </span>
-                        <span className="text-3xl font-bold">
-                          {new Date(viewingQuote.effectiveDate).getFullYear().toString().slice(-1)}
+                    <div className="mt-2 flex items-center justify-end">
+                      <div className="inline-flex items-center justify-center border-2 border-foreground px-4 py-1.5 bg-background rounded-sm">
+                        <span className="text-2xl font-bold tracking-wide" style={{ fontFamily: 'monospace' }}>
+                          {new Date(viewingQuote.effectiveDate).getFullYear()}
                         </span>
                       </div>
                     </div>
