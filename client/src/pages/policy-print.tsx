@@ -22,13 +22,18 @@ export default function PolicyPrintPage() {
 
   const formatDateForDisplay = (dateString: string, formatStr = "MM/dd/yyyy") => {
     if (!dateString) return "";
-    return format(new Date(dateString), formatStr);
+    // Parse date as local time to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return format(date, formatStr);
   };
 
   const calculateAge = (dateOfBirth: string) => {
     if (!dateOfBirth) return 0;
     const today = new Date();
-    const birthDate = new Date(dateOfBirth);
+    // Parse date as local time to avoid timezone issues
+    const [year, month, day] = dateOfBirth.split('-').map(Number);
+    const birthDate = new Date(year, month - 1, day);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
