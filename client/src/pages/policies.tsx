@@ -6536,7 +6536,7 @@ export default function PoliciesPage() {
                     <div className="mt-2 flex items-center justify-end">
                       <div className="inline-flex items-center justify-center border-2 border-foreground px-4 py-1.5 bg-background rounded-sm">
                         <span className="text-2xl font-bold tracking-wide" style={{ fontFamily: 'monospace' }}>
-                          {new Date(viewingQuote.effectiveDate).getFullYear()}
+                          {new Date(policyInfo.effectiveDate).getFullYear()}
                         </span>
                       </div>
                     </div>
