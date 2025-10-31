@@ -129,8 +129,6 @@ const formatDateForDisplay = (date: string | null | undefined, formatStr: string
 function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
   const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
     new: "default",
-    pending_document: "warning",
-    pending_payment: "warning",
     waiting_on_agent: "secondary",
     waiting_for_approval: "secondary",
     updated_by_client: "default",

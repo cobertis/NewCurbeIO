@@ -12,8 +12,6 @@ export const quoteStatusOptions = [
 
 export const policyStatusOptions = [
   { value: "new", label: "New" },
-  { value: "pending_document", label: "Pending Document" },
-  { value: "pending_payment", label: "Pending Payment" },
   { value: "waiting_on_agent", label: "Waiting On Agent" },
   { value: "waiting_for_approval", label: "Waiting For Approval" },
   { value: "updated_by_client", label: "Updated By Client" },
