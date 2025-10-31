@@ -6512,14 +6512,14 @@ export default function PoliciesPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={(e) => {
                             e.preventDefault();
-                            setTimeout(() => setCancelPolicyDialogOpen(true), 0);
+                            setTimeout(() => setCancelPolicyDialogOpen(true), 100);
                           }}>
                             <X className="h-4 w-4 mr-2" />
                             Cancel Policy
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={(e) => {
                             e.preventDefault();
-                            setTimeout(() => setArchivePolicyDialogOpen(true), 0);
+                            setTimeout(() => setArchivePolicyDialogOpen(true), 100);
                           }}>
                             <Archive className="h-4 w-4 mr-2" />
                             Archive Policy
