@@ -6681,9 +6681,62 @@ export default function QuotesPage() {
 
             <div className="space-y-6">
 
-              {/* Selected Plan Card - Same as Marketplace */}
-              {viewingQuote.selectedPlan && (() => {
+              {/* Selected Plan Card - Always visible */}
+              {(() => {
                 const plan = viewingQuote.selectedPlan;
+                
+                // If no plan selected, show empty state
+                if (!plan) {
+                  return (
+                    <Card className="overflow-hidden">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Shield className="h-5 w-5 text-primary" />
+                          Selected Plan
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-12">
+                        <div className="text-center space-y-4">
+                          <div className="flex justify-center">
+                            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                              <Shield className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-lg font-medium mb-1">No Plan Selected</p>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Search the marketplace or add a plan manually
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-center gap-3">
+                            {viewingQuote.productType === 'aca' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => setLocation(`/quotes/${viewingQuote.id}/marketplace-plans`)}
+                                data-testid="button-search-plans-empty"
+                              >
+                                <Search className="h-4 w-4 mr-2" />
+                                Search Plans
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setManualPlanDialogOpen(true)}
+                              data-testid="button-add-plan-manually-empty"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Plan Manually
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+                
+                // Plan exists, show full details
                 
                 // Extract deductible info (same logic as marketplace)
                 const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
