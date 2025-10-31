@@ -3461,9 +3461,10 @@ export default function PoliciesPage() {
   const [showConsentForm, setShowConsentForm] = useState(false); // Track if we're in form view
   const [viewingConsent, setViewingConsent] = useState<any | null>(null); // Track if we're viewing a consent
   
-  // Cancel/Archive confirmation dialogs
+  // Cancel/Archive/Duplicate confirmation dialogs
   const [cancelPolicyDialogOpen, setCancelPolicyDialogOpen] = useState(false);
   const [archivePolicyDialogOpen, setArchivePolicyDialogOpen] = useState(false);
+  const [duplicatePolicyDialogOpen, setDuplicatePolicyDialogOpen] = useState(false);
   
   // Policy Information fields (local state for editing)
   const [policyInfo, setPolicyInfo] = useState({
@@ -6482,30 +6483,9 @@ export default function PoliciesPage() {
                             <FileText className="h-4 w-4 mr-2" />
                             Print Policy
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={async () => {
-                            try {
-                              const data = await apiRequest("POST", `/api/policies/${viewingQuote.id}/duplicate`, {});
-                              
-                              toast({
-                                title: "Policy Duplicated",
-                                description: data.message || `New policy created with ID: ${data.policy.id}`,
-                                duration: 3000,
-                              });
-                              
-                              // Refresh policies list
-                              queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
-                              queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                              
-                              // Navigate to the new policy
-                              setLocation(`/policies/${data.policy.id}`);
-                            } catch (error: any) {
-                              toast({
-                                title: "Duplication Failed",
-                                description: error.message || "Failed to duplicate policy",
-                                variant: "destructive",
-                                duration: 3000,
-                              });
-                            }
+                          <DropdownMenuItem onSelect={(e) => {
+                            e.preventDefault();
+                            setTimeout(() => setDuplicatePolicyDialogOpen(true), 100);
                           }}>
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicate
@@ -9364,6 +9344,53 @@ export default function PoliciesPage() {
                     data-testid="button-confirm-archive-policy"
                   >
                     Archive Policy
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Duplicate Policy Confirmation Dialog */}
+            <AlertDialog open={duplicatePolicyDialogOpen} onOpenChange={setDuplicatePolicyDialogOpen}>
+              <AlertDialogContent data-testid="dialog-duplicate-policy">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Duplicate Policy?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will create a new policy with all the information from the current policy, including client details, family members, and selected plan. You will be redirected to the new policy.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-duplicate-policy">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        const data = await apiRequest("POST", `/api/policies/${viewingQuote.id}/duplicate`, {});
+                        
+                        toast({
+                          title: "Policy Duplicated",
+                          description: data.message || `New policy created with ID: ${data.policy.id}`,
+                          duration: 3000,
+                        });
+                        
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                        
+                        setDuplicatePolicyDialogOpen(false);
+                        
+                        // Navigate to the new policy
+                        setLocation(`/policies/${data.policy.id}`);
+                      } catch (error: any) {
+                        toast({
+                          title: "Duplication Failed",
+                          description: error.message || "Failed to duplicate policy",
+                          variant: "destructive",
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    data-testid="button-confirm-duplicate-policy"
+                  >
+                    Duplicate Policy
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
