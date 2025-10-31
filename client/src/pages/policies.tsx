@@ -6320,13 +6320,15 @@ export default function PoliciesPage() {
                 <Badge 
                   variant="secondary" 
                   className={`text-xs h-5 px-1.5 ${
-                    consents.length > 0 
+                    consents.filter(c => c.status === 'signed').length > 0
                       ? "border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
                       : "border border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400"
                   }`}
                   data-testid="badge-signature-forms"
                 >
-                  {consents.length > 0 ? consents.length : "Pending"}
+                  {consents.filter(c => c.status === 'signed').length > 0 
+                    ? consents.filter(c => c.status === 'signed').length 
+                    : "Pending"}
                 </Badge>
               </button>
             </div>
