@@ -6381,6 +6381,18 @@ export default function PoliciesPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+
+                    {/* Policy Year - IRS Style */}
+                    <div className="mt-3 flex items-center justify-end">
+                      <div className="inline-flex items-baseline border-2 border-foreground px-2 py-1 bg-background">
+                        <span className="text-2xl font-medium tracking-tight">
+                          {new Date(viewingQuote.effectiveDate).getFullYear().toString().slice(0, -1)}
+                        </span>
+                        <span className="text-3xl font-bold">
+                          {new Date(viewingQuote.effectiveDate).getFullYear().toString().slice(-1)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
