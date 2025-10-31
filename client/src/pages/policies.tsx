@@ -9772,9 +9772,6 @@ export default function PoliciesPage() {
                                 </div>
                                 {quote.selectedPlan ? (
                                   <div className="space-y-0.5">
-                                    <div className="text-xs text-muted-foreground">
-                                      {product?.name || quote.productType}
-                                    </div>
                                     <div className="text-xs text-muted-foreground truncate max-w-[200px]">
                                       {quote.selectedPlan.plan_marketing_name}
                                     </div>
