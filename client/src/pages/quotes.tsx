@@ -11288,10 +11288,13 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
       });
       
       if (!generateResponse.ok) {
-        throw new Error('Failed to generate consent document');
+        const errorData = await generateResponse.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('[CONSENT ERROR] Generate failed:', errorData);
+        throw new Error(errorData.message || 'Failed to generate consent document');
       }
       
       const { consent } = await generateResponse.json();
+      console.log('[CONSENT DEBUG] Generated consent:', consent);
       
       // Then send it via the selected channel
       const sendResponse = await fetch(`/api/consents/${consent.id}/send`, {
