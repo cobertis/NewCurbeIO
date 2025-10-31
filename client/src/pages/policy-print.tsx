@@ -394,47 +394,43 @@ export default function PolicyPrintPage() {
         {allMembers.length > 0 && (
           <Card className="mb-6 print:shadow-none print:break-inside-avoid">
             <div className="p-6">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
                 Covered Members ({allMembers.length})
               </h3>
               
-              <div className="space-y-4">
-                {allMembers.map((member, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-muted/10">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-semibold text-base">
+              <div className="border rounded overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/20">
+                    <tr className="border-b">
+                      <th className="text-left p-2 font-semibold">Name</th>
+                      <th className="text-left p-2 font-semibold">Type</th>
+                      <th className="text-left p-2 font-semibold">DOB</th>
+                      <th className="text-center p-2 font-semibold">Age</th>
+                      <th className="text-center p-2 font-semibold">Gender</th>
+                      <th className="text-left p-2 font-semibold">SSN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allMembers.map((member, index) => (
+                      <tr key={index} className="border-b last:border-b-0 hover:bg-muted/5">
+                        <td className="p-2 font-medium">
                           {[member.firstName, member.middleName, member.lastName, member.secondLastName].filter(Boolean).join(' ')}
-                        </p>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">{member.type}</Badge>
-                          {member.isApplicant && <Badge variant="default" className="text-xs">Applicant</Badge>}
-                          {member.isPrimaryDependent && <Badge variant="outline" className="text-xs">Dependent</Badge>}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="font-semibold text-muted-foreground mb-1">Date of Birth</p>
-                        <p className="font-medium">{member.dateOfBirth ? formatDateForDisplay(member.dateOfBirth, "MMM dd, yyyy") : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-muted-foreground mb-1">Age</p>
-                        <p className="font-medium">{member.dateOfBirth ? `${calculateAge(member.dateOfBirth)} years` : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-muted-foreground mb-1">Gender</p>
-                        <p className="font-medium capitalize">{member.gender || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-muted-foreground mb-1">SSN</p>
-                        <p className="font-medium font-mono">{member.ssn || 'N/A'}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                        </td>
+                        <td className="p-2">
+                          <div className="flex gap-1 flex-wrap">
+                            <Badge variant="outline" className="text-xs">{member.type}</Badge>
+                            {member.isApplicant && <Badge variant="default" className="text-xs">Applicant</Badge>}
+                          </div>
+                        </td>
+                        <td className="p-2">{member.dateOfBirth ? formatDateForDisplay(member.dateOfBirth, "MMM dd, yyyy") : 'N/A'}</td>
+                        <td className="p-2 text-center">{member.dateOfBirth ? calculateAge(member.dateOfBirth) : 'N/A'}</td>
+                        <td className="p-2 text-center capitalize">{member.gender || 'N/A'}</td>
+                        <td className="p-2 font-mono text-xs">{member.ssn || 'N/A'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </Card>
@@ -645,6 +641,26 @@ export default function PolicyPrintPage() {
           /* Compact flex gaps */
           .flex {
             gap: 0.15rem !important;
+          }
+          
+          /* Compact table styling */
+          table {
+            border-collapse: collapse !important;
+          }
+          
+          th, td {
+            padding: 0.1rem 0.15rem !important;
+            font-size: 6.5pt !important;
+            line-height: 1.1 !important;
+          }
+          
+          th {
+            font-size: 7pt !important;
+            font-weight: 600 !important;
+          }
+          
+          .overflow-hidden {
+            overflow: visible !important;
           }
         }
         
