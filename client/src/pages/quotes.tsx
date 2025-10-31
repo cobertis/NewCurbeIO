@@ -3304,8 +3304,8 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
 }
 
 // Badge variant helper functions for status display
-function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
+function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
     draft: "secondary",
     active: "default",
     submitted: "default",
@@ -3314,9 +3314,9 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   return variants[status] || "outline";
 }
 
-function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
-    pending: "secondary",
+function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
+    pending: "warning",
     processing: "default",
     declined: "destructive",
     completed: "success",
@@ -3324,9 +3324,9 @@ function getDocumentsStatusVariant(status: string): "default" | "secondary" | "o
   return variants[status] || "secondary";
 }
 
-function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
-    pending: "secondary",
+function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
+    pending: "warning",
     auto_pay: "outline",
     failed: "destructive",
     paid: "success",

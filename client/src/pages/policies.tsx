@@ -126,11 +126,11 @@ const formatDateForDisplay = (date: string | null | undefined, formatStr: string
 };
 
 // Badge variant helper functions for status badges
-function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
+function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
     new: "default",
-    pending_document: "secondary",
-    pending_payment: "secondary",
+    pending_document: "warning",
+    pending_payment: "warning",
     waiting_on_agent: "secondary",
     waiting_for_approval: "secondary",
     updated_by_client: "default",
@@ -141,9 +141,9 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   return variants[status] || "outline";
 }
 
-function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
-    pending: "secondary",
+function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
+    pending: "warning",
     processing: "default",
     declined: "destructive",
     completed: "success",
@@ -151,9 +151,9 @@ function getDocumentsStatusVariant(status: string): "default" | "secondary" | "o
   return variants[status] || "secondary";
 }
 
-function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" {
-  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success"> = {
-    pending: "secondary",
+function getPaymentStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
+    pending: "warning",
     auto_pay: "outline",
     failed: "destructive",
     paid: "success",
