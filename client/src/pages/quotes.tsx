@@ -6257,24 +6257,9 @@ export default function QuotesPage() {
                         </div>
                       )}
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h1 className="text-2xl font-bold">
-                            {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                          </h1>
-                          {viewingQuote.status === 'active' ? (
-                            <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
-                              Active Quote
-                            </Badge>
-                          ) : viewingQuote.status === 'draft' ? (
-                            <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                              Draft
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              {viewingQuote.status || 'Draft'}
-                            </Badge>
-                          )}
-                        </div>
+                        <h1 className="text-2xl font-bold mb-1">
+                          {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                        </h1>
                         
                         {/* Quick Summary */}
                         <div className="mt-3 space-y-2 text-sm">

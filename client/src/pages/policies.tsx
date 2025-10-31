@@ -6254,56 +6254,9 @@ export default function PoliciesPage() {
                         </div>
                       )}
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h1 className="text-2xl font-bold">
-                            {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                          </h1>
-                          {viewingQuote.status === 'canceled' ? (
-                            <Badge className="text-xs bg-red-600 hover:bg-red-700 text-white">
-                              Canceled
-                            </Badge>
-                          ) : viewingQuote.status === 'completed' ? (
-                            <Badge className="text-xs bg-green-600 hover:bg-green-700 text-white">
-                              Completed
-                            </Badge>
-                          ) : viewingQuote.status === 'migrated' ? (
-                            <Badge className="text-xs bg-gray-900 hover:bg-gray-800 text-white">
-                              Migrated
-                            </Badge>
-                          ) : viewingQuote.status === 'new' ? (
-                            <Badge className="text-xs bg-blue-600 hover:bg-blue-700 text-white">
-                              New
-                            </Badge>
-                          ) : viewingQuote.status === 'pending_document' ? (
-                            <Badge className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white">
-                              Pending Document
-                            </Badge>
-                          ) : viewingQuote.status === 'pending_payment' ? (
-                            <Badge className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white">
-                              Pending Payment
-                            </Badge>
-                          ) : viewingQuote.status === 'renewed' ? (
-                            <Badge className="text-xs bg-blue-500 hover:bg-blue-600 text-white">
-                              Renewed
-                            </Badge>
-                          ) : viewingQuote.status === 'updated_by_client' ? (
-                            <Badge className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white">
-                              Updated by Client
-                            </Badge>
-                          ) : viewingQuote.status === 'waiting_for_approval' ? (
-                            <Badge className="text-xs bg-orange-500 hover:bg-orange-600 text-white">
-                              Waiting for Approval
-                            </Badge>
-                          ) : viewingQuote.status === 'waiting_on_agent' ? (
-                            <Badge className="text-xs bg-red-600 hover:bg-red-700 text-white">
-                              Waiting on Agent
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              {viewingQuote.status || 'New'}
-                            </Badge>
-                          )}
-                        </div>
+                        <h1 className="text-2xl font-bold mb-1">
+                          {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                        </h1>
                         
                         {/* Quick Summary */}
                         <div className="mt-3 space-y-2 text-sm">
