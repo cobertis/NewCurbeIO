@@ -273,99 +273,27 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => {
-                // Special handling for Policies with submenu
-                if (item.title === "Policies") {
-                  return (
-                    <div key={item.title}>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          asChild
-                          data-testid={`link-${item.title.toLowerCase()}`}
-                          className={`
-                            h-11 rounded-md transition-colors
-                            ${location === item.url || location.startsWith('/policies')
-                              ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                            }
-                          `}
-                        >
-                          <Link href={item.url} className="flex items-center gap-3 px-3 w-full" onClick={(e) => { if (isMobile) { setOpenMobile(false); } }}>
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            <span className="flex-1">{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      
-                      {/* Always visible submenu */}
-                      <SidebarMenuSub className="ml-6 mt-1 space-y-0.5">
-                        {/* ACA/Obamacare */}
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={location === '/policies' || location === '/policies/aca'}
-                            className={`
-                              h-9 rounded-md transition-colors
-                              ${location === '/policies' || location === '/policies/aca'
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                              }
-                            `}
-                          >
-                            <Link href="/policies" className="flex items-center gap-2 w-full px-2" onClick={(e) => { if (isMobile) { setOpenMobile(false); } }}>
-                              <Heart className="h-4 w-4 shrink-0" />
-                              <span className="text-sm">ACA Plans</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                        
-                        {/* Medicare */}
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={location === '/policies/medicare'}
-                            className={`
-                              h-9 rounded-md transition-colors
-                              ${location === '/policies/medicare'
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                              }
-                            `}
-                          >
-                            <Link href="/policies/medicare" className="flex items-center gap-2 w-full px-2" onClick={(e) => { if (isMobile) { setOpenMobile(false); } }}>
-                              <Stethoscope className="h-4 w-4 shrink-0" />
-                              <span className="text-sm">Medicare</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      </SidebarMenuSub>
-                    </div>
-                  );
-                }
-                
-                // Regular menu items
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`link-${item.title.toLowerCase()}`}
-                      className={`
-                        h-11 rounded-md transition-colors
-                        ${location === item.url 
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                        }
-                      `}
-                    >
-                      <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="flex-1">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`link-${item.title.toLowerCase()}`}
+                    className={`
+                      h-11 rounded-md transition-colors
+                      ${location === item.url 
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                      }
+                    `}
+                  >
+                    <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      <span className="flex-1">{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
