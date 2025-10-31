@@ -10029,17 +10029,22 @@ export default function PoliciesPage() {
                             </TableCell>
                             <TableCell className="text-sm">
                               <div className="space-y-1.5">
-                                <StatusBadgeEditor
-                                  type="policy"
-                                  statusType="status"
-                                  currentValue={quote.status}
-                                  id={quote.id}
-                                  allStatuses={{
-                                    status: quote.status,
-                                    documentsStatus: quote.documentsStatus,
-                                    paymentStatus: quote.paymentStatus,
-                                  }}
-                                />
+                                <div className="flex items-center gap-2">
+                                  {quote.isBlocked && (
+                                    <Lock className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-500" />
+                                  )}
+                                  <StatusBadgeEditor
+                                    type="policy"
+                                    statusType="status"
+                                    currentValue={quote.status}
+                                    id={quote.id}
+                                    allStatuses={{
+                                      status: quote.status,
+                                      documentsStatus: quote.documentsStatus,
+                                      paymentStatus: quote.paymentStatus,
+                                    }}
+                                  />
+                                </div>
                                 <div className="text-xs text-muted-foreground">
                                   Documents: {quote.documentsStatus === 'completed' ? 'Completed' : quote.documentsStatus === 'pending' ? 'Pending' : quote.documentsStatus === 'in_progress' ? 'In Progress' : quote.documentsStatus === 'reviewed' ? 'Reviewed' : quote.documentsStatus === 'sent_to_client' ? 'Sent to Client' : 'N/A'}
                                 </div>
