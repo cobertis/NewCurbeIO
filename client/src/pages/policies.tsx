@@ -11090,15 +11090,21 @@ export default function PoliciesPage() {
       </Dialog>
 
       {/* Status Editor Dialog */}
-      {viewingQuote && (
-        <Dialog open={statusEditorOpen} onOpenChange={setStatusEditorOpen}>
-          <DialogContent className="sm:max-w-md" data-testid="dialog-status-editor">
-            <DialogHeader>
-              <DialogTitle>Update Statuses</DialogTitle>
-              <DialogDescription>
-                Update the status values for this policy
-              </DialogDescription>
-            </DialogHeader>
+      {viewingQuote && statusEditorOpen && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center" data-testid="status-editor-overlay">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              onClick={() => setStatusEditorOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              data-testid="button-close-status-editor"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            
+            <h2 className="text-lg font-semibold mb-2">Update Statuses</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Update the status values for this policy
+            </p>
             
             <StatusEditorDialogContent
               type="policy"
@@ -11108,8 +11114,8 @@ export default function PoliciesPage() {
               currentPaymentStatus={viewingQuote.paymentStatus}
               onClose={() => setStatusEditorOpen(false)}
             />
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
       )}
 
       {/* Send Consent Modal */}
