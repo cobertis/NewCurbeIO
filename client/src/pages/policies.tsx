@@ -6959,9 +6959,8 @@ export default function PoliciesPage() {
                           size="sm"
                           onClick={async () => {
                             try {
-                              await apiRequest(`/api/policies/${viewingQuote.id}`, {
-                                method: "PATCH",
-                                body: JSON.stringify({ selectedPlan: null }),
+                              await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
+                                selectedPlan: null
                               });
                               queryClient.invalidateQueries({ queryKey: [`/api/policies/${viewingQuote.id}/detail`] });
                               toast({

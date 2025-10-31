@@ -7029,9 +7029,8 @@ export default function QuotesPage() {
                           size="sm"
                           onClick={async () => {
                             try {
-                              await apiRequest(`/api/quotes/${viewingQuote.id}`, {
-                                method: "PATCH",
-                                body: JSON.stringify({ selectedPlan: null }),
+                              await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
+                                selectedPlan: null
                               });
                               queryClient.invalidateQueries({ queryKey: [`/api/quotes/${viewingQuote.id}/detail`] });
                               toast({
