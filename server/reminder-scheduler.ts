@@ -104,26 +104,27 @@ export function startReminderScheduler() {
 
         for (const reminder of todayReminders) {
           try {
-            // Check if notification already exists for this reminder today
+            // Check if notification already exists for this SPECIFIC reminder today
+            // Use reminder ID in message to uniquely identify each reminder
             const existingNotifications = await db
               .select()
               .from(notifications)
               .where(
                 and(
                   eq(notifications.userId, reminder.createdBy),
-                  sql`${notifications.message} LIKE ${'%' + reminder.quoteId + '%'}`,
+                  sql`${notifications.message} LIKE ${'%' + reminder.id + '%'}`,
                   sql`DATE(${notifications.createdAt}) = ${today}`
                 )
               );
 
-            // Only create notification if one doesn't already exist today
+            // Only create notification if one doesn't already exist today for THIS reminder
             if (existingNotifications.length === 0) {
               // Create notification for the user who created the reminder (always in English)
               await db.insert(notifications).values({
                 userId: reminder.createdBy,
                 type: 'warning',
                 title: 'Reminder Due Today',
-                message: `Your reminder "${reminder.title || 'Untitled'}" for quote ${reminder.quoteId} is due today${reminder.dueTime ? ` at ${reminder.dueTime}` : ''}.`,
+                message: `Your reminder "${reminder.title || 'Untitled'}" for quote ${reminder.quoteId} is due today${reminder.dueTime ? ` at ${reminder.dueTime}` : ''}. (ID: ${reminder.id})`,
                 link: `/quotes/${reminder.quoteId}`,
                 isRead: false,
               });
@@ -131,14 +132,14 @@ export function startReminderScheduler() {
               // Also notify any users in the notifyUsers array (always in English)
               if (reminder.notifyUsers && reminder.notifyUsers.length > 0) {
                 for (const userId of reminder.notifyUsers) {
-                  // Check if notification already exists for this user
+                  // Check if notification already exists for this user for THIS reminder
                   const userExistingNotifications = await db
                     .select()
                     .from(notifications)
                     .where(
                       and(
                         eq(notifications.userId, userId),
-                        sql`${notifications.message} LIKE ${'%' + reminder.quoteId + '%'}`,
+                        sql`${notifications.message} LIKE ${'%' + reminder.id + '%'}`,
                         sql`DATE(${notifications.createdAt}) = ${today}`
                       )
                     );
@@ -148,7 +149,7 @@ export function startReminderScheduler() {
                       userId: userId,
                       type: 'warning',
                       title: 'Reminder Due Today',
-                      message: `The reminder "${reminder.title || 'Untitled'}" for quote ${reminder.quoteId} is due today${reminder.dueTime ? ` at ${reminder.dueTime}` : ''}.`,
+                      message: `The reminder "${reminder.title || 'Untitled'}" for quote ${reminder.quoteId} is due today${reminder.dueTime ? ` at ${reminder.dueTime}` : ''}. (ID: ${reminder.id})`,
                       link: `/quotes/${reminder.quoteId}`,
                       isRead: false,
                     });

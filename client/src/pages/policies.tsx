@@ -3489,7 +3489,7 @@ export default function PoliciesPage() {
   const showWizard = location === "/policies/new";
   
   // Fetch policies statistics
-  const { data: stats } = useQuery<{
+  const { data: stats, isLoading: isLoadingStats } = useQuery<{
     totalPolicies: number;
     totalApplicants: number;
     canceledPolicies: number;
@@ -9468,10 +9468,23 @@ export default function PoliciesPage() {
     );
   }
 
+  // Combined loading state - wait for both stats and policies to load
+  const isLoadingPage = isLoading || isLoadingStats;
+
   return (
     <div className="h-full p-6 flex flex-col overflow-hidden">
       {!showWizard ? (
         <div className="space-y-6">
+          {/* Show loading state while either stats or policies are loading */}
+          {isLoadingPage ? (
+            <div className="flex items-center justify-center h-96">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-lg text-muted-foreground">Loading policies...</p>
+              </div>
+            </div>
+          ) : (
+            <>
           {/* Statistics Cards */}
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -10108,6 +10121,8 @@ export default function PoliciesPage() {
             )}
           </CardContent>
         </Card>
+            </>
+          )}
         </div>
       ) : (
         <Card className="flex flex-col flex-1 min-h-0">
