@@ -12438,6 +12438,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch OEP statistics" });
     }
   });
+
+  // Get policies by applicant (same SSN or email)
+  // WARNING: This endpoint returns PII - SSN must be masked
+  app.get("/api/policies/by-applicant", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { ssn, email, effectiveYear, excludePolicyId } = req.query;
+    
+    if (!ssn && !email) {
+      return res.status(400).json({ message: "Either SSN or email parameter is required" });
+    }
+    
+    try {
+      if (!currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - No company associated" });
+      }
+
+      let policies = await storage.getPoliciesByApplicant(
+        currentUser.companyId,
+        ssn as string | undefined,
+        email as string | undefined,
+        effectiveYear ? parseInt(effectiveYear as string) : undefined
+      );
+      
+      // Exclude specific policy if requested (e.g., to exclude the currently viewed policy)
+      if (excludePolicyId) {
+        policies = policies.filter(p => p.id !== excludePolicyId);
+      }
+      
+      // Log PII access
+      if (policies.length > 0) {
+        await logger.logAuth({
+          req,
+          action: "view_applicant_policies",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "policies",
+            count: policies.length,
+            fields: ["clientSsn", "clientEmail"],
+            searchParams: { ssn: !!ssn, email: !!email, effectiveYear },
+          },
+        });
+      }
+      
+      res.json({ policies });
+    } catch (error: any) {
+      console.error("Error fetching policies by applicant:", error);
+      res.status(500).json({ message: "Failed to fetch policies" });
+    }
+  });
   
   // Get all policies for company
   // WARNING: This endpoint returns PII - SSN must be masked
