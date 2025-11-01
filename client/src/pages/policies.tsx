@@ -3540,7 +3540,7 @@ export default function PoliciesPage() {
   });
   
   // Other policies year filter state
-  const [otherPoliciesYear, setOtherPoliciesYear] = useState<string>("2025");
+  const [otherPoliciesYear, setOtherPoliciesYear] = useState<string>("all");
   
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
@@ -3732,7 +3732,9 @@ export default function PoliciesPage() {
       const params = new URLSearchParams();
       if (viewingQuote?.clientSsn) params.append('ssn', viewingQuote.clientSsn);
       if (viewingQuote?.clientEmail) params.append('email', viewingQuote.clientEmail);
-      params.append('effectiveYear', otherPoliciesYear);
+      if (otherPoliciesYear !== 'all') {
+        params.append('effectiveYear', otherPoliciesYear);
+      }
       if (viewingQuote?.id) params.append('excludePolicyId', viewingQuote.id);
       
       const response = await fetch(`/api/policies/by-applicant?${params.toString()}`);
@@ -7756,6 +7758,7 @@ export default function PoliciesPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
                         <SelectItem value="2024">2024</SelectItem>
                         <SelectItem value="2025">2025</SelectItem>
                         <SelectItem value="2026">2026</SelectItem>
@@ -7770,7 +7773,9 @@ export default function PoliciesPage() {
                     </div>
                   ) : otherPolicies.length === 0 ? (
                     <div className="text-center py-8">
-                      <p className="text-sm text-muted-foreground">No other policies found for this applicant in {otherPoliciesYear}</p>
+                      <p className="text-sm text-muted-foreground">
+                        No other policies found for this applicant{otherPoliciesYear !== 'all' ? ` in ${otherPoliciesYear}` : ''}
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
