@@ -4047,7 +4047,7 @@ export class DbStorage implements IStorage {
       conditions.push(eq(policies.clientLastName, lastName));
     }
     if (dob) {
-      conditions.push(eq(policies.clientDob, dob));
+      conditions.push(eq(policies.clientDateOfBirth, dob));
     }
     
     if (effectiveYear) {
