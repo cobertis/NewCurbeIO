@@ -270,12 +270,13 @@ async function fetchSinglePage(
   }
 
   // Build household members array following CMS API format from documentation
+  // CRITICAL: Use DOB instead of age for accurate age calculation based on effective_date
   const people = [];
   
   // Add client - Adults (19+) are always APTC eligible
   const clientAge = calculateAge(quoteData.client.dateOfBirth);
   people.push({
-    age: clientAge,
+    dob: quoteData.client.dateOfBirth, // DOB for accurate age calculation with effective_date
     aptc_eligible: clientAge >= 19, // Only adults 19+ are eligible for APTC
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
@@ -287,7 +288,7 @@ async function fetchSinglePage(
     quoteData.spouses.forEach(spouse => {
       const spouseAge = calculateAge(spouse.dateOfBirth);
       people.push({
-        age: spouseAge,
+        dob: spouse.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: spouseAge >= 19, // Only adults 19+ are eligible for APTC
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
@@ -301,7 +302,7 @@ async function fetchSinglePage(
     quoteData.dependents.forEach(dependent => {
       const dependentAge = calculateAge(dependent.dateOfBirth);
       people.push({
-        age: dependentAge,
+        dob: dependent.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: dependentAge >= 19, // Children under 19 may qualify for CHIP/Medicaid instead
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
