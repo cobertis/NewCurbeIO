@@ -12399,9 +12399,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Check product type
         if (productTypeFilter === "aca") {
-          return policy.productType === "Health Insurance ACA";
+          return policy.productType === "Health Insurance ACA" || policy.productType?.toLowerCase() === 'aca';
         } else if (productTypeFilter === "medicare") {
-          return policy.productType?.startsWith("Medicare");
+          return policy.productType?.startsWith("Medicare") || policy.productType?.toLowerCase() === 'medicare';
         }
         
         return false;
@@ -12465,10 +12465,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Filter by product type
           if (oepFilter === "aca") {
-            return policy.productType === "Health Insurance ACA";
+            return policy.productType === "Health Insurance ACA" || policy.productType?.toLowerCase() === 'aca';
           } else if (oepFilter === "medicare") {
             // Medicare products start with "Medicare"
-            return policy.productType?.startsWith("Medicare");
+            return policy.productType?.startsWith("Medicare") || policy.productType?.toLowerCase() === 'medicare';
           }
           
           return false;
@@ -13228,8 +13228,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // 4. VALIDACIÓN: Verificar que el productType sea ACA o Medicare
-      const isACA = originalPolicy.productType === "Health Insurance ACA";
-      const isMedicare = originalPolicy.productType?.startsWith("Medicare");
+      const isACA = originalPolicy.productType === "Health Insurance ACA" || originalPolicy.productType?.toLowerCase() === 'aca';
+      const isMedicare = originalPolicy.productType?.startsWith("Medicare") || originalPolicy.productType?.toLowerCase() === 'medicare';
       
       if (!isACA && !isMedicare) {
         return res.status(400).json({ 
