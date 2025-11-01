@@ -13358,7 +13358,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({
         originalPolicy: updatedOriginalPolicy,
         renewedPolicy: renewedPolicy,
-        plans2026: plans2026,
+        plans2026: plans2026.plans || [],
         plan2025: originalPolicy.selectedPlan, // For comparison
       });
     } catch (error: any) {
