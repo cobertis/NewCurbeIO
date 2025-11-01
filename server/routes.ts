@@ -16139,8 +16139,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const cmsMarketplace = await import('./cms-marketplace.js');
       const { fetchMarketplacePlans: fetchPlans } = cmsMarketplace;
       
-      // Fetch plans from CMS Marketplace with pagination
-      const marketplaceData = await fetchPlans(policyData, page, pageSize);
+      // CRITICAL: Determine the correct year based on policy's effectiveDate
+      let targetYear = new Date().getFullYear(); // Default to current year
+      if (policy.effectiveDate) {
+        const effectiveYear = parseInt(policy.effectiveDate.split('-')[0]);
+        if (effectiveYear >= 2025 && effectiveYear <= 2030) {
+          targetYear = effectiveYear;
+        }
+      }
+      
+      console.log(`[MARKETPLACE_PLANS] Fetching plans for policy ${policyId} - Effective Date: ${policy.effectiveDate}, Target Year: ${targetYear}`);
+      
+      // Fetch plans from CMS Marketplace with pagination and correct year
+      const marketplaceData = await fetchPlans(policyData, page, pageSize, targetYear);
       
       // Enrich plans with dental coverage information from benefits
       if (marketplaceData.plans) {
