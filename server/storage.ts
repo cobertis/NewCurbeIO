@@ -4010,26 +4010,41 @@ export class DbStorage implements IStorage {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>> {
-    // Create aliases for the users table to join it twice
-    const creatorUser = alias(users, 'creatorUser');
-    const agentUser = alias(users, 'agentUser');
+    // Build identity key using same logic as resolveApplicantIdentity
+    const normalizedSsn = ssn?.replace(/\D/g, '') || '';
+    const normalizedEmail = email?.toLowerCase() || '';
     
-    const conditions: any[] = [eq(policies.companyId, companyId)];
+    let identityConditions: any[] = [];
     
-    if (ssn || email) {
-      const applicantConditions: any[] = [];
-      if (ssn) {
-        applicantConditions.push(eq(policies.clientSsn, ssn));
-      }
-      if (email) {
-        applicantConditions.push(eq(policies.clientEmail, email));
-      }
-      conditions.push(or(...applicantConditions));
+    // SSN matching - REQUIRE EXACTLY 9 DIGITS (full SSN only)
+    if (normalizedSsn.length === 9) {
+      identityConditions.push(
+        sql`REPLACE(REPLACE(REPLACE(${policies.clientSsn}, '-', ''), ' ', ''), '.', '') = ${normalizedSsn}`
+      );
+    } else if (normalizedEmail) {
+      // Email fallback if SSN is not complete
+      identityConditions.push(
+        sql`LOWER(${policies.clientEmail}) = ${normalizedEmail}`
+      );
     }
+    
+    // If no valid identifier, return empty
+    if (identityConditions.length === 0) {
+      return [];
+    }
+    
+    const conditions: any[] = [
+      eq(policies.companyId, companyId),
+      or(...identityConditions)
+    ];
     
     if (effectiveYear) {
       conditions.push(like(policies.effectiveDate, `${effectiveYear}-%`));
     }
+    
+    // Create aliases for the users table to join it twice
+    const creatorUser = alias(users, 'creatorUser');
+    const agentUser = alias(users, 'agentUser');
     
     const results = await db
       .select({
@@ -4669,17 +4684,104 @@ export class DbStorage implements IStorage {
     return result.length > 0;
   }
   
+  // ==================== CANONICAL CLIENT IDENTITY ====================
+  
+  private resolveApplicantIdentity(policy: { clientSsn: string | null; clientEmail: string | null }): string | null {
+    // Normalize SSN: remove all non-digits
+    const normalizedSsn = policy.clientSsn?.replace(/\D/g, '') || '';
+    
+    // SSN is primary identifier - REQUIRE EXACTLY 9 DIGITS (full SSN only)
+    if (normalizedSsn.length === 9) {
+      return `ssn:${normalizedSsn}`;
+    }
+    
+    // Email is fallback (normalize to lowercase)
+    if (policy.clientEmail) {
+      return `email:${policy.clientEmail.toLowerCase()}`;
+    }
+    
+    // No valid identifier - policy remains isolated
+    return null;
+  }
+  
   // ==================== POLICY PAYMENT METHODS ====================
   
   async getPolicyPaymentMethods(policyId: string, companyId: string): Promise<PolicyPaymentMethod[]> {
-    // SECURITY FIX: Only return payment methods for THIS specific policy
-    // Payment methods are not shared across policies to prevent data leakage
+    // Get the current policy to identify the client
+    const [policy] = await db
+      .select({ clientSsn: policies.clientSsn, clientEmail: policies.clientEmail })
+      .from(policies)
+      .where(
+        and(
+          eq(policies.id, policyId),
+          eq(policies.companyId, companyId)
+        )
+      );
+    
+    if (!policy) {
+      return [];
+    }
+    
+    // Resolve canonical identity
+    const identityKey = this.resolveApplicantIdentity(policy);
+    
+    // If no identity, return only this policy's payment methods (isolated)
+    if (!identityKey) {
+      return db
+        .select()
+        .from(policyPaymentMethods)
+        .where(
+          and(
+            eq(policyPaymentMethods.policyId, policyId),
+            eq(policyPaymentMethods.companyId, companyId)
+          )
+        )
+        .orderBy(desc(policyPaymentMethods.isDefault), desc(policyPaymentMethods.createdAt));
+    }
+    
+    // Find all policies with the same identity (same client)
+    let clientPolicies: any[];
+    
+    if (identityKey.startsWith('ssn:')) {
+      const ssnValue = identityKey.substring(4);
+      // Match by normalized SSN
+      clientPolicies = await db
+        .select({ id: policies.id })
+        .from(policies)
+        .where(
+          and(
+            eq(policies.companyId, companyId),
+            sql`REPLACE(REPLACE(REPLACE(${policies.clientSsn}, '-', ''), ' ', ''), '.', '') = ${ssnValue}`
+          )
+        );
+    } else {
+      // identityKey starts with 'email:'
+      const emailValue = identityKey.substring(6);
+      // Match by normalized email
+      clientPolicies = await db
+        .select({ id: policies.id })
+        .from(policies)
+        .where(
+          and(
+            eq(policies.companyId, companyId),
+            sql`LOWER(${policies.clientEmail}) = ${emailValue}`
+          )
+        );
+    }
+    
+    const policyIds = clientPolicies.map(p => p.id);
+    
+    if (policyIds.length === 0) {
+      return [];
+    }
+    
+    // Get all payment methods from all policies of this client
     return db
       .select()
       .from(policyPaymentMethods)
       .where(
         and(
-          eq(policyPaymentMethods.policyId, policyId),
+          inArray(policyPaymentMethods.policyId, policyIds),
           eq(policyPaymentMethods.companyId, companyId)
         )
       )
@@ -4753,17 +4855,11 @@ export class DbStorage implements IStorage {
       return;
     }
     
-    // Build client matching conditions only if identifiers exist
-    const clientConditions = [];
-    if (policy.clientSsn) {
-      clientConditions.push(eq(policies.clientSsn, policy.clientSsn));
-    }
-    if (policy.clientEmail) {
-      clientConditions.push(eq(policies.clientEmail, policy.clientEmail));
-    }
+    // Resolve canonical identity
+    const identityKey = this.resolveApplicantIdentity(policy);
     
-    // If no identifiers exist, only update payment methods for the current policy
-    if (clientConditions.length === 0) {
+    // If no identity, only update payment methods for the current policy (isolated)
+    if (!identityKey) {
       // Set all payment methods for this policy to non-default
       await db
         .update(policyPaymentMethods)
@@ -4788,16 +4884,35 @@ export class DbStorage implements IStorage {
       return;
     }
     
-    // Find all policies of the same client
-    const clientPolicies = await db
-      .select({ id: policies.id })
-      .from(policies)
-      .where(
-        and(
-          eq(policies.companyId, companyId),
-          or(...clientConditions)
-        )
-      );
+    // Find all policies with the same identity (same client)
+    let clientPolicies: any[];
+    
+    if (identityKey.startsWith('ssn:')) {
+      const ssnValue = identityKey.substring(4);
+      // Match by normalized SSN
+      clientPolicies = await db
+        .select({ id: policies.id })
+        .from(policies)
+        .where(
+          and(
+            eq(policies.companyId, companyId),
+            sql`REPLACE(REPLACE(REPLACE(${policies.clientSsn}, '-', ''), ' ', ''), '.', '') = ${ssnValue}`
+          )
+        );
+    } else {
+      // identityKey starts with 'email:'
+      const emailValue = identityKey.substring(6);
+      // Match by normalized email
+      clientPolicies = await db
+        .select({ id: policies.id })
+        .from(policies)
+        .where(
+          and(
+            eq(policies.companyId, companyId),
+            sql`LOWER(${policies.clientEmail}) = ${emailValue}`
+          )
+        );
+    }
     
     const policyIds = clientPolicies.map(p => p.id);
     
