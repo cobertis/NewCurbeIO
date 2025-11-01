@@ -11115,13 +11115,13 @@ export default function PoliciesPage() {
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-xs text-muted-foreground">Documents:</span>
-                                  <Badge variant={getDocumentsStatusVariant(quote.documentsStatus || '')} className="text-xs px-1.5 py-0">
+                                  <Badge variant={getDocumentsStatusVariant(quote.documentsStatus || '')} className="text-[10px] px-1 py-0 h-4">
                                     {formatStatusDisplay(quote.documentsStatus)}
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-xs text-muted-foreground">Payments:</span>
-                                  <Badge variant={getPaymentStatusVariant(quote.paymentStatus || '')} className="text-xs px-1.5 py-0">
+                                  <Badge variant={getPaymentStatusVariant(quote.paymentStatus || '')} className="text-[10px] px-1 py-0 h-4">
                                     {formatPaymentStatusDisplay(quote.paymentStatus)}
                                   </Badge>
                                 </div>
