@@ -7811,64 +7811,281 @@ export default function PoliciesPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {otherPolicies.map((policy: any) => {
-                        const product = PRODUCT_TYPES.find(p => p.id === policy.productType);
-                        const effectiveDate = policy.effectiveDate ? formatDateForDisplay(policy.effectiveDate, "MMM dd, yyyy") : 'N/A';
-                        
-                        return (
-                          <div
-                            key={policy.id}
-                            onClick={() => setLocation(`/policies/${policy.id}`)}
-                            className="border rounded-lg p-4 hover:border-primary/50 hover:bg-accent/5 cursor-pointer transition-colors"
-                            data-testid={`policy-card-${policy.id}`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-start gap-3 flex-1">
-                                {product?.icon && (
-                                  <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
-                                    <product.icon className="h-5 w-5 text-primary" />
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox data-testid="checkbox-select-all-other" />
+                          </TableHead>
+                          <TableHead className="w-16">Agent</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Policy</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Assigned to</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {otherPolicies.map((policy: any) => {
+                          const product = PRODUCT_TYPES.find(p => p.id === policy.productType);
+                          const agent = agents.find(a => a.id === policy.agentId);
+                          const assignedAgent = agents.find(a => a.id === policy.agentId);
+                          
+                          const formatCurrency = (value: any) => {
+                            if (value === null || value === undefined) return 'N/A';
+                            const num = typeof value === 'string' ? parseFloat(value) : value;
+                            return `$${Math.round(num)}`;
+                          };
+                          
+                          return (
+                            <TableRow 
+                              key={policy.id} 
+                              className="cursor-pointer hover:bg-accent/5"
+                              onClick={() => setLocation(`/policies/${policy.id}`)}
+                              data-testid={`row-other-policy-${policy.id}`}
+                            >
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Checkbox data-testid={`checkbox-other-policy-${policy.id}`} />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="cursor-pointer inline-block">
+                                      <Avatar className="h-8 w-8">
+                                        <AvatarImage src={agent?.avatar || undefined} />
+                                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                          {agent?.firstName?.[0] || 'A'}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" sideOffset={5} align="center" className="p-3">
+                                    <div>
+                                      <div className="font-semibold text-sm mb-2 text-center">Agent information</div>
+                                      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                                        <div className="text-left font-medium">Name:</div>
+                                        <div className="text-right">{agent?.firstName || 'Unknown'} {agent?.lastName || 'Agent'}</div>
+                                        <div className="text-left font-medium">NPN:</div>
+                                        <div className="text-right">{agent?.nationalProducerNumber || 'N/A'}</div>
+                                        <div className="text-left font-medium">Email:</div>
+                                        <div className="text-right">{agent?.email || 'No email'}</div>
+                                        <div className="text-left font-medium">Role:</div>
+                                        <div className="text-right">{agent?.role || 'N/A'}</div>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TableCell>
+                              <TableCell>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="cursor-pointer">
+                                      <div 
+                                        className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                                        onClick={() => setLocation(`/policies/${policy.id}`)}
+                                      >
+                                        {policy.clientFirstName} {policy.clientMiddleName} {policy.clientLastName} {policy.clientSecondLastName}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                                          {policy.clientIsApplicant ? 'Self' : 'Not Applicant'}
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                          {policy.clientGender ? policy.clientGender.charAt(0).toUpperCase() + policy.clientGender.slice(1) : 'N/A'}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {policy.physical_city}, {policy.physical_state} {policy.physical_postal_code}
+                                      </div>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={8} align="start" className="p-3">
+                                    <div>
+                                      <div className="font-semibold text-sm mb-2 text-center">Client information</div>
+                                      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                                        <div className="text-left font-medium">Client:</div>
+                                        <div className="text-right">
+                                          {policy.clientFirstName} {policy.clientMiddleName} {policy.clientLastName} {policy.clientSecondLastName}
+                                        </div>
+                                        <div className="text-left font-medium">Date of birth:</div>
+                                        <div className="text-right">
+                                          {policy.clientDateOfBirth ? formatDateForDisplay(policy.clientDateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                                        </div>
+                                        <div className="text-left font-medium">Address:</div>
+                                        <div className="text-right">
+                                          {policy.physical_street || 'N/A'}
+                                          {policy.physical_county && <><br/>{policy.physical_county}</>}
+                                          <br/>{policy.physical_city}, {policy.physical_state} ({policy.physical_state_abbreviation || policy.physical_state}), {policy.physical_postal_code}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TableCell>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
+                                    {(() => {
+                                      const typeMap: Record<string, string> = {
+                                        'aca': 'Health Insurance ACA',
+                                        'medicare': 'Medicare',
+                                        'medicaid': 'Medicaid',
+                                        'supplemental': 'Supplemental',
+                                        'life': 'Life Insurance',
+                                        'dental': 'Dental Insurance',
+                                        'vision': 'Vision Insurance',
+                                        'private': 'Private Insurance',
+                                        'annuities': 'Annuities',
+                                        'final_expense': 'Final Expense',
+                                        'travel': 'Travel Insurance'
+                                      };
+                                      const insuranceType = typeMap[policy.productType?.toLowerCase()] || policy.productType;
+                                      const carrierName = policy.selectedPlan ? (policy.selectedPlan.issuer?.name || policy.selectedPlan.issuer_name) : null;
+                                      
+                                      return carrierName ? `${carrierName} - ${insuranceType}` : insuranceType;
+                                    })()}
                                   </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="text-sm font-medium truncate">
-                                      {policy.clientFirstName} {policy.clientLastName}
-                                    </h4>
-                                    <Badge variant={getStatusVariant(policy.status)}>
-                                      {formatStatusDisplay(policy.status)}
-                                    </Badge>
-                                  </div>
-                                  <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">
-                                      <span className="font-medium">{product?.name || policy.productType}</span>
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Effective: {effectiveDate}
-                                    </p>
-                                    {policy.selectedPlan?.name && (
-                                      <p className="text-xs text-muted-foreground truncate">
-                                        Plan: {policy.selectedPlan.name}
-                                      </p>
-                                    )}
+                                  {policy.selectedPlan ? (
+                                    <div className="space-y-0.5">
+                                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                        {policy.selectedPlan.plan_marketing_name}
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                                          {policy.selectedPlan.metal_level || 'N/A'}
+                                        </Badge>
+                                        {policy.selectedPlan.plan_type && (
+                                          <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                            {policy.selectedPlan.plan_type}
+                                          </Badge>
+                                        )}
+                                        <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                          {policy.selectedPlan.premium_w_credit !== undefined && policy.selectedPlan.premium_w_credit !== null
+                                            ? formatCurrency(policy.selectedPlan.premium_w_credit)
+                                            : formatCurrency(policy.selectedPlan.premium)}/mo
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground italic">
+                                      No plan selected
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-muted-foreground pt-1 border-t">
+                                    Effective {formatDateForDisplay(policy.effectiveDate, "MMM dd, yyyy")} • ID: {policy.id.slice(0, 8)}
                                   </div>
                                 </div>
-                              </div>
-                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                <Badge variant="outline" className="text-xs">
-                                  {policy.id}
-                                </Badge>
-                                {policy.selectedPlan?.premium && (
-                                  <span className="text-sm font-semibold text-primary">
-                                    ${parseFloat(policy.selectedPlan.premium).toFixed(2)}/mo
-                                  </span>
+                              </TableCell>
+                              <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    {policy.isBlocked && (
+                                      <Lock className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-500" />
+                                    )}
+                                    <StatusBadgeEditor
+                                      type="policy"
+                                      statusType="status"
+                                      currentValue={policy.status}
+                                      id={policy.id}
+                                      allStatuses={{
+                                        status: policy.status,
+                                        documentsStatus: policy.documentsStatus,
+                                        paymentStatus: policy.paymentStatus,
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Documents: <span className={getDocumentsStatusColor(policy.documentsStatus || '')}>{formatStatusDisplay(policy.documentsStatus)}</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Payments: <span className={getPaymentStatusColor(policy.paymentStatus || '')}>{formatPaymentStatusDisplay(policy.paymentStatus)}</span>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                {assignedAgent ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm">{assignedAgent.firstName} {assignedAgent.lastName}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-5 w-5 p-0"
+                                      data-testid={`button-remove-assigned-other-${policy.id}`}
+                                    >
+                                      ×
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">-</span>
                                 )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                              </TableCell>
+                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-end gap-2">
+                                  {/* Renewal Button - Show for eligible policies */}
+                                  {(() => {
+                                    const effectiveYear = policy.effectiveDate ? parseInt(policy.effectiveDate.split('-')[0]) : null;
+                                    const isACA = policy.productType === 'Health Insurance ACA' || policy.productType?.toLowerCase() === 'aca';
+                                    const isMedicare = policy.productType?.startsWith('Medicare') || policy.productType?.toLowerCase() === 'medicare';
+                                    const isEligibleForRenewal = 
+                                      (isACA || isMedicare) &&
+                                      effectiveYear === 2025 &&
+                                      policy.renewalStatus !== 'completed' &&
+                                      policy.status !== 'cancelled';
+                                    
+                                    if (!isEligibleForRenewal) return null;
+                                    
+                                    return (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => renewalMutation.mutate(policy.id)}
+                                        disabled={renewingPolicyId === policy.id}
+                                        className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-300 dark:border-blue-800"
+                                        data-testid={`button-renew-other-${policy.id}`}
+                                      >
+                                        {renewingPolicyId === policy.id ? (
+                                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                        ) : (
+                                          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                                        )}
+                                        Renew 2026
+                                      </Button>
+                                    );
+                                  })()}
+                                  
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="outline" size="sm" data-testid={`button-preview-other-${policy.id}`}>
+                                        Preview
+                                        <ChevronDown className="h-4 w-4 ml-1" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => setLocation(`/policies/${policy.id}`)}>
+                                        View Details
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        className="text-destructive"
+                                        onClick={() => {
+                                          setQuoteToDelete({
+                                            id: policy.id,
+                                            clientName: `${policy.clientFirstName} ${policy.clientLastName}`,
+                                          });
+                                          setDeleteDialogOpen(true);
+                                        }}
+                                        data-testid={`button-delete-other-policy-${policy.id}`}
+                                      >
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   )}
                 </CardContent>
               </Card>
