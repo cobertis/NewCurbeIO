@@ -112,6 +112,9 @@ export default function MarketplacePlansPage() {
   // Plan Comparison States
   const [selectedPlansForComparison, setSelectedPlansForComparison] = useState<Set<string>>(new Set());
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  
+  // OEP Renewal Comparison State (2025 vs 2026)
+  const [selected2026PlanForComparison, setSelected2026PlanForComparison] = useState<string | null>(null);
 
   // Fetch quote/policy details
   const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
@@ -124,6 +127,18 @@ export default function MarketplacePlansPage() {
     queryKey: [`/api/${basePath}`, quoteId, 'members'],
     enabled: !!quoteId,
   });
+
+  // NEW: Fetch original policy if this is a renewed policy (for OEP comparison)
+  const currentPolicy = (quoteData as any)?.policy;
+  const renewedFromPolicyId = currentPolicy?.renewedFromPolicyId;
+  
+  const { data: originalPolicyData } = useQuery({
+    queryKey: [`/api/policies/${renewedFromPolicyId}/detail`],
+    enabled: !!renewedFromPolicyId && isPolicy,
+  });
+  
+  const originalPolicy = (originalPolicyData as any)?.policy;
+  const plan2025 = originalPolicy?.selectedPlan;
 
   // Fetch Poverty Guidelines from HHS API
   const currentYear = new Date().getFullYear();
@@ -507,8 +522,168 @@ export default function MarketplacePlansPage() {
     return ['dependent', 'child', 'other'].includes(role) || isApplicant === false;
   }).length;
 
+  // Get selected 2026 plan for comparison
+  const plan2026 = selected2026PlanForComparison 
+    ? marketplacePlans?.plans?.find((p: any) => p.id === selected2026PlanForComparison)
+    : null;
+
   return (
     <div className="p-4 sm:p-6">
+      {/* OEP Renewal Comparison Banner */}
+      {isPolicy && plan2025 && marketplacePlans && (
+        <Card className="mb-6 border-2 border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              OEP 2026 Renewal Comparison
+            </CardTitle>
+            <CardDescription>
+              Compare your 2025 plan with 2026 options to find the best renewal choice
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Select 2026 Plan */}
+            <div className="flex items-center gap-3">
+              <Label className="text-sm font-medium whitespace-nowrap">Select 2026 Plan:</Label>
+              <Select
+                value={selected2026PlanForComparison || ""}
+                onValueChange={(value) => setSelected2026PlanForComparison(value)}
+              >
+                <SelectTrigger className="w-full max-w-md" data-testid="select-2026-plan">
+                  <SelectValue placeholder="Choose a plan to compare..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {marketplacePlans?.plans?.slice(0, 20).map((plan: any) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.issuer?.name} - {plan.name} ({formatCurrency(plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium)}/mo)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Side-by-side Comparison */}
+            {plan2026 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                {/* 2025 Plan */}
+                <Card className="bg-slate-50 dark:bg-slate-900/50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">2025 Plan</CardTitle>
+                      <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700">
+                        Current
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Carrier</p>
+                      <p className="font-semibold">{plan2025.issuer?.name || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Plan Name</p>
+                      <p className="font-medium text-sm">{plan2025.name}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Premium</p>
+                        <p className="font-bold text-lg">
+                          {formatCurrency(plan2025.premium_w_credit !== undefined ? plan2025.premium_w_credit : plan2025.premium)}
+                          <span className="text-xs font-normal">/mo</span>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Deductible</p>
+                        <p className="font-bold text-lg">
+                          {formatCurrency(plan2025.deductibles?.[0]?.amount || 0)}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Metal Level</p>
+                      <Badge className="mt-1">{plan2025.metal_level}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* 2026 Plan */}
+                <Card className="bg-green-50 dark:bg-green-950/30 border-2 border-green-200 dark:border-green-800">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">2026 Plan</CardTitle>
+                      <Badge className="bg-green-600 dark:bg-green-700 text-white">
+                        New Option
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Carrier</p>
+                      <p className="font-semibold">{plan2026.issuer?.name || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Plan Name</p>
+                      <p className="font-medium text-sm">{plan2026.name}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Premium</p>
+                        <p className="font-bold text-lg">
+                          {formatCurrency(plan2026.premium_w_credit !== undefined ? plan2026.premium_w_credit : plan2026.premium)}
+                          <span className="text-xs font-normal">/mo</span>
+                        </p>
+                        {(() => {
+                          const premium2025 = plan2025.premium_w_credit !== undefined ? plan2025.premium_w_credit : plan2025.premium;
+                          const premium2026 = plan2026.premium_w_credit !== undefined ? plan2026.premium_w_credit : plan2026.premium;
+                          const diff = premium2026 - premium2025;
+                          const isIncrease = diff > 0;
+                          const isDecrease = diff < 0;
+                          
+                          return diff !== 0 ? (
+                            <p className={`text-xs font-medium ${isIncrease ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                              {isIncrease ? '+' : ''}{formatCurrency(diff)}
+                            </p>
+                          ) : null;
+                        })()}
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Deductible</p>
+                        <p className="font-bold text-lg">
+                          {formatCurrency(plan2026.deductibles?.[0]?.amount || 0)}
+                        </p>
+                        {(() => {
+                          const deduct2025 = plan2025.deductibles?.[0]?.amount || 0;
+                          const deduct2026 = plan2026.deductibles?.[0]?.amount || 0;
+                          const diff = deduct2026 - deduct2025;
+                          const isIncrease = diff > 0;
+                          
+                          return diff !== 0 ? (
+                            <p className={`text-xs font-medium ${isIncrease ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                              {isIncrease ? '+' : ''}{formatCurrency(diff)}
+                            </p>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Metal Level</p>
+                      <Badge className="mt-1">{plan2026.metal_level}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {!plan2026 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Select a 2026 plan above to see a detailed comparison</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* 3-column layout: Household Info | Plans | Filters */}
       {quote && (
         <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-4 sm:gap-6">
