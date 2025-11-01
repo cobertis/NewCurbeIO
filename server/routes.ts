@@ -13314,12 +13314,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       console.log(`[RENEWAL] Updated original policy ${policyId} with renewal tracking`);
       
-      // 9. OPCIONAL: Clonar policy_members asociados a la nueva póliza
+      // 9. Clone all related data from original policy to renewed policy
       try {
+        // 9a. Clone policy_members
         const members = await storage.getPolicyMembersByPolicyId(policyId, currentUser.companyId!);
         console.log(`[RENEWAL] Found ${members.length} members to clone`);
         
+        const memberIdMapping: Record<string, string> = {}; // old member ID -> new member ID
+        
         for (const member of members) {
+          const oldMemberId = member.id;
           const newMemberData = {
             ...member,
             policyId: newPolicyId,
@@ -13331,9 +13335,219 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Remove id and other auto-generated fields
           delete (newMemberData as any).id;
           
-          await storage.createPolicyMember(newMemberData);
+          const newMember = await storage.createPolicyMember(newMemberData);
+          memberIdMapping[oldMemberId] = newMember.id;
+          
+          // 9b. Clone member income data
+          try {
+            const income = await storage.getPolicyMemberIncome(oldMemberId, currentUser.companyId!);
+            if (income) {
+              const newIncomeData = {
+                ...income,
+                memberId: newMember.id,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+              delete (newIncomeData as any).id;
+              await storage.createOrUpdatePolicyMemberIncome(newIncomeData);
+              console.log(`[RENEWAL] Cloned income data for member ${newMember.id}`);
+            }
+          } catch (incomeError) {
+            console.error(`[RENEWAL] Error cloning income for member ${oldMemberId}:`, incomeError);
+          }
+          
+          // 9c. Clone member immigration data
+          try {
+            const immigration = await storage.getPolicyMemberImmigration(oldMemberId, currentUser.companyId!);
+            if (immigration) {
+              const newImmigrationData = {
+                ...immigration,
+                memberId: newMember.id,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+              delete (newImmigrationData as any).id;
+              await storage.createOrUpdatePolicyMemberImmigration(newImmigrationData);
+              console.log(`[RENEWAL] Cloned immigration data for member ${newMember.id}`);
+            }
+          } catch (immigrationError) {
+            console.error(`[RENEWAL] Error cloning immigration for member ${oldMemberId}:`, immigrationError);
+          }
+          
+          // 9d. Clone member documents
+          try {
+            const memberDocs = await storage.getPolicyMemberDocuments(oldMemberId, currentUser.companyId!);
+            for (const doc of memberDocs) {
+              const newDocData = {
+                ...doc,
+                memberId: newMember.id,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+              delete (newDocData as any).id;
+              await storage.createPolicyMemberDocument(newDocData);
+            }
+            if (memberDocs.length > 0) {
+              console.log(`[RENEWAL] Cloned ${memberDocs.length} documents for member ${newMember.id}`);
+            }
+          } catch (docError) {
+            console.error(`[RENEWAL] Error cloning documents for member ${oldMemberId}:`, docError);
+          }
         }
-        console.log(`[RENEWAL] Cloned ${members.length} policy members`);
+        
+        console.log(`[RENEWAL] Cloned ${members.length} policy members with all related data`);
+        
+        // 9e. Clone policy documents (not member documents)
+        try {
+          const policyDocs = await storage.listPolicyDocuments(policyId, currentUser.companyId!, {});
+          for (const doc of policyDocs) {
+            const newPolicyDocData = {
+              policyId: newPolicyId,
+              companyId: originalPolicy.companyId,
+              fileName: doc.fileName,
+              filePath: doc.filePath,
+              fileSize: doc.fileSize,
+              mimeType: doc.mimeType,
+              category: doc.category,
+              description: doc.description,
+              uploadedBy: currentUser.id,
+              // Map old member ID to new member ID if document belongs to a member
+              belongsToMemberId: doc.belongsToMemberId ? (memberIdMapping[doc.belongsToMemberId] || null) : null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            await db.insert(policyDocuments).values(newPolicyDocData as any);
+          }
+          if (policyDocs.length > 0) {
+            console.log(`[RENEWAL] Cloned ${policyDocs.length} policy documents`);
+          }
+        } catch (policyDocError) {
+          console.error("[RENEWAL] Error cloning policy documents:", policyDocError);
+        }
+        
+        // 9f. Clone payment methods
+        try {
+          const paymentMethods = await storage.getPolicyPaymentMethods(policyId, currentUser.companyId!);
+          for (const pm of paymentMethods) {
+            const newPaymentMethodData = {
+              policyId: newPolicyId,
+              companyId: originalPolicy.companyId,
+              type: pm.type,
+              cardNumber: pm.cardNumber,
+              cardHolderName: pm.cardHolderName,
+              expirationDate: pm.expirationDate,
+              cvv: pm.cvv,
+              billingAddress: pm.billingAddress,
+              billingCity: pm.billingCity,
+              billingState: pm.billingState,
+              billingZip: pm.billingZip,
+              isDefault: pm.isDefault,
+              bankName: pm.bankName,
+              accountNumber: pm.accountNumber,
+              routingNumber: pm.routingNumber,
+              accountHolderName: pm.accountHolderName,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            await storage.createPolicyPaymentMethod(newPaymentMethodData as any);
+          }
+          if (paymentMethods.length > 0) {
+            console.log(`[RENEWAL] Cloned ${paymentMethods.length} payment methods`);
+          }
+        } catch (pmError) {
+          console.error("[RENEWAL] Error cloning payment methods:", pmError);
+        }
+        
+        // 9g. Clone notes
+        try {
+          const notes = await storage.listPolicyNotes(policyId, currentUser.companyId!, {});
+          for (const note of notes) {
+            const newNoteData = {
+              policyId: newPolicyId,
+              companyId: originalPolicy.companyId,
+              content: note.content,
+              isPinned: note.isPinned,
+              isImportant: note.isImportant,
+              isResolved: note.isResolved,
+              category: note.category,
+              imageAttachments: note.imageAttachments,
+              createdBy: currentUser.id,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            await db.insert(policyNotes).values(newNoteData as any);
+          }
+          if (notes.length > 0) {
+            console.log(`[RENEWAL] Cloned ${notes.length} notes`);
+          }
+        } catch (noteError) {
+          console.error("[RENEWAL] Error cloning notes:", noteError);
+        }
+        
+        // 9h. Clone reminders
+        try {
+          const reminders = await storage.listPolicyReminders(policyId, currentUser.companyId!, {});
+          for (const reminder of reminders) {
+            const newReminderData = {
+              policyId: newPolicyId,
+              companyId: originalPolicy.companyId,
+              title: reminder.title,
+              description: reminder.description,
+              dueDate: reminder.dueDate,
+              priority: reminder.priority,
+              status: reminder.status,
+              assignedTo: reminder.assignedTo,
+              createdBy: currentUser.id,
+              snoozedUntil: reminder.snoozedUntil,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            await storage.createPolicyReminder(newReminderData as any);
+          }
+          if (reminders.length > 0) {
+            console.log(`[RENEWAL] Cloned ${reminders.length} reminders`);
+          }
+        } catch (reminderError) {
+          console.error("[RENEWAL] Error cloning reminders:", reminderError);
+        }
+        
+        // 9i. Clone consent documents
+        try {
+          const consents = await storage.listPolicyConsents(policyId, currentUser.companyId!);
+          for (const consent of consents) {
+            const newConsentData = {
+              policyId: newPolicyId,
+              companyId: originalPolicy.companyId,
+              type: consent.type,
+              content: consent.content,
+              status: consent.status,
+              sentAt: consent.sentAt,
+              sentVia: consent.sentVia,
+              sentTo: consent.sentTo,
+              signedAt: consent.signedAt,
+              signatureImage: consent.signatureImage,
+              signerIp: consent.signerIp,
+              signerUserAgent: consent.signerUserAgent,
+              signerTimezone: consent.signerTimezone,
+              signerLocation: consent.signerLocation,
+              signerPlatform: consent.signerPlatform,
+              signerBrowser: consent.signerBrowser,
+              expiresAt: consent.expiresAt,
+              createdBy: currentUser.id,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            delete (newConsentData as any).id;
+            delete (newConsentData as any).token;
+            await db.insert(policyConsentDocuments).values(newConsentData as any);
+          }
+          if (consents.length > 0) {
+            console.log(`[RENEWAL] Cloned ${consents.length} consent documents`);
+          }
+        } catch (consentError) {
+          console.error("[RENEWAL] Error cloning consent documents:", consentError);
+        }
+        
       } catch (memberError) {
         console.error("[RENEWAL] Error cloning members (non-fatal):", memberError);
         // Continue even if member cloning fails
