@@ -12683,7 +12683,20 @@ export default function PoliciesPage() {
         </DialogContent>
       </Dialog>
 
-
+      {/* OEP 2026 Renewal Comparison Modal */}
+      {renewalData && (
+        <PolicyRenewalComparison
+          open={showComparisonModal}
+          onOpenChange={setShowComparisonModal}
+          originalPolicy={renewalData.originalPolicy}
+          renewedPolicy={renewalData.renewedPolicy}
+          plan2025={renewalData.plan2025}
+          plans2026={renewalData.plans2026 || []}
+          onRenewalComplete={(renewedPolicyId) => {
+            setLocation(`/policies/${renewedPolicyId}`);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -13350,21 +13363,6 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
           </div>
         </TabsContent>
       </Tabs>
-      
-      {/* OEP 2026 Renewal Comparison Modal */}
-      {renewalData && (
-        <PolicyRenewalComparison
-          open={showComparisonModal}
-          onOpenChange={setShowComparisonModal}
-          originalPolicy={renewalData.originalPolicy}
-          renewedPolicy={renewalData.renewedPolicy}
-          plan2025={renewalData.plan2025}
-          plans2026={renewalData.plans2026 || []}
-          onRenewalComplete={(renewedPolicyId) => {
-            setLocation(`/policies/${renewedPolicyId}`);
-          }}
-        />
-      )}
     </div>
   );
 }
