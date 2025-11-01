@@ -4051,7 +4051,7 @@ export class DbStorage implements IStorage {
     }
     
     if (effectiveYear) {
-      conditions.push(like(policies.effectiveDate, `${effectiveYear}-%`));
+      conditions.push(sql`EXTRACT(YEAR FROM ${policies.effectiveDate}) = ${effectiveYear}`);
     }
     
     // Create aliases for the users table to join it twice
