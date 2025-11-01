@@ -401,6 +401,20 @@ async function fetchSinglePage(
       console.log(`[CMS_MARKETPLACE] ✅ Página ${currentPage}: ${data.plans?.length || 0} planes obtenidos`);
     }
     
+    // DEBUGGING: Log first plan details to verify data mapping (only on page 1)
+    if (page === 1 && data.plans && data.plans.length > 0) {
+      const firstPlan = data.plans[0];
+      console.log('[CMS_MARKETPLACE] 🔍 FIRST PLAN RAW DATA:', JSON.stringify({
+        id: firstPlan.id,
+        name: firstPlan.name,
+        issuer: firstPlan.issuer?.name,
+        premium: firstPlan.premium,
+        premium_w_credit: firstPlan.premium_w_credit,
+        metal_level: firstPlan.metal_level,
+        type: firstPlan.type
+      }, null, 2));
+    }
+    
     // Agregar información del request para mostrar al usuario
     data.request_data = {
       household_income: quoteData.householdIncome,
