@@ -593,6 +593,10 @@ export interface IStorage {
   getPoliciesByAgent(agentId: string): Promise<Array<Policy & {
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
+  getPoliciesByApplicant(companyId: string, ssn?: string | null, email?: string | null, effectiveYear?: number): Promise<Array<Policy & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>>;
   updatePolicy(id: string, data: Partial<InsertPolicy>): Promise<Policy | undefined>;
   updatePolicyPlan(id: string, selectedPlan: any): Promise<Policy | undefined>;
   deletePolicy(id: string): Promise<boolean>;
@@ -3998,6 +4002,57 @@ export class DbStorage implements IStorage {
     return results.map((result) => ({
       ...result.policy,
       creator: result.creator,
+    })) as any;
+  }
+
+  async getPoliciesByApplicant(companyId: string, ssn?: string | null, email?: string | null, effectiveYear?: number): Promise<Array<Policy & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>> {
+    const { or, like } = await import("drizzle-orm");
+    
+    const conditions: any[] = [eq(policies.companyId, companyId)];
+    
+    if (ssn || email) {
+      const applicantConditions: any[] = [];
+      if (ssn) {
+        applicantConditions.push(eq(policies.clientSsn, ssn));
+      }
+      if (email) {
+        applicantConditions.push(eq(policies.clientEmail, email));
+      }
+      conditions.push(or(...applicantConditions));
+    }
+    
+    if (effectiveYear) {
+      conditions.push(like(policies.effectiveDate, `${effectiveYear}-%`));
+    }
+    
+    const results = await db
+      .select({
+        policy: policies,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+        agent: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(policies)
+      .leftJoin(users, eq(policies.createdBy, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(policies.effectiveDate), desc(policies.createdAt));
+
+    return results.map((result) => ({
+      ...result.policy,
+      creator: result.creator,
+      agent: result.policy.agentId ? result.agent : null,
     })) as any;
   }
 
