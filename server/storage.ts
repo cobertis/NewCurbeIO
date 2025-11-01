@@ -184,7 +184,7 @@ import {
   policyConsentDocuments,
   policyConsentSignatureEvents
 } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, or, desc, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -4668,12 +4668,68 @@ export class DbStorage implements IStorage {
   // ==================== POLICY PAYMENT METHODS ====================
   
   async getPolicyPaymentMethods(policyId: string, companyId: string): Promise<PolicyPaymentMethod[]> {
+    // Get the current policy to identify the client
+    const [policy] = await db
+      .select({ clientSsn: policies.clientSsn, clientEmail: policies.clientEmail })
+      .from(policies)
+      .where(
+        and(
+          eq(policies.id, policyId),
+          eq(policies.companyId, companyId)
+        )
+      );
+    
+    if (!policy) {
+      return [];
+    }
+    
+    // Build client matching conditions only if identifiers exist
+    const clientConditions = [];
+    if (policy.clientSsn) {
+      clientConditions.push(eq(policies.clientSsn, policy.clientSsn));
+    }
+    if (policy.clientEmail) {
+      clientConditions.push(eq(policies.clientEmail, policy.clientEmail));
+    }
+    
+    // If no identifiers exist, only return payment methods for the current policy
+    if (clientConditions.length === 0) {
+      return db
+        .select()
+        .from(policyPaymentMethods)
+        .where(
+          and(
+            eq(policyPaymentMethods.policyId, policyId),
+            eq(policyPaymentMethods.companyId, companyId)
+          )
+        )
+        .orderBy(desc(policyPaymentMethods.isDefault), desc(policyPaymentMethods.createdAt));
+    }
+    
+    // Find all policies of the same client (matching SSN or email)
+    const clientPolicies = await db
+      .select({ id: policies.id })
+      .from(policies)
+      .where(
+        and(
+          eq(policies.companyId, companyId),
+          or(...clientConditions)
+        )
+      );
+    
+    const policyIds = clientPolicies.map(p => p.id);
+    
+    if (policyIds.length === 0) {
+      return [];
+    }
+    
+    // Get all payment methods from all policies of this client
     return db
       .select()
       .from(policyPaymentMethods)
       .where(
         and(
-          eq(policyPaymentMethods.policyId, policyId),
+          inArray(policyPaymentMethods.policyId, policyIds),
           eq(policyPaymentMethods.companyId, companyId)
         )
       )
@@ -4732,13 +4788,96 @@ export class DbStorage implements IStorage {
   }
   
   async setDefaultPolicyPaymentMethod(paymentMethodId: string, policyId: string, companyId: string): Promise<void> {
-    // First, set all payment methods for this policy to non-default
+    // Get the current policy to identify the client
+    const [policy] = await db
+      .select({ clientSsn: policies.clientSsn, clientEmail: policies.clientEmail })
+      .from(policies)
+      .where(
+        and(
+          eq(policies.id, policyId),
+          eq(policies.companyId, companyId)
+        )
+      );
+    
+    if (!policy) {
+      return;
+    }
+    
+    // Build client matching conditions only if identifiers exist
+    const clientConditions = [];
+    if (policy.clientSsn) {
+      clientConditions.push(eq(policies.clientSsn, policy.clientSsn));
+    }
+    if (policy.clientEmail) {
+      clientConditions.push(eq(policies.clientEmail, policy.clientEmail));
+    }
+    
+    // If no identifiers exist, only update payment methods for the current policy
+    if (clientConditions.length === 0) {
+      // Set all payment methods for this policy to non-default
+      await db
+        .update(policyPaymentMethods)
+        .set({ isDefault: false })
+        .where(
+          and(
+            eq(policyPaymentMethods.policyId, policyId),
+            eq(policyPaymentMethods.companyId, companyId)
+          )
+        );
+      
+      // Then set the specified payment method as default
+      await db
+        .update(policyPaymentMethods)
+        .set({ isDefault: true })
+        .where(
+          and(
+            eq(policyPaymentMethods.id, paymentMethodId),
+            eq(policyPaymentMethods.companyId, companyId)
+          )
+        );
+      return;
+    }
+    
+    // Find all policies of the same client
+    const clientPolicies = await db
+      .select({ id: policies.id })
+      .from(policies)
+      .where(
+        and(
+          eq(policies.companyId, companyId),
+          or(...clientConditions)
+        )
+      );
+    
+    const policyIds = clientPolicies.map(p => p.id);
+    
+    if (policyIds.length === 0) {
+      return;
+    }
+    
+    // Verify the payment method belongs to one of the client's policies
+    const [paymentMethod] = await db
+      .select({ policyId: policyPaymentMethods.policyId })
+      .from(policyPaymentMethods)
+      .where(
+        and(
+          eq(policyPaymentMethods.id, paymentMethodId),
+          eq(policyPaymentMethods.companyId, companyId)
+        )
+      );
+    
+    if (!paymentMethod || !policyIds.includes(paymentMethod.policyId)) {
+      // Payment method doesn't belong to this client, abort
+      return;
+    }
+    
+    // First, set all payment methods for all client's policies to non-default
     await db
       .update(policyPaymentMethods)
       .set({ isDefault: false })
       .where(
         and(
-          eq(policyPaymentMethods.policyId, policyId),
+          inArray(policyPaymentMethods.policyId, policyIds),
           eq(policyPaymentMethods.companyId, companyId)
         )
       );
