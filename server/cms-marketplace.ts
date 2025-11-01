@@ -270,22 +270,23 @@ async function fetchSinglePage(
   // Build household members array following CMS API format from documentation
   const people = [];
   
-  // Add client - CRITICAL: aptc_eligible must be true for APTC calculation
+  // Add client - Adults (19+) are always APTC eligible
+  const clientAge = calculateAge(quoteData.client.dateOfBirth);
   people.push({
-    age: calculateAge(quoteData.client.dateOfBirth),
-    aptc_eligible: true, // DEBE ser true para recibir créditos según documentación
+    age: clientAge,
+    aptc_eligible: clientAge >= 19, // Only adults 19+ are eligible for APTC
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
     is_pregnant: quoteData.client.pregnant || false,
-    // Removed dob and relationship as they're not in the documentation payload
   });
   
-  // Add spouses
+  // Add spouses - Adults (19+) are always APTC eligible
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
+      const spouseAge = calculateAge(spouse.dateOfBirth);
       people.push({
-        age: calculateAge(spouse.dateOfBirth),
-        aptc_eligible: true, // DEBE ser true para recibir créditos
+        age: spouseAge,
+        aptc_eligible: spouseAge >= 19, // Only adults 19+ are eligible for APTC
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
         is_pregnant: spouse.pregnant || false,
@@ -293,15 +294,16 @@ async function fetchSinglePage(
     });
   }
   
-  // Add dependents
+  // Add dependents - Children under 19 are NOT APTC eligible (may qualify for CHIP/Medicaid)
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
+      const dependentAge = calculateAge(dependent.dateOfBirth);
       people.push({
-        age: calculateAge(dependent.dateOfBirth),
-        aptc_eligible: true, // DEBE ser true para recibir créditos
+        age: dependentAge,
+        aptc_eligible: dependentAge >= 19, // Children under 19 may qualify for CHIP/Medicaid instead
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
-        is_pregnant: false, // Children usually not pregnant
+        is_pregnant: false,
       });
     });
   }
