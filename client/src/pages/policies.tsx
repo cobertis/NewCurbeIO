@@ -6498,6 +6498,26 @@ export default function PoliciesPage() {
                       This policy is active in {currentYear} and will need to be renewed for {currentYear + 1}. Please initiate the renewal process before the end of the Open Enrollment Period.
                     </p>
                   </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => renewalMutation.mutate(viewingQuote.id)}
+                    disabled={renewalMutation.isPending}
+                    className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+                    data-testid="button-renew-detail"
+                  >
+                    {renewalMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Renovando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Renovar para {currentYear + 1}
+                      </>
+                    )}
+                  </Button>
                 </div>
               );
             })()}
@@ -10765,7 +10785,7 @@ export default function PoliciesPage() {
                     className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700' : ''}
                     data-testid="button-oep-filter-aca"
                   >
-                    OEP 2026 - ACA
+                    OEP 2026 ACA/Obamacare
                     {oepStats && oepStats.aca > 0 && (
                       <Badge variant="destructive" className="ml-2">
                         {oepStats.aca}
@@ -10778,7 +10798,7 @@ export default function PoliciesPage() {
                     className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700' : ''}
                     data-testid="button-oep-filter-medicare"
                   >
-                    OEP 2026 - Medicare
+                    OEP 2026 Medicare
                     {oepStats && oepStats.medicare > 0 && (
                       <Badge variant="destructive" className="ml-2">
                         {oepStats.medicare}
