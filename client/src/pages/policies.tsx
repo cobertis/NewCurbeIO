@@ -155,7 +155,7 @@ function getPaymentStatusVariant(status: string): "default" | "secondary" | "out
   const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
     pending: "warning",
     unpaid: "destructive",
-    auto_pay: "outline",
+    auto_pay: "success",
     failed: "destructive",
     paid: "success",
     not_applicable: "secondary",
