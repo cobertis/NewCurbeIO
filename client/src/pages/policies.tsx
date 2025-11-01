@@ -11096,7 +11096,7 @@ export default function PoliciesPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-sm">
-                              <div className="space-y-1.5">
+                              <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                   {quote.isBlocked && (
                                     <Lock className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-500" />
@@ -11113,17 +11113,11 @@ export default function PoliciesPage() {
                                     }}
                                   />
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-muted-foreground">Documents:</span>
-                                  <Badge variant={getDocumentsStatusVariant(quote.documentsStatus || '')} className="text-[10px] px-1 py-0 h-4">
-                                    {formatStatusDisplay(quote.documentsStatus)}
-                                  </Badge>
+                                <div className="text-xs text-muted-foreground">
+                                  Documents: <span className="text-foreground">{formatStatusDisplay(quote.documentsStatus)}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-muted-foreground">Payments:</span>
-                                  <Badge variant={getPaymentStatusVariant(quote.paymentStatus || '')} className="text-[10px] px-1 py-0 h-4">
-                                    {formatPaymentStatusDisplay(quote.paymentStatus)}
-                                  </Badge>
+                                <div className="text-xs text-muted-foreground">
+                                  Payments: <span className="text-foreground">{formatPaymentStatusDisplay(quote.paymentStatus)}</span>
                                 </div>
                               </div>
                             </TableCell>
