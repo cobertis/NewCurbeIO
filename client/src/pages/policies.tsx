@@ -3412,6 +3412,7 @@ export default function PoliciesPage() {
   // OEP Renewal modal state
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [renewalData, setRenewalData] = useState<any>(null);
+  const [renewingPolicyId, setRenewingPolicyId] = useState<string | null>(null);
   
   // Delete quote dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -3578,15 +3579,18 @@ export default function PoliciesPage() {
   // Renewal mutation
   const renewalMutation = useMutation({
     mutationFn: async (policyId: string) => {
+      setRenewingPolicyId(policyId);
       return await apiRequest('POST', `/api/policies/${policyId}/renewals`, {});
     },
     onSuccess: (data) => {
+      setRenewingPolicyId(null);
       setRenewalData(data);
       setShowComparisonModal(true);
       queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
       queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'] });
     },
     onError: (error: Error) => {
+      setRenewingPolicyId(null);
       toast({
         title: "Error al renovar póliza",
         description: error.message,
@@ -6502,11 +6506,11 @@ export default function PoliciesPage() {
                     variant="default"
                     size="sm"
                     onClick={() => renewalMutation.mutate(viewingQuote.id)}
-                    disabled={renewalMutation.isPending}
+                    disabled={renewingPolicyId === viewingQuote.id}
                     className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
                     data-testid="button-renew-detail"
                   >
-                    {renewalMutation.isPending ? (
+                    {renewingPolicyId === viewingQuote.id ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Renovando...
@@ -11036,11 +11040,11 @@ export default function PoliciesPage() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => renewalMutation.mutate(quote.id)}
-                                      disabled={renewalMutation.isPending}
+                                      disabled={renewingPolicyId === quote.id}
                                       className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-300 dark:border-blue-800"
                                       data-testid={`button-renew-${quote.id}`}
                                     >
-                                      {renewalMutation.isPending ? (
+                                      {renewingPolicyId === quote.id ? (
                                         <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                                       ) : (
                                         <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
