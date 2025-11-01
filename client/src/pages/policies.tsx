@@ -3590,8 +3590,8 @@ export default function PoliciesPage() {
       // Navigate directly to the renewed policy after a short delay
       if (data?.renewedPolicy?.id) {
         toast({
-          title: "Póliza renovada exitosamente",
-          description: `Nueva póliza ${data.renewedPolicy.id} creada para 2026`,
+          title: "Policy renewed successfully",
+          description: `New policy ${data.renewedPolicy.id} created for 2026`,
           duration: 3000,
         });
         
@@ -6536,12 +6536,12 @@ export default function PoliciesPage() {
                     {renewingPolicyId === viewingQuote.id ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Renovando...
+                        Renewing...
                       </>
                     ) : (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        Renovar para {currentYear + 1}
+                        Renew for {currentYear + 1}
                       </>
                     )}
                   </Button>
@@ -11072,7 +11072,7 @@ export default function PoliciesPage() {
                                       ) : (
                                         <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                                       )}
-                                      Renovar 2026
+                                      Renew 2026
                                     </Button>
                                   );
                                 })()}
