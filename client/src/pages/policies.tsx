@@ -3583,15 +3583,19 @@ export default function PoliciesPage() {
       return await apiRequest('POST', `/api/policies/${policyId}/renewals`, {});
     },
     onSuccess: (data) => {
-      console.log('[RENEWAL] Success callback fired. Data received:', data);
-      console.log('[RENEWAL] Data keys:', data ? Object.keys(data) : 'no data');
-      console.log('[RENEWAL] plans2026 length:', data?.plans2026?.length);
       setRenewingPolicyId(null);
-      setRenewalData(data);
-      setShowComparisonModal(true);
-      console.log('[RENEWAL] Modal state set to true');
       queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
       queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'] });
+      
+      // Navigate directly to the renewed policy
+      if (data?.renewedPolicy?.id) {
+        toast({
+          title: "Póliza renovada exitosamente",
+          description: `Nueva póliza ${data.renewedPolicy.id} creada para 2026`,
+          duration: 3000,
+        });
+        setLocation(`/policies/${data.renewedPolicy.id}`);
+      }
     },
     onError: (error: Error) => {
       setRenewingPolicyId(null);
