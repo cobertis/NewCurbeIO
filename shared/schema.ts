@@ -2101,6 +2101,13 @@ export const policies = pgTable("policies", {
   blockedBy: varchar("blocked_by").references(() => users.id, { onDelete: "set null" }),
   blockedAt: timestamp("blocked_at"),
   
+  // Renewal tracking (OEP 2026)
+  renewalTargetYear: integer("renewal_target_year"),
+  renewalStatus: text("renewal_status").default("pending").notNull(),
+  renewedFromPolicyId: varchar("renewed_from_policy_id", { length: 8 }).references(() => policies.id, { onDelete: "set null" }),
+  renewedToPolicyId: varchar("renewed_to_policy_id", { length: 8 }).references(() => policies.id, { onDelete: "set null" }),
+  renewedAt: timestamp("renewed_at"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -2109,6 +2116,11 @@ export const insertPolicySchema = createInsertSchema(policies).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  renewalTargetYear: true,
+  renewalStatus: true,
+  renewedFromPolicyId: true,
+  renewedToPolicyId: true,
+  renewedAt: true,
 }).extend({
   effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
   clientDateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format").optional(),

@@ -65,6 +65,8 @@ import fs from "fs";
 import crypto from "crypto";
 import multer from "multer";
 import "./types";
+import { fetchMarketplacePlans } from "./cms-marketplace";
+import { generateShortId } from "./id-generator";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -12365,10 +12367,67 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Get OEP (Open Enrollment Period) statistics for 2026 renewals
+  app.get("/api/policies/oep-stats", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      if (!currentUser.companyId) {
+        return res.status(400).json({ message: "User must belong to a company" });
+      }
+      
+      // Get all policies for the company
+      let allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
+      
+      // If user is admin (not superadmin), filter by agentId
+      if (currentUser.role === "admin") {
+        allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
+      }
+      
+      // Helper function to check if a policy is eligible for renewal
+      const isEligibleForRenewal = (policy: any, productTypeFilter: string) => {
+        // Check if effective date is in 2025
+        const effectiveDate = policy.effectiveDate;
+        if (!effectiveDate) return false;
+        
+        const isIn2025 = effectiveDate >= "2025-01-01" && effectiveDate < "2026-01-01";
+        if (!isIn2025) return false;
+        
+        // Check renewal status and policy status
+        if (policy.renewalStatus === "completed") return false;
+        if (policy.status === "cancelled" || policy.status === "canceled") return false;
+        
+        // Check product type
+        if (productTypeFilter === "aca") {
+          return policy.productType === "Health Insurance ACA";
+        } else if (productTypeFilter === "medicare") {
+          return policy.productType?.startsWith("Medicare");
+        }
+        
+        return false;
+      };
+      
+      // Count ACA policies eligible for renewal
+      const acaCount = allPolicies.filter(p => isEligibleForRenewal(p, "aca")).length;
+      
+      // Count Medicare policies eligible for renewal
+      const medicareCount = allPolicies.filter(p => isEligibleForRenewal(p, "medicare")).length;
+      
+      res.json({
+        aca: acaCount,
+        medicare: medicareCount,
+      });
+    } catch (error: any) {
+      console.error("Error fetching OEP stats:", error);
+      res.status(500).json({ message: "Failed to fetch OEP statistics" });
+    }
+  });
+  
   // Get all policies for company
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
+    const { oepFilter } = req.query;
     
     try {
       let policies: Awaited<ReturnType<typeof storage.getPoliciesByCompany>> = [];
@@ -12388,6 +12447,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (currentUser.role === "admin") {
           policies = policies.filter(policy => policy.agentId === currentUser.id);
         }
+      }
+      
+      // Apply OEP filter if specified
+      if (oepFilter === "aca" || oepFilter === "medicare") {
+        policies = policies.filter(policy => {
+          // Check if effective date is in 2025
+          const effectiveDate = policy.effectiveDate;
+          if (!effectiveDate) return false;
+          
+          const isIn2025 = effectiveDate >= "2025-01-01" && effectiveDate < "2026-01-01";
+          if (!isIn2025) return false;
+          
+          // Check renewal status and policy status
+          if (policy.renewalStatus === "completed") return false;
+          if (policy.status === "cancelled" || policy.status === "canceled") return false;
+          
+          // Filter by product type
+          if (oepFilter === "aca") {
+            return policy.productType === "Health Insurance ACA";
+          } else if (oepFilter === "medicare") {
+            // Medicare products start with "Medicare"
+            return policy.productType?.startsWith("Medicare");
+          }
+          
+          return false;
+        });
       }
       
       // Return policies with plain text SSN (as stored in database)
@@ -13104,6 +13189,169 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting policy:", error);
       res.status(500).json({ message: "Failed to delete policy" });
+    }
+  });
+  
+  // Create policy renewal for OEP 2026
+  app.post("/api/policies/:policyId/renewals", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId } = req.params;
+    
+    try {
+      console.log(`[RENEWAL] Starting renewal process for policy ${policyId}`);
+      
+      // 1. VALIDACIÓN: Verificar que la póliza existe y pertenece a la compañía del usuario
+      const originalPolicy = await storage.getPolicy(policyId);
+      
+      if (!originalPolicy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && originalPolicy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to renew this policy" });
+      }
+      
+      // 2. VALIDACIÓN: Verificar que la póliza tiene selectedPlan
+      if (!originalPolicy.selectedPlan) {
+        return res.status(400).json({ 
+          message: "Policy must have a selected plan before it can be renewed" 
+        });
+      }
+      
+      // 3. VALIDACIÓN: Verificar que no existe ya una renovación para 2026
+      if (originalPolicy.renewedToPolicyId) {
+        return res.status(400).json({ 
+          message: "Policy has already been renewed",
+          renewedPolicyId: originalPolicy.renewedToPolicyId
+        });
+      }
+      
+      // 4. VALIDACIÓN: Verificar que el productType sea ACA o Medicare
+      const isACA = originalPolicy.productType === "Health Insurance ACA";
+      const isMedicare = originalPolicy.productType?.startsWith("Medicare");
+      
+      if (!isACA && !isMedicare) {
+        return res.status(400).json({ 
+          message: "Only ACA and Medicare policies can be renewed through OEP",
+          productType: originalPolicy.productType
+        });
+      }
+      
+      console.log(`[RENEWAL] Validation passed. Creating renewed policy...`);
+      
+      // 5. LÓGICA DE RENOVACIÓN: Generar nuevo ID para póliza renovada
+      const newPolicyId = generateShortId();
+      
+      // 6. Clonar la póliza con los cambios especificados
+      const renewedPolicyData = {
+        ...originalPolicy,
+        id: newPolicyId,
+        effectiveDate: "2026-01-01",
+        saleType: "renewal",
+        renewalStatus: "draft",
+        renewedFromPolicyId: policyId,
+        status: "new",
+        // Clear renewal tracking fields for the new policy
+        renewedToPolicyId: null,
+        renewedAt: null,
+        renewalTargetYear: null,
+        // Keep all other fields (client info, addresses, family, selectedPlan, etc.)
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      // Create the renewed policy
+      const renewedPolicy = await storage.createPolicy(renewedPolicyData);
+      console.log(`[RENEWAL] Created renewed policy ${newPolicyId}`);
+      
+      // 7. Llamar a CMS Marketplace API con yearOverride=2026
+      console.log(`[RENEWAL] Fetching 2026 marketplace plans...`);
+      
+      // Build quote data from policy information
+      const quoteData = {
+        zipCode: originalPolicy.physical_postal_code || originalPolicy.mailing_postal_code || "",
+        county: originalPolicy.physical_county || originalPolicy.mailing_county || "",
+        state: originalPolicy.physical_state || originalPolicy.mailing_state || "",
+        householdIncome: parseFloat(originalPolicy.annualHouseholdIncome || "0"),
+        client: {
+          dateOfBirth: originalPolicy.clientDateOfBirth || "",
+          gender: originalPolicy.clientGender,
+          pregnant: originalPolicy.clientPregnant || false,
+          usesTobacco: originalPolicy.clientTobaccoUser || false,
+        },
+        spouses: originalPolicy.spouses || [],
+        dependents: originalPolicy.dependents || [],
+      };
+      
+      // Fetch 2026 plans from CMS Marketplace API
+      const plans2026 = await fetchMarketplacePlans(quoteData, undefined, undefined, 2026);
+      console.log(`[RENEWAL] Fetched ${plans2026.plans?.length || 0} plans for 2026`);
+      
+      // 8. Actualizar póliza original
+      const updatedOriginalPolicy = await storage.updatePolicy(policyId, {
+        renewalStatus: "completed",
+        renewedToPolicyId: newPolicyId,
+        renewedAt: new Date(),
+        renewalTargetYear: 2026,
+      });
+      console.log(`[RENEWAL] Updated original policy ${policyId} with renewal tracking`);
+      
+      // 9. OPCIONAL: Clonar policy_members asociados a la nueva póliza
+      try {
+        const members = await storage.getPolicyMembersByPolicyId(policyId, currentUser.companyId!);
+        console.log(`[RENEWAL] Found ${members.length} members to clone`);
+        
+        for (const member of members) {
+          const newMemberData = {
+            ...member,
+            policyId: newPolicyId,
+            companyId: originalPolicy.companyId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          // Remove id and other auto-generated fields
+          delete (newMemberData as any).id;
+          
+          await storage.createPolicyMember(newMemberData);
+        }
+        console.log(`[RENEWAL] Cloned ${members.length} policy members`);
+      } catch (memberError) {
+        console.error("[RENEWAL] Error cloning members (non-fatal):", memberError);
+        // Continue even if member cloning fails
+      }
+      
+      // 10. Log activity
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "policy_renewal",
+        entityId: newPolicyId,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          createdBy: currentUser.email,
+          renewedFrom: policyId,
+          targetYear: 2026,
+          productType: originalPolicy.productType,
+        },
+      });
+      
+      console.log(`[RENEWAL] Successfully renewed policy ${policyId} to ${newPolicyId}`);
+      
+      // 11. Retornar respuesta completa
+      res.json({
+        originalPolicy: updatedOriginalPolicy,
+        renewedPolicy: renewedPolicy,
+        plans2026: plans2026,
+        plan2025: originalPolicy.selectedPlan, // For comparison
+      });
+    } catch (error: any) {
+      console.error("Error creating policy renewal:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to create policy renewal",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 

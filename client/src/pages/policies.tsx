@@ -43,6 +43,7 @@ import {
   type CardType
 } from "@shared/creditCardUtils";
 import { CARRIERS_BY_TYPE, PRODUCT_TYPES as SIMPLE_PRODUCT_TYPES, getCarriersByProductType } from "@shared/carriers";
+import { PolicyRenewalComparison } from "@/components/PolicyRenewalComparison";
 
 // Type definitions for spouse and dependent objects (matching zod schemas in shared/schema.ts)
 type Spouse = {
@@ -3405,6 +3406,13 @@ export default function PoliciesPage() {
     searchFamilyMembers: false,
   });
   
+  // OEP 2026 filter state
+  const [oepFilter, setOepFilter] = useState<"aca" | "medicare" | null>(null);
+  
+  // OEP Renewal modal state
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [renewalData, setRenewalData] = useState<any>(null);
+  
   // Delete quote dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<{ id: string; clientName: string } | null>(null);
@@ -3556,6 +3564,35 @@ export default function PoliciesPage() {
   }>({
     queryKey: ['/api/policies/stats'],
     enabled: !showWizard,
+  });
+  
+  // Fetch OEP 2026 statistics
+  const { data: oepStats } = useQuery<{
+    aca: number;
+    medicare: number;
+  }>({
+    queryKey: ['/api/policies/oep-stats'],
+    enabled: !showWizard,
+  });
+  
+  // Renewal mutation
+  const renewalMutation = useMutation({
+    mutationFn: async (policyId: string) => {
+      return await apiRequest('POST', `/api/policies/${policyId}/renewals`, {});
+    },
+    onSuccess: (data) => {
+      setRenewalData(data);
+      setShowComparisonModal(true);
+      queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al renovar póliza",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
   
   // Function to handle viewing a quote - navigates to the quote detail page
@@ -5087,10 +5124,25 @@ export default function PoliciesPage() {
     const effectiveYear = quote.effectiveDate ? parseInt(quote.effectiveDate.split('-')[0]) : null;
     const matchesEffectiveYear = filters.effectiveYears.length === 0 || (effectiveYear && filters.effectiveYears.includes(effectiveYear));
     
+    // OEP 2026 filter - only show eligible policies for renewal
+    let matchesOEP = true;
+    if (oepFilter) {
+      const isEligibleForRenewal = 
+        effectiveYear === 2025 && 
+        quote.renewalStatus !== 'completed' && 
+        quote.status !== 'cancelled';
+      
+      if (oepFilter === 'aca') {
+        matchesOEP = isEligibleForRenewal && quote.productType === 'Health Insurance ACA';
+      } else if (oepFilter === 'medicare') {
+        matchesOEP = isEligibleForRenewal && quote.productType?.startsWith('Medicare');
+      }
+    }
+    
     return matchesSearch && matchesStatus && matchesProduct && matchesState && 
            matchesZipCode && matchesAssignedTo && matchesEffectiveDateFrom && 
            matchesEffectiveDateTo && matchesApplicantsFrom && matchesApplicantsTo &&
-           matchesEffectiveYear;
+           matchesEffectiveYear && matchesOEP;
   });
   
   // Check if any filters are active
@@ -10676,6 +10728,36 @@ export default function PoliciesPage() {
                   </div>
                 </div>
 
+                {/* OEP 2026 Filter Buttons */}
+                <div className="flex gap-2 py-4">
+                  <Button
+                    variant={oepFilter === 'aca' ? 'default' : 'outline'}
+                    onClick={() => setOepFilter(oepFilter === 'aca' ? null : 'aca')}
+                    className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                    data-testid="button-oep-filter-aca"
+                  >
+                    OEP 2026 - ACA
+                    {oepStats && oepStats.aca > 0 && (
+                      <Badge variant="destructive" className="ml-2">
+                        {oepStats.aca}
+                      </Badge>
+                    )}
+                  </Button>
+                  <Button
+                    variant={oepFilter === 'medicare' ? 'default' : 'outline'}
+                    onClick={() => setOepFilter(oepFilter === 'medicare' ? null : 'medicare')}
+                    className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                    data-testid="button-oep-filter-medicare"
+                  >
+                    OEP 2026 - Medicare
+                    {oepStats && oepStats.medicare > 0 && (
+                      <Badge variant="destructive" className="ml-2">
+                        {oepStats.medicare}
+                      </Badge>
+                    )}
+                  </Button>
+                </div>
+
                 {/* Table */}
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
@@ -10886,32 +10968,64 @@ export default function PoliciesPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="outline" size="sm" data-testid={`button-preview-${quote.id}`}>
-                                    Preview
-                                    <ChevronDown className="h-4 w-4 ml-1" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => setLocation(`/policies/${quote.id}`)}>
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="text-destructive"
-                                    onClick={() => {
-                                      setQuoteToDelete({
-                                        id: quote.id,
-                                        clientName: `${quote.clientFirstName} ${quote.clientLastName}`,
-                                      });
-                                      setDeleteDialogOpen(true);
-                                    }}
-                                    data-testid={`button-delete-quote-${quote.id}`}
-                                  >
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <div className="flex items-center justify-end gap-2">
+                                {/* Renewal Button - Show for eligible policies */}
+                                {(() => {
+                                  const effectiveYear = quote.effectiveDate ? parseInt(quote.effectiveDate.split('-')[0]) : null;
+                                  const isEligibleForRenewal = 
+                                    (quote.productType === 'Health Insurance ACA' || quote.productType?.startsWith('Medicare')) &&
+                                    effectiveYear === 2025 &&
+                                    quote.renewalStatus !== 'completed' &&
+                                    quote.status !== 'cancelled';
+                                  
+                                  if (!isEligibleForRenewal) return null;
+                                  
+                                  return (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => renewalMutation.mutate(quote.id)}
+                                      disabled={renewalMutation.isPending}
+                                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-300 dark:border-blue-800"
+                                      data-testid={`button-renew-${quote.id}`}
+                                    >
+                                      {renewalMutation.isPending ? (
+                                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                      ) : (
+                                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                                      )}
+                                      Renovar 2026
+                                    </Button>
+                                  );
+                                })()}
+                                
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" data-testid={`button-preview-${quote.id}`}>
+                                      Preview
+                                      <ChevronDown className="h-4 w-4 ml-1" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setLocation(`/policies/${quote.id}`)}>
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      className="text-destructive"
+                                      onClick={() => {
+                                        setQuoteToDelete({
+                                          id: quote.id,
+                                          clientName: `${quote.clientFirstName} ${quote.clientLastName}`,
+                                        });
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                      data-testid={`button-delete-quote-${quote.id}`}
+                                    >
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -13158,6 +13272,18 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
           </div>
         </TabsContent>
       </Tabs>
+      
+      {/* OEP 2026 Renewal Comparison Modal */}
+      {renewalData && (
+        <PolicyRenewalComparison
+          open={showComparisonModal}
+          onOpenChange={setShowComparisonModal}
+          originalPolicy={renewalData.originalPolicy}
+          renewedPolicy={renewalData.renewedPolicy}
+          plan2025={renewalData.plan2025}
+          plans2026={renewalData.plans2026 || []}
+        />
+      )}
     </div>
   );
 }

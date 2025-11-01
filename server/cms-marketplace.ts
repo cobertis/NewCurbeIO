@@ -156,18 +156,25 @@ export async function fetchMarketplacePlans(
     }>;
   },
   page?: number,
-  pageSize?: number
+  pageSize?: number,
+  yearOverride?: number
 ): Promise<MarketplaceApiResponse> {
+  // Validate yearOverride if provided
+  if (yearOverride && (yearOverride < 2025 || yearOverride > 2030)) {
+    throw new Error(`Year override must be between 2025 and 2030, received: ${yearOverride}`);
+  }
+  
   // If page is specified, return just that page (for backwards compatibility)
   if (page && page > 1) {
-    return fetchSinglePage(quoteData, page);
+    return fetchSinglePage(quoteData, page, yearOverride);
   }
   
   // Otherwise, fetch ALL plans in parallel
-  console.log('[CMS_MARKETPLACE] 🚀 Iniciando carga rápida de TODOS los planes');
+  const targetYear = yearOverride || new Date().getFullYear();
+  console.log(`[CMS_MARKETPLACE] 🚀 Iniciando carga rápida de TODOS los planes para año ${targetYear}`);
   
   // First, get the total count with page 1
-  const firstPage = await fetchSinglePage(quoteData, 1);
+  const firstPage = await fetchSinglePage(quoteData, 1, yearOverride);
   const totalPlans = firstPage.total || 0;
   
   if (totalPlans <= 10) {
@@ -188,7 +195,7 @@ export async function fetchMarketplacePlans(
   // Batch requests in groups of 5 to avoid overwhelming the API
   const batchSize = 5;
   for (let page = 2; page <= totalPages; page++) {
-    pagePromises.push(fetchSinglePage(quoteData, page));
+    pagePromises.push(fetchSinglePage(quoteData, page, yearOverride));
     
     // Add small delay between batches to be respectful to the API
     if (page % batchSize === 0 && page < totalPages) {
@@ -251,7 +258,8 @@ async function fetchSinglePage(
       usesTobacco?: boolean;
     }>;
   },
-  page: number
+  page: number,
+  yearOverride?: number
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
   
@@ -298,11 +306,12 @@ async function fetchSinglePage(
     });
   }
 
-  const year = new Date().getFullYear(); // Current year
+  // Use yearOverride if provided, otherwise use current year
+  const year = yearOverride || new Date().getFullYear();
 
   // Get county FIPS code - CRÍTICO según documentación
   if (page === 1) { // Only log on first page to reduce noise
-    console.log(`[CMS_MARKETPLACE] 📄 Página ${page}:`, {
+    console.log(`[CMS_MARKETPLACE] 📄 Página ${page} (año ${year}):`, {
       ZIP: quoteData.zipCode,
       Estado: quoteData.state,
       County: quoteData.county,
