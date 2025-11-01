@@ -4672,68 +4672,14 @@ export class DbStorage implements IStorage {
   // ==================== POLICY PAYMENT METHODS ====================
   
   async getPolicyPaymentMethods(policyId: string, companyId: string): Promise<PolicyPaymentMethod[]> {
-    // Get the current policy to identify the client
-    const [policy] = await db
-      .select({ clientSsn: policies.clientSsn, clientEmail: policies.clientEmail })
-      .from(policies)
-      .where(
-        and(
-          eq(policies.id, policyId),
-          eq(policies.companyId, companyId)
-        )
-      );
-    
-    if (!policy) {
-      return [];
-    }
-    
-    // Build client matching conditions only if identifiers exist
-    const clientConditions = [];
-    if (policy.clientSsn) {
-      clientConditions.push(eq(policies.clientSsn, policy.clientSsn));
-    }
-    if (policy.clientEmail) {
-      clientConditions.push(eq(policies.clientEmail, policy.clientEmail));
-    }
-    
-    // If no identifiers exist, only return payment methods for the current policy
-    if (clientConditions.length === 0) {
-      return db
-        .select()
-        .from(policyPaymentMethods)
-        .where(
-          and(
-            eq(policyPaymentMethods.policyId, policyId),
-            eq(policyPaymentMethods.companyId, companyId)
-          )
-        )
-        .orderBy(desc(policyPaymentMethods.isDefault), desc(policyPaymentMethods.createdAt));
-    }
-    
-    // Find all policies of the same client (matching SSN or email)
-    const clientPolicies = await db
-      .select({ id: policies.id })
-      .from(policies)
-      .where(
-        and(
-          eq(policies.companyId, companyId),
-          or(...clientConditions)
-        )
-      );
-    
-    const policyIds = clientPolicies.map(p => p.id);
-    
-    if (policyIds.length === 0) {
-      return [];
-    }
-    
-    // Get all payment methods from all policies of this client
+    // SECURITY FIX: Only return payment methods for THIS specific policy
+    // Payment methods are not shared across policies to prevent data leakage
     return db
       .select()
       .from(policyPaymentMethods)
       .where(
         and(
-          inArray(policyPaymentMethods.policyId, policyIds),
+          eq(policyPaymentMethods.policyId, policyId),
           eq(policyPaymentMethods.companyId, companyId)
         )
       )
