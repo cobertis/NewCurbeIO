@@ -3587,14 +3587,18 @@ export default function PoliciesPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
       queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'] });
       
-      // Navigate directly to the renewed policy
+      // Navigate directly to the renewed policy after a short delay
       if (data?.renewedPolicy?.id) {
         toast({
           title: "Póliza renovada exitosamente",
           description: `Nueva póliza ${data.renewedPolicy.id} creada para 2026`,
           duration: 3000,
         });
-        setLocation(`/policies/${data.renewedPolicy.id}`);
+        
+        // Small delay to ensure queries invalidate before navigation
+        setTimeout(() => {
+          setLocation(`/policies/${data.renewedPolicy.id}`);
+        }, 500);
       }
     },
     onError: (error: Error) => {
