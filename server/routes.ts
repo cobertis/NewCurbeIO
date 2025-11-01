@@ -12005,6 +12005,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         county: quote.physical_county,
         state: quote.physical_state,
         householdIncome: totalIncome,
+        effectiveDate: quote.effectiveDate || undefined, // CRITICAL: Required for APTC/CSR
         client: {
           dateOfBirth: clientData.dateOfBirth,
           gender: clientData.gender || undefined,
@@ -12112,6 +12113,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         county: quote.physical_county,
         state: quote.physical_state,
         householdIncome: totalIncome,
+        effectiveDate: quote.effectiveDate || undefined, // CRITICAL: Required for APTC/CSR
         client: {
           dateOfBirth: clientData.dateOfBirth,
           gender: clientData.gender || undefined,
@@ -16115,6 +16117,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         county: policy.physical_county,
         state: policy.physical_state,
         householdIncome: totalIncome,
+        effectiveDate: policy.effectiveDate || undefined, // CRITICAL: Required for APTC/CSR
         client: {
           dateOfBirth: clientData.dateOfBirth,
           gender: clientData.gender || undefined,

@@ -136,6 +136,7 @@ export async function fetchMarketplacePlans(
     county: string;
     state: string;
     householdIncome: number;
+    effectiveDate?: string; // CRITICAL: Required for APTC/CSR calculation
     client: {
       dateOfBirth: string;
       gender?: string;
@@ -239,6 +240,7 @@ async function fetchSinglePage(
     county: string;
     state: string;
     householdIncome: number;
+    effectiveDate?: string; // CRITICAL: Required for APTC/CSR calculation
     client: {
       dateOfBirth: string;
       gender?: string;
@@ -338,7 +340,7 @@ async function fetchSinglePage(
 
   // Build request body following the EXACT structure from documentation
   // IMPORTANTE: limit y offset van en el body, no en la URL
-  const requestBody = {
+  const requestBody: any = {
     household: {
       income: quoteData.householdIncome, // Ingreso anual del hogar
       people: people, // Array de personas
@@ -353,9 +355,17 @@ async function fetchSinglePage(
     // Paginación en el body según documentación
     limit: limit,
     offset: offset,
-    // aptc_override: null, // Opcional - puede forzar un monto APTC específico
-    // csr_override: null,  // Opcional - puede forzar un nivel CSR específico
   };
+  
+  // CRITICAL: Add effective_date if provided - required for accurate APTC/CSR calculation
+  if (quoteData.effectiveDate) {
+    requestBody.household.effective_date = quoteData.effectiveDate;
+    if (page === 1) {
+      console.log('[CMS_MARKETPLACE] ✅ Using effective_date:', quoteData.effectiveDate);
+    }
+  } else if (page === 1) {
+    console.log('[CMS_MARKETPLACE] ⚠️ No effective_date provided - APTC/CSR may be inaccurate');
+  }
 
   if (page === 1) {
     console.log(`[CMS_MARKETPLACE] 📊 Página ${currentPage}: Solicitando hasta ${limit} planes, offset: ${offset}`);
