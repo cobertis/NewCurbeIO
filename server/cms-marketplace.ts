@@ -309,7 +309,10 @@ async function fetchSinglePage(
   // CRITICAL: Use DOB instead of age for accurate age calculation based on effective_date
   const people = [];
   
-  // Add client - Adults (19+) are always APTC eligible
+  // Check if there's a married couple (spouse exists)
+  const hasMarriedCouple = quoteData.spouses && quoteData.spouses.length > 0;
+  
+  // Add client - Always the "Self" relationship
   const clientAge = calculateAge(quoteData.client.dateOfBirth);
   people.push({
     dob: quoteData.client.dateOfBirth, // DOB for accurate age calculation with effective_date
@@ -317,9 +320,10 @@ async function fetchSinglePage(
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
     is_pregnant: quoteData.client.pregnant || false,
+    relationship: "Self", // CRITICAL: Required for APTC calculation
   });
   
-  // Add spouses - Adults (19+) are always APTC eligible
+  // Add spouses - Relationship "Spouse" is CRITICAL for APTC calculation
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       const spouseAge = calculateAge(spouse.dateOfBirth);
@@ -329,11 +333,12 @@ async function fetchSinglePage(
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
         is_pregnant: spouse.pregnant || false,
+        relationship: "Spouse", // CRITICAL: Required for married couple APTC calculation
       });
     });
   }
   
-  // Add dependents - Children under 19 are NOT APTC eligible (may qualify for CHIP/Medicaid)
+  // Add dependents - Relationship "Child" for proper household calculation
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const dependentAge = calculateAge(dependent.dateOfBirth);
@@ -343,6 +348,7 @@ async function fetchSinglePage(
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
         is_pregnant: false,
+        relationship: "Child", // CRITICAL: Required for proper household size calculation
       });
     });
   }
@@ -381,6 +387,7 @@ async function fetchSinglePage(
     household: {
       income: quoteData.householdIncome, // Ingreso anual del hogar
       people: people, // Array de personas
+      has_married_couple: hasMarriedCouple, // CRITICAL: Required for accurate APTC calculation for couples
     },
     market: 'Individual', // Mercado individual
     place: {
@@ -399,6 +406,7 @@ async function fetchSinglePage(
     requestBody.household.effective_date = quoteData.effectiveDate;
     if (page === 1) {
       console.log('[CMS_MARKETPLACE] ✅ Using effective_date:', quoteData.effectiveDate);
+      console.log('[CMS_MARKETPLACE] ✅ Has married couple:', hasMarriedCouple);
     }
   } else if (page === 1) {
     console.log('[CMS_MARKETPLACE] ⚠️ No effective_date provided - APTC/CSR may be inaccurate');
