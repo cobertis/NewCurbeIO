@@ -177,6 +177,33 @@ function formatPaymentStatusDisplay(status: string | undefined): string {
   return formatStatusDisplay(status);
 }
 
+// Get color class for documents status text
+function getDocumentsStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    pending: "text-yellow-600 dark:text-yellow-500",
+    in_progress: "text-blue-600 dark:text-blue-400",
+    processing: "text-blue-600 dark:text-blue-400",
+    reviewed: "text-purple-600 dark:text-purple-400",
+    sent_to_client: "text-indigo-600 dark:text-indigo-400",
+    completed: "text-green-600 dark:text-green-500",
+    declined: "text-red-600 dark:text-red-500",
+  };
+  return colors[status] || "text-foreground";
+}
+
+// Get color class for payment status text
+function getPaymentStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    pending: "text-yellow-600 dark:text-yellow-500",
+    unpaid: "text-red-600 dark:text-red-500",
+    auto_pay: "text-green-600 dark:text-green-500",
+    failed: "text-red-600 dark:text-red-500",
+    paid: "text-green-600 dark:text-green-500",
+    not_applicable: "text-gray-500 dark:text-gray-400",
+  };
+  return colors[status] || "text-foreground";
+}
+
 // Carrier lists imported from shared module
 
 // Helper to calculate age from yyyy-MM-dd date string
@@ -11114,10 +11141,10 @@ export default function PoliciesPage() {
                                   />
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Documents: <span className="text-foreground">{formatStatusDisplay(quote.documentsStatus)}</span>
+                                  Documents: <span className={getDocumentsStatusColor(quote.documentsStatus || '')}>{formatStatusDisplay(quote.documentsStatus)}</span>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Payments: <span className="text-foreground">{formatPaymentStatusDisplay(quote.paymentStatus)}</span>
+                                  Payments: <span className={getPaymentStatusColor(quote.paymentStatus || '')}>{formatPaymentStatusDisplay(quote.paymentStatus)}</span>
                                 </div>
                               </div>
                             </TableCell>
