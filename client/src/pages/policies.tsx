@@ -6483,7 +6483,18 @@ export default function PoliciesPage() {
               const effectiveYear = viewingQuote.effectiveDate ? new Date(viewingQuote.effectiveDate).getFullYear() : null;
               const isACA = viewingQuote.productType === 'Health Insurance ACA' || viewingQuote.productType?.toLowerCase() === 'aca';
               const isMedicare = viewingQuote.productType?.startsWith('Medicare') || viewingQuote.productType?.toLowerCase() === 'medicare';
+              
+              // Don't show renewal banner if:
+              // 1. This policy IS a renewal (has renewedFromPolicyId)
+              // 2. Effective year is in the future (already renewed)
+              // 3. Already completed renewal
+              // 4. Cancelled or archived
+              const isRenewalPolicy = !!viewingQuote.renewedFromPolicyId;
+              const isFuturePolicy = effectiveYear && effectiveYear > currentYear;
+              
               const needsRenewal = (isACA || isMedicare) && 
+                                   !isRenewalPolicy &&
+                                   !isFuturePolicy &&
                                    effectiveYear === currentYear &&
                                    viewingQuote.renewalStatus !== 'completed' &&
                                    viewingQuote.status !== 'cancelled' &&
