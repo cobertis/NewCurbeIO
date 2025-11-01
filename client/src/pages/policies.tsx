@@ -144,9 +144,12 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
 function getDocumentsStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" | "success" | "warning" {
   const variants: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
     pending: "warning",
+    in_progress: "default",
     processing: "default",
-    declined: "destructive",
+    reviewed: "secondary",
+    sent_to_client: "outline",
     completed: "success",
+    declined: "destructive",
   };
   return variants[status] || "secondary";
 }
@@ -11110,11 +11113,17 @@ export default function PoliciesPage() {
                                     }}
                                   />
                                 </div>
-                                <div className="text-xs text-muted-foreground">
-                                  Documents: {quote.documentsStatus === 'completed' ? 'Completed' : quote.documentsStatus === 'pending' ? 'Pending' : quote.documentsStatus === 'in_progress' ? 'In Progress' : quote.documentsStatus === 'reviewed' ? 'Reviewed' : quote.documentsStatus === 'sent_to_client' ? 'Sent to Client' : 'N/A'}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-muted-foreground">Documents:</span>
+                                  <Badge variant={getDocumentsStatusVariant(quote.documentsStatus || '')} className="text-xs px-1.5 py-0">
+                                    {formatStatusDisplay(quote.documentsStatus)}
+                                  </Badge>
                                 </div>
-                                <div className="text-xs text-muted-foreground">
-                                  Payments: {quote.paymentStatus === 'paid' ? 'Paid' : quote.paymentStatus === 'pending' ? 'Pending' : quote.paymentStatus === 'unpaid' ? 'Unpaid' : quote.paymentStatus === 'auto_pay' ? 'Auto Pay' : quote.paymentStatus === 'failed' ? 'Failed' : quote.paymentStatus === 'not_applicable' ? 'Not Applicable' : 'N/A'}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-muted-foreground">Payments:</span>
+                                  <Badge variant={getPaymentStatusVariant(quote.paymentStatus || '')} className="text-xs px-1.5 py-0">
+                                    {formatPaymentStatusDisplay(quote.paymentStatus)}
+                                  </Badge>
                                 </div>
                               </div>
                             </TableCell>
