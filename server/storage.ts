@@ -184,7 +184,7 @@ import {
   policyConsentDocuments,
   policyConsentSignatureEvents
 } from "@shared/schema";
-import { eq, and, or, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, or, desc, sql, inArray, alias } from "drizzle-orm";
 
 export interface IStorage {
   // Users
