@@ -7814,9 +7814,6 @@ export default function PoliciesPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-12">
-                            <Checkbox data-testid="checkbox-select-all-other" />
-                          </TableHead>
                           <TableHead className="w-16">Agent</TableHead>
                           <TableHead>Client</TableHead>
                           <TableHead>Policy</TableHead>
@@ -7844,9 +7841,6 @@ export default function PoliciesPage() {
                               onClick={() => setLocation(`/policies/${policy.id}`)}
                               data-testid={`row-other-policy-${policy.id}`}
                             >
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                <Checkbox data-testid={`checkbox-other-policy-${policy.id}`} />
-                              </TableCell>
                               <TableCell className="text-center">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
