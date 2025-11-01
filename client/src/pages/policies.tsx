@@ -6472,6 +6472,35 @@ export default function PoliciesPage() {
                 </p>
               </div>
             )}
+
+            {/* Renewal Alert Banner */}
+            {(() => {
+              const currentYear = new Date().getFullYear();
+              const effectiveYear = viewingQuote.effectiveDate ? new Date(viewingQuote.effectiveDate).getFullYear() : null;
+              const isACA = viewingQuote.productType === 'Health Insurance ACA';
+              const isMedicare = viewingQuote.productType?.startsWith('Medicare');
+              const needsRenewal = (isACA || isMedicare) && 
+                                   effectiveYear === currentYear &&
+                                   viewingQuote.renewalStatus !== 'completed' &&
+                                   viewingQuote.status !== 'cancelled' &&
+                                   !viewingQuote.isArchived;
+              
+              if (!needsRenewal) return null;
+
+              return (
+                <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="alert-renewal-required">
+                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                      Renewal Required for {currentYear + 1}
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      This policy is active in {currentYear} and will need to be renewed for {currentYear + 1}. Please initiate the renewal process before the end of the Open Enrollment Period.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
             
             {/* Enhanced Header with Card Background */}
             <Card className="mb-6 bg-muted/20">
