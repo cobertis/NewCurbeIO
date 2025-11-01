@@ -4009,7 +4009,11 @@ export class DbStorage implements IStorage {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>> {
-    const { or, like } = await import("drizzle-orm");
+    const { or, like, alias } = await import("drizzle-orm");
+    
+    // Create aliases for the users table to join it twice
+    const creatorUser = alias(users, 'creatorUser');
+    const agentUser = alias(users, 'agentUser');
     
     const conditions: any[] = [eq(policies.companyId, companyId)];
     
@@ -4032,27 +4036,28 @@ export class DbStorage implements IStorage {
       .select({
         policy: policies,
         creator: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
+          id: creatorUser.id,
+          firstName: creatorUser.firstName,
+          lastName: creatorUser.lastName,
+          email: creatorUser.email,
         },
         agent: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
+          id: agentUser.id,
+          firstName: agentUser.firstName,
+          lastName: agentUser.lastName,
+          email: agentUser.email,
         },
       })
       .from(policies)
-      .leftJoin(users, eq(policies.createdBy, users.id))
+      .leftJoin(creatorUser, eq(policies.createdBy, creatorUser.id))
+      .leftJoin(agentUser, eq(policies.agentId, agentUser.id))
       .where(and(...conditions))
       .orderBy(desc(policies.effectiveDate), desc(policies.createdAt));
 
     return results.map((result) => ({
       ...result.policy,
       creator: result.creator,
-      agent: result.policy.agentId ? result.agent : null,
+      agent: result.agent.id ? result.agent : null,
     })) as any;
   }
 
