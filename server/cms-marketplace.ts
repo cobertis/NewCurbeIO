@@ -394,6 +394,13 @@ async function fetchSinglePage(
 
     const data: MarketplaceApiResponse = await response.json();
     
+    // DEBUGGING: Log what the API returns for household_aptc (only on page 1)
+    if (page === 1) {
+      console.log('[CMS_MARKETPLACE] 🔍 API RESPONSE - household_aptc:', data.household_aptc);
+      console.log('[CMS_MARKETPLACE] 🔍 API RESPONSE - household_slcsp_premium:', data.household_slcsp_premium);
+      console.log('[CMS_MARKETPLACE] 🔍 API RESPONSE - household_lcbp_premium:', data.household_lcbp_premium);
+    }
+    
     // Primera iteración: guardar el total según documentación
     if (offset === 0 && data.total) {
       console.log(`[CMS_MARKETPLACE] 📊 Total de planes disponibles: ${data.total}`);
