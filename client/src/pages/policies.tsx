@@ -3539,6 +3539,9 @@ export default function PoliciesPage() {
     policyTotalCost: '',
   });
   
+  // Other policies year filter state
+  const [otherPoliciesYear, setOtherPoliciesYear] = useState<string>("2025");
+  
   // Calculate initial effective date ONCE (first day of next month)
   // This date will NOT change unless the user manually changes it
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
@@ -3720,6 +3723,25 @@ export default function PoliciesPage() {
 
   const quoteNotes = quoteNotesData?.notes || [];
   const quoteNotesCount = quoteNotes.length || 0;
+
+  // Fetch other policies by applicant
+  const { data: otherPoliciesData, isLoading: isLoadingOtherPolicies } = useQuery({
+    queryKey: ['/api/policies/by-applicant', viewingQuote?.clientSsn, viewingQuote?.clientEmail, otherPoliciesYear, viewingQuote?.id],
+    enabled: !!(viewingQuote?.clientSsn || viewingQuote?.clientEmail),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (viewingQuote?.clientSsn) params.append('ssn', viewingQuote.clientSsn);
+      if (viewingQuote?.clientEmail) params.append('email', viewingQuote.clientEmail);
+      params.append('effectiveYear', otherPoliciesYear);
+      if (viewingQuote?.id) params.append('excludePolicyId', viewingQuote.id);
+      
+      const response = await fetch(`/api/policies/by-applicant?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch policies');
+      return response.json();
+    },
+  });
+
+  const otherPolicies = otherPoliciesData?.policies || [];
 
   // Create note mutation
   const createNoteMutation = useMutation({
@@ -7724,118 +7746,94 @@ export default function PoliciesPage() {
               {/* CMS Marketplace Plans - Navigation to dedicated page */}
 
               {/* Other Policies */}
-              {(() => {
-                const [selectedYear, setSelectedYear] = useState<string>("2025");
-                
-                const { data: otherPoliciesData, isLoading: isLoadingOtherPolicies } = useQuery({
-                  queryKey: ['/api/policies/by-applicant', viewingQuote.clientSsn, viewingQuote.clientEmail, selectedYear, viewingQuote.id],
-                  enabled: !!(viewingQuote.clientSsn || viewingQuote.clientEmail),
-                  queryFn: async () => {
-                    const params = new URLSearchParams();
-                    if (viewingQuote.clientSsn) params.append('ssn', viewingQuote.clientSsn);
-                    if (viewingQuote.clientEmail) params.append('email', viewingQuote.clientEmail);
-                    params.append('effectiveYear', selectedYear);
-                    params.append('excludePolicyId', viewingQuote.id);
-                    
-                    const response = await fetch(`/api/policies/by-applicant?${params.toString()}`);
-                    if (!response.ok) throw new Error('Failed to fetch policies');
-                    return response.json();
-                  },
-                });
-
-                const otherPolicies = otherPoliciesData?.policies || [];
-
-                return (
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                      <CardTitle>Other policies of the applicant</CardTitle>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Effective year:</span>
-                        <Select value={selectedYear} onValueChange={setSelectedYear}>
-                          <SelectTrigger className="w-24 h-8" data-testid="select-year">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="2024">2024</SelectItem>
-                            <SelectItem value="2025">2025</SelectItem>
-                            <SelectItem value="2026">2026</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {isLoadingOtherPolicies ? (
-                        <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : otherPolicies.length === 0 ? (
-                        <div className="text-center py-8">
-                          <p className="text-sm text-muted-foreground">No other policies found for this applicant in {selectedYear}</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {otherPolicies.map((policy: any) => {
-                            const product = INSURANCE_PRODUCTS.find(p => p.id === policy.productType);
-                            const effectiveDate = policy.effectiveDate ? formatDateForDisplay(policy.effectiveDate, "MMM dd, yyyy") : 'N/A';
-                            
-                            return (
-                              <div
-                                key={policy.id}
-                                onClick={() => setLocation(`/policies/${policy.id}`)}
-                                className="border rounded-lg p-4 hover:border-primary/50 hover:bg-accent/5 cursor-pointer transition-colors"
-                                data-testid={`policy-card-${policy.id}`}
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex items-start gap-3 flex-1">
-                                    {product?.icon && (
-                                      <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
-                                        <product.icon className="h-5 w-5 text-primary" />
-                                      </div>
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="text-sm font-medium truncate">
-                                          {policy.clientFirstName} {policy.clientLastName}
-                                        </h4>
-                                        <Badge variant={getStatusVariant(policy.status)}>
-                                          {formatStatusDisplay(policy.status)}
-                                        </Badge>
-                                      </div>
-                                      <div className="space-y-0.5">
-                                        <p className="text-xs text-muted-foreground">
-                                          <span className="font-medium">{product?.name || policy.productType}</span>
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          Effective: {effectiveDate}
-                                        </p>
-                                        {policy.selectedPlan?.name && (
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            Plan: {policy.selectedPlan.name}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle>Other policies of the applicant</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Effective year:</span>
+                    <Select value={otherPoliciesYear} onValueChange={setOtherPoliciesYear}>
+                      <SelectTrigger className="w-24 h-8" data-testid="select-year">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2024">2024</SelectItem>
+                        <SelectItem value="2025">2025</SelectItem>
+                        <SelectItem value="2026">2026</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingOtherPolicies ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : otherPolicies.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-muted-foreground">No other policies found for this applicant in {otherPoliciesYear}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {otherPolicies.map((policy: any) => {
+                        const product = PRODUCT_TYPES.find(p => p.id === policy.productType);
+                        const effectiveDate = policy.effectiveDate ? formatDateForDisplay(policy.effectiveDate, "MMM dd, yyyy") : 'N/A';
+                        
+                        return (
+                          <div
+                            key={policy.id}
+                            onClick={() => setLocation(`/policies/${policy.id}`)}
+                            className="border rounded-lg p-4 hover:border-primary/50 hover:bg-accent/5 cursor-pointer transition-colors"
+                            data-testid={`policy-card-${policy.id}`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3 flex-1">
+                                {product?.icon && (
+                                  <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+                                    <product.icon className="h-5 w-5 text-primary" />
                                   </div>
-                                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                    <Badge variant="outline" className="text-xs">
-                                      {policy.id}
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="text-sm font-medium truncate">
+                                      {policy.clientFirstName} {policy.clientLastName}
+                                    </h4>
+                                    <Badge variant={getStatusVariant(policy.status)}>
+                                      {formatStatusDisplay(policy.status)}
                                     </Badge>
-                                    {policy.selectedPlan?.premium && (
-                                      <span className="text-sm font-semibold text-primary">
-                                        ${parseFloat(policy.selectedPlan.premium).toFixed(2)}/mo
-                                      </span>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-medium">{product?.name || policy.productType}</span>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Effective: {effectiveDate}
+                                    </p>
+                                    {policy.selectedPlan?.name && (
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        Plan: {policy.selectedPlan.name}
+                                      </p>
                                     )}
                                   </div>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })()}
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <Badge variant="outline" className="text-xs">
+                                  {policy.id}
+                                </Badge>
+                                {policy.selectedPlan?.premium && (
+                                  <span className="text-sm font-semibold text-primary">
+                                    ${parseFloat(policy.selectedPlan.premium).toFixed(2)}/mo
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
