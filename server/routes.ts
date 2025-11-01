@@ -12384,6 +12384,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
       }
       
+      // DEBUG: Log first policy to see structure
+      if (allPolicies.length > 0) {
+        console.log("[OEP DEBUG] Total policies:", allPolicies.length);
+        console.log("[OEP DEBUG] Sample policy:", {
+          id: allPolicies[0].id,
+          productType: allPolicies[0].productType,
+          effectiveDate: allPolicies[0].effectiveDate,
+          renewalStatus: allPolicies[0].renewalStatus,
+          status: allPolicies[0].status
+        });
+      }
+      
       // Helper function to check if a policy is eligible for renewal
       const isEligibleForRenewal = (policy: any, productTypeFilter: string) => {
         // Check if effective date is in 2025
@@ -12412,6 +12424,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Count Medicare policies eligible for renewal
       const medicareCount = allPolicies.filter(p => isEligibleForRenewal(p, "medicare")).length;
+      
+      console.log("[OEP DEBUG] Final counts - ACA:", acaCount, "Medicare:", medicareCount);
       
       res.json({
         aca: acaCount,

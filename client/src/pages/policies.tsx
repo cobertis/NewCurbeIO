@@ -5133,9 +5133,9 @@ export default function PoliciesPage() {
         quote.status !== 'cancelled';
       
       if (oepFilter === 'aca') {
-        matchesOEP = isEligibleForRenewal && quote.productType === 'Health Insurance ACA';
+        matchesOEP = isEligibleForRenewal && (quote.productType === 'Health Insurance ACA' || quote.productType?.toLowerCase() === 'aca');
       } else if (oepFilter === 'medicare') {
-        matchesOEP = isEligibleForRenewal && quote.productType?.startsWith('Medicare');
+        matchesOEP = isEligibleForRenewal && (quote.productType?.startsWith('Medicare') || quote.productType?.toLowerCase() === 'medicare');
       }
     }
     
@@ -6477,8 +6477,8 @@ export default function PoliciesPage() {
             {(() => {
               const currentYear = new Date().getFullYear();
               const effectiveYear = viewingQuote.effectiveDate ? new Date(viewingQuote.effectiveDate).getFullYear() : null;
-              const isACA = viewingQuote.productType === 'Health Insurance ACA';
-              const isMedicare = viewingQuote.productType?.startsWith('Medicare');
+              const isACA = viewingQuote.productType === 'Health Insurance ACA' || viewingQuote.productType?.toLowerCase() === 'aca';
+              const isMedicare = viewingQuote.productType?.startsWith('Medicare') || viewingQuote.productType?.toLowerCase() === 'medicare';
               const needsRenewal = (isACA || isMedicare) && 
                                    effectiveYear === currentYear &&
                                    viewingQuote.renewalStatus !== 'completed' &&
@@ -11001,8 +11001,10 @@ export default function PoliciesPage() {
                                 {/* Renewal Button - Show for eligible policies */}
                                 {(() => {
                                   const effectiveYear = quote.effectiveDate ? parseInt(quote.effectiveDate.split('-')[0]) : null;
+                                  const isACA = quote.productType === 'Health Insurance ACA' || quote.productType?.toLowerCase() === 'aca';
+                                  const isMedicare = quote.productType?.startsWith('Medicare') || quote.productType?.toLowerCase() === 'medicare';
                                   const isEligibleForRenewal = 
-                                    (quote.productType === 'Health Insurance ACA' || quote.productType?.startsWith('Medicare')) &&
+                                    (isACA || isMedicare) &&
                                     effectiveYear === 2025 &&
                                     quote.renewalStatus !== 'completed' &&
                                     quote.status !== 'cancelled';
