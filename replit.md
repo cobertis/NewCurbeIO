@@ -72,6 +72,16 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
         -   **Coverage Information:** Product type (required), Carrier (required), Plan name, Effective date (required), Cancellation date, Metal level, Marketplace ID, Member ID, CMS Plan ID, Policy total cost, Tax Credit/Subsidy, Premium (monthly payment)
         -   **Enrollment Information:** Type of sale, FFM used in marketplace, NPN used in marketplace, Special enrollment period date, Special enrollment period reason
         -   Form validation ensures all required fields (Product type, Carrier, Effective date) are filled before submission
+    -   **OEP 2026 Renewal System (November 2025):** Comprehensive renewal pipeline for Open Enrollment Period enabling seamless policy renewals from 2025 to 2026:
+        -   **Renewal Schema:** Five new fields track renewal lifecycle: `renewalTargetYear` (2026), `renewalStatus` (pending/completed/draft), bidirectional linking via `renewedFromPolicyId` and `renewedToPolicyId`, and timestamp `renewedAt`
+        -   **CMS API Enhancement:** Marketplace integration accepts `yearOverride` parameter to fetch 2026 plan data during renewal process
+        -   **OEP Filter Buttons:** Two corporate blue buttons above policy table ("OEP 2026 - ACA" and "OEP 2026 - Medicare") with real-time badge counters showing eligible policy counts
+        -   **Eligibility Logic:** Filters policies by product type (Health Insurance ACA or Medicare variants), effective date in 2025, not already renewed, and not cancelled
+        -   **Renewal Button:** "Renovar 2026" button with RefreshCw icon appears conditionally on eligible policy rows
+        -   **Renewal Process:** Creates new policy with effectiveDate="2026-01-01", saleType="renewal", clones all family members, fetches 2026 marketplace plans, links both policies bidirectionally
+        -   **Plan Comparison Modal:** Side-by-side comparison of 2025 vs 2026 plans with dropdown selector for 2026 plan candidates, color-coded price differences (green=decrease, red=increase), and confirm/cancel actions
+        -   **ProductType Consistency:** All comparisons use exact database values ("Health Insurance ACA" and `productType.startsWith("Medicare")`) to ensure filters, badges, and renewal buttons function correctly
+        -   **Endpoints:** POST `/api/policies/:id/renewals` (renewal creation), GET `/api/policies?oepFilter=aca|medicare` (filtering), GET `/api/policies/oep-stats` (badge counts)
 -   **Consent Document System:** Generates legal consent documents, supports email/SMS/link delivery, and captures electronic signatures with a full digital audit trail.
 -   **Calendar System:** Full-screen professional calendar displaying company-wide events including birthdays and reminders, with multi-tenant isolation.
 -   **Reminder System:** Background scheduler (node-cron) runs every minute to:
