@@ -594,7 +594,7 @@ export interface IStorage {
   getPoliciesByAgent(agentId: string): Promise<Array<Policy & {
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
-  getPoliciesByApplicant(companyId: string, ssn?: string | null, email?: string | null, effectiveYear?: number): Promise<Array<Policy & {
+  getPoliciesByApplicant(companyId: string, ssn?: string | null, email?: string | null, firstName?: string | null, lastName?: string | null, dob?: string | null, effectiveYear?: number): Promise<Array<Policy & {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
@@ -4006,7 +4006,7 @@ export class DbStorage implements IStorage {
     })) as any;
   }
 
-  async getPoliciesByApplicant(companyId: string, ssn?: string | null, email?: string | null, effectiveYear?: number): Promise<Array<Policy & {
+  async getPoliciesByApplicant(companyId: string, ssn?: string | null, email?: string | null, firstName?: string | null, lastName?: string | null, dob?: string | null, effectiveYear?: number): Promise<Array<Policy & {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>> {
@@ -4037,6 +4037,18 @@ export class DbStorage implements IStorage {
       eq(policies.companyId, companyId),
       or(...identityConditions)
     ];
+    
+    // Filter by primary applicant name and DOB to ensure only policies 
+    // where this person is the primary applicant (not a dependent)
+    if (firstName) {
+      conditions.push(eq(policies.clientFirstName, firstName));
+    }
+    if (lastName) {
+      conditions.push(eq(policies.clientLastName, lastName));
+    }
+    if (dob) {
+      conditions.push(eq(policies.clientDob, dob));
+    }
     
     if (effectiveYear) {
       conditions.push(like(policies.effectiveDate, `${effectiveYear}-%`));

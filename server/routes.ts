@@ -12443,7 +12443,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies/by-applicant", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    const { ssn, email, effectiveYear, excludePolicyId } = req.query;
+    const { ssn, email, firstName, lastName, dob, effectiveYear, excludePolicyId } = req.query;
     
     if (!ssn && !email) {
       return res.status(400).json({ message: "Either SSN or email parameter is required" });
@@ -12458,6 +12458,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         currentUser.companyId,
         ssn as string | undefined,
         email as string | undefined,
+        firstName as string | undefined,
+        lastName as string | undefined,
+        dob as string | undefined,
         effectiveYear ? parseInt(effectiveYear as string) : undefined
       );
       

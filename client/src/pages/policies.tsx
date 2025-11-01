@@ -3756,12 +3756,15 @@ export default function PoliciesPage() {
 
   // Fetch other policies by applicant
   const { data: otherPoliciesData, isLoading: isLoadingOtherPolicies } = useQuery({
-    queryKey: ['/api/policies/by-applicant', viewingQuote?.clientSsn, viewingQuote?.clientEmail, otherPoliciesYear, viewingQuote?.id],
+    queryKey: ['/api/policies/by-applicant', viewingQuote?.clientSsn, viewingQuote?.clientEmail, viewingQuote?.clientFirstName, viewingQuote?.clientLastName, viewingQuote?.clientDob, otherPoliciesYear, viewingQuote?.id],
     enabled: !!(viewingQuote?.clientSsn || viewingQuote?.clientEmail),
     queryFn: async () => {
       const params = new URLSearchParams();
       if (viewingQuote?.clientSsn) params.append('ssn', viewingQuote.clientSsn);
       if (viewingQuote?.clientEmail) params.append('email', viewingQuote.clientEmail);
+      if (viewingQuote?.clientFirstName) params.append('firstName', viewingQuote.clientFirstName);
+      if (viewingQuote?.clientLastName) params.append('lastName', viewingQuote.clientLastName);
+      if (viewingQuote?.clientDob) params.append('dob', viewingQuote.clientDob);
       if (otherPoliciesYear !== 'all') {
         params.append('effectiveYear', otherPoliciesYear);
       }
