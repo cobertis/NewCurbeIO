@@ -13337,6 +13337,9 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
           renewedPolicy={renewalData.renewedPolicy}
           plan2025={renewalData.plan2025}
           plans2026={renewalData.plans2026 || []}
+          onRenewalComplete={(renewedPolicyId) => {
+            setLocation(`/policies/${renewedPolicyId}`);
+          }}
         />
       )}
     </div>

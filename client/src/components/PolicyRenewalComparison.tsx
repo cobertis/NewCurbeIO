@@ -25,6 +25,7 @@ interface PolicyRenewalComparisonProps {
   renewedPolicy: Policy;
   plan2025: any;
   plans2026: any[];
+  onRenewalComplete?: (renewedPolicyId: string) => void;
 }
 
 export function PolicyRenewalComparison({
@@ -34,6 +35,7 @@ export function PolicyRenewalComparison({
   renewedPolicy,
   plan2025,
   plans2026,
+  onRenewalComplete,
 }: PolicyRenewalComparisonProps) {
   const { toast } = useToast();
   const [selectedPlan2026Id, setSelectedPlan2026Id] = useState<string>(
@@ -54,10 +56,16 @@ export function PolicyRenewalComparison({
       toast({
         title: "Plan 2026 confirmado exitosamente",
         description: "El plan ha sido actualizado correctamente.",
+        duration: 3000,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
       queryClient.invalidateQueries({ queryKey: ["/api/policies/oep-stats"] });
       onOpenChange(false);
+      
+      // Navigate to the renewed policy
+      if (onRenewalComplete) {
+        onRenewalComplete(renewedPolicy.id);
+      }
     },
     onError: (error: Error) => {
       toast({
