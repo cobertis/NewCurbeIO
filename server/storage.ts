@@ -184,7 +184,8 @@ import {
   policyConsentDocuments,
   policyConsentSignatureEvents
 } from "@shared/schema";
-import { eq, and, or, desc, sql, inArray, alias } from "drizzle-orm";
+import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export interface IStorage {
   // Users
@@ -4009,8 +4010,6 @@ export class DbStorage implements IStorage {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>> {
-    const { or, like, alias } = await import("drizzle-orm");
-    
     // Create aliases for the users table to join it twice
     const creatorUser = alias(users, 'creatorUser');
     const agentUser = alias(users, 'agentUser');
