@@ -13267,7 +13267,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         renewedToPolicyId: null,
         renewedAt: null,
         renewalTargetYear: null,
-        // Keep all other fields (client info, addresses, family, selectedPlan, etc.)
+        // CRITICAL: Start with NO plan - user must select one from 2026 options
+        selectedPlan: null,
+        // Keep all other fields (client info, addresses, family, etc.)
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -13365,6 +13367,60 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating policy renewal:", error);
       res.status(500).json({ 
         message: error.message || "Failed to create policy renewal",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+
+  // PATCH /api/policies/:id/plan - Update selected plan for a policy (used after OEP renewal)
+  app.patch("/api/policies/:id/plan", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { selectedPlan } = req.body;
+    
+    try {
+      // Validate policy exists
+      const policy = await storage.getPolicy(id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      // Check access: superadmin or same company
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to update this policy" });
+      }
+      
+      // Validate selectedPlan is provided
+      if (!selectedPlan) {
+        return res.status(400).json({ message: "selectedPlan is required" });
+      }
+      
+      // Update the policy's selected plan
+      const updatedPolicy = await storage.updatePolicyPlan(id, selectedPlan);
+      
+      if (!updatedPolicy) {
+        return res.status(404).json({ message: "Failed to update policy plan" });
+      }
+      
+      // Log activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "policy_plan",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          updatedBy: currentUser.email,
+          planId: selectedPlan.id,
+          planName: selectedPlan.name,
+        },
+      });
+      
+      res.json({ policy: updatedPolicy });
+    } catch (error: any) {
+      console.error("Error updating policy plan:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to update policy plan",
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }

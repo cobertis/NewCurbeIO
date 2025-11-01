@@ -594,6 +594,7 @@ export interface IStorage {
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
   updatePolicy(id: string, data: Partial<InsertPolicy>): Promise<Policy | undefined>;
+  updatePolicyPlan(id: string, selectedPlan: any): Promise<Policy | undefined>;
   deletePolicy(id: string): Promise<boolean>;
   submitQuoteAsPolicy(quoteId: string): Promise<Policy>;
   
@@ -4005,6 +4006,18 @@ export class DbStorage implements IStorage {
       .update(policies)
       .set({
         ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(policies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updatePolicyPlan(id: string, selectedPlan: any): Promise<Policy | undefined> {
+    const [updated] = await db
+      .update(policies)
+      .set({
+        selectedPlan,
         updatedAt: new Date(),
       })
       .where(eq(policies.id, id))
