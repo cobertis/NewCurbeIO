@@ -165,77 +165,17 @@ export async function fetchMarketplacePlans(
     throw new Error(`Year override must be between 2025 and 2030, received: ${yearOverride}`);
   }
   
-  const targetYear = yearOverride || new Date().getFullYear();
-  console.log(`[CMS_MARKETPLACE] 🚀 Iniciando carga de planes para año ${targetYear}`);
-  
-  // STEP 1: Get county FIPS code
-  const countyFips = await getCountyFips(quoteData.zipCode, quoteData.county, quoteData.state);
-  if (!countyFips) {
-    throw new Error(`Unable to determine county FIPS for ${quoteData.county}, ${quoteData.state}`);
-  }
-  
-  // STEP 2: Build household and place objects
-  const people = [];
-  const clientAge = calculateAge(quoteData.client.dateOfBirth);
-  people.push({
-    dob: quoteData.client.dateOfBirth,
-    aptc_eligible: clientAge >= 19,
-    gender: formatGenderForCMS(quoteData.client.gender),
-    uses_tobacco: quoteData.client.usesTobacco || false,
-    is_pregnant: quoteData.client.pregnant || false,
-  });
-  
-  if (quoteData.spouses && quoteData.spouses.length > 0) {
-    quoteData.spouses.forEach(spouse => {
-      const spouseAge = calculateAge(spouse.dateOfBirth);
-      people.push({
-        dob: spouse.dateOfBirth,
-        aptc_eligible: spouseAge >= 19,
-        gender: formatGenderForCMS(spouse.gender),
-        uses_tobacco: spouse.usesTobacco || false,
-        is_pregnant: spouse.pregnant || false,
-      });
-    });
-  }
-  
-  if (quoteData.dependents && quoteData.dependents.length > 0) {
-    quoteData.dependents.forEach(dependent => {
-      const dependentAge = calculateAge(dependent.dateOfBirth);
-      people.push({
-        dob: dependent.dateOfBirth,
-        aptc_eligible: dependentAge >= 19,
-        gender: formatGenderForCMS(dependent.gender),
-        uses_tobacco: dependent.usesTobacco || false,
-        is_pregnant: false,
-      });
-    });
-  }
-  
-  const household: any = {
-    income: quoteData.householdIncome,
-    people: people,
-  };
-  
-  if (quoteData.effectiveDate) {
-    household.effective_date = quoteData.effectiveDate;
-  }
-  
-  const place = {
-    countyfips: countyFips,
-    state: quoteData.state,
-    zipcode: quoteData.zipCode,
-  };
-  
-  // STEP 3: Call CMS eligibility API to get official APTC (NO MANUAL CALCULATION)
-  const eligibility = await fetchHouseholdEligibility(household, place, targetYear);
-  
   // If page is specified, return just that page (for backwards compatibility)
   if (page && page > 1) {
-    return fetchSinglePage(quoteData, page, yearOverride, eligibility);
+    return fetchSinglePage(quoteData, page, yearOverride);
   }
   
-  // STEP 4: Get total count with page 1
-  const firstPage = await fetchSinglePage(quoteData, 1, yearOverride, eligibility);
+  // Otherwise, fetch ALL plans in parallel
+  const targetYear = yearOverride || new Date().getFullYear();
+  console.log(`[CMS_MARKETPLACE] 🚀 Iniciando carga rápida de TODOS los planes para año ${targetYear}`);
+  
+  // First, get the total count with page 1
+  const firstPage = await fetchSinglePage(quoteData, 1, yearOverride);
   const totalPlans = firstPage.total || 0;
   
   if (totalPlans <= 10) {
@@ -256,7 +196,7 @@ export async function fetchMarketplacePlans(
   // Batch requests in groups of 5 to avoid overwhelming the API
   const batchSize = 5;
   for (let page = 2; page <= totalPages; page++) {
-    pagePromises.push(fetchSinglePage(quoteData, page, yearOverride, eligibility));
+    pagePromises.push(fetchSinglePage(quoteData, page, yearOverride));
     
     // Add small delay between batches to be respectful to the API
     if (page % batchSize === 0 && page < totalPages) {
@@ -282,88 +222,30 @@ export async function fetchMarketplacePlans(
   
   console.log(`[CMS_MARKETPLACE] ✅ ${uniquePlans.length} planes únicos obtenidos exitosamente`);
   
-  // Return combined response with APTC from CMS API (NO MANUAL CALCULATION)
+  // Extract APTC from Silver plans (API calculates premium_w_credit automatically)
+  // All plans have same APTC, so we use any Silver plan to extract it
+  const silverPlan = uniquePlans.find(p => 
+    p.metal_level === 'Silver' && 
+    p.premium_w_credit !== undefined && 
+    p.premium > p.premium_w_credit
+  );
+  
+  const household_aptc = silverPlan ? silverPlan.premium - silverPlan.premium_w_credit : 0;
+  
+  // Return combined response - API already calculated premium_w_credit
   return {
     ...firstPage,
     plans: uniquePlans,
     total: uniquePlans.length,
-    household_aptc: eligibility.aptc, // From CMS API, not calculated
-    household_slcsp_premium: eligibility.slcsp_premium,
-    household_lcbp_premium: eligibility.lcbp_premium,
-    household_csr: eligibility.csr,
+    household_aptc: household_aptc, // Extracted from API-calculated premiums
     request_data: firstPage.request_data
   };
 }
 
 /**
  * Fetch a single page of marketplace plans - internal helper function
+ * The CMS API automatically calculates premium_w_credit based on household data
  */
-/**
- * Fetch household eligibility estimates (APTC, CSR, SLCSP) from CMS API
- * This MUST be called before fetching plans to get accurate subsidy calculations
- */
-async function fetchHouseholdEligibility(
-  household: any,
-  place: any,
-  year: number
-): Promise<{ aptc: number; csr: string | null; slcsp_premium: number | null; lcbp_premium: number | null }> {
-  const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
-  
-  if (!apiKey) {
-    throw new Error('CMS_MARKETPLACE_API_KEY is not configured');
-  }
-
-  try {
-    const apiUrl = 'https://marketplace.api.healthcare.gov/api/v1/households/eligibility/estimates';
-    
-    const requestBody = {
-      household,
-      place,
-      year
-    };
-    
-    console.log('[CMS_MARKETPLACE] 🔍 Fetching household eligibility from CMS API');
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'apikey': apiKey,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[CMS_MARKETPLACE] Eligibility API Error:', response.status, errorText);
-      // Return zero values if eligibility check fails
-      return { aptc: 0, csr: null, slcsp_premium: null, lcbp_premium: null };
-    }
-
-    const data = await response.json();
-    
-    // Extract eligibility data
-    const estimates = data.estimates?.[0] || {};
-    const aptc = estimates.aptc || 0;
-    const csr = estimates.csr || null;
-    const slcsp_premium = data.slcsp_premium || null;
-    const lcbp_premium = data.lcbp_premium || null;
-    
-    console.log('[CMS_MARKETPLACE] ✅ Eligibility calculated by CMS API:', {
-      aptc: `$${aptc.toFixed(2)}`,
-      csr,
-      slcsp_premium: slcsp_premium ? `$${slcsp_premium.toFixed(2)}` : 'N/A',
-      lcbp_premium: lcbp_premium ? `$${lcbp_premium.toFixed(2)}` : 'N/A'
-    });
-    
-    return { aptc, csr, slcsp_premium, lcbp_premium };
-  } catch (error) {
-    console.error('[CMS_MARKETPLACE] Error fetching eligibility:', error);
-    return { aptc: 0, csr: null, slcsp_premium: null, lcbp_premium: null };
-  }
-}
-
 async function fetchSinglePage(
   quoteData: {
     zipCode: string;
@@ -391,8 +273,7 @@ async function fetchSinglePage(
     }>;
   },
   page: number,
-  yearOverride?: number,
-  eligibilityData?: { aptc: number; csr: string | null; slcsp_premium: number | null; lcbp_premium: number | null }
+  yearOverride?: number
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
   
@@ -567,12 +448,18 @@ async function fetchSinglePage(
       offset: offset
     };
     
-    // Use APTC from CMS eligibility API (NO MANUAL CALCULATION)
-    if (eligibilityData) {
-      data.household_aptc = eligibilityData.aptc;
-      data.household_slcsp_premium = eligibilityData.slcsp_premium;
-      data.household_lcbp_premium = eligibilityData.lcbp_premium;
-      data.household_csr = eligibilityData.csr;
+    // API automatically calculates premium_w_credit based on household data
+    // We extract APTC from plans (all Silver plans have the same APTC)
+    if (!data.household_aptc && data.plans && data.plans.length > 0) {
+      const silverPlan = data.plans.find(plan => 
+        plan.metal_level === 'Silver' &&
+        plan.premium_w_credit !== undefined && 
+        plan.premium > plan.premium_w_credit
+      );
+      
+      if (silverPlan) {
+        data.household_aptc = silverPlan.premium - silverPlan.premium_w_credit;
+      }
     }
     
     // Log if we're reaching the end of pagination
