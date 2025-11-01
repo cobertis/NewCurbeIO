@@ -222,11 +222,28 @@ export async function fetchMarketplacePlans(
   
   console.log(`[CMS_MARKETPLACE] ✅ ${uniquePlans.length} planes únicos obtenidos exitosamente`);
   
-  // Return combined response with all plans
+  // CRITICAL: Recalculate household_aptc from ALL plans (not just first page)
+  // First page may have incorrect APTC if it doesn't include all plan types
+  let calculatedAptc = firstPage.household_aptc || 0;
+  
+  // Find a plan with credit to calculate correct APTC from all combined plans
+  const planWithCredit = uniquePlans.find(plan => 
+    plan.premium_w_credit !== undefined && 
+    plan.premium_w_credit !== null &&
+    plan.premium > plan.premium_w_credit
+  );
+  
+  if (planWithCredit && planWithCredit.premium_w_credit !== undefined) {
+    calculatedAptc = planWithCredit.premium - planWithCredit.premium_w_credit;
+    console.log(`[CMS_MARKETPLACE] 💰 APTC recalculado desde todos los planes: $${calculatedAptc.toFixed(2)}`);
+  }
+  
+  // Return combined response with all plans and corrected APTC
   return {
     ...firstPage,
     plans: uniquePlans,
     total: uniquePlans.length,
+    household_aptc: calculatedAptc, // Use recalculated APTC
     request_data: firstPage.request_data
   };
 }
