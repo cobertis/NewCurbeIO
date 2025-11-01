@@ -8047,32 +8047,15 @@ export default function PoliciesPage() {
                                     );
                                   })()}
                                   
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="outline" size="sm" data-testid={`button-preview-other-${policy.id}`}>
-                                        Preview
-                                        <ChevronDown className="h-4 w-4 ml-1" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => setLocation(`/policies/${policy.id}`)}>
-                                        View Details
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        className="text-destructive"
-                                        onClick={() => {
-                                          setQuoteToDelete({
-                                            id: policy.id,
-                                            clientName: `${policy.clientFirstName} ${policy.clientLastName}`,
-                                          });
-                                          setDeleteDialogOpen(true);
-                                        }}
-                                        data-testid={`button-delete-other-policy-${policy.id}`}
-                                      >
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setLocation(`/policies/${policy.id}`)}
+                                    data-testid={`button-view-other-${policy.id}`}
+                                  >
+                                    <Eye className="h-3.5 w-3.5 mr-1.5" />
+                                    View
+                                  </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
