@@ -12275,6 +12275,114 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const policy = await storage.createPolicy(validatedData);
       
+      // CRITICAL FIX: Create policy_members for spouses and dependents
+      // Extract family members from request body (they come as arrays)
+      const spouses = req.body.spouses || [];
+      const dependents = req.body.dependents || [];
+      
+      console.log(`[POLICY CREATION] Creating ${spouses.length} spouses and ${dependents.length} dependents for policy ${policy.id}`);
+      
+      // Create policy members for spouses
+      for (const spouse of spouses) {
+        try {
+          const policyMember = await storage.createPolicyMember({
+            policyId: policy.id,
+            companyId: currentUser.companyId!,
+            role: 'spouse',
+            firstName: spouse.firstName,
+            lastName: spouse.lastName,
+            dateOfBirth: spouse.dateOfBirth,
+            ssn: spouse.ssn || null,
+            gender: spouse.gender || null,
+            isApplicant: spouse.isApplicant !== undefined ? spouse.isApplicant : true,
+            isPrimaryDependent: spouse.isPrimaryDependent || false,
+            tobaccoUser: spouse.tobaccoUser || false,
+            pregnant: spouse.pregnant || false,
+          });
+          
+          // Create income data if provided
+          if (spouse.income || spouse.incomeFrequency) {
+            await storage.createPolicyMemberIncome({
+              memberId: policyMember.id,
+              companyId: currentUser.companyId!,
+              incomeSource: spouse.incomeSource || null,
+              annualIncome: spouse.income || null,
+              incomeFrequency: spouse.incomeFrequency || 'monthly',
+              totalAnnualIncome: spouse.income || null,
+              selfEmployed: spouse.selfEmployed || false,
+            });
+          }
+          
+          // Create immigration data if provided
+          if (spouse.immigrationStatus) {
+            await storage.createPolicyMemberImmigration({
+              memberId: policyMember.id,
+              companyId: currentUser.companyId!,
+              immigrationStatus: spouse.immigrationStatus,
+              alienNumber: spouse.alienNumber || null,
+              i94Number: spouse.i94Number || null,
+              passportNumber: spouse.passportNumber || null,
+              passportCountry: spouse.passportCountry || null,
+              sevisId: spouse.sevisId || null,
+              visaType: spouse.visaType || null,
+            });
+          }
+        } catch (memberError) {
+          console.error(`Error creating spouse member:`, memberError);
+        }
+      }
+      
+      // Create policy members for dependents
+      for (const dependent of dependents) {
+        try {
+          const policyMember = await storage.createPolicyMember({
+            policyId: policy.id,
+            companyId: currentUser.companyId!,
+            role: 'dependent',
+            firstName: dependent.firstName,
+            lastName: dependent.lastName,
+            dateOfBirth: dependent.dateOfBirth,
+            ssn: dependent.ssn || null,
+            gender: dependent.gender || null,
+            relation: dependent.relation || null,
+            isApplicant: dependent.isApplicant !== undefined ? dependent.isApplicant : true,
+            isPrimaryDependent: dependent.isPrimaryDependent || false,
+            tobaccoUser: dependent.tobaccoUser || false,
+            pregnant: dependent.pregnant || false,
+          });
+          
+          // Create income data if provided
+          if (dependent.income || dependent.incomeFrequency) {
+            await storage.createPolicyMemberIncome({
+              memberId: policyMember.id,
+              companyId: currentUser.companyId!,
+              incomeSource: dependent.incomeSource || null,
+              annualIncome: dependent.income || null,
+              incomeFrequency: dependent.incomeFrequency || 'monthly',
+              totalAnnualIncome: dependent.income || null,
+              selfEmployed: dependent.selfEmployed || false,
+            });
+          }
+          
+          // Create immigration data if provided
+          if (dependent.immigrationStatus) {
+            await storage.createPolicyMemberImmigration({
+              memberId: policyMember.id,
+              companyId: currentUser.companyId!,
+              immigrationStatus: dependent.immigrationStatus,
+              alienNumber: dependent.alienNumber || null,
+              i94Number: dependent.i94Number || null,
+              passportNumber: dependent.passportNumber || null,
+              passportCountry: dependent.passportCountry || null,
+              sevisId: dependent.sevisId || null,
+              visaType: dependent.visaType || null,
+            });
+          }
+        } catch (memberError) {
+          console.error(`Error creating dependent member:`, memberError);
+        }
+      }
+      
       await logger.logCrud({
         req,
         operation: "create",
@@ -12285,6 +12393,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           productType: policy.productType,
           clientEmail: policy.clientEmail,
           createdBy: currentUser.email,
+          spousesCreated: spouses.length,
+          dependentsCreated: dependents.length,
         },
       });
       
