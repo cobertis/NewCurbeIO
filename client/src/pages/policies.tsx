@@ -778,6 +778,15 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   // Fetch policy members to get member IDs
   const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
     queryKey: ['/api/policies', quote?.id, 'members'],
+    queryFn: async () => {
+      const res = await fetch(`/api/policies/${quote?.id}/members`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        throw new Error('Failed to fetch members');
+      }
+      return res.json();
+    },
     enabled: !!quote?.id && open,
   });
 
