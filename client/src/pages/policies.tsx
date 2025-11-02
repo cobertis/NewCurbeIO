@@ -10903,7 +10903,52 @@ export default function PoliciesPage() {
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col min-h-0 px-6 py-4">
+            <div className="flex h-full flex-col min-h-0 px-6 py-4 overflow-y-auto">
+              {/* Statistics Cards - Scrollable (will hide on scroll) */}
+              {stats && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Total Policies Card */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Policies</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
+                  </CardContent>
+                </Card>
+
+                {/* Total Applicants Card */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Applicants</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
+                  </CardContent>
+                </Card>
+
+                {/* Canceled Policies Card */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Canceled policies</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
+                  </CardContent>
+                </Card>
+
+                {/* Canceled Applicants Card */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Canceled applicants</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
+                  </CardContent>
+                </Card>
+              </div>
+          )}
+
           {/* Policies Table - Fixed Header, Scrollable Body */}
           <Card className="flex flex-col flex-1 min-h-0">
             <CardContent className="pt-6 flex flex-col flex-1 min-h-0">
@@ -10922,7 +10967,7 @@ export default function PoliciesPage() {
             ) : (
               <div className="flex flex-col flex-1 min-h-0">
                 {/* FIXED HEADER SECTION - Compact 2-line layout */}
-                <div className="sticky top-0 z-40 bg-background space-y-1 pb-3 border-b">
+                <div className="sticky top-0 z-40 bg-background space-y-1 pb-1">
                   {/* LINE 1: Title + Year filters + Search + Buttons + Family checkbox */}
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold whitespace-nowrap">Policies</h3>

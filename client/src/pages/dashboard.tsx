@@ -24,24 +24,12 @@ interface DashboardStats {
   paidInvoices: number;
 }
 
-interface PolicyStats {
-  totalPolicies: number;
-  totalApplicants: number;
-  canceledPolicies: number;
-  canceledApplicants: number;
-}
-
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   
   const { data: statsData } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard-stats"],
     // Dashboard stats refresh every 2 minutes for real-time insights
-    refetchInterval: 2 * 60 * 1000, // 2 minutes
-  });
-
-  const { data: policyStats } = useQuery<PolicyStats>({
-    queryKey: ["/api/policies/stats"],
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
 
@@ -135,47 +123,6 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
-
-      {/* Policy Statistics Cards */}
-      {policyStats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Policies</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3">
-              <div className="text-2xl font-bold" data-testid="stat-total-policies">{policyStats.totalPolicies}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Applicants</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3">
-              <div className="text-2xl font-bold" data-testid="stat-total-applicants">{policyStats.totalApplicants.toLocaleString()}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Canceled policies</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3">
-              <div className="text-2xl font-bold" data-testid="stat-canceled-policies">{policyStats.canceledPolicies}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Canceled applicants</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3">
-              <div className="text-2xl font-bold" data-testid="stat-canceled-applicants">{policyStats.canceledApplicants}</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

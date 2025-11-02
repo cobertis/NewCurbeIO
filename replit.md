@@ -40,12 +40,6 @@ if (isLoading || !data) {
 ### UI/UX Decisions
 The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, supporting custom theming (light/dark modes). It features a mobile-first responsive design, with primary navigation via a sidebar and a dynamic three-column layout for the SMS chat application, optimized for mobile interactions.
 
-**Policies Page Layout:**
-- Ultra-compact 2-line sticky header with year filters, search, and pagination
-- Removed statistics cards (moved to Dashboard)
-- Scrollable table body with sticky column headers
-- Space-optimized design with h-7 inputs, text-xs sizing throughout
-
 ### Technical Implementations
 The frontend uses Wouter for routing and TanStack Query for state management. The backend is built with Express.js and TypeScript, offering a RESTful API with session-based authentication and role-based access control. The system employs a unified marketplace plans component for dynamic routing and API calls across Quotes and Policies.
 
