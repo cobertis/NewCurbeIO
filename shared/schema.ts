@@ -2137,6 +2137,45 @@ export type Policy = typeof policies.$inferSelect;
 export type InsertPolicy = z.infer<typeof insertPolicySchema>;
 
 // =====================================================
+// POLICY PLANS (Multiple plans per policy)
+// =====================================================
+
+export const policyPlans = pgTable("policy_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  policyId: varchar("policy_id", { length: 8 }).notNull().references(() => policies.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Plan source: marketplace or manual
+  source: text("source").notNull().default("marketplace"), // "marketplace" | "manual"
+  
+  // Plan data as JSONB (stores full plan object)
+  planData: jsonb("plan_data").notNull(),
+  
+  // Primary plan flag (first plan added is primary by default)
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  
+  // Order for display
+  displayOrder: integer("display_order").notNull().default(0),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertPolicyPlanSchema = createInsertSchema(policyPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updatePolicyPlanSchema = insertPolicyPlanSchema.partial().omit({
+  policyId: true,
+  companyId: true,
+});
+
+export type PolicyPlan = typeof policyPlans.$inferSelect;
+export type InsertPolicyPlan = z.infer<typeof insertPolicyPlanSchema>;
+
+// =====================================================
 // POLICY MEMBERS (Normalized member data)
 // =====================================================
 
