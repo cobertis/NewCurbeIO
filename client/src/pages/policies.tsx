@@ -10891,7 +10891,7 @@ export default function PoliciesPage() {
   const isLoadingPage = isLoading || isLoadingStats;
 
   return (
-    <div className="h-full p-6 flex flex-col overflow-hidden">
+    <div className="h-full p-6 flex flex-col overflow-y-auto">
       {!showWizard ? (
         <div className="space-y-6">
           {/* Show loading state while either stats or policies are loading */}
