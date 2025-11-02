@@ -11314,7 +11314,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const events: any[] = [];
 
-      // Track unique birthdays to avoid duplicates (using person identifier)
+      // Track unique birthdays to avoid duplicates across renewed policies
+      // Use SSN+DOB or email+DOB as the unique identifier, not quote/policy ID
       const birthdaySet = new Set<string>();
 
       // ============== QUOTES BIRTHDAYS ==============
@@ -11325,7 +11326,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const primaryClientInMembers = members.find(m => m.role === 'client');
         
         if (quote.clientDateOfBirth && !primaryClientInMembers) {
-          const birthdayKey = `quote-${quote.id}-client-${quote.clientDateOfBirth}`;
+          // Use SSN or email as unique identifier (same person across all quotes/policies)
+          const personId = quote.clientSsn || quote.clientEmail || quote.id;
+          const birthdayKey = `${personId}-${quote.clientDateOfBirth}`;
           if (!birthdaySet.has(birthdayKey)) {
             birthdaySet.add(birthdayKey);
             events.push({
@@ -11342,7 +11345,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         for (const member of members) {
           if (member.dateOfBirth) {
-            const birthdayKey = `quote-${quote.id}-${member.id}-${member.dateOfBirth}`;
+            // Use SSN or email as unique identifier (same person across all quotes/policies)
+            const personId = member.ssn || member.email || member.id;
+            const birthdayKey = `${personId}-${member.dateOfBirth}`;
             if (!birthdaySet.has(birthdayKey)) {
               birthdaySet.add(birthdayKey);
               const roleDisplay = member.role === 'client' ? 'Client' : 
@@ -11370,7 +11375,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const primaryClientInMembers = members.find(m => m.role === 'client');
         
         if (policy.clientDateOfBirth && !primaryClientInMembers) {
-          const birthdayKey = `policy-${policy.id}-client-${policy.clientDateOfBirth}`;
+          // Use SSN or email as unique identifier (same person across all quotes/policies)
+          const personId = policy.clientSsn || policy.clientEmail || policy.id;
+          const birthdayKey = `${personId}-${policy.clientDateOfBirth}`;
           if (!birthdaySet.has(birthdayKey)) {
             birthdaySet.add(birthdayKey);
             events.push({
@@ -11387,7 +11394,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         for (const member of members) {
           if (member.dateOfBirth) {
-            const birthdayKey = `policy-${policy.id}-${member.id}-${member.dateOfBirth}`;
+            // Use SSN or email as unique identifier (same person across all quotes/policies)
+            const personId = member.ssn || member.email || member.id;
+            const birthdayKey = `${personId}-${member.dateOfBirth}`;
             if (!birthdaySet.has(birthdayKey)) {
               birthdaySet.add(birthdayKey);
               const roleDisplay = member.role === 'client' ? 'Client' : 
@@ -12322,48 +12331,70 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
       }
       
-      // Calculate total policies
-      const totalPolicies = allPolicies.length;
+      // IMPORTANT: Exclude renewed policies to avoid double-counting
+      // Only count the most recent policy per client (identified by SSN or email)
+      const uniquePoliciesMap = new Map<string, any>();
+      
+      for (const policy of allPolicies) {
+        // Create unique identifier: use SSN, fallback to email, fallback to policy ID
+        const clientIdentifier = policy.clientSsn || policy.clientEmail || policy.id;
+        
+        const existing = uniquePoliciesMap.get(clientIdentifier);
+        if (!existing) {
+          // First policy for this client
+          uniquePoliciesMap.set(clientIdentifier, policy);
+        } else {
+          // Keep the most recent policy (by effective date)
+          const existingDate = new Date(existing.effectiveDate);
+          const currentDate = new Date(policy.effectiveDate);
+          
+          if (currentDate > existingDate) {
+            uniquePoliciesMap.set(clientIdentifier, policy);
+          }
+        }
+      }
+      
+      // Get unique policies (one per client)
+      const uniquePolicies = Array.from(uniquePoliciesMap.values());
+      
+      // Calculate total policies (unique clients only)
+      const totalPolicies = uniquePolicies.length;
       
       // Calculate canceled policies
-      const canceledPolicies = allPolicies.filter(p => 
+      const canceledPolicies = uniquePolicies.filter(p => 
         p.status === 'canceled' || p.status === 'cancelled'
       ).length;
       
-      // Get all policy members to count applicants
-      const memberPromises = allPolicies.map(policy => 
-        storage.getPolicyMembersByPolicyId(policy.id, currentUser.companyId!)
-      );
-      const allMembersArrays = await Promise.all(memberPromises);
+      // Get all policy members to count applicants (unique people only)
+      const uniqueApplicantsSet = new Set<string>();
+      const uniqueCanceledApplicantsSet = new Set<string>();
       
-      // Count total applicants (members with isApplicant=true + primary clients who are applicants)
-      let totalApplicants = 0;
-      let canceledApplicants = 0;
-      
-      for (let i = 0; i < allPolicies.length; i++) {
-        const policy = allPolicies[i];
-        const members = allMembersArrays[i];
+      for (const policy of uniquePolicies) {
+        const members = await storage.getPolicyMembersByPolicyId(policy.id, currentUser.companyId!);
         const isCanceled = policy.status === 'canceled' || policy.status === 'cancelled';
         
         // Count primary client if applicant
         if (policy.clientIsApplicant) {
-          totalApplicants++;
-          if (isCanceled) canceledApplicants++;
+          const clientKey = policy.clientSsn || policy.clientEmail || `client-${policy.id}`;
+          uniqueApplicantsSet.add(clientKey);
+          if (isCanceled) uniqueCanceledApplicantsSet.add(clientKey);
         }
         
-        // Count members who are applicants
-        const memberApplicants = members.filter(m => m.isApplicant).length;
-        totalApplicants += memberApplicants;
-        if (isCanceled) {
-          canceledApplicants += memberApplicants;
+        // Count members who are applicants (use SSN or member ID as unique key)
+        for (const member of members) {
+          if (member.isApplicant) {
+            const memberKey = member.ssn || member.email || `member-${member.id}`;
+            uniqueApplicantsSet.add(memberKey);
+            if (isCanceled) uniqueCanceledApplicantsSet.add(memberKey);
+          }
         }
       }
       
       res.json({
         totalPolicies,
-        totalApplicants,
+        totalApplicants: uniqueApplicantsSet.size,
         canceledPolicies,
-        canceledApplicants,
+        canceledApplicants: uniqueCanceledApplicantsSet.size,
       });
     } catch (error: any) {
       console.error("Error fetching policies stats:", error);
