@@ -64,7 +64,14 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.
 
-**CMS Marketplace API Integration:** APTC eligibility logic uses the `isApplicant` field to distinguish between dependents who need insurance (isApplicant=true → aptc_eligible=true, has_mec=false) vs those with Medicaid/CHIP (isApplicant=false → aptc_eligible=false, has_mec=true). Request structure follows exact CMS API specifications. APTC calculations properly extract household APTC from Silver plans, with frontend correctly displaying $0 premium_w_credit values using !== undefined checks.
+**CMS Marketplace API Integration:** 
+- APTC eligibility logic uses the `isApplicant` field to distinguish between dependents who need insurance (isApplicant=true → aptc_eligible=true, has_mec=false) vs those with Medicaid/CHIP (isApplicant=false → aptc_eligible=false, has_mec=true)
+- Request structure follows exact CMS API specifications
+- All required fields are sent correctly: dob, aptc_eligible, has_mec, gender, uses_tobacco, is_pregnant, relationship, effective_date, has_married_couple
+- Pregnancy status is forwarded accurately for all family members (client, spouses, dependents)
+- APTC calculations properly extract household APTC from Silver plans
+- Frontend displays premium prices with cents (e.g., $79.50) when not zero, and without cents when zero (e.g., $0)
+- Plan year badge is displayed on each plan card showing the coverage year
 
 ### Security Architecture
 -   **Session Security:** `SESSION_SECRET` environment variable is mandatory to prevent session hijacking.
