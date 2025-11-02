@@ -12302,10 +12302,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Create income data if provided
           if (spouse.income || spouse.incomeFrequency) {
-            await storage.createPolicyMemberIncome({
+            await storage.createOrUpdatePolicyMemberIncome({
               memberId: policyMember.id,
               companyId: currentUser.companyId!,
-              incomeSource: spouse.incomeSource || null,
               annualIncome: spouse.income || null,
               incomeFrequency: spouse.incomeFrequency || 'monthly',
               totalAnnualIncome: spouse.income || null,
@@ -12315,7 +12314,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Create immigration data if provided
           if (spouse.immigrationStatus) {
-            await storage.createPolicyMemberImmigration({
+            await storage.createOrUpdatePolicyMemberImmigration({
               memberId: policyMember.id,
               companyId: currentUser.companyId!,
               immigrationStatus: spouse.immigrationStatus,
@@ -12353,10 +12352,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Create income data if provided
           if (dependent.income || dependent.incomeFrequency) {
-            await storage.createPolicyMemberIncome({
+            await storage.createOrUpdatePolicyMemberIncome({
               memberId: policyMember.id,
               companyId: currentUser.companyId!,
-              incomeSource: dependent.incomeSource || null,
               annualIncome: dependent.income || null,
               incomeFrequency: dependent.incomeFrequency || 'monthly',
               totalAnnualIncome: dependent.income || null,
@@ -12366,7 +12364,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Create immigration data if provided
           if (dependent.immigrationStatus) {
-            await storage.createPolicyMemberImmigration({
+            await storage.createOrUpdatePolicyMemberImmigration({
               memberId: policyMember.id,
               companyId: currentUser.companyId!,
               immigrationStatus: dependent.immigrationStatus,
