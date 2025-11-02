@@ -13442,7 +13442,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // 2. VALIDACIÓN: Verificar que la póliza tiene al menos un plan
       // Puede ser en selectedPlan (legacy) o en policy_plans (new system)
-      const policyPlans = await storage.getPolicyPlans(policyId);
+      const policyPlans = await storage.listPolicyPlans(policyId, originalPolicy.companyId);
       const hasPlan = originalPolicy.selectedPlan || (policyPlans && policyPlans.length > 0);
       
       if (!hasPlan) {
