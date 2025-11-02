@@ -318,6 +318,7 @@ async function fetchSinglePage(
   people.push({
     dob: quoteData.client.dateOfBirth, // DOB for accurate age calculation with effective_date
     aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
+    is_applicant: true, // CRITICAL: Client is requesting coverage
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
     is_pregnant: quoteData.client.pregnant || false,
@@ -330,6 +331,7 @@ async function fetchSinglePage(
       people.push({
         dob: spouse.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
+        is_applicant: true, // CRITICAL: Spouse is requesting coverage
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
         is_pregnant: spouse.pregnant || false,
