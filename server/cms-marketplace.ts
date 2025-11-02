@@ -331,11 +331,14 @@ async function fetchSinglePage(
     age: calculateAge(quoteData.client.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
     dob: quoteData.client.dateOfBirth, // DOB for accurate age calculation with effective_date
     aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
+    does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
     has_mec: false, // No Minimal Essential Coverage (client needs insurance)
     gender: formatGenderForCMS(quoteData.client.gender),
-    uses_tobacco: quoteData.client.usesTobacco || false,
+    is_parent: false, // Per CMS docs: optional field for parent status
     is_pregnant: quoteData.client.pregnant || false,
     relationship: "Self", // CRITICAL: Required for APTC calculation
+    uses_tobacco: quoteData.client.usesTobacco || false,
+    utilization: "Medium", // Per CMS docs: one of Low/Medium/High - describes insurance usage
   });
   
   // Add spouses - Relationship "Spouse" is CRITICAL for APTC calculation
@@ -345,11 +348,14 @@ async function fetchSinglePage(
         age: calculateAge(spouse.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
         dob: spouse.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
+        does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
         has_mec: false, // No Minimal Essential Coverage (spouse needs insurance)
         gender: formatGenderForCMS(spouse.gender),
-        uses_tobacco: spouse.usesTobacco || false,
+        is_parent: false, // Per CMS docs: optional field for parent status
         is_pregnant: spouse.pregnant || false,
         relationship: "Spouse", // CRITICAL: Required for married couple APTC calculation
+        uses_tobacco: spouse.usesTobacco || false,
+        utilization: "Medium", // Per CMS docs: one of Low/Medium/High - describes insurance usage
       });
     });
   }
@@ -366,11 +372,14 @@ async function fetchSinglePage(
         age: calculateAge(dependent.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
         dob: dependent.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: needsInsurance, // Per CMS docs: only eligible if they need insurance (not on Medicaid/CHIP)
+        does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
         has_mec: !needsInsurance, // Minimal Essential Coverage (Medicaid/CHIP) if NOT applicant
         gender: formatGenderForCMS(dependent.gender),
-        uses_tobacco: dependent.usesTobacco || false,
+        is_parent: false, // Per CMS docs: optional field for parent status
         is_pregnant: dependent.pregnant || false, // CRITICAL: Use actual pregnancy status from database
         relationship: "Child", // CRITICAL: Required for proper household size calculation
+        uses_tobacco: dependent.usesTobacco || false,
+        utilization: "Medium", // Per CMS docs: one of Low/Medium/High - describes insurance usage
       });
     });
   }
