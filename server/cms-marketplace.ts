@@ -181,7 +181,8 @@ export async function fetchMarketplacePlans(
   
   if (totalPlans <= 10) {
     // If 10 or fewer plans, we already have them all
-    return firstPage;
+    // Calculate household_aptc from plans and return
+    return calculateHouseholdAptcAndReturn(firstPage, firstPage.plans || []);
   }
   
   // Calculate how many pages we need (API returns max 10 per page)
@@ -223,16 +224,27 @@ export async function fetchMarketplacePlans(
   
   console.log(`[CMS_MARKETPLACE] ✅ ${uniquePlans.length} planes únicos obtenidos exitosamente`);
   
-  // Calculate household_aptc from SLCSP if API doesn't provide it
-  // SLCSP = Second Lowest Cost Silver Plan (benchmark for APTC calculations)
-  let household_aptc = firstPage.household_aptc;
+  // Calculate household_aptc from plans and return final response
+  return calculateHouseholdAptcAndReturn(firstPage, uniquePlans);
+}
+
+/**
+ * Calculate household_aptc from SLCSP if API doesn't provide it
+ * SLCSP = Second Lowest Cost Silver Plan (benchmark for APTC calculations)
+ * This function is called for ALL response paths to ensure consistent APTC calculation
+ */
+function calculateHouseholdAptcAndReturn(
+  firstPageResponse: MarketplaceApiResponse,
+  allPlans: any[]
+): MarketplaceApiResponse {
+  let household_aptc = firstPageResponse.household_aptc;
   console.log(`[CMS_MARKETPLACE] 🔍 API provided household_aptc: ${household_aptc}`);
   
   if (!household_aptc || household_aptc === 0) {
     console.log(`[CMS_MARKETPLACE] ⚠️ household_aptc is 0 or undefined, calculating from SLCSP...`);
    
     // Find all Silver plans and sort by premium (unsubsidized)
-    const silverPlans = uniquePlans
+    const silverPlans = allPlans
       .filter((p: any) => p.metal_level === 'Silver')
       .sort((a: any, b: any) => (a.premium || 0) - (b.premium || 0));
     
@@ -256,12 +268,12 @@ export async function fetchMarketplacePlans(
   // Return combined response - API provides ALL calculations (APTC, CSR, premium_w_credit)
   // We extract household_aptc from SLCSP if API doesn't provide it
   return {
-    ...firstPage,
-    plans: uniquePlans,
-    total: uniquePlans.length,
+    ...firstPageResponse,
+    plans: allPlans,
+    total: allPlans.length,
     household_aptc: household_aptc || 0,
-    household_csr: firstPage.household_csr,
-    household_slcsp_premium: firstPage.household_slcsp_premium,
+    household_csr: firstPageResponse.household_csr,
+    household_slcsp_premium: firstPageResponse.household_slcsp_premium,
   };
 }
 
