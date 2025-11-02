@@ -226,8 +226,11 @@ export async function fetchMarketplacePlans(
   // Calculate household_aptc from SLCSP if API doesn't provide it
   // SLCSP = Second Lowest Cost Silver Plan (benchmark for APTC calculations)
   let household_aptc = firstPage.household_aptc;
+  console.log(`[CMS_MARKETPLACE] 🔍 API provided household_aptc: ${household_aptc}`);
   
   if (!household_aptc || household_aptc === 0) {
+    console.log(`[CMS_MARKETPLACE] ⚠️ household_aptc is 0 or undefined, calculating from SLCSP...`);
+   
     // Find all Silver plans and sort by premium (unsubsidized)
     const silverPlans = uniquePlans
       .filter((p: any) => p.metal_level === 'Silver')
