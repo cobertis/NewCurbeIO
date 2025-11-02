@@ -3448,6 +3448,9 @@ export default function PoliciesPage() {
   // OEP 2026 filter state
   const [oepFilter, setOepFilter] = useState<"aca" | "medicare" | null>(null);
   
+  // Sidebar view selection state
+  const [selectedView, setSelectedView] = useState<"policies" | "oep-aca" | "oep-medicare" | "important" | "archived" | "exports">("policies");
+  
   // OEP Renewal modal state
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [renewalData, setRenewalData] = useState<any>(null);
@@ -10891,66 +10894,214 @@ export default function PoliciesPage() {
   const isLoadingPage = isLoading || isLoadingStats;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex overflow-hidden">
       {!showWizard ? (
         <>
           {/* Show loading state while either stats or policies are loading */}
           {isLoadingPage ? (
-            <div className="flex items-center justify-center h-96">
+            <div className="flex items-center justify-center h-96 flex-1">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="text-lg text-muted-foreground">Loading policies...</p>
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col min-h-0 px-6 py-4 overflow-y-auto">
-              {/* Statistics Cards - Scrollable (will hide on scroll) */}
-              {stats && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Total Policies Card */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-medium text-muted-foreground">Policies</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="text-2xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
-                  </CardContent>
-                </Card>
+            <>
+              {/* LEFT SIDEBAR */}
+              <div className="w-60 border-r bg-muted/20 flex-shrink-0 overflow-y-auto">
+                <div className="p-4 space-y-6">
+                  {/* Views Section */}
+                  <div className="space-y-1">
+                    {/* Policies View */}
+                    <button
+                      onClick={() => {
+                        setSelectedView("policies");
+                        setOepFilter(null);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedView === "policies"
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      }`}
+                      data-testid="sidebar-policies"
+                    >
+                      <div className={`w-2 h-2 rounded-full ${selectedView === "policies" ? "bg-primary-foreground" : "bg-transparent"}`} />
+                      <span className="flex-1 text-left">Policies</span>
+                    </button>
 
-                {/* Total Applicants Card */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-medium text-muted-foreground">Applicants</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="text-2xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
-                  </CardContent>
-                </Card>
+                    {/* OEP 2026 ACA/Obamacare View */}
+                    <button
+                      onClick={() => {
+                        setSelectedView("oep-aca");
+                        setOepFilter("aca");
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedView === "oep-aca"
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      }`}
+                      data-testid="sidebar-oep-aca"
+                    >
+                      <Info className="w-4 h-4 text-blue-500" />
+                      <span className="flex-1 text-left">OEP 2026 ACA/Obamacare</span>
+                    </button>
 
-                {/* Canceled Policies Card */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-medium text-muted-foreground">Canceled policies</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="text-2xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
-                  </CardContent>
-                </Card>
+                    {/* OEP 2026 Medicare View */}
+                    <button
+                      onClick={() => {
+                        setSelectedView("oep-medicare");
+                        setOepFilter("medicare");
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedView === "oep-medicare"
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      }`}
+                      data-testid="sidebar-oep-medicare"
+                    >
+                      <Info className="w-4 h-4 text-blue-500" />
+                      <span className="flex-1 text-left">OEP 2026 Medicare</span>
+                    </button>
 
-                {/* Canceled Applicants Card */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-medium text-muted-foreground">Canceled applicants</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="text-2xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
-                  </CardContent>
-                </Card>
+                    {/* Important View */}
+                    <button
+                      onClick={() => setSelectedView("important")}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedView === "important"
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      }`}
+                      data-testid="sidebar-important"
+                    >
+                      <Bell className="w-4 h-4 text-yellow-500" />
+                      <span className="flex-1 text-left">Important</span>
+                    </button>
+
+                    {/* Archived View */}
+                    <button
+                      onClick={() => setSelectedView("archived")}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedView === "archived"
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      }`}
+                      data-testid="sidebar-archived"
+                    >
+                      <Archive className="w-4 h-4 text-muted-foreground" />
+                      <span className="flex-1 text-left">Archived</span>
+                    </button>
+
+                    {/* Exports View */}
+                    <button
+                      onClick={() => setSelectedView("exports")}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedView === "exports"
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      }`}
+                      data-testid="sidebar-exports"
+                    >
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <span className="flex-1 text-left">Exports</span>
+                    </button>
+                  </div>
+
+                  {/* Agency Folders Section */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Agency folders</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Shared folders for your agency</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" data-testid="button-create-agency-folder">
+                        Create
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground pl-3">You have no agency folders.</p>
+                  </div>
+
+                  {/* Personal Folders Section */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Personal folders</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Private folders for your personal use</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" data-testid="button-create-personal-folder">
+                        Create
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground pl-3">You have no personal folders.</p>
+                  </div>
+                </div>
               </div>
-          )}
 
-          {/* Policies Table - Fixed Header, Scrollable Body */}
-          <Card className="flex flex-col flex-1 min-h-0">
+              {/* MAIN CONTENT AREA */}
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Statistics Cards - ALWAYS VISIBLE (NOT scrollable) */}
+                {stats && (
+                  <div className="px-6 py-4 border-b">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {/* Total Policies Card */}
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-xs font-medium text-muted-foreground">Policies</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pb-3">
+                          <div className="text-2xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Total Applicants Card */}
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-xs font-medium text-muted-foreground">Applicants</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pb-3">
+                          <div className="text-2xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Canceled Policies Card */}
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-xs font-medium text-muted-foreground">Canceled policies</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pb-3">
+                          <div className="text-2xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Canceled Applicants Card */}
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-xs font-medium text-muted-foreground">Canceled applicants</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pb-3">
+                          <div className="text-2xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                )}
+
+                {/* Policies Table - SCROLLABLE AREA */}
+                <div className="flex-1 px-6 py-4 overflow-y-auto">
+                  <Card className="flex flex-col min-h-0">
             <CardContent className="pt-6 flex flex-col flex-1 min-h-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading policies...</div>
@@ -11624,7 +11775,9 @@ export default function PoliciesPage() {
             )}
           </CardContent>
         </Card>
-          </div>
+                </div>
+              </div>
+            </>
           )}
         </>
       ) : (
