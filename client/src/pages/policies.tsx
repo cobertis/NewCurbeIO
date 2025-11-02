@@ -3541,6 +3541,7 @@ export default function PoliciesPage() {
   
   // Manual plan dialog state
   const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [carrierPopoverOpen, setCarrierPopoverOpen] = useState(false);
   const [manualPlanData, setManualPlanData] = useState({
     // Basic Info
@@ -7309,6 +7310,7 @@ export default function PoliciesPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
+                            setEditingPlanId(policyPlan.id);
                             setManualPlanData({
                               productType: plan.type || '',
                               carrier: plan.issuer?.name || '',
@@ -10502,6 +10504,7 @@ export default function PoliciesPage() {
               <Button
                 variant="outline"
                 onClick={() => {
+                  setEditingPlanId(null);
                   setManualPlanDialogOpen(false);
                   setManualPlanData({
                     productType: '',
@@ -10588,11 +10591,20 @@ export default function PoliciesPage() {
                       manual: true
                     };
 
-                    // Add plan using the new multi-plan endpoint
-                    await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans`, {
-                      planData: planObject,
-                      source: 'manual'
-                    });
+                    // Check if we're editing an existing plan or creating a new one
+                    if (editingPlanId) {
+                      // Update existing plan
+                      await apiRequest("PATCH", `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
+                        planData: planObject,
+                        source: 'manual'
+                      });
+                    } else {
+                      // Add new plan
+                      await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans`, {
+                        planData: planObject,
+                        source: 'manual'
+                      });
+                    }
                     
                     // Update policy metadata separately if needed
                     if (manualPlanData.memberId || manualPlanData.npnMarketplace || manualPlanData.saleType || 
@@ -10617,9 +10629,10 @@ export default function PoliciesPage() {
                     
                     toast({
                       title: "Success",
-                      description: "Plan has been saved successfully.",
+                      description: editingPlanId ? "Plan has been updated successfully." : "Plan has been saved successfully.",
                       duration: 3000,
                     });
+                    setEditingPlanId(null);
                     setManualPlanDialogOpen(false);
                     setManualPlanData({
                       productType: '',
