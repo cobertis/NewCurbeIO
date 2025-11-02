@@ -777,7 +777,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
   // Fetch policy members to get member IDs
   const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
-    queryKey: ['/api/policies', quote.id, 'members'],
+    queryKey: ['/api/policies', quote?.id, 'members'],
     enabled: !!quote?.id && open,
   });
 
@@ -5615,9 +5615,9 @@ export default function PoliciesPage() {
     
     // Fetch existing payment method data if editing
     const { data: paymentMethodData, isLoading: isLoadingPaymentMethod } = useQuery<{ paymentMethod: QuotePaymentMethod }>({
-      queryKey: ['/api/policies', quote.id, 'payment-methods', paymentMethodId],
+      queryKey: ['/api/policies', quote?.id, 'payment-methods', paymentMethodId],
       queryFn: async () => {
-        const res = await fetch(`/api/policies/${quote.id}/payment-methods/${paymentMethodId}`, {
+        const res = await fetch(`/api/policies/${quote?.id}/payment-methods/${paymentMethodId}`, {
           credentials: 'include',
         });
         if (!res.ok) {
@@ -12723,27 +12723,29 @@ export default function PoliciesPage() {
         </Card>
       )}
 
-      {/* Edit Member Sheet */}
-      <EditMemberSheet
-        open={editingMember !== null}
-        onOpenChange={(open) => {
-          if (!open) setEditingMember(null);
-        }}
-        quote={viewingQuote!}
-        memberType={editingMember?.type}
-        memberIndex={editingMember?.index}
-        onSave={(data) => {
-          updateQuoteMutation.mutate({
-            quoteId: viewingQuote!.id,
-            data,
-          });
-          // Don't close immediately - let handleSave complete async operations first
-        }}
-        isPending={updateQuoteMutation.isPending}
-        onMemberChange={(type, index) => {
-          setEditingMember({ type, index });
-        }}
-      />
+      {/* Edit Member Sheet - Only render when viewingQuote exists */}
+      {viewingQuote && (
+        <EditMemberSheet
+          open={editingMember !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingMember(null);
+          }}
+          quote={viewingQuote}
+          memberType={editingMember?.type}
+          memberIndex={editingMember?.index}
+          onSave={(data) => {
+            updateQuoteMutation.mutate({
+              quoteId: viewingQuote.id,
+              data,
+            });
+            // Don't close immediately - let handleSave complete async operations first
+          }}
+          isPending={updateQuoteMutation.isPending}
+          onMemberChange={(type, index) => {
+            setEditingMember({ type, index });
+          }}
+        />
+      )}
 
       {/* Notes Sheet - Modern Design */}
       {console.log('[NOTES SHEET] Rendering, open state:', notesSheetOpen)}
