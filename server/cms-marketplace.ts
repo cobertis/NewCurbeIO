@@ -485,27 +485,38 @@ async function fetchSinglePage(
       offset: offset
     };
     
-    // DEBUG: Log first plan to see API response structure
-    if (page === 1 && data.plans && data.plans.length > 0) {
-      const firstPlan = data.plans[0];
-      console.log('[CMS_MARKETPLACE] 🔍 SAMPLE PLAN FROM API:');
-      console.log(`  - Plan ID: ${firstPlan.id}`);
-      console.log(`  - Plan Name: ${firstPlan.name}`);
-      console.log(`  - Metal Level: ${firstPlan.metal_level}`);
-      console.log(`  - Premium: ${firstPlan.premium}`);
-      console.log(`  - Premium w/ Credit: ${firstPlan.premium_w_credit}`);
-      console.log(`  - Has premium_w_credit field: ${firstPlan.premium_w_credit !== undefined}`);
-      console.log(`  - Full plan object keys:`, Object.keys(firstPlan).join(', '));
+    // DEBUG: Log API response metadata on first page
+    if (page === 1) {
+      console.log('[CMS_MARKETPLACE] 📋 API RESPONSE METADATA:');
+      console.log(`  - household_csr: ${data.household_csr || 'NOT PROVIDED'}`);
+      console.log(`  - household_aptc: ${data.household_aptc || 'NOT PROVIDED'}`);
+      console.log(`  - household_slcsp_premium: ${data.household_slcsp_premium || 'NOT PROVIDED'}`);
       
-      // DEBUG: Look for Oscar plan specifically
+      if (data.plans && data.plans.length > 0) {
+        const firstPlan = data.plans[0];
+        console.log('[CMS_MARKETPLACE] 🔍 SAMPLE PLAN FROM API:');
+        console.log(`  - Plan ID: ${firstPlan.id}`);
+        console.log(`  - Plan Name: ${firstPlan.name}`);
+        console.log(`  - Metal Level: ${firstPlan.metal_level}`);
+        console.log(`  - Premium: ${firstPlan.premium}`);
+        console.log(`  - Premium w/ Credit: ${firstPlan.premium_w_credit}`);
+      }
+    }
+    
+    // DEBUG: Look for Oscar plan specifically in EVERY page
+    if (data.plans) {
       const oscarPlan = data.plans.find((p: any) => p.id === '40572FL0200025');
       if (oscarPlan) {
-        console.log('[CMS_MARKETPLACE] 🎯 FOUND OSCAR PLAN 40572FL0200025:');
+        console.log('[CMS_MARKETPLACE] 🎯 FOUND OSCAR PLAN 40572FL0200025 ON PAGE ' + currentPage + ':');
         console.log(`  - Issuer: ${oscarPlan.issuer?.name}`);
+        console.log(`  - Plan Name: ${oscarPlan.name}`);
         console.log(`  - Metal Level: ${oscarPlan.metal_level}`);
-        console.log(`  - Premium (unsubsidized): ${oscarPlan.premium}`);
-        console.log(`  - Premium w/ Credit (subsidized): ${oscarPlan.premium_w_credit}`);
-        console.log(`  - APTC Amount: ${oscarPlan.premium - (oscarPlan.premium_w_credit || 0)}`);
+        console.log(`  - Type: ${oscarPlan.type}`);
+        console.log(`  - Premium (unsubsidized): $${oscarPlan.premium}`);
+        console.log(`  - Premium w/ Credit (subsidized): $${oscarPlan.premium_w_credit}`);
+        console.log(`  - APTC Amount: $${oscarPlan.premium - (oscarPlan.premium_w_credit || 0)}`);
+        console.log(`  - Deductible: ${oscarPlan.deductibles?.[0]?.amount || 'N/A'}`);
+        console.log(`  - Design Type: ${oscarPlan.design_type || 'N/A'}`);
       }
     }
     
