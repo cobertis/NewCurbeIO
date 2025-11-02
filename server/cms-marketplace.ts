@@ -223,47 +223,14 @@ export async function fetchMarketplacePlans(
   
   console.log(`[CMS_MARKETPLACE] ✅ ${uniquePlans.length} planes únicos obtenidos exitosamente`);
   
-  // Extract APTC from Silver plans (API calculates premium_w_credit automatically)
-  // All plans have same APTC, so we use any Silver plan to extract it
-  const silverPlan = uniquePlans.find(p => 
-    p.metal_level === 'Silver' && 
-    p.premium_w_credit !== undefined && 
-    p.premium > p.premium_w_credit
-  );
-  
-  const household_aptc = silverPlan ? silverPlan.premium - (silverPlan.premium_w_credit || 0) : 0;
-  
-  console.log('[CMS_MARKETPLACE] 💰 APTC EXTRACTION DEBUG:');
-  console.log(`  - Total plans: ${uniquePlans.length}`);
-  console.log(`  - Silver plans: ${uniquePlans.filter(p => p.metal_level === 'Silver').length}`);
-  console.log(`  - Silver plan found: ${!!silverPlan}`);
-  if (silverPlan) {
-    console.log(`  - Premium: $${silverPlan.premium}`);
-    console.log(`  - Premium w/ credit: $${silverPlan.premium_w_credit}`);
-    console.log(`  - APTC extracted: $${household_aptc.toFixed(2)}`);
-  } else {
-    console.log('  ⚠️ NO SILVER PLAN WITH CREDIT FOUND');
-    // Try finding ANY plan with credit
-    const anyPlanWithCredit = uniquePlans.find(p => 
-      p.premium_w_credit !== undefined && 
-      p.premium > p.premium_w_credit
-    );
-    if (anyPlanWithCredit) {
-      console.log(`  - Using ${anyPlanWithCredit.metal_level} plan instead`);
-      console.log(`  - Premium: $${anyPlanWithCredit.premium}`);
-      console.log(`  - Premium w/ credit: $${anyPlanWithCredit.premium_w_credit}`);
-    } else {
-      console.log('  ⚠️ NO PLANS WITH CREDIT AT ALL - APTC may be 0 or API issue');
-    }
-  }
-  
-  // Return combined response - API already calculated premium_w_credit
+  // Return combined response - API provides ALL calculations (APTC, CSR, premium_w_credit)
+  // We do NOT calculate anything - just return what the API gives us
   return {
     ...firstPage,
     plans: uniquePlans,
     total: uniquePlans.length,
-    household_aptc: household_aptc, // Extracted from API-calculated premiums
-    request_data: firstPage.request_data
+    // household_aptc, household_csr, household_slcsp_premium come directly from API
+    // We do NOT override or calculate these values
   };
 }
 
@@ -522,19 +489,8 @@ async function fetchSinglePage(
       }
     }
     
-    // API automatically calculates premium_w_credit based on household data
-    // We extract APTC from plans (all Silver plans have the same APTC)
-    if (!data.household_aptc && data.plans && data.plans.length > 0) {
-      const silverPlan = data.plans.find(plan => 
-        plan.metal_level === 'Silver' &&
-        plan.premium_w_credit !== undefined && 
-        plan.premium > plan.premium_w_credit
-      );
-      
-      if (silverPlan) {
-        data.household_aptc = silverPlan.premium - (silverPlan.premium_w_credit || 0);
-      }
-    }
+    // API automatically calculates ALL values (premium_w_credit, household_aptc, household_csr)
+    // We do NOT calculate or override ANY values - we return exactly what the API provides
     
     // Log if we're reaching the end of pagination
     if (data.plans && data.plans.length < limit) {
