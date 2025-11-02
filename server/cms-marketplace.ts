@@ -154,6 +154,7 @@ export async function fetchMarketplacePlans(
       gender?: string;
       pregnant?: boolean;
       usesTobacco?: boolean;
+      isApplicant?: boolean; // true = needs insurance (denied Medicaid), false = has Medicaid/CHIP
     }>;
   },
   page?: number,
@@ -294,6 +295,7 @@ async function fetchSinglePage(
       gender?: string;
       pregnant?: boolean;
       usesTobacco?: boolean;
+      isApplicant?: boolean; // true = needs insurance (denied Medicaid), false = has Medicaid/CHIP
     }>;
   },
   page: number,
@@ -339,9 +341,15 @@ async function fetchSinglePage(
   // Add dependents - Relationship "Child" for proper household calculation
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
+      // CRITICAL LOGIC per user requirement:
+      // isApplicant === true  → Dependent NEEDS insurance (Medicaid denied) → aptc_eligible: true, has_mec: false
+      // isApplicant === false → Dependent HAS Medicaid/CHIP → aptc_eligible: false, has_mec: true
+      const needsInsurance = dependent.isApplicant === true;
+      
       people.push({
         dob: dependent.dateOfBirth, // DOB for accurate age calculation with effective_date
-        aptc_eligible: true, // Per CMS docs: children ARE eligible unless they have Medicaid/CHIP (has_mec)
+        aptc_eligible: needsInsurance, // Per CMS docs: only eligible if they need insurance (not on Medicaid/CHIP)
+        has_mec: !needsInsurance, // Minimal Essential Coverage (Medicaid/CHIP) if NOT applicant
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
         is_pregnant: false,

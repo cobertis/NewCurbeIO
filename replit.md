@@ -64,7 +64,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.
 
-**CMS Marketplace API Integration:** Correct APTC eligibility logic is implemented based on CMS documentation, marking all household members as `aptc_eligible: true` unless they have Medicaid/CHIP. Request structure follows exact CMS API specifications, and APTC calculations properly extract household APTC from Silver plans.
+**CMS Marketplace API Integration:** APTC eligibility logic uses the `isApplicant` field to distinguish between dependents who need insurance (isApplicant=true → aptc_eligible=true, has_mec=false) vs those with Medicaid/CHIP (isApplicant=false → aptc_eligible=false, has_mec=true). Request structure follows exact CMS API specifications. APTC calculations properly extract household APTC from Silver plans, with frontend correctly displaying $0 premium_w_credit values using !== undefined checks.
 
 ### Security Architecture
 -   **Session Security:** `SESSION_SECRET` environment variable is mandatory to prevent session hijacking.
