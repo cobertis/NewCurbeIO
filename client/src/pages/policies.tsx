@@ -10906,49 +10906,45 @@ export default function PoliciesPage() {
             <>
               {/* Statistics Cards - Fixed at top */}
               {stats && (
-            <div className="p-6 pb-4 flex-shrink-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="px-6 pt-4 pb-3 flex-shrink-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* Total Policies Card */}
                 <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Policies</CardTitle>
-                    <CardDescription className="text-xs">Number of policies</CardDescription>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Policies</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
                   </CardContent>
                 </Card>
 
                 {/* Total Applicants Card */}
                 <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Applicants</CardTitle>
-                    <CardDescription className="text-xs">Number of applicants</CardDescription>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Applicants</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
                   </CardContent>
                 </Card>
 
                 {/* Canceled Policies Card */}
                 <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Canceled policies</CardTitle>
-                    <CardDescription className="text-xs">Canceled policies</CardDescription>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Canceled policies</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
                   </CardContent>
                 </Card>
 
                 {/* Canceled Applicants Card */}
                 <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Canceled applicants</CardTitle>
-                    <CardDescription className="text-xs">Canceled applicants</CardDescription>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Canceled applicants</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -11243,14 +11239,14 @@ export default function PoliciesPage() {
               </div>
 
                 {/* Show selector and pagination info */}
-                <div className="flex items-center justify-between py-1.5">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between py-1">
+                  <div className="flex items-center gap-1.5">
                     <span className="text-xs">Show</span>
                     <Select value={itemsPerPage.toString()} onValueChange={(value) => {
                       setItemsPerPage(parseInt(value));
                       setCurrentPage(1);
                     }}>
-                      <SelectTrigger className="w-16 h-8 text-xs" data-testid="select-items-per-page">
+                      <SelectTrigger className="w-14 h-7 text-xs" data-testid="select-items-per-page">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -11262,40 +11258,40 @@ export default function PoliciesPage() {
                     </Select>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Showing {totalItems > 0 ? startIndex + 1 : 0} to {endIndex} of {totalItems} Entries
+                    {totalItems > 0 ? startIndex + 1 : 0}-{endIndex} of {totalItems}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0"
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
                       data-testid="button-prev-page"
                     >
-                      <ChevronLeftIcon className="h-3.5 w-3.5" />
+                      <ChevronLeftIcon className="h-3 w-3" />
                     </Button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <Button
                         key={page}
                         variant={currentPage === page ? "default" : "outline"}
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 p-0 text-xs"
                         onClick={() => setCurrentPage(page)}
                         data-testid={`button-page-${page}`}
                       >
-                        <span className="text-xs">{page}</span>
+                        {page}
                       </Button>
                     ))}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0"
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
                       data-testid="button-next-page"
                     >
-                      <ChevronRightIcon className="h-3.5 w-3.5" />
+                      <ChevronRightIcon className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
@@ -11317,17 +11313,17 @@ export default function PoliciesPage() {
                   const renewalTargetYear = currentMonth >= 9 ? currentYear + 1 : currentYear;
                   
                   return (
-                    <div className="flex gap-2 py-2">
+                    <div className="flex gap-2 py-1">
                       <Button
                         variant={oepFilter === 'aca' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setOepFilter(oepFilter === 'aca' ? null : 'aca')}
-                        className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700 h-8' : 'h-8'}
+                        className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700 h-7 text-xs' : 'h-7 text-xs'}
                         data-testid="button-oep-filter-aca"
                       >
-                        <span className="text-xs">OEP {renewalTargetYear} ACA/Obamacare</span>
+                        OEP {renewalTargetYear} ACA/Obamacare
                         {oepStats && oepStats.aca > 0 && (
-                          <Badge variant="destructive" className="ml-1.5 h-4 px-1.5 text-xs">
+                          <Badge variant="destructive" className="ml-1.5 h-3.5 px-1 text-[10px]">
                             {oepStats.aca}
                           </Badge>
                         )}
@@ -11336,12 +11332,12 @@ export default function PoliciesPage() {
                         variant={oepFilter === 'medicare' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setOepFilter(oepFilter === 'medicare' ? null : 'medicare')}
-                        className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700 h-8' : 'h-8'}
+                        className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700 h-7 text-xs' : 'h-7 text-xs'}
                         data-testid="button-oep-filter-medicare"
                       >
-                        <span className="text-xs">OEP {renewalTargetYear} Medicare</span>
+                        OEP {renewalTargetYear} Medicare
                         {oepStats && oepStats.medicare > 0 && (
-                          <Badge variant="destructive" className="ml-1.5 h-4 px-1.5 text-xs">
+                          <Badge variant="destructive" className="ml-1.5 h-3.5 px-1 text-[10px]">
                             {oepStats.medicare}
                           </Badge>
                         )}
