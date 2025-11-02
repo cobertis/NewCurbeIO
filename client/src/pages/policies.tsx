@@ -10891,7 +10891,7 @@ export default function PoliciesPage() {
   const isLoadingPage = isLoading || isLoadingStats;
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full flex flex-col overflow-hidden">
       {!showWizard ? (
         <>
           {/* Show loading state while either stats or policies are loading */}
@@ -10903,7 +10903,7 @@ export default function PoliciesPage() {
               </div>
             </div>
           ) : (
-            <div className="px-6 py-4 space-y-3">
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
               {/* Statistics Cards - Scrollable */}
               {stats && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -10949,9 +10949,9 @@ export default function PoliciesPage() {
               </div>
           )}
 
-          {/* Policies Table - Fixed Header */}
-          <Card>
-            <CardContent className="pt-6">
+          {/* Policies Table - Fixed Header, Scrollable Body */}
+          <Card className="flex flex-col flex-1 min-h-0">
+            <CardContent className="pt-6 flex flex-col flex-1 min-h-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading policies...</div>
             ) : allQuotes.length === 0 ? (
@@ -10965,7 +10965,7 @@ export default function PoliciesPage() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="flex flex-col flex-1 min-h-0 space-y-2">
                 {/* Enhanced Search Bar with Year Filters */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
@@ -11343,27 +11343,34 @@ export default function PoliciesPage() {
                   );
                 })()}
 
-                {/* Table with Sticky Header */}
+                {/* Table with Fixed Header and Scrollable Body */}
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No quotes match your search criteria
                   </div>
                 ) : (
-                  <div className="relative">
-                    <Table>
-                      <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
-                        <TableRow>
-                          <TableHead className="w-12 bg-background">
-                            <Checkbox data-testid="checkbox-select-all" />
-                          </TableHead>
-                          <TableHead className="w-16 bg-background">Agent</TableHead>
-                          <TableHead className="bg-background">Client</TableHead>
-                          <TableHead className="bg-background">Policy</TableHead>
-                          <TableHead className="bg-background">Status</TableHead>
-                          <TableHead className="w-20 bg-background">Year</TableHead>
-                          <TableHead className="text-right bg-background">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
+                  <div className="flex flex-col flex-1 min-h-0">
+                    {/* Table Header - Fixed */}
+                    <div className="flex-shrink-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-12">
+                              <Checkbox data-testid="checkbox-select-all" />
+                            </TableHead>
+                            <TableHead className="w-16">Agent</TableHead>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Policy</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="w-20">Year</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                      </Table>
+                    </div>
+                    {/* Table Body - Scrollable */}
+                    <div className="flex-1 overflow-y-auto">
+                      <Table>
                     <TableBody>
                       {paginatedQuotes.map((quote) => {
                         const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
@@ -11623,7 +11630,8 @@ export default function PoliciesPage() {
                         );
                       })}
                     </TableBody>
-                  </Table>
+                      </Table>
+                    </div>
                   </div>
                 )}
               </div>
