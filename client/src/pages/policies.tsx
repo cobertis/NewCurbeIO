@@ -206,6 +206,12 @@ function getPaymentStatusColor(status: string): string {
 
 // Carrier lists imported from shared module
 
+// Helper to capitalize first letter of a string
+const capitalize = (str: string | null | undefined): string => {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // Helper to calculate age from yyyy-MM-dd date string
 const calculateAge = (dateOfBirth: string | null | undefined): number | null => {
   if (!dateOfBirth) return null;
@@ -6967,7 +6973,7 @@ export default function PoliciesPage() {
                           <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="outline" className="text-xs">
-                              {plan.metal_level || 'N/A'}
+                              {capitalize(plan.metal_level) || 'N/A'}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
                               {plan.type || 'N/A'}
@@ -8107,7 +8113,7 @@ export default function PoliciesPage() {
                                       </div>
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                                          {policy.selectedPlan.metal_level || 'N/A'}
+                                          {capitalize(policy.selectedPlan.metal_level) || 'N/A'}
                                         </Badge>
                                         {policy.selectedPlan.plan_type && (
                                           <Badge variant="outline" className="text-xs px-1.5 py-0">
@@ -11709,7 +11715,7 @@ export default function PoliciesPage() {
                                   <div className="space-y-0.5">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                                        {quote.selectedPlan.metal_level || 'N/A'}
+                                        {capitalize(quote.selectedPlan.metal_level) || 'N/A'}
                                       </Badge>
                                       <span className="text-xs text-muted-foreground font-semibold">
                                         {quote.selectedPlan.premium_w_credit !== undefined && quote.selectedPlan.premium_w_credit !== null
