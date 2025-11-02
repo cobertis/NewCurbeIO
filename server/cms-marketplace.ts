@@ -318,7 +318,7 @@ async function fetchSinglePage(
   people.push({
     dob: quoteData.client.dateOfBirth, // DOB for accurate age calculation with effective_date
     aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
-    is_applicant: true, // CRITICAL: Client is requesting coverage
+    has_mec: false, // No Minimal Essential Coverage (client needs insurance)
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
     is_pregnant: quoteData.client.pregnant || false,
@@ -331,7 +331,7 @@ async function fetchSinglePage(
       people.push({
         dob: spouse.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
-        is_applicant: true, // CRITICAL: Spouse is requesting coverage
+        has_mec: false, // No Minimal Essential Coverage (spouse needs insurance)
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
         is_pregnant: spouse.pregnant || false,
@@ -346,7 +346,7 @@ async function fetchSinglePage(
       // CRITICAL LOGIC per user requirement:
       // isApplicant === true  → Dependent NEEDS insurance (Medicaid denied) → aptc_eligible: true, has_mec: false
       // isApplicant === false → Dependent HAS Medicaid/CHIP → aptc_eligible: false, has_mec: true
-      const needsInsurance = dependent.isApplicant === true;
+      const needsInsurance = dependent.isApplicant !== false; // Default to true if not specified
       
       people.push({
         dob: dependent.dateOfBirth, // DOB for accurate age calculation with effective_date
