@@ -10972,16 +10972,16 @@ export default function PoliciesPage() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {/* Enhanced Search Bar with Year Filters */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-base font-semibold">Policies</h3>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground">Effective year:</span>
-                      <div className="flex items-center gap-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold">Policies</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Effective year:</span>
+                      <div className="flex items-center gap-2">
                         {[2026, 2025, 2024].map((year) => (
-                          <div key={year} className="flex items-center gap-2">
+                          <div key={year} className="flex items-center gap-1.5">
                             <Checkbox
                               id={`year-${year}`}
                               checked={filters.effectiveYears.includes(year)}
@@ -10996,7 +10996,7 @@ export default function PoliciesPage() {
                             />
                             <label
                               htmlFor={`year-${year}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                             >
                               {year}
                             </label>
@@ -11007,35 +11007,37 @@ export default function PoliciesPage() {
                   </div>
                   
                   {/* Search and Filters Row */}
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     <div className="flex-1">
                       <Input
                         placeholder="Type here to search..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-9"
                         data-testid="input-search-quotes"
                       />
                     </div>
                     <Button 
                       variant="default"
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white h-9"
                       data-testid="button-search"
                     >
-                      <Search className="h-4 w-4 mr-2" />
+                      <Search className="h-4 w-4 mr-1.5" />
                       Search
                     </Button>
                     <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
                       <SheetTrigger asChild>
                         <Button 
                           variant="default"
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          size="sm"
+                          className="bg-purple-600 hover:bg-purple-700 text-white h-9"
                           data-testid="button-filters"
                         >
-                          <Filter className="h-4 w-4 mr-2" />
+                          <Filter className="h-4 w-4 mr-1.5" />
                           Filters
                           {hasActiveFilters && (
-                            <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-white text-purple-600">
+                            <Badge variant="secondary" className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center rounded-full bg-white text-purple-600 text-xs">
                               !
                             </Badge>
                           )}
@@ -11214,7 +11216,7 @@ export default function PoliciesPage() {
                 </div>
                 
                 {/* Search by Family Members Checkbox */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Checkbox
                     id="search-family-members"
                     checked={filters.searchFamilyMembers}
@@ -11223,12 +11225,12 @@ export default function PoliciesPage() {
                   />
                   <label
                     htmlFor="search-family-members"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                    className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-1.5"
                   >
                     Search by family members:
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="h-4 w-4 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground cursor-help">
+                        <div className="h-3.5 w-3.5 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground cursor-help">
                           ?
                         </div>
                       </TooltipTrigger>
@@ -11241,14 +11243,14 @@ export default function PoliciesPage() {
               </div>
 
                 {/* Show selector and pagination info */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between py-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">Show</span>
+                    <span className="text-xs">Show</span>
                     <Select value={itemsPerPage.toString()} onValueChange={(value) => {
                       setItemsPerPage(parseInt(value));
                       setCurrentPage(1);
                     }}>
-                      <SelectTrigger className="w-20" data-testid="select-items-per-page">
+                      <SelectTrigger className="w-16 h-8 text-xs" data-testid="select-items-per-page">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -11259,39 +11261,41 @@ export default function PoliciesPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     Showing {totalItems > 0 ? startIndex + 1 : 0} to {endIndex} of {totalItems} Entries
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
                       variant="outline"
-                      size="icon"
+                      size="sm"
+                      className="h-8 w-8 p-0"
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
                       data-testid="button-prev-page"
                     >
-                      <ChevronLeftIcon className="h-4 w-4" />
+                      <ChevronLeftIcon className="h-3.5 w-3.5" />
                     </Button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <Button
                         key={page}
                         variant={currentPage === page ? "default" : "outline"}
-                        size="icon"
+                        size="sm"
+                        className="h-8 w-8 p-0"
                         onClick={() => setCurrentPage(page)}
                         data-testid={`button-page-${page}`}
-                        className={currentPage === page ? "" : ""}
                       >
-                        {page}
+                        <span className="text-xs">{page}</span>
                       </Button>
                     ))}
                     <Button
                       variant="outline"
-                      size="icon"
+                      size="sm"
+                      className="h-8 w-8 p-0"
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
                       data-testid="button-next-page"
                     >
-                      <ChevronRightIcon className="h-4 w-4" />
+                      <ChevronRightIcon className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -11313,29 +11317,31 @@ export default function PoliciesPage() {
                   const renewalTargetYear = currentMonth >= 9 ? currentYear + 1 : currentYear;
                   
                   return (
-                    <div className="flex gap-2 py-4">
+                    <div className="flex gap-2 py-2">
                       <Button
                         variant={oepFilter === 'aca' ? 'default' : 'outline'}
+                        size="sm"
                         onClick={() => setOepFilter(oepFilter === 'aca' ? null : 'aca')}
-                        className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                        className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700 h-8' : 'h-8'}
                         data-testid="button-oep-filter-aca"
                       >
-                        OEP {renewalTargetYear} ACA/Obamacare
+                        <span className="text-xs">OEP {renewalTargetYear} ACA/Obamacare</span>
                         {oepStats && oepStats.aca > 0 && (
-                          <Badge variant="destructive" className="ml-2">
+                          <Badge variant="destructive" className="ml-1.5 h-4 px-1.5 text-xs">
                             {oepStats.aca}
                           </Badge>
                         )}
                       </Button>
                       <Button
                         variant={oepFilter === 'medicare' ? 'default' : 'outline'}
+                        size="sm"
                         onClick={() => setOepFilter(oepFilter === 'medicare' ? null : 'medicare')}
-                        className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                        className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700 h-8' : 'h-8'}
                         data-testid="button-oep-filter-medicare"
                       >
-                        OEP {renewalTargetYear} Medicare
+                        <span className="text-xs">OEP {renewalTargetYear} Medicare</span>
                         {oepStats && oepStats.medicare > 0 && (
-                          <Badge variant="destructive" className="ml-2">
+                          <Badge variant="destructive" className="ml-1.5 h-4 px-1.5 text-xs">
                             {oepStats.medicare}
                           </Badge>
                         )}
