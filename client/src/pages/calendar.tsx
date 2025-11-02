@@ -199,10 +199,16 @@ export default function Calendar() {
                     if (event.type === 'birthday') {
                       return (
                         <div
-                          key={`${event.quoteId}-${eventIndex}`}
+                          key={`${event.quoteId || event.policyId}-${eventIndex}`}
                           className="flex items-start gap-1 px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                          title={`${event.title} - ${event.role}\nClick to view quote`}
-                          onClick={() => setLocation(`/quotes/${event.quoteId}`)}
+                          title={`${event.title} - ${event.role}\nClick to view ${event.policyId ? 'policy' : 'quote'}`}
+                          onClick={() => {
+                            if (event.policyId) {
+                              setLocation(`/policies/${event.policyId}`);
+                            } else if (event.quoteId) {
+                              setLocation(`/quotes/${event.quoteId}`);
+                            }
+                          }}
                           data-testid={`event-birthday-${eventIndex}`}
                         >
                           <Cake className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -226,7 +232,7 @@ export default function Calendar() {
                         event.description && event.title !== event.description ? event.description : null,
                         event.dueTime ? `at ${event.dueTime}` : null,
                         `${event.priority || 'medium'} priority`,
-                        'Click to view quote'
+                        `Click to view ${event.policyId ? 'policy' : 'quote'}`
                       ].filter(Boolean).join('\n');
                       
                       return (
@@ -234,7 +240,13 @@ export default function Calendar() {
                           key={`${event.reminderId}-${eventIndex}`}
                           className={`flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-colors ${colorClass}`}
                           title={tooltipText}
-                          onClick={() => setLocation(`/quotes/${event.quoteId}`)}
+                          onClick={() => {
+                            if (event.policyId) {
+                              setLocation(`/policies/${event.policyId}`);
+                            } else if (event.quoteId) {
+                              setLocation(`/quotes/${event.quoteId}`);
+                            }
+                          }}
                           data-testid={`event-reminder-${eventIndex}`}
                         >
                           <Bell className="h-3 w-3 mt-0.5 flex-shrink-0" />
