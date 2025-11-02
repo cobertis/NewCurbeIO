@@ -13440,10 +13440,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to renew this policy" });
       }
       
-      // 2. VALIDACIÓN: Verificar que la póliza tiene selectedPlan
-      if (!originalPolicy.selectedPlan) {
+      // 2. VALIDACIÓN: Verificar que la póliza tiene al menos un plan
+      // Puede ser en selectedPlan (legacy) o en policy_plans (new system)
+      const policyPlans = await storage.getPolicyPlans(policyId);
+      const hasPlan = originalPolicy.selectedPlan || (policyPlans && policyPlans.length > 0);
+      
+      if (!hasPlan) {
         return res.status(400).json({ 
-          message: "Policy must have a selected plan before it can be renewed" 
+          message: "Policy must have at least one plan before it can be renewed" 
         });
       }
       
