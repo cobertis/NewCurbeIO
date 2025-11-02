@@ -11157,6 +11157,7 @@ export default function PoliciesPage() {
                         <TableHead>Client</TableHead>
                         <TableHead>Policy</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="w-20">Year</TableHead>
                         <TableHead>Assigned to</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -11332,6 +11333,11 @@ export default function PoliciesPage() {
                                   Payments: <span className={getPaymentStatusColor(quote.paymentStatus || '')}>{formatPaymentStatusDisplay(quote.paymentStatus)}</span>
                                 </div>
                               </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="secondary" className="text-sm font-semibold">
+                                {quote.effectiveDate ? quote.effectiveDate.split('-')[0] : 'N/A'}
+                              </Badge>
                             </TableCell>
                             <TableCell>
                               {assignedAgent ? (
