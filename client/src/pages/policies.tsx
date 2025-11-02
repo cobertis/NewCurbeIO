@@ -10891,7 +10891,7 @@ export default function PoliciesPage() {
   const isLoadingPage = isLoading || isLoadingStats;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full overflow-y-auto">
       {!showWizard ? (
         <>
           {/* Show loading state while either stats or policies are loading */}
@@ -10903,10 +10903,9 @@ export default function PoliciesPage() {
               </div>
             </div>
           ) : (
-            <>
-              {/* Statistics Cards - Fixed at top */}
+            <div className="px-6 py-4 space-y-3">
+              {/* Statistics Cards - Scrollable */}
               {stats && (
-            <div className="px-6 pt-4 pb-3 flex-shrink-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* Total Policies Card */}
                 <Card>
@@ -10948,11 +10947,9 @@ export default function PoliciesPage() {
                   </CardContent>
                 </Card>
               </div>
-            </div>
           )}
 
-          {/* Policies Table - Scrollable */}
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
+          {/* Policies Table - Fixed Header */}
           <Card>
             <CardContent className="pt-6">
             {isLoading ? (
@@ -11346,26 +11343,27 @@ export default function PoliciesPage() {
                   );
                 })()}
 
-                {/* Table */}
+                {/* Table with Sticky Header */}
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No quotes match your search criteria
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
-                          <Checkbox data-testid="checkbox-select-all" />
-                        </TableHead>
-                        <TableHead className="w-16">Agent</TableHead>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Policy</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-20">Year</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
+                  <div className="relative">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                        <TableRow>
+                          <TableHead className="w-12 bg-background">
+                            <Checkbox data-testid="checkbox-select-all" />
+                          </TableHead>
+                          <TableHead className="w-16 bg-background">Agent</TableHead>
+                          <TableHead className="bg-background">Client</TableHead>
+                          <TableHead className="bg-background">Policy</TableHead>
+                          <TableHead className="bg-background">Status</TableHead>
+                          <TableHead className="w-20 bg-background">Year</TableHead>
+                          <TableHead className="text-right bg-background">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
                     <TableBody>
                       {paginatedQuotes.map((quote) => {
                         const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
@@ -11626,13 +11624,13 @@ export default function PoliciesPage() {
                       })}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </div>
             )}
           </CardContent>
         </Card>
           </div>
-            </>
           )}
         </>
       ) : (
