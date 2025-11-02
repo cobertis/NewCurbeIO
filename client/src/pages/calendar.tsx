@@ -226,7 +226,8 @@ export default function Calendar() {
                       const colorClass = priorityColors[event.priority as keyof typeof priorityColors] || priorityColors.medium;
                       
                       // Show title or description, not just reminder type
-                      const displayText = event.title || event.description || event.reminderType?.replace(/_/g, ' ') || 'Reminder';
+                      const baseTitle = event.title || event.description || event.reminderType?.replace(/_/g, ' ') || 'Reminder';
+                      const displayText = event.clientName ? `${baseTitle} - ${event.clientName}` : baseTitle;
                       const tooltipText = [
                         displayText,
                         event.description && event.title !== event.description ? event.description : null,

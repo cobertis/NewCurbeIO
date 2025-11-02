@@ -11420,11 +11420,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const quoteReminders = await storage.getQuoteRemindersByCompany(companyId);
       for (const reminder of quoteReminders) {
         if (reminder.status === 'pending' || reminder.status === 'snoozed') {
+          // Get quote to fetch client name
+          const quote = await storage.getQuote(reminder.quoteId);
+          const clientName = quote ? `${quote.clientFirstName} ${quote.clientLastName}` : '';
+          
           events.push({
             type: 'reminder',
             date: reminder.dueDate,
             title: reminder.title || reminder.reminderType.replace('_', ' '),
             description: reminder.description || '',
+            clientName,
             quoteId: reminder.quoteId,
             reminderId: reminder.id,
             reminderType: reminder.reminderType,
@@ -11439,11 +11444,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const policyReminders = await storage.getPolicyRemindersByCompany(companyId);
       for (const reminder of policyReminders) {
         if (reminder.status === 'pending' || reminder.status === 'snoozed') {
+          // Get policy to fetch client name
+          const policy = await storage.getPolicy(reminder.policyId);
+          const clientName = policy ? `${policy.clientFirstName} ${policy.clientLastName}` : '';
+          
           events.push({
             type: 'reminder',
             date: reminder.dueDate,
             title: reminder.title || reminder.reminderType.replace('_', ' '),
             description: reminder.description || '',
+            clientName,
             policyId: reminder.policyId,
             reminderId: reminder.id,
             reminderType: reminder.reminderType,
