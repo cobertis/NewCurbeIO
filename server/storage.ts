@@ -122,7 +122,9 @@ import {
   type PolicyConsentDocument,
   type InsertPolicyConsentDocument,
   type PolicyConsentSignatureEvent,
-  type InsertPolicyConsentEvent
+  type InsertPolicyConsentEvent,
+  type PolicyPlan,
+  type InsertPolicyPlan
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -173,6 +175,7 @@ import {
   consentDocuments,
   consentSignatureEvents,
   policies,
+  policyPlans,
   policyMembers,
   policyMemberIncome,
   policyMemberImmigration,
@@ -692,6 +695,13 @@ export interface IStorage {
   // Policy Consent Signature Events
   createPolicyConsentEvent(consentDocumentId: string, eventType: string, payload?: Record<string, any>, actorId?: string): Promise<PolicyConsentSignatureEvent>;
   getPolicyConsentEvents(consentDocumentId: string): Promise<PolicyConsentSignatureEvent[]>;
+  
+  // Policy Plans (Multi-plan support)
+  listPolicyPlans(policyId: string, companyId: string): Promise<PolicyPlan[]>;
+  addPolicyPlan(data: InsertPolicyPlan): Promise<PolicyPlan>;
+  updatePolicyPlan(planId: string, companyId: string, data: Partial<InsertPolicyPlan>): Promise<PolicyPlan | null>;
+  removePolicyPlan(planId: string, companyId: string): Promise<boolean>;
+  setPrimaryPolicyPlan(planId: string, policyId: string, companyId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -5072,6 +5082,7 @@ export class DbStorage implements IStorage {
       documents: PolicyMemberDocument[];
     }>;
     paymentMethods: PolicyPaymentMethod[];
+    plans: PolicyPlan[];
     totalHouseholdIncome: number;
   }> {
     // Get policy with creator and agent info
@@ -5103,6 +5114,9 @@ export class DbStorage implements IStorage {
     
     // Get payment methods
     const paymentMethods = await this.getPolicyPaymentMethods(policyId, companyId);
+    
+    // Get policy plans
+    const plans = await this.listPolicyPlans(policyId, companyId);
     
     // Calculate total household income (IDENTICAL to getQuoteDetail)
     let totalHouseholdIncome = 0;
@@ -5153,6 +5167,7 @@ export class DbStorage implements IStorage {
       policy,
       members: membersWithDetails,
       paymentMethods,
+      plans,
       totalHouseholdIncome,
     };
   }
@@ -5492,6 +5507,81 @@ export class DbStorage implements IStorage {
       .orderBy(desc(policyConsentSignatureEvents.occurredAt));
     
     return result;
+  }
+  
+  // ==================== POLICY PLANS (Multi-plan support) ====================
+  
+  async listPolicyPlans(policyId: string, companyId: string): Promise<PolicyPlan[]> {
+    const result = await db
+      .select()
+      .from(policyPlans)
+      .where(and(
+        eq(policyPlans.policyId, policyId),
+        eq(policyPlans.companyId, companyId)
+      ))
+      .orderBy(desc(policyPlans.isPrimary), policyPlans.displayOrder, policyPlans.createdAt);
+    
+    return result;
+  }
+  
+  async addPolicyPlan(data: InsertPolicyPlan): Promise<PolicyPlan> {
+    const result = await db
+      .insert(policyPlans)
+      .values({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async updatePolicyPlan(planId: string, companyId: string, data: Partial<InsertPolicyPlan>): Promise<PolicyPlan | null> {
+    const result = await db
+      .update(policyPlans)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(policyPlans.id, planId),
+        eq(policyPlans.companyId, companyId)
+      ))
+      .returning();
+    
+    return result[0] || null;
+  }
+  
+  async removePolicyPlan(planId: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyPlans)
+      .where(and(
+        eq(policyPlans.id, planId),
+        eq(policyPlans.companyId, companyId)
+      ))
+      .returning();
+    
+    return result.length > 0;
+  }
+  
+  async setPrimaryPolicyPlan(planId: string, policyId: string, companyId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(policyPlans)
+        .set({ isPrimary: false, updatedAt: new Date() })
+        .where(and(
+          eq(policyPlans.policyId, policyId),
+          eq(policyPlans.companyId, companyId)
+        ));
+      
+      await tx
+        .update(policyPlans)
+        .set({ isPrimary: true, updatedAt: new Date() })
+        .where(and(
+          eq(policyPlans.id, planId),
+          eq(policyPlans.companyId, companyId)
+        ));
+    });
   }
 }
 

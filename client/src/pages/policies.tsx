@@ -6850,18 +6850,18 @@ export default function PoliciesPage() {
 
             <div className="space-y-6">
 
-              {/* Selected Plan Card - Always visible */}
+              {/* Policy Plans - Support multiple plans */}
               {(() => {
-                const plan = viewingQuote.selectedPlan;
+                const plans = quoteDetail?.plans || [];
                 
-                // If no plan selected, show empty state
-                if (!plan) {
+                // If no plans, show empty state
+                if (plans.length === 0) {
                   return (
                     <Card className="overflow-hidden">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Shield className="h-5 w-5 text-primary" />
-                          Selected Plan
+                          Insurance Plans
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="py-12">
@@ -6872,7 +6872,7 @@ export default function PoliciesPage() {
                             </div>
                           </div>
                           <div>
-                            <p className="text-lg font-medium mb-1">No Plan Selected</p>
+                            <p className="text-lg font-medium mb-1">No Plans Added</p>
                             <p className="text-sm text-muted-foreground mb-4">
                               Search the marketplace or add a plan manually
                             </p>
@@ -6904,6 +6904,13 @@ export default function PoliciesPage() {
                     </Card>
                   );
                 }
+                
+                // Display all plans
+                return (
+                  <>
+                    {plans.map((policyPlan: any, index: number) => {
+                      const plan = policyPlan.planData;
+                      if (!plan) return null;
                 
                 // Plan exists, show full details
                 
@@ -7257,11 +7264,45 @@ export default function PoliciesPage() {
 
                     {/* Footer with Actions */}
                     <div className="px-6 pb-4 pt-2 border-t flex items-center justify-between gap-4">
-                      <div className="text-xs text-muted-foreground">
-                        Selected Plan
+                      <div className="flex items-center gap-2">
+                        {policyPlan.isPrimary && (
+                          <Badge variant="default" className="text-xs">
+                            Primary Plan
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {policyPlan.source === 'marketplace' ? 'Marketplace Plan' : 'Manual Entry'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {plan.manual ? (
+                      <div className="flex items-center gap-2">
+                        {!policyPlan.isPrimary && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans/${policyPlan.id}/set-primary`, {});
+                                queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                                toast({
+                                  title: "Success",
+                                  description: "Primary plan has been updated.",
+                                  duration: 3000,
+                                });
+                              } catch (error: any) {
+                                toast({
+                                  title: "Error",
+                                  description: error.message || "Failed to set primary plan.",
+                                  variant: "destructive",
+                                  duration: 3000,
+                                });
+                              }
+                            }}
+                            data-testid={`button-set-primary-${policyPlan.id}`}
+                          >
+                            Set as Primary
+                          </Button>
+                        )}
+                        {plan.manual || policyPlan.source === 'manual' ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -7320,17 +7361,38 @@ export default function PoliciesPage() {
                           </Button>
                         )}
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           size="sm"
-                          onClick={() => setRemovePlanDialogOpen(true)}
-                          data-testid="button-remove-plan"
+                          onClick={async () => {
+                            if (!confirm('Are you sure you want to remove this plan?')) return;
+                            try {
+                              await apiRequest("DELETE", `/api/policies/${viewingQuote.id}/plans/${policyPlan.id}`);
+                              queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                              toast({
+                                title: "Success",
+                                description: "Plan has been removed.",
+                                duration: 3000,
+                              });
+                            } catch (error: any) {
+                              toast({
+                                title: "Error",
+                                description: error.message || "Failed to remove plan.",
+                                variant: "destructive",
+                                duration: 3000,
+                              });
+                            }
+                          }}
+                          data-testid={`button-remove-plan-${policyPlan.id}`}
                         >
                           <X className="h-4 w-4 mr-2" />
-                          Remove Plan
+                          Remove
                         </Button>
                       </div>
                     </div>
                   </Card>
+                    );
+                  })}
+                  </>
                 );
               })()}
 
@@ -10509,18 +10571,28 @@ export default function PoliciesPage() {
                       manual: true
                     };
 
-                    await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
-                      selectedPlan: planObject,
-                      memberId: manualPlanData.memberId || null,
-                      npnMarketplace: manualPlanData.npnMarketplace || null,
-                      saleType: manualPlanData.saleType || null,
-                      effectiveDate: manualPlanData.effectiveDate,
-                      marketplaceId: manualPlanData.marketplaceId || null,
-                      ffmMarketplace: manualPlanData.ffmMarketplace || null,
-                      specialEnrollmentReason: manualPlanData.specialEnrollmentReason || null,
-                      cancellationDate: manualPlanData.cancellationDate || null,
-                      specialEnrollmentDate: manualPlanData.specialEnrollmentDate || null,
+                    // Add plan using the new multi-plan endpoint
+                    await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans`, {
+                      planData: planObject,
+                      source: 'manual'
                     });
+                    
+                    // Update policy metadata separately if needed
+                    if (manualPlanData.memberId || manualPlanData.npnMarketplace || manualPlanData.saleType || 
+                        manualPlanData.effectiveDate || manualPlanData.marketplaceId || manualPlanData.ffmMarketplace ||
+                        manualPlanData.specialEnrollmentReason || manualPlanData.cancellationDate || manualPlanData.specialEnrollmentDate) {
+                      await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
+                        memberId: manualPlanData.memberId || null,
+                        npnMarketplace: manualPlanData.npnMarketplace || null,
+                        saleType: manualPlanData.saleType || null,
+                        effectiveDate: manualPlanData.effectiveDate,
+                        marketplaceId: manualPlanData.marketplaceId || null,
+                        ffmMarketplace: manualPlanData.ffmMarketplace || null,
+                        specialEnrollmentReason: manualPlanData.specialEnrollmentReason || null,
+                        cancellationDate: manualPlanData.cancellationDate || null,
+                        specialEnrollmentDate: manualPlanData.specialEnrollmentDate || null,
+                      });
+                    }
                     
                     // Invalidate all policy-related queries to refresh the UI
                     queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });

@@ -148,16 +148,27 @@ export default function MarketplacePlansPage() {
   // Mutation for selecting a plan
   const selectPlanMutation = useMutation({
     mutationFn: async (plan: any) => {
-      const response = await apiRequest('POST', `/api/${basePath}/${quoteId}/select-plan`, { plan });
-      return response;
+      if (isPolicy) {
+        // Use multi-plan endpoint for policies - ADD plan, don't replace
+        const response = await apiRequest('POST', `/api/policies/${quoteId}/plans`, { 
+          planData: plan,
+          source: 'marketplace'
+        });
+        return response;
+      } else {
+        // Keep old behavior for quotes
+        const response = await apiRequest('POST', `/api/quotes/${quoteId}/select-plan`, { plan });
+        return response;
+      }
     },
     onSuccess: () => {
       toast({
-        title: "Plan Selected",
+        title: "Plan Added",
         description: `The plan has been successfully added to your ${isPolicy ? 'policy' : 'quote'}.`,
         duration: 3000,
       });
       // Invalidate data to refresh
+      queryClient.invalidateQueries({ queryKey: [`/api/${basePath}`, quoteId, 'detail'] });
       queryClient.invalidateQueries({ queryKey: [`/api/${basePath}/${quoteId}/detail`] });
       // Navigate back to detail page
       setLocation(`/${basePath}/${quoteId}`);
@@ -165,7 +176,7 @@ export default function MarketplacePlansPage() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to select plan. Please try again.",
+        description: error.message || "Failed to add plan. Please try again.",
         variant: "destructive",
         duration: 3000,
       });

@@ -13793,6 +13793,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // PATCH /api/policies/:id/plan - Update selected plan for a policy (used after OEP renewal)
+  // DEPRECATED: Use POST /api/policies/:id/plans instead for multi-plan support
   app.patch("/api/policies/:id/plan", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id } = req.params;
@@ -13841,6 +13842,217 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating policy plan:", error);
       res.status(500).json({ 
         message: error.message || "Failed to update policy plan",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+
+  // ==================== POLICY PLANS (Multi-plan support) ====================
+  
+  // GET /api/policies/:id/plans - List all plans for a policy
+  app.get("/api/policies/:id/plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to view this policy" });
+      }
+      
+      const plans = await storage.listPolicyPlans(id, policy.companyId);
+      
+      res.json({ plans });
+    } catch (error: any) {
+      console.error("Error listing policy plans:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to list policy plans",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+  
+  // POST /api/policies/:id/plans - Add a new plan to a policy (APPEND, don't replace)
+  app.post("/api/policies/:id/plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { planData, source, isPrimary } = req.body;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to update this policy" });
+      }
+      
+      if (!planData) {
+        return res.status(400).json({ message: "planData is required" });
+      }
+      
+      const existingPlans = await storage.listPolicyPlans(id, policy.companyId);
+      const displayOrder = existingPlans.length;
+      
+      const newPlan = await storage.addPolicyPlan({
+        policyId: id,
+        companyId: policy.companyId,
+        planData,
+        source: source || "manual",
+        isPrimary: isPrimary === true || existingPlans.length === 0,
+        displayOrder,
+      });
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "policy_plan",
+        entityId: newPlan.id,
+        companyId: policy.companyId,
+        metadata: {
+          createdBy: currentUser.email,
+          policyId: id,
+          source: newPlan.source,
+        },
+      });
+      
+      res.json({ plan: newPlan });
+    } catch (error: any) {
+      console.error("Error adding policy plan:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to add policy plan",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+  
+  // PATCH /api/policies/:id/plans/:planId - Update a specific plan
+  app.patch("/api/policies/:id/plans/:planId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id, planId } = req.params;
+    const updateData = req.body;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to update this policy" });
+      }
+      
+      const updatedPlan = await storage.updatePolicyPlan(planId, policy.companyId, updateData);
+      
+      if (!updatedPlan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "policy_plan",
+        entityId: planId,
+        companyId: policy.companyId,
+        metadata: {
+          updatedBy: currentUser.email,
+          policyId: id,
+        },
+      });
+      
+      res.json({ plan: updatedPlan });
+    } catch (error: any) {
+      console.error("Error updating policy plan:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to update policy plan",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+  
+  // DELETE /api/policies/:id/plans/:planId - Remove a specific plan
+  app.delete("/api/policies/:id/plans/:planId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id, planId } = req.params;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to update this policy" });
+      }
+      
+      const success = await storage.removePolicyPlan(planId, policy.companyId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "policy_plan",
+        entityId: planId,
+        companyId: policy.companyId,
+        metadata: {
+          deletedBy: currentUser.email,
+          policyId: id,
+        },
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error removing policy plan:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to remove policy plan",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+  
+  // POST /api/policies/:id/plans/:planId/set-primary - Set a plan as primary
+  app.post("/api/policies/:id/plans/:planId/set-primary", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id, planId } = req.params;
+    
+    try {
+      const policy = await storage.getPolicy(id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to update this policy" });
+      }
+      
+      await storage.setPrimaryPolicyPlan(planId, id, policy.companyId);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "policy_plan",
+        entityId: planId,
+        companyId: policy.companyId,
+        metadata: {
+          updatedBy: currentUser.email,
+          policyId: id,
+          action: "set_primary",
+        },
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error setting primary plan:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to set primary plan",
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
