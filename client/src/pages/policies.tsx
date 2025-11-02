@@ -7310,6 +7310,7 @@ export default function PoliciesPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
+                            console.log('[EDIT PLAN] Setting editingPlanId to:', policyPlan.id);
                             setEditingPlanId(policyPlan.id);
                             setManualPlanData({
                               productType: plan.type || '',
@@ -10547,6 +10548,9 @@ export default function PoliciesPage() {
               </Button>
               <Button
                 onClick={async () => {
+                  console.log('[EDIT PLAN] editingPlanId:', editingPlanId);
+                  console.log('[EDIT PLAN] manualPlanData:', manualPlanData);
+                  
                   if (!manualPlanData.productType || !manualPlanData.carrier || !manualPlanData.effectiveDate) {
                     toast({
                       title: "Validation Error",
@@ -10594,12 +10598,14 @@ export default function PoliciesPage() {
                     // Check if we're editing an existing plan or creating a new one
                     if (editingPlanId) {
                       // Update existing plan
+                      console.log('[EDIT PLAN] Updating plan:', editingPlanId);
                       await apiRequest("PATCH", `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
                         planData: planObject,
                         source: 'manual'
                       });
                     } else {
                       // Add new plan
+                      console.log('[EDIT PLAN] Creating new plan');
                       await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans`, {
                         planData: planObject,
                         source: 'manual'
