@@ -275,7 +275,9 @@ async function fetchSinglePage(
   }
 
   // Build household members array following CMS API format from documentation
-  // CRITICAL: Use DOB instead of age for accurate age calculation based on effective_date
+  // CRITICAL: CMS API requires BOTH age AND dob for accurate APTC/CSR calculations
+  // Per documentation: "Either an age or dob value must be provided"
+  // Without age, API cannot calculate household_aptc, household_csr, household_slcsp_premium
   const people = [];
   
   // Check if there's a married couple (spouse exists)
@@ -283,6 +285,7 @@ async function fetchSinglePage(
   
   // Add client - Always the "Self" relationship
   people.push({
+    age: calculateAge(quoteData.client.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
     dob: quoteData.client.dateOfBirth, // DOB for accurate age calculation with effective_date
     aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
     has_mec: false, // No Minimal Essential Coverage (client needs insurance)
@@ -296,6 +299,7 @@ async function fetchSinglePage(
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       people.push({
+        age: calculateAge(spouse.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
         dob: spouse.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
         has_mec: false, // No Minimal Essential Coverage (spouse needs insurance)
@@ -316,6 +320,7 @@ async function fetchSinglePage(
       const needsInsurance = dependent.isApplicant !== false; // Default to true if not specified
       
       people.push({
+        age: calculateAge(dependent.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
         dob: dependent.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: needsInsurance, // Per CMS docs: only eligible if they need insurance (not on Medicaid/CHIP)
         has_mec: !needsInsurance, // Minimal Essential Coverage (Medicaid/CHIP) if NOT applicant
