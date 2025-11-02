@@ -10819,7 +10819,7 @@ export default function PoliciesPage() {
 
           {/* Policies Table */}
           <Card>
-            <CardContent className="pt-6 overflow-auto max-h-[800px]">
+            <CardContent className="pt-6">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading policies...</div>
             ) : allQuotes.length === 0 ? (
