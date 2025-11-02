@@ -352,7 +352,7 @@ async function fetchSinglePage(
         has_mec: !needsInsurance, // Minimal Essential Coverage (Medicaid/CHIP) if NOT applicant
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
-        is_pregnant: false,
+        is_pregnant: dependent.pregnant || false, // CRITICAL: Use actual pregnancy status from database
         relationship: "Child", // CRITICAL: Required for proper household size calculation
       });
     });
