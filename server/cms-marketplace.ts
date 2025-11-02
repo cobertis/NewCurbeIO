@@ -496,6 +496,17 @@ async function fetchSinglePage(
       console.log(`  - Premium w/ Credit: ${firstPlan.premium_w_credit}`);
       console.log(`  - Has premium_w_credit field: ${firstPlan.premium_w_credit !== undefined}`);
       console.log(`  - Full plan object keys:`, Object.keys(firstPlan).join(', '));
+      
+      // DEBUG: Look for Oscar plan specifically
+      const oscarPlan = data.plans.find((p: any) => p.id === '40572FL0200025');
+      if (oscarPlan) {
+        console.log('[CMS_MARKETPLACE] 🎯 FOUND OSCAR PLAN 40572FL0200025:');
+        console.log(`  - Issuer: ${oscarPlan.issuer?.name}`);
+        console.log(`  - Metal Level: ${oscarPlan.metal_level}`);
+        console.log(`  - Premium (unsubsidized): ${oscarPlan.premium}`);
+        console.log(`  - Premium w/ Credit (subsidized): ${oscarPlan.premium_w_credit}`);
+        console.log(`  - APTC Amount: ${oscarPlan.premium - (oscarPlan.premium_w_credit || 0)}`);
+      }
     }
     
     // API automatically calculates premium_w_credit based on household data
