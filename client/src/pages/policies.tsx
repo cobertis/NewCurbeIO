@@ -10965,7 +10965,9 @@ export default function PoliciesPage() {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col flex-1 min-h-0 space-y-2">
+              <div className="flex flex-col flex-1 min-h-0">
+                {/* FIXED HEADER SECTION - Everything before the table body */}
+                <div className="flex-shrink-0 space-y-2">
                 {/* Enhanced Search Bar with Year Filters */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
@@ -11233,7 +11235,8 @@ export default function PoliciesPage() {
                     </Tooltip>
                   </label>
                 </div>
-              </div>
+                </div>
+                {/* END Enhanced Search Bar with Year Filters */}
 
                 {/* Show selector and pagination info */}
                 <div className="flex items-center justify-between py-1">
@@ -11343,34 +11346,37 @@ export default function PoliciesPage() {
                   );
                 })()}
 
-                {/* Table with Fixed Header and Scrollable Body */}
+                {/* Table Header - Fixed */}
+                {filteredQuotes.length > 0 && (
+                  <div className="flex-shrink-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox data-testid="checkbox-select-all" />
+                          </TableHead>
+                          <TableHead className="w-16">Agent</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Policy</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="w-20">Year</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                    </Table>
+                  </div>
+                )}
+                </div>
+                {/* END FIXED HEADER SECTION */}
+
+                {/* Table Body - Scrollable OR Empty State */}
+                <div className="flex-1 overflow-y-auto">
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No quotes match your search criteria
                   </div>
                 ) : (
-                  <div className="flex flex-col flex-1 min-h-0">
-                    {/* Table Header - Fixed */}
-                    <div className="flex-shrink-0">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-12">
-                              <Checkbox data-testid="checkbox-select-all" />
-                            </TableHead>
-                            <TableHead className="w-16">Agent</TableHead>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Policy</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-20">Year</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                      </Table>
-                    </div>
-                    {/* Table Body - Scrollable */}
-                    <div className="flex-1 overflow-y-auto">
-                      <Table>
+                    <Table>
                     <TableBody>
                       {paginatedQuotes.map((quote) => {
                         const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
@@ -11630,10 +11636,9 @@ export default function PoliciesPage() {
                         );
                       })}
                     </TableBody>
-                      </Table>
-                    </div>
-                  </div>
+                    </Table>
                 )}
+                </div>
               </div>
             )}
           </CardContent>
