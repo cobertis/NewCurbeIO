@@ -7305,54 +7305,53 @@ export default function PoliciesPage() {
                             Set as Primary
                           </Button>
                         )}
-                        {plan.manual || policyPlan.source === 'manual' ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setManualPlanData({
-                                productType: plan.type || '',
-                                carrier: plan.issuer?.name || '',
-                                planName: plan.name || '',
-                                cmsPlanId: plan.id || '',
-                                metal: plan.metal_level || '',
-                                networkType: plan.network_type || '',
-                                rating: plan.quality_rating?.global_rating?.toString() || '',
-                                premium: plan.premium?.toString() || '',
-                                taxCredit: plan.premium_w_credit !== null && plan.premium !== undefined 
-                                  ? (plan.premium - (plan.premium_w_credit || 0)).toString() 
-                                  : '',
-                                deductible: mainDeductible?.amount?.toString() || '',
-                                outOfPocketMax: outOfPocketMax?.toString() || '',
-                                primaryCare: plan.copay_primary || '',
-                                specialist: plan.copay_specialist || '',
-                                urgentCare: plan.copay_urgent_care || '',
-                                emergency: plan.copay_emergency || '',
-                                mentalHealth: plan.copay_mental_health || '',
-                                genericDrugs: plan.copay_generic_drugs || '',
-                                dentalChild: plan.has_dental_child_coverage || false,
-                                dentalAdult: plan.has_dental_adult_coverage || false,
-                                hsaEligible: plan.hsa_eligible || false,
-                                simpleChoice: plan.simple_choice || false,
-                                effectiveDate: policyInfo.effectiveDate || '',
-                                cancellationDate: policyInfo.cancellationDate || '',
-                                specialEnrollmentDate: policyInfo.specialEnrollmentDate || '',
-                                specialEnrollmentReason: policyInfo.specialEnrollmentReason || '',
-                                saleType: policyInfo.saleType || '',
-                                ffmMarketplace: policyInfo.ffmMarketplace || '',
-                                npnMarketplace: policyInfo.npnMarketplace || '',
-                                marketplaceId: policyInfo.marketplaceId || '',
-                                memberId: policyInfo.memberId || '',
-                                policyTotalCost: '',
-                              });
-                              setManualPlanDialogOpen(true);
-                            }}
-                            data-testid="button-edit-plan"
-                          >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </Button>
-                        ) : viewingQuote.productType === 'aca' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setManualPlanData({
+                              productType: plan.type || '',
+                              carrier: plan.issuer?.name || '',
+                              planName: plan.name || '',
+                              cmsPlanId: plan.id || '',
+                              metal: plan.metal_level || '',
+                              networkType: plan.network_type || '',
+                              rating: plan.quality_rating?.global_rating?.toString() || '',
+                              premium: plan.premium?.toString() || '',
+                              taxCredit: plan.premium_w_credit !== null && plan.premium !== undefined 
+                                ? (plan.premium - (plan.premium_w_credit || 0)).toString() 
+                                : '',
+                              deductible: mainDeductible?.amount?.toString() || '',
+                              outOfPocketMax: outOfPocketMax?.toString() || '',
+                              primaryCare: plan.copay_primary || '',
+                              specialist: plan.copay_specialist || '',
+                              urgentCare: plan.copay_urgent_care || '',
+                              emergency: plan.copay_emergency || '',
+                              mentalHealth: plan.copay_mental_health || '',
+                              genericDrugs: plan.copay_generic_drugs || '',
+                              dentalChild: plan.has_dental_child_coverage || false,
+                              dentalAdult: plan.has_dental_adult_coverage || false,
+                              hsaEligible: plan.hsa_eligible || false,
+                              simpleChoice: plan.simple_choice || false,
+                              effectiveDate: policyInfo.effectiveDate || '',
+                              cancellationDate: policyInfo.cancellationDate || '',
+                              specialEnrollmentDate: policyInfo.specialEnrollmentDate || '',
+                              specialEnrollmentReason: policyInfo.specialEnrollmentReason || '',
+                              saleType: policyInfo.saleType || '',
+                              ffmMarketplace: policyInfo.ffmMarketplace || '',
+                              npnMarketplace: policyInfo.npnMarketplace || '',
+                              marketplaceId: policyInfo.marketplaceId || '',
+                              memberId: policyInfo.memberId || '',
+                              policyTotalCost: '',
+                            });
+                            setManualPlanDialogOpen(true);
+                          }}
+                          data-testid="button-edit-plan"
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        {policyPlan.source === 'marketplace' && viewingQuote.productType === 'aca' && (
                           <Button
                             variant="outline"
                             size="sm"
