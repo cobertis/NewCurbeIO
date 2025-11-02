@@ -10891,9 +10891,9 @@ export default function PoliciesPage() {
   const isLoadingPage = isLoading || isLoadingStats;
 
   return (
-    <div className="h-full p-6 flex flex-col overflow-y-auto">
+    <div className="h-full flex flex-col overflow-hidden">
       {!showWizard ? (
-        <div className="space-y-6">
+        <>
           {/* Show loading state while either stats or policies are loading */}
           {isLoadingPage ? (
             <div className="flex items-center justify-center h-96">
@@ -10904,56 +10904,59 @@ export default function PoliciesPage() {
             </div>
           ) : (
             <>
-          {/* Statistics Cards */}
-          {stats && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total Policies Card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Policies</CardTitle>
-                  <CardDescription className="text-xs">Number of policies</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
-                </CardContent>
-              </Card>
+              {/* Statistics Cards - Fixed at top */}
+              {stats && (
+            <div className="p-6 pb-4 flex-shrink-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Total Policies Card */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Policies</CardTitle>
+                    <CardDescription className="text-xs">Number of policies</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
+                  </CardContent>
+                </Card>
 
-              {/* Total Applicants Card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Applicants</CardTitle>
-                  <CardDescription className="text-xs">Number of applicants</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
-                </CardContent>
-              </Card>
+                {/* Total Applicants Card */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Applicants</CardTitle>
+                    <CardDescription className="text-xs">Number of applicants</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
+                  </CardContent>
+                </Card>
 
-              {/* Canceled Policies Card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Canceled policies</CardTitle>
-                  <CardDescription className="text-xs">Canceled policies</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
-                </CardContent>
-              </Card>
+                {/* Canceled Policies Card */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Canceled policies</CardTitle>
+                    <CardDescription className="text-xs">Canceled policies</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
+                  </CardContent>
+                </Card>
 
-              {/* Canceled Applicants Card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Canceled applicants</CardTitle>
-                  <CardDescription className="text-xs">Canceled applicants</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
-                </CardContent>
-              </Card>
+                {/* Canceled Applicants Card */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Canceled applicants</CardTitle>
+                    <CardDescription className="text-xs">Canceled applicants</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
 
-          {/* Policies Table */}
+          {/* Policies Table - Scrollable */}
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
           <Card>
             <CardContent className="pt-6">
             {isLoading ? (
@@ -11626,9 +11629,10 @@ export default function PoliciesPage() {
             )}
           </CardContent>
         </Card>
+          </div>
             </>
           )}
-        </div>
+        </>
       ) : (
         <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader>
