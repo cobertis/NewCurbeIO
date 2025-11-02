@@ -6928,7 +6928,11 @@ export default function PoliciesPage() {
                 const formatCurrency = (value: any) => {
                   if (value === null || value === undefined) return 'N/A';
                   const num = typeof value === 'string' ? parseFloat(value) : value;
-                  return `$${Math.round(num)}`;
+                  // Round to $0 if negative, otherwise show real price
+                  if (num < 0) return '$0';
+                  if (num === 0) return '$0';
+                  // Show with cents only if there are cents, otherwise show without decimals
+                  return num % 1 === 0 ? `$${num.toFixed(0)}` : `$${num.toFixed(2)}`;
                 };
 
                 const primaryCareCost = getBenefitCost('Primary Care') || (plan.copay_primary ? formatCurrency(plan.copay_primary) : null);
@@ -7854,7 +7858,11 @@ export default function PoliciesPage() {
                           const formatCurrency = (value: any) => {
                             if (value === null || value === undefined) return 'N/A';
                             const num = typeof value === 'string' ? parseFloat(value) : value;
-                            return `$${Math.round(num)}`;
+                            // Round to $0 if negative, otherwise show real price
+                            if (num < 0) return '$0';
+                            if (num === 0) return '$0';
+                            // Show with cents only if there are cents, otherwise show without decimals
+                            return num % 1 === 0 ? `$${num.toFixed(0)}` : `$${num.toFixed(2)}`;
                           };
                           
                           return (
