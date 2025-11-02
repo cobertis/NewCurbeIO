@@ -10966,59 +10966,52 @@ export default function PoliciesPage() {
               </div>
             ) : (
               <div className="flex flex-col flex-1 min-h-0">
-                {/* FIXED HEADER SECTION - Everything before the table body */}
-                <div className="sticky top-0 z-40 bg-background space-y-2 pb-2">
-                {/* Enhanced Search Bar with Year Filters */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold">Policies</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Effective year:</span>
-                      <div className="flex items-center gap-2">
-                        {[2026, 2025, 2024].map((year) => (
-                          <div key={year} className="flex items-center gap-1.5">
-                            <Checkbox
-                              id={`year-${year}`}
-                              checked={filters.effectiveYears.includes(year)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setFilters(prev => ({ ...prev, effectiveYears: [...prev.effectiveYears, year] }));
-                                } else {
-                                  setFilters(prev => ({ ...prev, effectiveYears: prev.effectiveYears.filter(y => y !== year) }));
-                                }
-                              }}
-                              data-testid={`checkbox-year-${year}`}
-                            />
-                            <label
-                              htmlFor={`year-${year}`}
-                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                              {year}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
+                {/* FIXED HEADER SECTION - Compact 2-line layout */}
+                <div className="sticky top-0 z-40 bg-background space-y-1 pb-1">
+                  {/* LINE 1: Title + Year filters + Search + Buttons + Family checkbox */}
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold whitespace-nowrap">Policies</h3>
+                    <div className="flex items-center gap-1.5">
+                      {[2026, 2025, 2024].map((year) => (
+                        <div key={year} className="flex items-center gap-1">
+                          <Checkbox
+                            id={`year-${year}`}
+                            checked={filters.effectiveYears.includes(year)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setFilters(prev => ({ ...prev, effectiveYears: [...prev.effectiveYears, year] }));
+                              } else {
+                                setFilters(prev => ({ ...prev, effectiveYears: prev.effectiveYears.filter(y => y !== year) }));
+                              }
+                            }}
+                            className="h-3.5 w-3.5"
+                            data-testid={`checkbox-year-${year}`}
+                          />
+                          <label
+                            htmlFor={`year-${year}`}
+                            className="text-xs font-medium leading-none cursor-pointer"
+                          >
+                            {year}
+                          </label>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                  
-                  {/* Search and Filters Row */}
-                  <div className="flex gap-2">
                     <div className="flex-1">
                       <Input
                         placeholder="Type here to search..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-9"
+                        className="w-full h-7 text-xs"
                         data-testid="input-search-quotes"
                       />
                     </div>
                     <Button 
                       variant="default"
                       size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white h-9"
+                      className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs px-2"
                       data-testid="button-search"
                     >
-                      <Search className="h-4 w-4 mr-1.5" />
+                      <Search className="h-3.5 w-3.5 mr-1" />
                       Search
                     </Button>
                     <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
@@ -11026,13 +11019,13 @@ export default function PoliciesPage() {
                         <Button 
                           variant="default"
                           size="sm"
-                          className="bg-purple-600 hover:bg-purple-700 text-white h-9"
+                          className="bg-purple-600 hover:bg-purple-700 text-white h-7 text-xs px-2"
                           data-testid="button-filters"
                         >
-                          <Filter className="h-4 w-4 mr-1.5" />
+                          <Filter className="h-3.5 w-3.5 mr-1" />
                           Filters
                           {hasActiveFilters && (
-                            <Badge variant="secondary" className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center rounded-full bg-white text-purple-600 text-xs">
+                            <Badge variant="secondary" className="ml-1 h-3.5 w-3.5 p-0 flex items-center justify-center rounded-full bg-white text-purple-600 text-[10px]">
                               !
                             </Badge>
                           )}
@@ -11208,38 +11201,35 @@ export default function PoliciesPage() {
                       </div>
                     </SheetContent>
                   </Sheet>
-                </div>
-                
-                {/* Search by Family Members Checkbox */}
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="search-family-members"
-                    checked={filters.searchFamilyMembers}
-                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, searchFamilyMembers: !!checked }))}
-                    data-testid="checkbox-search-family-members"
-                  />
-                  <label
-                    htmlFor="search-family-members"
-                    className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-1.5"
-                  >
-                    Search by family members:
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="h-3.5 w-3.5 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground cursor-help">
-                          ?
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">When enabled, search will also include family member names, emails, and phone numbers</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </label>
-                </div>
-                </div>
-                {/* END Enhanced Search Bar with Year Filters */}
+                    <div className="flex items-center gap-1">
+                      <Checkbox
+                        id="search-family-members"
+                        checked={filters.searchFamilyMembers}
+                        onCheckedChange={(checked) => setFilters(prev => ({ ...prev, searchFamilyMembers: !!checked }))}
+                        className="h-3.5 w-3.5"
+                        data-testid="checkbox-search-family-members"
+                      />
+                      <label
+                        htmlFor="search-family-members"
+                        className="text-xs leading-none cursor-pointer flex items-center gap-1"
+                      >
+                        Family
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="h-3 w-3 rounded-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground cursor-help">
+                              ?
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">When enabled, search will also include family member names, emails, and phone numbers</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </label>
+                    </div>
+                  </div>
 
-                {/* Show selector and pagination info */}
-                <div className="flex items-center justify-between py-1">
+                  {/* LINE 2: Show selector + Pagination + OEP buttons */}
+                  <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs">Show</span>
                     <Select value={itemsPerPage.toString()} onValueChange={(value) => {
@@ -11294,57 +11284,56 @@ export default function PoliciesPage() {
                       <ChevronRightIcon className="h-3 w-3" />
                     </Button>
                   </div>
-                </div>
-
-                {/* OEP Filter Buttons - Dynamic year based on renewal period */}
-                {(() => {
-                  const now = new Date();
-                  const currentMonth = now.getMonth();
-                  const currentDay = now.getDate();
-                  const currentYear = now.getFullYear();
-                  
-                  const isInRenewalPeriod = 
-                    (currentMonth >= 9) ||
-                    (currentMonth === 0) ||
-                    (currentMonth === 1 && currentDay === 1);
-                  
-                  if (!isInRenewalPeriod) return null;
-                  
-                  const renewalTargetYear = currentMonth >= 9 ? currentYear + 1 : currentYear;
-                  
-                  return (
-                    <div className="flex gap-2 py-1">
-                      <Button
-                        variant={oepFilter === 'aca' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setOepFilter(oepFilter === 'aca' ? null : 'aca')}
-                        className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700 h-7 text-xs' : 'h-7 text-xs'}
-                        data-testid="button-oep-filter-aca"
-                      >
-                        OEP {renewalTargetYear} ACA/Obamacare
-                        {oepStats && oepStats.aca > 0 && (
-                          <Badge variant="destructive" className="ml-1.5 h-3.5 px-1 text-[10px]">
-                            {oepStats.aca}
-                          </Badge>
-                        )}
-                      </Button>
-                      <Button
-                        variant={oepFilter === 'medicare' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setOepFilter(oepFilter === 'medicare' ? null : 'medicare')}
-                        className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700 h-7 text-xs' : 'h-7 text-xs'}
-                        data-testid="button-oep-filter-medicare"
-                      >
-                        OEP {renewalTargetYear} Medicare
-                        {oepStats && oepStats.medicare > 0 && (
-                          <Badge variant="destructive" className="ml-1.5 h-3.5 px-1 text-[10px]">
-                            {oepStats.medicare}
-                          </Badge>
-                        )}
-                      </Button>
-                    </div>
-                  );
-                })()}
+                    {/* OEP Filter Buttons - Dynamic year based on renewal period */}
+                    {(() => {
+                      const now = new Date();
+                      const currentMonth = now.getMonth();
+                      const currentDay = now.getDate();
+                      const currentYear = now.getFullYear();
+                      
+                      const isInRenewalPeriod = 
+                        (currentMonth >= 9) ||
+                        (currentMonth === 0) ||
+                        (currentMonth === 1 && currentDay === 1);
+                      
+                      if (!isInRenewalPeriod) return null;
+                      
+                      const renewalTargetYear = currentMonth >= 9 ? currentYear + 1 : currentYear;
+                      
+                      return (
+                        <div className="flex gap-1.5">
+                          <Button
+                            variant={oepFilter === 'aca' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setOepFilter(oepFilter === 'aca' ? null : 'aca')}
+                            className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700 h-7 text-xs px-2' : 'h-7 text-xs px-2'}
+                            data-testid="button-oep-filter-aca"
+                          >
+                            OEP {renewalTargetYear} ACA
+                            {oepStats && oepStats.aca > 0 && (
+                              <Badge variant="destructive" className="ml-1 h-3.5 px-1 text-[10px]">
+                                {oepStats.aca}
+                              </Badge>
+                            )}
+                          </Button>
+                          <Button
+                            variant={oepFilter === 'medicare' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setOepFilter(oepFilter === 'medicare' ? null : 'medicare')}
+                            className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700 h-7 text-xs px-2' : 'h-7 text-xs px-2'}
+                            data-testid="button-oep-filter-medicare"
+                          >
+                            OEP {renewalTargetYear} Medicare
+                            {oepStats && oepStats.medicare > 0 && (
+                              <Badge variant="destructive" className="ml-1 h-3.5 px-1 text-[10px]">
+                                {oepStats.medicare}
+                              </Badge>
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
                 {/* END FIXED HEADER SECTION */}
 
