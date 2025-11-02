@@ -7444,7 +7444,12 @@ export default function PoliciesPage() {
                       <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
                         <div>
                           <p className="font-semibold text-sm truncate">
-                            {viewingQuote.clientFirstName} {viewingQuote.clientLastName}
+                            {[
+                              viewingQuote.clientFirstName,
+                              viewingQuote.clientMiddleName,
+                              viewingQuote.clientLastName,
+                              viewingQuote.clientSecondLastName
+                            ].filter(Boolean).join(' ')}
                           </p>
                           <div className="flex gap-1 mt-0.5 flex-wrap">
                             <Badge variant="default" className="text-xs h-4 px-1.5">Self</Badge>
@@ -7516,7 +7521,12 @@ export default function PoliciesPage() {
                         <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
                           <div>
                             <p className="font-semibold text-sm truncate">
-                              {spouse.firstName} {spouse.lastName}
+                              {[
+                                spouse.firstName,
+                                spouse.middleName,
+                                spouse.lastName,
+                                spouse.secondLastName
+                              ].filter(Boolean).join(' ')}
                             </p>
                             <div className="flex gap-1 mt-0.5 flex-wrap">
                               <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
@@ -7602,7 +7612,12 @@ export default function PoliciesPage() {
                         <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
                           <div>
                             <p className="font-semibold text-sm truncate">
-                              {dependent.firstName} {dependent.lastName}
+                              {[
+                                dependent.firstName,
+                                dependent.middleName,
+                                dependent.lastName,
+                                dependent.secondLastName
+                              ].filter(Boolean).join(' ')}
                             </p>
                             <div className="flex gap-1 mt-0.5 flex-wrap">
                               <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
