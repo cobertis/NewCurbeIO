@@ -10521,10 +10521,14 @@ export default function PoliciesPage() {
                       cancellationDate: manualPlanData.cancellationDate || null,
                       specialEnrollmentDate: manualPlanData.specialEnrollmentDate || null,
                     });
+                    
+                    // Invalidate all policy-related queries to refresh the UI
                     queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
+                    
                     toast({
-                      title: "Plan Added",
-                      description: "Manual plan has been added successfully.",
+                      title: "Success",
+                      description: "Plan has been saved successfully.",
                       duration: 3000,
                     });
                     setManualPlanDialogOpen(false);
