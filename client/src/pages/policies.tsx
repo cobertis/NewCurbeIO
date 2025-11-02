@@ -11218,7 +11218,8 @@ export default function PoliciesPage() {
                         const formatCurrency = (value: any) => {
                           if (value === null || value === undefined) return 'N/A';
                           const num = typeof value === 'string' ? parseFloat(value) : value;
-                          return `$${Math.round(num)}`;
+                          if (num === 0) return '$0';
+                          return `$${num.toFixed(2)}`;
                         };
                         
                         return (
