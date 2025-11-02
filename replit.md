@@ -54,56 +54,25 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **Real-Time Notifications:** WebSocket-based system for instant updates.
 -   **SMS Chat Application:** Bidirectional, real-time SMS chat with conversation management.
 -   **Billing & Stripe Integration:** Automated customer/subscription management.
--   **Quotes Management System:** 3-step wizard for 11 product types, featuring Google Places Autocomplete, CMS Marketplace API integration for health insurance plans (including HHS Poverty Guidelines for APTC calculations), plan comparison, and professional credit card validation.
-    -   **Quote Notes & Documents:** Internal notes system with categories, search, and image attachments. Document management for uploads, previews, and secure storage, linked to family members.
-    -   **Quote Search:** Universal search functionality with OPTIONAL family member searching. By default searches only primary client; when checkbox is activated, includes spouses and dependents by name, email, and phone.
-    -   **Quote Blocking:** Admins and superadmins can block/unblock quotes. Blocked quotes display yellow warning banner, lock icon on status badge, and prevent updates by agents. Audit trail tracks who blocked and when.
-    -   **Quote Options Menu:** Complete functionality including Block/Unblock, New Reminder, Print Quote, Duplicate, Cancel Quote, Archive/Unarchive with confirmation dialogs.
-    -   **Manual Plan Entry:** "Add Plan Manually" button opens comprehensive dialog for entering insurance plans for states without marketplace API connectivity. Features two sections:
-        -   **Coverage Information:** Product type (required), Carrier (required), Plan name, Effective date (required), Cancellation date, Metal level, Marketplace ID, Member ID, CMS Plan ID, Policy total cost, Tax Credit/Subsidy, Premium (monthly payment)
-        -   **Enrollment Information:** Type of sale, FFM used in marketplace, NPN used in marketplace, Special enrollment period date, Special enrollment period reason
-        -   Form validation ensures all required fields (Product type, Carrier, Effective date) are filled before submission
--   **Policies Management System:** Converts quotes to policies, migrating all associated data. Provides **IDENTICAL functionality** to the Quotes module with comprehensive policy status management and agent assignment capabilities.
-    -   **Policy Search:** Universal search functionality with OPTIONAL family member searching. By default searches only primary client; when checkbox is activated, includes spouses and dependents by name, email, and phone.
-    -   **Policy Blocking:** Admins and superadmins can block/unblock policies. Blocked policies display yellow warning banner, lock icon on status badge, and prevent updates by agents. Audit trail tracks who blocked and when.
-    -   **Policy Display:** Table shows carrier name + insurance type (e.g., "Ambetter - Health Insurance ACA"). Lock icon appears in status column when policy is blocked.
-    -   **Policy Options Menu:** Complete functionality including Block/Unblock, New Reminder, Print Policy, Duplicate, Cancel Policy, Archive/Unarchive with confirmation dialogs.
-    -   **Payment Methods (November 2025 - Canonical Client Identity):** Payment methods are shared across ALL policies belonging to the same client, identified canonically by normalized SSN (primary) or email (fallback). When a client views any of their policies (e.g., Javier Lazo's 2025 and 2026 policies), they see the same payment methods. Setting a card as default in one policy automatically marks it as default across all client policies. Clients without SSN or email remain isolated for security. This ensures consistent payment experience while preventing cross-client data leakage through strict identity validation.
-    -   **Other Policies UI (November 2025):** The "Other policies of the applicant" section displays related policies using a full table layout identical to the main policies list. Features include: clickable rows for navigation, agent avatars with tooltips, client information with badges, policy details with carrier/plan/premium, editable status badges, assigned agent display, and conditional renewal buttons. Enhanced UX with row-level hover effects and stopPropagation on interactive elements (checkboxes, status editors, buttons, dropdowns) to prevent navigation conflicts.
-    -   **Manual Plan Entry:** "Add Plan Manually" button opens comprehensive dialog for entering insurance plans for states without marketplace API connectivity. Features two sections:
-        -   **Coverage Information:** Product type (required), Carrier (required), Plan name, Effective date (required), Cancellation date, Metal level, Marketplace ID, Member ID, CMS Plan ID, Policy total cost, Tax Credit/Subsidy, Premium (monthly payment)
-        -   **Enrollment Information:** Type of sale, FFM used in marketplace, NPN used in marketplace, Special enrollment period date, Special enrollment period reason
-        -   Form validation ensures all required fields (Product type, Carrier, Effective date) are filled before submission
-    -   **OEP 2026 Renewal System (November 2025):** Comprehensive renewal pipeline for Open Enrollment Period enabling seamless policy renewals from 2025 to 2026:
-        -   **Renewal Schema:** Five new fields track renewal lifecycle: `renewalTargetYear` (2026), `renewalStatus` (pending/completed/draft), bidirectional linking via `renewedFromPolicyId` and `renewedToPolicyId`, and timestamp `renewedAt`
-        -   **CMS API Enhancement:** Marketplace integration accepts `yearOverride` parameter to fetch 2026 plan data during renewal process
-        -   **OEP Filter Buttons:** Two corporate blue buttons above policy table ("OEP 2026 - ACA" and "OEP 2026 - Medicare") with real-time badge counters showing eligible policy counts
-        -   **Eligibility Logic:** Filters policies by product type (Health Insurance ACA or Medicare variants), effective date in 2025, not already renewed, and not cancelled
-        -   **Renewal Button:** "Renovar 2026" button with RefreshCw icon appears conditionally on eligible policy rows
-        -   **Renewal Process:** Creates new policy with effectiveDate="2026-01-01", saleType="renewal", clones all family members, fetches 2026 marketplace plans, links both policies bidirectionally
-        -   **Plan Comparison Modal:** Side-by-side comparison of 2025 vs 2026 plans with dropdown selector for 2026 plan candidates, color-coded price differences (green=decrease, red=increase), and confirm/cancel actions
-        -   **ProductType Consistency:** All comparisons use exact database values ("Health Insurance ACA" and `productType.startsWith("Medicare")`) to ensure filters, badges, and renewal buttons function correctly
-        -   **Endpoints:** POST `/api/policies/:id/renewals` (renewal creation), GET `/api/policies?oepFilter=aca|medicare` (filtering), GET `/api/policies/oep-stats` (badge counts)
+-   **Quotes Management System:** A 3-step wizard for 11 product types, featuring Google Places Autocomplete, CMS Marketplace API integration for health insurance plans (including HHS Poverty Guidelines for APTC calculations), plan comparison, and professional credit card validation. Includes internal notes, document management, universal search with optional family member searching, and blocking functionality. Quotes have a comprehensive options menu. Manual plan entry is supported for states without marketplace API connectivity.
+-   **Policies Management System:** Converts quotes to policies, migrating all associated data, with identical functionality to the Quotes module. Provides comprehensive policy status management and agent assignment capabilities, including universal search with optional family member searching and blocking functionality. Policy payment methods are shared across policies belonging to the same client (identified by SSN/email). The "Other policies of the applicant" section displays related policies in a full table layout. Manual plan entry is supported. An OEP 2026 Renewal System is implemented for seamless policy renewals, featuring renewal pipeline, CMS API enhancement for 2026 data, OEP filter buttons, eligibility logic, a renewal button, and a plan comparison modal.
 -   **Consent Document System:** Generates legal consent documents, supports email/SMS/link delivery, and captures electronic signatures with a full digital audit trail.
 -   **Calendar System:** Full-screen professional calendar displaying company-wide events including birthdays and reminders, with multi-tenant isolation.
--   **Reminder System:** Background scheduler (node-cron) runs every minute to:
-    -   Create notifications for pending reminders due today (appears in notification bell)
-    -   Restore snoozed reminders when snooze time expires
-    -   Prevent duplicate notifications with date-based checking
-    -   **ALL reminder notifications are in ENGLISH**
--   **Agent Assignment System:** Flexible agent reassignment for quotes and policies with agent-based filtering for admin users. When an agent is reassigned, the new agent automatically receives a notification: "New Quote/Policy Assigned - {AssignerName} assigned you the quote/policy for {ClientName}" with a clickable link. Delivered in real-time via WebSocket. **ALL notifications are in ENGLISH.**
+-   **Reminder System:** Background scheduler creates notifications for pending reminders, restores snoozed reminders, and prevents duplicate notifications. All notifications are in English.
+-   **Agent Assignment System:** Flexible agent reassignment for quotes and policies with agent-based filtering and real-time, English-language notifications to new agents.
 
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.
 
+**CMS Marketplace API Integration:** Correct APTC eligibility logic is implemented based on CMS documentation, marking all household members as `aptc_eligible: true` unless they have Medicaid/CHIP. Request structure follows exact CMS API specifications, and APTC calculations properly extract household APTC from Silver plans.
+
 ### Security Architecture
-**Critical Security Implementations (October 2025):**
--   **Session Security:** SESSION_SECRET environment variable is MANDATORY. Application fails immediately at startup if not configured to prevent session hijacking in production.
--   **Webhook Validation:** Twilio webhook signature validation fully enabled to prevent unauthorized SMS injection and data tampering.
--   **Input Validation:** All public-facing endpoints (registration, quote/policy member mutations) enforce mandatory Zod schema validation to prevent malicious payloads.
--   **Open Redirect Protection:** Tracking endpoint validates redirect URLs against strict allowlist (REPLIT_DOMAINS, healthcare.gov, marketplace.cms.gov) to prevent phishing attacks.
--   **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens to prevent unauthorized mass unsubscriptions.
--   **Code Organization:** Shared carrier/product type data centralized in `shared/carriers.ts` for consistency across Quotes and Policies modules.
+-   **Session Security:** `SESSION_SECRET` environment variable is mandatory to prevent session hijacking.
+-   **Webhook Validation:** Twilio webhook signature validation is fully enabled.
+-   **Input Validation:** All public-facing endpoints enforce Zod schema validation.
+-   **Open Redirect Protection:** Tracking endpoint validates redirect URLs against a strict allowlist.
+-   **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
+-   **Code Organization:** Shared carrier/product type data is centralized in `shared/carriers.ts`.
 
 ## External Dependencies
 
