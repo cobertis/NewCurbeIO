@@ -7317,7 +7317,31 @@ export default function PoliciesPage() {
                           size="sm"
                           onClick={() => {
                             console.log('[EDIT PLAN] Setting editingPlanId to:', policyPlan.id);
+                            console.log('[EDIT PLAN] Plan data:', plan);
                             setEditingPlanId(policyPlan.id);
+                            
+                            // Extract benefit costs from the benefits array
+                            const getBenefitCost = (name: string) => {
+                              const benefit = plan.benefits?.find((b: any) => 
+                                b.name?.toLowerCase().includes(name.toLowerCase())
+                              );
+                              if (!benefit) return '';
+                              if (benefit.cost_sharings?.[0]?.display_string) {
+                                return benefit.cost_sharings[0].display_string;
+                              }
+                              return '';
+                            };
+
+                            // Extract deductible
+                            const mainDeductible = plan.deductibles?.find((d: any) => 
+                              d.type === 'Medical Individual Standard' || d.type === 'Individual Medical'
+                            );
+
+                            // Extract out-of-pocket maximum
+                            const outOfPocketMax = plan.moops?.find((m: any) => 
+                              m.type === 'Individual Medical'
+                            );
+
                             setManualPlanData({
                               productType: plan.type || '',
                               carrier: plan.issuer?.name || '',
@@ -7331,13 +7355,13 @@ export default function PoliciesPage() {
                                 ? (plan.premium - (plan.premium_w_credit || 0)).toString() 
                                 : '',
                               deductible: mainDeductible?.amount?.toString() || '',
-                              outOfPocketMax: outOfPocketMax?.toString() || '',
-                              primaryCare: plan.copay_primary || '',
-                              specialist: plan.copay_specialist || '',
-                              urgentCare: plan.copay_urgent_care || '',
-                              emergency: plan.copay_emergency || '',
-                              mentalHealth: plan.copay_mental_health || '',
-                              genericDrugs: plan.copay_generic_drugs || '',
+                              outOfPocketMax: outOfPocketMax?.amount?.toString() || '',
+                              primaryCare: getBenefitCost('Primary Care'),
+                              specialist: getBenefitCost('Specialist'),
+                              urgentCare: getBenefitCost('Urgent Care'),
+                              emergency: getBenefitCost('Emergency'),
+                              mentalHealth: getBenefitCost('Mental'),
+                              genericDrugs: getBenefitCost('Generic Drugs'),
                               dentalChild: plan.has_dental_child_coverage || false,
                               dentalAdult: plan.has_dental_adult_coverage || false,
                               hsaEligible: plan.hsa_eligible || false,
