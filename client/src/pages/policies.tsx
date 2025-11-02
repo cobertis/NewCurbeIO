@@ -10908,8 +10908,8 @@ export default function PoliciesPage() {
           ) : (
             <>
               {/* LEFT SIDEBAR */}
-              <div className="w-60 border-r bg-muted/20 flex-shrink-0 overflow-y-auto">
-                <div className="p-4 space-y-6">
+              <Card className="w-60 flex-shrink-0 overflow-y-auto rounded-none border-t-0 border-l-0 border-b-0">
+                <CardContent className="p-4 space-y-6">
                   {/* Views Section */}
                   <div className="space-y-1">
                     {/* Policies View */}
@@ -11047,8 +11047,8 @@ export default function PoliciesPage() {
                     </div>
                     <p className="text-xs text-muted-foreground pl-3">You have no personal folders.</p>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
               {/* MAIN CONTENT AREA */}
               <div className="flex-1 flex flex-col min-h-0">
