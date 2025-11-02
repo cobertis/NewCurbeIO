@@ -10903,8 +10903,8 @@ export default function PoliciesPage() {
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col min-h-0 px-6 py-4">
-              {/* Statistics Cards - Scrollable */}
+            <div className="flex h-full flex-col min-h-0 px-6 py-4 overflow-y-auto">
+              {/* Statistics Cards - Scrollable (will hide on scroll) */}
               {stats && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* Total Policies Card */}
