@@ -10903,7 +10903,7 @@ export default function PoliciesPage() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+            <div className="flex h-full flex-col min-h-0 px-6 py-4">
               {/* Statistics Cards - Scrollable */}
               {stats && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -10967,7 +10967,7 @@ export default function PoliciesPage() {
             ) : (
               <div className="flex flex-col flex-1 min-h-0">
                 {/* FIXED HEADER SECTION - Everything before the table body */}
-                <div className="flex-shrink-0 space-y-2">
+                <div className="sticky top-0 z-40 bg-background space-y-2 pb-2">
                 {/* Enhanced Search Bar with Year Filters */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
@@ -11345,12 +11345,18 @@ export default function PoliciesPage() {
                     </div>
                   );
                 })()}
+                </div>
+                {/* END FIXED HEADER SECTION */}
 
-                {/* Table Header - Fixed */}
-                {filteredQuotes.length > 0 && (
-                  <div className="flex-shrink-0">
+                {/* Table - Scrollable Body with Sticky Header */}
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                {filteredQuotes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No quotes match your search criteria
+                  </div>
+                ) : (
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="sticky top-0 z-30 bg-background">
                         <TableRow>
                           <TableHead className="w-12">
                             <Checkbox data-testid="checkbox-select-all" />
@@ -11363,20 +11369,6 @@ export default function PoliciesPage() {
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
-                    </Table>
-                  </div>
-                )}
-                </div>
-                {/* END FIXED HEADER SECTION */}
-
-                {/* Table Body - Scrollable OR Empty State */}
-                <div className="flex-1 overflow-y-auto">
-                {filteredQuotes.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No quotes match your search criteria
-                  </div>
-                ) : (
-                    <Table>
                     <TableBody>
                       {paginatedQuotes.map((quote) => {
                         const product = PRODUCT_TYPES.find(p => p.id === quote.productType);
