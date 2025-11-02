@@ -11488,6 +11488,52 @@ export default function PoliciesPage() {
                 </div>
                 {/* END FIXED HEADER SECTION */}
 
+                {/* Filter Chips Display */}
+                {oepFilter && (
+                  <div className="px-6 py-3 border-b flex items-center gap-2">
+                    {oepFilter === 'aca' && (
+                      <Badge 
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm font-normal flex items-center gap-2"
+                        data-testid="chip-filter-aca"
+                      >
+                        Filter: ACA/Obamacare Renewal 2026
+                        <button
+                          onClick={() => setOepFilter(null)}
+                          className="hover:bg-blue-700 rounded-full p-0.5"
+                          data-testid="button-remove-filter-aca"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )}
+                    {oepFilter === 'medicare' && (
+                      <Badge 
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm font-normal flex items-center gap-2"
+                        data-testid="chip-filter-medicare"
+                      >
+                        Filter: Medicare Renewal 2026
+                        <button
+                          onClick={() => setOepFilter(null)}
+                          className="hover:bg-blue-700 rounded-full p-0.5"
+                          data-testid="button-remove-filter-medicare"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setOepFilter(null)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950 h-7 text-xs"
+                      data-testid="button-reset-filters"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                      Reset filters
+                    </Button>
+                  </div>
+                )}
+
                 {/* Table - Scrollable Body with Sticky Header */}
                 <div className="flex-1 min-h-0 overflow-y-auto">
                 {filteredQuotes.length === 0 ? (
@@ -11498,15 +11544,14 @@ export default function PoliciesPage() {
                     <Table>
                       <TableHeader className="sticky top-0 z-30 bg-background">
                         <TableRow>
-                          <TableHead className="w-12">
+                          <TableHead className="w-12 py-3 px-4">
                             <Checkbox data-testid="checkbox-select-all" />
                           </TableHead>
-                          <TableHead className="w-16">Agent</TableHead>
-                          <TableHead>Client</TableHead>
-                          <TableHead>Policy</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="w-20">Year</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead className="w-16 py-3 px-4">Agent</TableHead>
+                          <TableHead className="py-3 px-4">Client</TableHead>
+                          <TableHead className="py-3 px-4">Policy</TableHead>
+                          <TableHead className="py-3 px-4">Status</TableHead>
+                          <TableHead className="text-right py-3 px-4">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                     <TableBody>
@@ -11524,10 +11569,10 @@ export default function PoliciesPage() {
                         
                         return (
                           <TableRow key={quote.id} data-testid={`row-quote-${quote.id}`}>
-                            <TableCell>
+                            <TableCell className="py-3 px-4">
                               <Checkbox data-testid={`checkbox-quote-${quote.id}`} />
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center py-3 px-4">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div className="cursor-pointer inline-block">
@@ -11556,7 +11601,7 @@ export default function PoliciesPage() {
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-3 px-4">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div className="cursor-pointer">
@@ -11570,11 +11615,13 @@ export default function PoliciesPage() {
                                       <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                         {quote.clientIsApplicant ? 'Self' : 'Not Applicant'}
                                       </Badge>
+                                      <span className="text-xs text-muted-foreground">•</span>
                                       <span className="text-xs text-muted-foreground">
                                         {quote.clientGender ? quote.clientGender.charAt(0).toUpperCase() + quote.clientGender.slice(1) : 'N/A'}
                                       </span>
                                     </div>
-                                    <div className="text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                      <MapPin className="h-3 w-3" />
                                       {quote.physical_city}, {quote.physical_state} {quote.physical_postal_code}
                                     </div>
                                   </div>
@@ -11602,9 +11649,9 @@ export default function PoliciesPage() {
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-3 px-4">
                               <div className="space-y-1">
-                                <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
+                                <div className="font-semibold text-sm">
                                   {(() => {
                                     const typeMap: Record<string, string> = {
                                       'aca': 'Health Insurance ACA',
@@ -11622,24 +11669,16 @@ export default function PoliciesPage() {
                                     const insuranceType = typeMap[quote.productType?.toLowerCase()] || quote.productType;
                                     const carrierName = quote.selectedPlan ? (quote.selectedPlan.issuer?.name || quote.selectedPlan.issuer_name) : null;
                                     
-                                    return carrierName ? `${carrierName} - ${insuranceType}` : insuranceType;
+                                    return carrierName ? `${carrierName} ${insuranceType}` : insuranceType;
                                   })()}
                                 </div>
                                 {quote.selectedPlan ? (
                                   <div className="space-y-0.5">
-                                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                      {quote.selectedPlan.plan_marketing_name}
-                                    </div>
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                         {quote.selectedPlan.metal_level || 'N/A'}
                                       </Badge>
-                                      {quote.selectedPlan.plan_type && (
-                                        <Badge variant="outline" className="text-xs px-1.5 py-0">
-                                          {quote.selectedPlan.plan_type}
-                                        </Badge>
-                                      )}
-                                      <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                      <span className="text-xs text-muted-foreground font-semibold">
                                         {quote.selectedPlan.premium_w_credit !== undefined && quote.selectedPlan.premium_w_credit !== null
                                           ? formatCurrency(quote.selectedPlan.premium_w_credit)
                                           : formatCurrency(quote.selectedPlan.premium)}/mo
@@ -11651,12 +11690,12 @@ export default function PoliciesPage() {
                                     No plan selected
                                   </div>
                                 )}
-                                <div className="text-xs text-muted-foreground pt-1 border-t">
-                                  Effective {formatDateForDisplay(quote.effectiveDate, "MMM dd, yyyy")} • ID: {quote.id.slice(0, 8)}
+                                <div className="text-xs text-muted-foreground">
+                                  {formatDateForDisplay(quote.effectiveDate, "MMM dd, yyyy")} • {quote.id.slice(0, 8)}
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="text-sm">
+                            <TableCell className="text-sm py-3 px-4">
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                   {quote.isBlocked && (
@@ -11682,12 +11721,7 @@ export default function PoliciesPage() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="secondary" className="text-sm font-semibold">
-                                {quote.effectiveDate ? quote.effectiveDate.split('-')[0] : 'N/A'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right py-3 px-4">
                               <div className="flex items-center justify-end gap-2">
                                 {/* Renewal Button - Show for eligible policies */}
                                 {(() => {
