@@ -223,14 +223,42 @@ export async function fetchMarketplacePlans(
   
   console.log(`[CMS_MARKETPLACE] ✅ ${uniquePlans.length} planes únicos obtenidos exitosamente`);
   
+  // Calculate household_aptc from SLCSP if API doesn't provide it
+  // SLCSP = Second Lowest Cost Silver Plan (benchmark for APTC calculations)
+  let household_aptc = firstPage.household_aptc;
+  
+  if (!household_aptc || household_aptc === 0) {
+    // Find all Silver plans and sort by premium (unsubsidized)
+    const silverPlans = uniquePlans
+      .filter((p: any) => p.metal_level === 'Silver')
+      .sort((a: any, b: any) => (a.premium || 0) - (b.premium || 0));
+    
+    if (silverPlans.length >= 2) {
+      // Second lowest cost silver plan
+      const slcsp = silverPlans[1];
+      // APTC = unsubsidized premium - subsidized premium
+      household_aptc = slcsp.premium - (slcsp.premium_w_credit || 0);
+      console.log(`[CMS_MARKETPLACE] 💰 Calculated household_aptc from SLCSP: $${household_aptc}`);
+      console.log(`  - SLCSP Plan: ${slcsp.name} (${slcsp.id})`);
+      console.log(`  - SLCSP Premium: $${slcsp.premium}`);
+      console.log(`  - SLCSP Premium w/ Credit: $${slcsp.premium_w_credit}`);
+    } else if (silverPlans.length === 1) {
+      // Only one silver plan - use it as benchmark
+      const slcsp = silverPlans[0];
+      household_aptc = slcsp.premium - (slcsp.premium_w_credit || 0);
+      console.log(`[CMS_MARKETPLACE] 💰 Calculated household_aptc from only Silver plan: $${household_aptc}`);
+    }
+  }
+  
   // Return combined response - API provides ALL calculations (APTC, CSR, premium_w_credit)
-  // We do NOT calculate anything - just return what the API gives us
+  // We extract household_aptc from SLCSP if API doesn't provide it
   return {
     ...firstPage,
     plans: uniquePlans,
     total: uniquePlans.length,
-    // household_aptc, household_csr, household_slcsp_premium come directly from API
-    // We do NOT override or calculate these values
+    household_aptc: household_aptc || 0,
+    household_csr: firstPage.household_csr,
+    household_slcsp_premium: firstPage.household_slcsp_premium,
   };
 }
 
