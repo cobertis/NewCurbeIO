@@ -10903,7 +10903,7 @@ export default function PoliciesPage() {
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col min-h-0 px-6 py-4 overflow-y-auto">
+            <div className="flex h-full flex-col min-h-0 px-6 py-4">
           {/* Policies Table - Fixed Header, Scrollable Body */}
           <Card className="flex flex-col flex-1 min-h-0">
             <CardContent className="pt-6 flex flex-col flex-1 min-h-0">
@@ -10922,7 +10922,7 @@ export default function PoliciesPage() {
             ) : (
               <div className="flex flex-col flex-1 min-h-0">
                 {/* FIXED HEADER SECTION - Compact 2-line layout */}
-                <div className="sticky top-0 z-40 bg-background space-y-1 pb-1">
+                <div className="sticky top-0 z-40 bg-background space-y-1 pb-3 border-b">
                   {/* LINE 1: Title + Year filters + Search + Buttons + Family checkbox */}
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold whitespace-nowrap">Policies</h3>
