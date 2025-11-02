@@ -5197,11 +5197,16 @@ export default function PoliciesPage() {
     const effectiveYear = quote.effectiveDate ? parseInt(quote.effectiveDate.split('-')[0]) : null;
     const matchesEffectiveYear = filters.effectiveYears.length === 0 || (effectiveYear && filters.effectiveYears.includes(effectiveYear));
     
-    // OEP 2026 filter - only show eligible policies for renewal
+    // OEP filter - only show eligible policies for renewal
     let matchesOEP = true;
     if (oepFilter) {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const renewalEligibleYear = currentMonth >= 9 ? currentYear : currentYear - 1;
+      
       const isEligibleForRenewal = 
-        effectiveYear === 2025 && 
+        effectiveYear === renewalEligibleYear && 
         quote.renewalStatus !== 'completed' && 
         quote.status !== 'cancelled';
       
@@ -6548,23 +6553,32 @@ export default function PoliciesPage() {
 
             {/* Renewal Alert Banner */}
             {(() => {
-              const currentYear = new Date().getFullYear();
-              const effectiveYear = viewingQuote.effectiveDate ? new Date(viewingQuote.effectiveDate).getFullYear() : null;
+              const now = new Date();
+              const currentMonth = now.getMonth();
+              const currentDay = now.getDate();
+              const currentYear = now.getFullYear();
+              
+              const isInRenewalPeriod = 
+                (currentMonth >= 9) ||
+                (currentMonth === 0) ||
+                (currentMonth === 1 && currentDay === 1);
+              
+              if (!isInRenewalPeriod) return null;
+              
+              const renewalEligibleYear = currentMonth >= 9 ? currentYear : currentYear - 1;
+              const renewalTargetYear = renewalEligibleYear + 1;
+              
+              const effectiveYear = viewingQuote.effectiveDate ? parseInt(viewingQuote.effectiveDate.split('-')[0]) : null;
               const isACA = viewingQuote.productType === 'Health Insurance ACA' || viewingQuote.productType?.toLowerCase() === 'aca';
               const isMedicare = viewingQuote.productType?.startsWith('Medicare') || viewingQuote.productType?.toLowerCase() === 'medicare';
               
-              // Don't show renewal banner if:
-              // 1. This policy IS a renewal (has renewedFromPolicyId)
-              // 2. Effective year is in the future (already renewed)
-              // 3. Already completed renewal
-              // 4. Cancelled or archived
               const isRenewalPolicy = !!viewingQuote.renewedFromPolicyId;
-              const isFuturePolicy = effectiveYear && effectiveYear > currentYear;
+              const isFuturePolicy = effectiveYear && effectiveYear > renewalEligibleYear;
               
               const needsRenewal = (isACA || isMedicare) && 
                                    !isRenewalPolicy &&
                                    !isFuturePolicy &&
-                                   effectiveYear === currentYear &&
+                                   effectiveYear === renewalEligibleYear &&
                                    viewingQuote.renewalStatus !== 'completed' &&
                                    viewingQuote.status !== 'cancelled' &&
                                    !viewingQuote.isArchived;
@@ -6576,10 +6590,10 @@ export default function PoliciesPage() {
                   <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
-                      Renewal Required for {currentYear + 1}
+                      Renewal Required for {renewalTargetYear}
                     </p>
                     <p className="text-xs text-blue-700 dark:text-blue-300">
-                      This policy is active in {currentYear} and will need to be renewed for {currentYear + 1}. Please initiate the renewal process before the end of the Open Enrollment Period.
+                      This policy is active in {renewalEligibleYear} and will need to be renewed for {renewalTargetYear}. Please initiate the renewal process before the end of the Open Enrollment Period.
                     </p>
                   </div>
                   <Button
@@ -6598,7 +6612,7 @@ export default function PoliciesPage() {
                     ) : (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        Renew for {currentYear + 1}
+                        Renew for {renewalTargetYear}
                       </>
                     )}
                   </Button>
@@ -8005,12 +8019,27 @@ export default function PoliciesPage() {
                                 <div className="flex items-center justify-end gap-2">
                                   {/* Renewal Button - Show for eligible policies */}
                                   {(() => {
+                                    const now = new Date();
+                                    const currentMonth = now.getMonth();
+                                    const currentDay = now.getDate();
+                                    const currentYear = now.getFullYear();
+                                    
+                                    const isInRenewalPeriod = 
+                                      (currentMonth >= 9) ||
+                                      (currentMonth === 0) ||
+                                      (currentMonth === 1 && currentDay === 1);
+                                    
+                                    if (!isInRenewalPeriod) return null;
+                                    
+                                    const renewalEligibleYear = currentMonth >= 9 ? currentYear : currentYear - 1;
+                                    const renewalTargetYear = renewalEligibleYear + 1;
+                                    
                                     const effectiveYear = policy.effectiveDate ? parseInt(policy.effectiveDate.split('-')[0]) : null;
                                     const isACA = policy.productType === 'Health Insurance ACA' || policy.productType?.toLowerCase() === 'aca';
                                     const isMedicare = policy.productType?.startsWith('Medicare') || policy.productType?.toLowerCase() === 'medicare';
                                     const isEligibleForRenewal = 
                                       (isACA || isMedicare) &&
-                                      effectiveYear === 2025 &&
+                                      effectiveYear === renewalEligibleYear &&
                                       policy.renewalStatus !== 'completed' &&
                                       policy.status !== 'cancelled';
                                     
@@ -8030,7 +8059,7 @@ export default function PoliciesPage() {
                                         ) : (
                                           <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                                         )}
-                                        Renew 2026
+                                        Renew {renewalTargetYear}
                                       </Button>
                                     );
                                   })()}
@@ -11111,35 +11140,53 @@ export default function PoliciesPage() {
                   </div>
                 </div>
 
-                {/* OEP 2026 Filter Buttons */}
-                <div className="flex gap-2 py-4">
-                  <Button
-                    variant={oepFilter === 'aca' ? 'default' : 'outline'}
-                    onClick={() => setOepFilter(oepFilter === 'aca' ? null : 'aca')}
-                    className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                    data-testid="button-oep-filter-aca"
-                  >
-                    OEP 2026 ACA/Obamacare
-                    {oepStats && oepStats.aca > 0 && (
-                      <Badge variant="destructive" className="ml-2">
-                        {oepStats.aca}
-                      </Badge>
-                    )}
-                  </Button>
-                  <Button
-                    variant={oepFilter === 'medicare' ? 'default' : 'outline'}
-                    onClick={() => setOepFilter(oepFilter === 'medicare' ? null : 'medicare')}
-                    className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                    data-testid="button-oep-filter-medicare"
-                  >
-                    OEP 2026 Medicare
-                    {oepStats && oepStats.medicare > 0 && (
-                      <Badge variant="destructive" className="ml-2">
-                        {oepStats.medicare}
-                      </Badge>
-                    )}
-                  </Button>
-                </div>
+                {/* OEP Filter Buttons - Dynamic year based on renewal period */}
+                {(() => {
+                  const now = new Date();
+                  const currentMonth = now.getMonth();
+                  const currentDay = now.getDate();
+                  const currentYear = now.getFullYear();
+                  
+                  const isInRenewalPeriod = 
+                    (currentMonth >= 9) ||
+                    (currentMonth === 0) ||
+                    (currentMonth === 1 && currentDay === 1);
+                  
+                  if (!isInRenewalPeriod) return null;
+                  
+                  const renewalTargetYear = currentMonth >= 9 ? currentYear + 1 : currentYear;
+                  
+                  return (
+                    <div className="flex gap-2 py-4">
+                      <Button
+                        variant={oepFilter === 'aca' ? 'default' : 'outline'}
+                        onClick={() => setOepFilter(oepFilter === 'aca' ? null : 'aca')}
+                        className={oepFilter === 'aca' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                        data-testid="button-oep-filter-aca"
+                      >
+                        OEP {renewalTargetYear} ACA/Obamacare
+                        {oepStats && oepStats.aca > 0 && (
+                          <Badge variant="destructive" className="ml-2">
+                            {oepStats.aca}
+                          </Badge>
+                        )}
+                      </Button>
+                      <Button
+                        variant={oepFilter === 'medicare' ? 'default' : 'outline'}
+                        onClick={() => setOepFilter(oepFilter === 'medicare' ? null : 'medicare')}
+                        className={oepFilter === 'medicare' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                        data-testid="button-oep-filter-medicare"
+                      >
+                        OEP {renewalTargetYear} Medicare
+                        {oepStats && oepStats.medicare > 0 && (
+                          <Badge variant="destructive" className="ml-2">
+                            {oepStats.medicare}
+                          </Badge>
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })()}
 
                 {/* Table */}
                 {filteredQuotes.length === 0 ? (
@@ -11360,12 +11407,27 @@ export default function PoliciesPage() {
                               <div className="flex items-center justify-end gap-2">
                                 {/* Renewal Button - Show for eligible policies */}
                                 {(() => {
+                                  const now = new Date();
+                                  const currentMonth = now.getMonth();
+                                  const currentDay = now.getDate();
+                                  const currentYear = now.getFullYear();
+                                  
+                                  const isInRenewalPeriod = 
+                                    (currentMonth >= 9) ||
+                                    (currentMonth === 0) ||
+                                    (currentMonth === 1 && currentDay === 1);
+                                  
+                                  if (!isInRenewalPeriod) return null;
+                                  
+                                  const renewalEligibleYear = currentMonth >= 9 ? currentYear : currentYear - 1;
+                                  const renewalTargetYear = renewalEligibleYear + 1;
+                                  
                                   const effectiveYear = quote.effectiveDate ? parseInt(quote.effectiveDate.split('-')[0]) : null;
                                   const isACA = quote.productType === 'Health Insurance ACA' || quote.productType?.toLowerCase() === 'aca';
                                   const isMedicare = quote.productType?.startsWith('Medicare') || quote.productType?.toLowerCase() === 'medicare';
                                   const isEligibleForRenewal = 
                                     (isACA || isMedicare) &&
-                                    effectiveYear === 2025 &&
+                                    effectiveYear === renewalEligibleYear &&
                                     quote.renewalStatus !== 'completed' &&
                                     quote.status !== 'cancelled';
                                   
@@ -11385,7 +11447,7 @@ export default function PoliciesPage() {
                                       ) : (
                                         <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                                       )}
-                                      Renew 2026
+                                      Renew {renewalTargetYear}
                                     </Button>
                                   );
                                 })()}
