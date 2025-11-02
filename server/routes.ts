@@ -16283,17 +16283,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get policy members
       const members = await storage.getPolicyMembersByPolicyId(policyId, policy.companyId);
       
-      // Get household income
-      const incomePromises = members.map(member => 
-        storage.getPolicyMemberIncome(member.id, policy.companyId)
-      );
-      const incomeRecords = await Promise.all(incomePromises);
-      const totalIncome = incomeRecords.reduce((sum, income) => {
-        if (income?.totalAnnualIncome) {
-          return sum + Number(income.totalAnnualIncome);
-        }
-        return sum;
-      }, 0);
+      // Get household income - PRIORITY: use policy.annualHouseholdIncome if available, otherwise calculate from members
+      let totalIncome = 0;
+      if (policy.annualHouseholdIncome) {
+        // Use the household income field from the policy itself
+        totalIncome = Number(policy.annualHouseholdIncome);
+        console.log(`[MARKETPLACE_PLANS] Using policy annualHouseholdIncome: $${totalIncome}`);
+      } else {
+        // Calculate from policy members' income records
+        const incomePromises = members.map(member => 
+          storage.getPolicyMemberIncome(member.id, policy.companyId)
+        );
+        const incomeRecords = await Promise.all(incomePromises);
+        totalIncome = incomeRecords.reduce((sum, income) => {
+          if (income?.totalAnnualIncome) {
+            return sum + Number(income.totalAnnualIncome);
+          }
+          return sum;
+        }, 0);
+        console.log(`[MARKETPLACE_PLANS] Calculated income from ${members.length} members: $${totalIncome}`);
+      }
       
       // Prepare data for CMS API
       const client = members.find(m => m.role === 'client');
