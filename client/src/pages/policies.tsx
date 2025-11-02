@@ -11205,7 +11205,6 @@ export default function PoliciesPage() {
                         <TableHead>Policy</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="w-20">Year</TableHead>
-                        <TableHead>Assigned to</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -11386,23 +11385,6 @@ export default function PoliciesPage() {
                               <Badge variant="secondary" className="text-sm font-semibold">
                                 {quote.effectiveDate ? quote.effectiveDate.split('-')[0] : 'N/A'}
                               </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {assignedAgent ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm">{assignedAgent.firstName} {assignedAgent.lastName}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-5 w-5 p-0"
-                                    data-testid={`button-remove-assigned-${quote.id}`}
-                                  >
-                                    ×
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">-</span>
-                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
