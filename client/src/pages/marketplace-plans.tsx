@@ -235,6 +235,8 @@ export default function MarketplacePlansPage() {
         household_lcbp_premium: data.household_lcbp_premium,
         request_data: apiRequestData,
       };
+      
+      console.log(`💰 Frontend received household_aptc: ${data.household_aptc}`);
 
       // Set all plans at once
       const combinedData = {
