@@ -775,9 +775,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     ? dependentSchema
     : familyMemberSchema;
 
-  // Fetch quote members to get member IDs
+  // Fetch policy members to get member IDs
   const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
-    queryKey: ['/api/policies', quote?.id, 'members'],
+    queryKey: ['/api/policies', quote.id, 'members'],
     enabled: !!quote?.id && open,
   });
 
@@ -5615,7 +5615,7 @@ export default function PoliciesPage() {
     
     // Fetch existing payment method data if editing
     const { data: paymentMethodData, isLoading: isLoadingPaymentMethod } = useQuery<{ paymentMethod: QuotePaymentMethod }>({
-      queryKey: ['/api/policies', quote?.id, 'payment-methods', paymentMethodId],
+      queryKey: ['/api/policies', quote.id, 'payment-methods', paymentMethodId],
       queryFn: async () => {
         const res = await fetch(`/api/policies/${quote.id}/payment-methods/${paymentMethodId}`, {
           credentials: 'include',
