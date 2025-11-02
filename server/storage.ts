@@ -3999,32 +3999,8 @@ export class DbStorage implements IStorage {
             .limit(1);
 
           if (primaryPlan.length > 0) {
-            const plan = primaryPlan[0];
-            // Convert policyPlans format to selectedPlan format for frontend compatibility
-            finalSelectedPlan = {
-              id: plan.planId,
-              name: plan.planName,
-              issuer: { name: plan.carrierName },
-              metal_level: plan.metalLevel,
-              premium: plan.premium,
-              premium_w_credit: plan.premiumWithCredit,
-              type: plan.planType,
-              network_type: plan.networkType,
-              manual: plan.isManual,
-              out_of_pocket_limit: plan.outOfPocketLimit,
-              deductibles: plan.deductible ? [{ amount: plan.deductible }] : [],
-              hsa_eligible: false,
-              copay_primary: plan.copayPrimaryCare || '',
-              copay_specialist: plan.copaySpecialist || '',
-              copay_emergency: plan.copayEmergencyRoom || '',
-              copay_urgent_care: plan.copayUrgentCare || '',
-              copay_generic_drugs: plan.copayGenericDrugs || '',
-              copay_mental_health: '',
-              simple_choice: false,
-              quality_rating: null,
-              has_dental_adult_coverage: false,
-              has_dental_child_coverage: false,
-            };
+            // The full plan is stored in planData as JSONB
+            finalSelectedPlan = primaryPlan[0].planData as any;
           }
         }
 
