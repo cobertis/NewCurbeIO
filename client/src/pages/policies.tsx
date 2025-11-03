@@ -11203,42 +11203,15 @@ export default function PoliciesPage() {
 
                   {/* Search and Filter Card */}
                   <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-[18px] shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] p-4 space-y-3">
-                    {/* Search Input */}
-                    <Input
-                      placeholder="Type here to search..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full"
-                      data-testid="input-search-quotes"
-                    />
-                    
-                    {/* Family Members Checkbox */}
+                    {/* Search Input and Buttons Row */}
                     <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="search-family-members"
-                        checked={filters.searchFamilyMembers}
-                        onCheckedChange={(checked) => setFilters(prev => ({ ...prev, searchFamilyMembers: !!checked }))}
-                        className="h-4 w-4"
-                        data-testid="checkbox-search-family-members"
+                      <Input
+                        placeholder="Type here to search..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1"
+                        data-testid="input-search-quotes"
                       />
-                      <label
-                        htmlFor="search-family-members"
-                        className="text-sm leading-none cursor-pointer flex items-center gap-1.5"
-                      >
-                        Search by family members:
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">When enabled, search will also include family member names, emails, and phone numbers</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </label>
-                    </div>
-
-                    {/* Action Buttons Row */}
-                    <div className="flex items-center gap-2">
                       <Button 
                         variant="default"
                         size="default"
@@ -11435,6 +11408,31 @@ export default function PoliciesPage() {
                       </div>
                     </SheetContent>
                       </Sheet>
+                    </div>
+                    
+                    {/* Family Members Checkbox */}
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="search-family-members"
+                        checked={filters.searchFamilyMembers}
+                        onCheckedChange={(checked) => setFilters(prev => ({ ...prev, searchFamilyMembers: !!checked }))}
+                        className="h-4 w-4"
+                        data-testid="checkbox-search-family-members"
+                      />
+                      <label
+                        htmlFor="search-family-members"
+                        className="text-sm leading-none cursor-pointer flex items-center gap-1.5"
+                      >
+                        Search by family members:
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">When enabled, search will also include family member names, emails, and phone numbers</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </label>
                     </div>
                   </div>
 
