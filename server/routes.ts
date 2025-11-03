@@ -12042,7 +12042,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           gender: d.gender || undefined,
           pregnant: d.pregnant || false,
           usesTobacco: d.tobaccoUser || false,
-          isApplicant: d.isApplicant || false, // CRITICAL: Determines if dependent needs insurance or has Medicaid/CHIP
+          isApplicant: d.isApplicant !== false, // CRITICAL: Default TRUE (needs insurance) unless explicitly false (has Medicaid/CHIP)
         })),
       };
       
@@ -12151,7 +12151,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           gender: d.gender || undefined,
           pregnant: d.pregnant || false,
           usesTobacco: d.tobaccoUser || false,
-          isApplicant: d.isApplicant || false, // CRITICAL: Determines if dependent needs insurance or has Medicaid/CHIP
+          isApplicant: d.isApplicant !== false, // CRITICAL: Default TRUE (needs insurance) unless explicitly false (has Medicaid/CHIP)
         })),
       };
       
@@ -16572,7 +16572,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           gender: d.gender || undefined,
           pregnant: d.pregnant || false,
           usesTobacco: d.tobaccoUser || false,
-          isApplicant: d.isApplicant || false, // CRITICAL: Determines if dependent needs insurance or has Medicaid/CHIP
+          isApplicant: d.isApplicant !== false, // CRITICAL: Default TRUE (needs insurance) unless explicitly false (has Medicaid/CHIP)
         })),
       };
       
