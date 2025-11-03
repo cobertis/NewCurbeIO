@@ -11169,7 +11169,7 @@ export default function PoliciesPage() {
             ) : (
               <div className="flex flex-col flex-1 min-h-0">
                 {/* HEADER SECTION - Scrolls away */}
-                <div className="pb-4 space-y-4">
+                <div className="px-8 pb-6 space-y-4">
                   {/* Title Row and Year Filters */}
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold">Policies</h3>
@@ -11602,7 +11602,7 @@ export default function PoliciesPage() {
                 )}
 
                 {/* Table - Scrollable Body with Sticky Header */}
-                <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="flex-1 min-h-0 overflow-y-auto px-8">
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No quotes match your search criteria
