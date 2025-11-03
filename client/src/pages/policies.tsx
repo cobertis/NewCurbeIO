@@ -5237,10 +5237,26 @@ export default function PoliciesPage() {
       }
     }
     
+    // Sidebar view filter
+    let matchesView = true;
+    if (selectedView === 'archived') {
+      // Show cancelled policies in archived view
+      matchesView = quote.status === 'canceled';
+    } else if (selectedView === 'exports') {
+      // Show policies ready for export (approved, submitted, or completed statuses)
+      matchesView = quote.status === 'approved' || quote.status === 'submitted' || quote.status === 'completed';
+    } else if (selectedView === 'important') {
+      // Show policies that need attention (pending_review, rejected, or have issues)
+      // Note: This could be enhanced to check for important notes via additional query
+      matchesView = quote.status === 'pending_review' || quote.status === 'rejected' || 
+                   quote.documentsStatus === 'declined' || quote.paymentStatus === 'failed';
+    }
+    // 'policies', 'oep-aca', and 'oep-medicare' views show all matching quotes
+    
     return matchesSearch && matchesStatus && matchesProduct && matchesState && 
            matchesZipCode && matchesAssignedTo && matchesEffectiveDateFrom && 
            matchesEffectiveDateTo && matchesApplicantsFrom && matchesApplicantsTo &&
-           matchesEffectiveYear && matchesOEP;
+           matchesEffectiveYear && matchesOEP && matchesView;
   });
   
   // Check if any filters are active
@@ -11083,7 +11099,18 @@ export default function PoliciesPage() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" data-testid="button-create-agency-folder">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs" 
+                        data-testid="button-create-agency-folder"
+                        onClick={() => {
+                          toast({
+                            title: "Feature coming soon",
+                            description: "Agency folders functionality will be available in a future update.",
+                          });
+                        }}
+                      >
                         Create
                       </Button>
                     </div>
@@ -11104,7 +11131,18 @@ export default function PoliciesPage() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" data-testid="button-create-personal-folder">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs" 
+                        data-testid="button-create-personal-folder"
+                        onClick={() => {
+                          toast({
+                            title: "Feature coming soon",
+                            description: "Personal folders functionality will be available in a future update.",
+                          });
+                        }}
+                      >
                         Create
                       </Button>
                     </div>
@@ -11603,7 +11641,27 @@ export default function PoliciesPage() {
                 <div className="px-8 pb-6">
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    No quotes match your search criteria
+                    {selectedView === 'archived' ? (
+                      <div>
+                        <Archive className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p className="font-medium mb-1">No archived policies</p>
+                        <p className="text-sm">Cancelled policies will appear here</p>
+                      </div>
+                    ) : selectedView === 'important' ? (
+                      <div>
+                        <Bell className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p className="font-medium mb-1">No important policies</p>
+                        <p className="text-sm">Mark policies as important to see them here</p>
+                      </div>
+                    ) : selectedView === 'exports' ? (
+                      <div>
+                        <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p className="font-medium mb-1">No policies available</p>
+                        <p className="text-sm">Policies ready for export will appear here</p>
+                      </div>
+                    ) : (
+                      "No policies match your search criteria"
+                    )}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
