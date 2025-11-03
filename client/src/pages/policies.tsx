@@ -11606,17 +11606,18 @@ export default function PoliciesPage() {
                     No quotes match your search criteria
                   </div>
                 ) : (
+                  <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader className="sticky top-0 z-30 bg-white dark:bg-gray-900 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
-                        <TableRow className="bg-white dark:bg-gray-900">
-                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">
                             <Checkbox data-testid="checkbox-select-all" />
                           </TableHead>
-                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">Agent</TableHead>
-                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">Client</TableHead>
-                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">Policy</TableHead>
-                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">Status</TableHead>
-                          <TableHead className="text-right py-3 px-4 bg-white dark:bg-gray-900">Actions</TableHead>
+                          <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Agent</TableHead>
+                          <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Client</TableHead>
+                          <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Policy</TableHead>
+                          <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Status</TableHead>
+                          <TableHead className="sticky top-0 z-30 text-right py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                     <TableBody>
@@ -11821,6 +11822,7 @@ export default function PoliciesPage() {
                       })}
                     </TableBody>
                     </Table>
+                  </div>
                 )}
                 </div>
               </div>
