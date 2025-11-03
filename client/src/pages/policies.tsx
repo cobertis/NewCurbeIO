@@ -10971,7 +10971,7 @@ export default function PoliciesPage() {
           ) : (
             <>
               {/* LEFT SIDEBAR */}
-              <Card className="w-60 flex-shrink-0 overflow-y-auto rounded-none border-t-0 border-l-0 border-b-0">
+              <Card className="w-60 flex-shrink-0 overflow-y-auto rounded-lg border-r shadow-sm">
                 <CardContent className="p-4 space-y-6">
                   {/* Views Section */}
                   <div className="space-y-1">
@@ -11120,7 +11120,7 @@ export default function PoliciesPage() {
                   <div className="px-6 py-4 border-b">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       {/* Total Policies Card */}
-                      <Card>
+                      <Card className="rounded-lg shadow-sm">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-xs font-medium text-muted-foreground">Policies</CardTitle>
                         </CardHeader>
@@ -11130,7 +11130,7 @@ export default function PoliciesPage() {
                       </Card>
 
                       {/* Total Applicants Card */}
-                      <Card>
+                      <Card className="rounded-lg shadow-sm">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-xs font-medium text-muted-foreground">Applicants</CardTitle>
                         </CardHeader>
@@ -11140,7 +11140,7 @@ export default function PoliciesPage() {
                       </Card>
 
                       {/* Canceled Policies Card */}
-                      <Card>
+                      <Card className="rounded-lg shadow-sm">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-xs font-medium text-muted-foreground">Canceled policies</CardTitle>
                         </CardHeader>
@@ -11150,7 +11150,7 @@ export default function PoliciesPage() {
                       </Card>
 
                       {/* Canceled Applicants Card */}
-                      <Card>
+                      <Card className="rounded-lg shadow-sm">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-xs font-medium text-muted-foreground">Canceled applicants</CardTitle>
                         </CardHeader>
@@ -11164,7 +11164,7 @@ export default function PoliciesPage() {
 
                 {/* Policies Table - SCROLLABLE AREA */}
                 <div className="flex-1 px-6 py-4 overflow-y-auto">
-                  <Card className="flex flex-col min-h-0">
+                  <Card className="flex flex-col min-h-0 rounded-lg shadow-sm">
             <CardContent className="pt-6 flex flex-col flex-1 min-h-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading policies...</div>
