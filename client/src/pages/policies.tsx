@@ -10971,7 +10971,7 @@ export default function PoliciesPage() {
           ) : (
             <>
               {/* LEFT SIDEBAR */}
-              <div className="w-64 flex-shrink-0 overflow-y-auto bg-white border-r border-gray-200">
+              <div className="w-64 flex-shrink-0 overflow-y-auto bg-white rounded-[18px] border border-gray-200 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] m-4 mr-0">
                 <div className="p-4 space-y-6">
                   {/* Views Section */}
                   <div className="space-y-1">
