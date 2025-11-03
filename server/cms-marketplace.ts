@@ -480,6 +480,20 @@ async function fetchSinglePage(
 
     const data: MarketplaceApiResponse = await response.json();
     
+    // CRITICAL DEBUG: Log complete API response on first page to see ALL fields
+    if (page === 1) {
+      console.log('[CMS_MARKETPLACE] 🔍 COMPLETE API RESPONSE (first page):');
+      console.log(JSON.stringify({
+        household_aptc: data.household_aptc,
+        household_csr: data.household_csr,
+        household_lcbp_premium: data.household_lcbp_premium,
+        household_slcsp_premium: data.household_slcsp_premium,
+        total: data.total,
+        year: data.year,
+        plans_count: data.plans?.length
+      }, null, 2));
+    }
+    
     // Log total plans available (only on first page)
     if (offset === 0 && data.total) {
       console.log(`[CMS_MARKETPLACE] 📊 Total de planes disponibles: ${data.total}`);
