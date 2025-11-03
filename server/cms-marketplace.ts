@@ -101,13 +101,15 @@ interface MarketplaceApiResponse {
 /**
  * Calculate age from date of birth
  */
-function calculateAge(dateOfBirth: string): number {
-  const today = new Date();
+function calculateAge(dateOfBirth: string, effectiveDate?: string): number {
+  // CRITICAL: Calculate age on the effective date, NOT today
+  // The CMS API uses the age field to determine premiums and APTC
+  const referenceDate = effectiveDate ? new Date(effectiveDate) : new Date();
   const birthDate = new Date(dateOfBirth);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
+  let age = referenceDate.getFullYear() - birthDate.getFullYear();
+  const monthDiff = referenceDate.getMonth() - birthDate.getMonth();
   
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+  if (monthDiff < 0 || (monthDiff === 0 && referenceDate.getDate() < birthDate.getDate())) {
     age--;
   }
   
@@ -305,7 +307,7 @@ async function fetchSinglePage(
   
   // Add client - Always the "Self" relationship
   people.push({
-    age: calculateAge(quoteData.client.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
+    age: calculateAge(quoteData.client.dateOfBirth, quoteData.effectiveDate), // CRITICAL: Age on effective date for accurate APTC
     dob: quoteData.client.dateOfBirth, // DOB for accurate age calculation with effective_date
     aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
     does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
@@ -322,7 +324,7 @@ async function fetchSinglePage(
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       people.push({
-        age: calculateAge(spouse.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
+        age: calculateAge(spouse.dateOfBirth, quoteData.effectiveDate), // CRITICAL: Age on effective date for accurate APTC
         dob: spouse.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
         does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
@@ -346,7 +348,7 @@ async function fetchSinglePage(
       const needsInsurance = dependent.isApplicant !== false; // Default to true if not specified
       
       people.push({
-        age: calculateAge(dependent.dateOfBirth), // CRITICAL: Required for APTC/CSR calculation
+        age: calculateAge(dependent.dateOfBirth, quoteData.effectiveDate), // CRITICAL: Age on effective date for accurate APTC
         dob: dependent.dateOfBirth, // DOB for accurate age calculation with effective_date
         aptc_eligible: needsInsurance, // Per CMS docs: only eligible if they need insurance (not on Medicaid/CHIP)
         does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
