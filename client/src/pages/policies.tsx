@@ -11607,8 +11607,8 @@ export default function PoliciesPage() {
                   </div>
                 ) : (
                     <Table>
-                      <TableHeader className="sticky top-0 z-30 bg-white dark:bg-gray-900">
-                        <TableRow>
+                      <TableHeader className="sticky top-0 z-30 bg-white dark:bg-gray-900 shadow-sm border-b-2 border-gray-200 dark:border-gray-700" style={{ position: 'sticky', top: 0 }}>
+                        <TableRow className="bg-white dark:bg-gray-900">
                           <TableHead className="w-12 py-3 px-4">
                             <Checkbox data-testid="checkbox-select-all" />
                           </TableHead>
