@@ -11599,8 +11599,8 @@ export default function PoliciesPage() {
                   </div>
                 )}
 
-                {/* Table with Sticky Header - Dedicated scroll container */}
-                <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-6">
+                {/* Table with Sticky Header */}
+                <div className="px-8 pb-6">
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No quotes match your search criteria
