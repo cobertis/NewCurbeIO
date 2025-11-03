@@ -11168,66 +11168,96 @@ export default function PoliciesPage() {
               </div>
             ) : (
               <div className="flex flex-col flex-1 min-h-0">
-                {/* FIXED HEADER SECTION - Compact 2-line layout */}
-                <div className="sticky top-0 z-40 bg-background space-y-1 pb-1">
-                  {/* LINE 1: Title + Year filters + Search + Buttons + Family checkbox */}
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold whitespace-nowrap">Policies</h3>
-                    <div className="flex items-center gap-1.5">
-                      {[2026, 2025, 2024].map((year) => (
-                        <div key={year} className="flex items-center gap-1">
-                          <Checkbox
-                            id={`year-${year}`}
-                            checked={filters.effectiveYears.includes(year)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setFilters(prev => ({ ...prev, effectiveYears: [...prev.effectiveYears, year] }));
-                              } else {
-                                setFilters(prev => ({ ...prev, effectiveYears: prev.effectiveYears.filter(y => y !== year) }));
-                              }
-                            }}
-                            className="h-3.5 w-3.5"
-                            data-testid={`checkbox-year-${year}`}
-                          />
-                          <label
-                            htmlFor={`year-${year}`}
-                            className="text-xs font-medium leading-none cursor-pointer"
-                          >
-                            {year}
-                          </label>
-                        </div>
-                      ))}
+                {/* FIXED HEADER SECTION */}
+                <div className="sticky top-0 z-40 bg-background space-y-3 pb-3">
+                  {/* LINE 1: Title on left, Effective year checkboxes on right */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Policies</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Effective year:</span>
+                      <div className="flex items-center gap-3">
+                        {[2026, 2025, 2024].map((year) => (
+                          <div key={year} className="flex items-center gap-1.5">
+                            <Checkbox
+                              id={`year-${year}`}
+                              checked={filters.effectiveYears.includes(year)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setFilters(prev => ({ ...prev, effectiveYears: [...prev.effectiveYears, year] }));
+                                } else {
+                                  setFilters(prev => ({ ...prev, effectiveYears: prev.effectiveYears.filter(y => y !== year) }));
+                                }
+                              }}
+                              className="h-4 w-4"
+                              data-testid={`checkbox-year-${year}`}
+                            />
+                            <label
+                              htmlFor={`year-${year}`}
+                              className="text-sm font-medium leading-none cursor-pointer"
+                            >
+                              {year}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex-1">
+                  </div>
+
+                  {/* LINE 2: Search box with buttons */}
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 space-y-2">
                       <Input
                         placeholder="Type here to search..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-7 text-xs"
+                        className="w-full"
                         data-testid="input-search-quotes"
                       />
+                      <div className="flex items-center gap-1.5">
+                        <Checkbox
+                          id="search-family-members"
+                          checked={filters.searchFamilyMembers}
+                          onCheckedChange={(checked) => setFilters(prev => ({ ...prev, searchFamilyMembers: !!checked }))}
+                          className="h-4 w-4"
+                          data-testid="checkbox-search-family-members"
+                        />
+                        <label
+                          htmlFor="search-family-members"
+                          className="text-sm leading-none cursor-pointer flex items-center gap-1"
+                        >
+                          Search by family members:
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">When enabled, search will also include family member names, emails, and phone numbers</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </label>
+                      </div>
                     </div>
                     <Button 
                       variant="default"
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs px-2"
+                      size="default"
+                      className="bg-green-600 hover:bg-green-700 text-white"
                       data-testid="button-search"
                     >
-                      <Search className="h-3.5 w-3.5 mr-1" />
+                      <Search className="h-4 w-4 mr-2" />
                       Search
                     </Button>
                     <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
                       <SheetTrigger asChild>
                         <Button 
                           variant="default"
-                          size="sm"
-                          className="bg-purple-600 hover:bg-purple-700 text-white h-7 text-xs px-2"
+                          size="default"
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
                           data-testid="button-filters"
                         >
-                          <Filter className="h-3.5 w-3.5 mr-1" />
+                          <Filter className="h-4 w-4 mr-2" />
                           Filters
                           {hasActiveFilters && (
-                            <Badge variant="secondary" className="ml-1 h-3.5 w-3.5 p-0 flex items-center justify-center rounded-full bg-white text-purple-600 text-[10px]">
+                            <Badge variant="secondary" className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center rounded-full bg-white text-purple-600 text-[10px]">
                               !
                             </Badge>
                           )}
@@ -11403,34 +11433,9 @@ export default function PoliciesPage() {
                       </div>
                     </SheetContent>
                   </Sheet>
-                    <div className="flex items-center gap-1">
-                      <Checkbox
-                        id="search-family-members"
-                        checked={filters.searchFamilyMembers}
-                        onCheckedChange={(checked) => setFilters(prev => ({ ...prev, searchFamilyMembers: !!checked }))}
-                        className="h-3.5 w-3.5"
-                        data-testid="checkbox-search-family-members"
-                      />
-                      <label
-                        htmlFor="search-family-members"
-                        className="text-xs leading-none cursor-pointer flex items-center gap-1"
-                      >
-                        Family
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="h-3 w-3 rounded-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground cursor-help">
-                              ?
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">When enabled, search will also include family member names, emails, and phone numbers</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </label>
-                    </div>
                   </div>
 
-                  {/* LINE 2: Show selector + Pagination + OEP buttons */}
+                  {/* LINE 3: Show selector + Pagination + OEP buttons */}
                   <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs">Show</span>
