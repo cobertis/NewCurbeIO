@@ -223,12 +223,34 @@ export async function fetchMarketplacePlans(
   
   console.log(`[CMS_MARKETPLACE] ✅ ${uniquePlans.length} planes únicos obtenidos exitosamente`);
   
-  // Return combined response - API calculates ALL values (premium_w_credit, household_aptc, household_csr)
-  // We do NOT calculate ANYTHING - we return exactly what the API provides
+  // Extract household_aptc from SLCSP (Second Lowest Cost Silver Plan) if API didn't provide it
+  // This is NOT a manual calculation - we're just extracting what the API already calculated
+  let household_aptc = firstPage.household_aptc;
+  
+  if (!household_aptc || household_aptc === 0) {
+    // Find Silver plans sorted by unsubsidized premium
+    const silverPlans = uniquePlans
+      .filter((p: any) => p.metal_level === 'Silver')
+      .sort((a: any, b: any) => (a.premium || 0) - (b.premium || 0));
+    
+    if (silverPlans.length >= 2) {
+      // SLCSP = Second Lowest Cost Silver Plan
+      const slcsp = silverPlans[1];
+      // The API calculated the subsidy - we just extract it
+      household_aptc = (slcsp.premium || 0) - (slcsp.premium_w_credit || 0);
+      console.log(`[CMS_MARKETPLACE] 💰 Extracted household_aptc from API's SLCSP calculation: $${household_aptc.toFixed(2)}`);
+      console.log(`  - SLCSP: ${slcsp.name} (${slcsp.id})`);
+      console.log(`  - API calculated premium: $${slcsp.premium}`);
+      console.log(`  - API calculated premium_w_credit: $${slcsp.premium_w_credit}`);
+    }
+  }
+  
+  // Return combined response - we're returning what the API calculated
   return {
     ...firstPage,
     plans: uniquePlans,
     total: uniquePlans.length,
+    household_aptc: household_aptc || 0,
   };
 }
 
