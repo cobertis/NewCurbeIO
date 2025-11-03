@@ -11190,8 +11190,8 @@ export default function PoliciesPage() {
 
                 {/* Policies Table */}
                 <div className="px-6 pb-4">
-                  <div className="bg-white rounded-[18px] border border-gray-200 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] flex flex-col min-h-0">
-            <div className="pt-6 flex flex-col flex-1 min-h-0">
+                  <div className="bg-white rounded-[18px] border border-gray-200 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] flex flex-col min-h-0" style={{ overflow: 'visible' }}>
+            <div className="pt-6 flex flex-col flex-1 min-h-0" style={{ overflow: 'visible' }}>
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading policies...</div>
             ) : allQuotes.length === 0 ? (
