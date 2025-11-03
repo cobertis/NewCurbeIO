@@ -11167,7 +11167,7 @@ export default function PoliciesPage() {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+              <div className="flex flex-col flex-1 min-h-0">
                 {/* HEADER SECTION - Scrolls away */}
                 <div className="px-8 pt-6 pb-4 space-y-4">
                   {/* Title Row and Year Filters */}
@@ -11599,24 +11599,24 @@ export default function PoliciesPage() {
                   </div>
                 )}
 
-                {/* Table with Sticky Header */}
-                <div className="px-8 pb-6">
+                {/* Table with Sticky Header - Dedicated scroll container */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-6">
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No quotes match your search criteria
                   </div>
                 ) : (
                     <Table>
-                      <TableHeader className="sticky top-0 z-30 bg-white dark:bg-gray-900 shadow-sm border-b-2 border-gray-200 dark:border-gray-700" style={{ position: 'sticky', top: 0 }}>
+                      <TableHeader className="sticky top-0 z-30 bg-white dark:bg-gray-900 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
                         <TableRow className="bg-white dark:bg-gray-900">
-                          <TableHead className="w-12 py-3 px-4">
+                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">
                             <Checkbox data-testid="checkbox-select-all" />
                           </TableHead>
-                          <TableHead className="w-16 py-3 px-4">Agent</TableHead>
-                          <TableHead className="py-3 px-4">Client</TableHead>
-                          <TableHead className="py-3 px-4">Policy</TableHead>
-                          <TableHead className="py-3 px-4">Status</TableHead>
-                          <TableHead className="text-right py-3 px-4">Actions</TableHead>
+                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">Agent</TableHead>
+                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">Client</TableHead>
+                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">Policy</TableHead>
+                          <TableHead className="py-3 px-4 bg-white dark:bg-gray-900">Status</TableHead>
+                          <TableHead className="text-right py-3 px-4 bg-white dark:bg-gray-900">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                     <TableBody>
