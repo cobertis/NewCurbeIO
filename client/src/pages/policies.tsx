@@ -11774,53 +11774,6 @@ export default function PoliciesPage() {
                             </TableCell>
                             <TableCell className="text-right py-3 px-4">
                               <div className="flex items-center justify-end gap-2">
-                                {/* Renewal Button - Show for eligible policies */}
-                                {(() => {
-                                  const now = new Date();
-                                  const currentMonth = now.getMonth();
-                                  const currentDay = now.getDate();
-                                  const currentYear = now.getFullYear();
-                                  
-                                  const isInRenewalPeriod = 
-                                    (currentMonth >= 9) ||
-                                    (currentMonth === 0) ||
-                                    (currentMonth === 1 && currentDay === 1);
-                                  
-                                  if (!isInRenewalPeriod) return null;
-                                  
-                                  const renewalEligibleYear = currentMonth >= 9 ? currentYear : currentYear - 1;
-                                  const renewalTargetYear = renewalEligibleYear + 1;
-                                  
-                                  const effectiveYear = quote.effectiveDate ? parseInt(quote.effectiveDate.split('-')[0]) : null;
-                                  const isACA = quote.productType === 'Health Insurance ACA' || quote.productType?.toLowerCase() === 'aca';
-                                  const isMedicare = quote.productType?.startsWith('Medicare') || quote.productType?.toLowerCase() === 'medicare';
-                                  const isEligibleForRenewal = 
-                                    (isACA || isMedicare) &&
-                                    effectiveYear === renewalEligibleYear &&
-                                    quote.renewalStatus !== 'completed' &&
-                                    quote.status !== 'cancelled';
-                                  
-                                  if (!isEligibleForRenewal) return null;
-                                  
-                                  return (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => renewalMutation.mutate(quote.id)}
-                                      disabled={renewingPolicyId === quote.id}
-                                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-300 dark:border-blue-800"
-                                      data-testid={`button-renew-${quote.id}`}
-                                    >
-                                      {renewingPolicyId === quote.id ? (
-                                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                                      ) : (
-                                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                                      )}
-                                      Renew {renewalTargetYear}
-                                    </Button>
-                                  );
-                                })()}
-                                
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="outline" size="sm" data-testid={`button-preview-${quote.id}`}>
