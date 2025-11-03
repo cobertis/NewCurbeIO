@@ -465,7 +465,7 @@ const familyMemberSchema = z.object({
   gender: z.string().min(1, "Gender is required"),
   phone: z.string().default(''),
   email: z.string().default(''),
-  isApplicant: z.boolean().default(false),
+  isApplicant: z.boolean().default(true), // Default: dependent needs insurance (not on Medicaid/CHIP)
   isPrimaryDependent: z.boolean().default(false),
   tobaccoUser: z.boolean().default(false),
   pregnant: z.boolean().default(false),
