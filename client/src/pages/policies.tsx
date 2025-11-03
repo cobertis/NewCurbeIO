@@ -11168,8 +11168,8 @@ export default function PoliciesPage() {
               </div>
             ) : (
               <div className="flex flex-col flex-1 min-h-0">
-                {/* FIXED HEADER SECTION */}
-                <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 pb-4 space-y-4">
+                {/* HEADER SECTION - Scrolls away */}
+                <div className="pb-4 space-y-4">
                   {/* Title Row and Year Filters */}
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold">Policies</h3>
@@ -11553,7 +11553,7 @@ export default function PoliciesPage() {
                     </div>
                   </div>
                 </div>
-                {/* END FIXED HEADER SECTION */}
+                {/* END HEADER SECTION */}
 
                 {/* Filter Chips Display */}
                 {oepFilter && (
