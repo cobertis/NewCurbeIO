@@ -11167,9 +11167,9 @@ export default function PoliciesPage() {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col flex-1 min-h-0">
+              <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
                 {/* HEADER SECTION - Scrolls away */}
-                <div className="px-8 pb-6 space-y-4">
+                <div className="px-8 pt-6 pb-4 space-y-4">
                   {/* Title Row and Year Filters */}
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold">Policies</h3>
@@ -11555,7 +11555,7 @@ export default function PoliciesPage() {
 
                 {/* Filter Chips Display */}
                 {oepFilter && (
-                  <div className="px-6 py-3 border-b flex items-center gap-2">
+                  <div className="px-8 py-3 flex items-center gap-2">
                     {oepFilter === 'aca' && (
                       <Badge 
                         className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm font-normal flex items-center gap-2"
@@ -11599,15 +11599,15 @@ export default function PoliciesPage() {
                   </div>
                 )}
 
-                {/* Table - Scrollable Body with Sticky Header */}
-                <div className="flex-1 min-h-0 overflow-y-auto px-8">
+                {/* Table with Sticky Header */}
+                <div className="px-8 pb-6">
                 {filteredQuotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No quotes match your search criteria
                   </div>
                 ) : (
                     <Table>
-                      <TableHeader className="sticky top-0 z-30 bg-background">
+                      <TableHeader className="sticky top-0 z-30 bg-white dark:bg-gray-900">
                         <TableRow>
                           <TableHead className="w-12 py-3 px-4">
                             <Checkbox data-testid="checkbox-select-all" />
