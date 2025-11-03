@@ -11120,7 +11120,7 @@ export default function PoliciesPage() {
                   <div className="px-6 py-4 border-b">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       {/* Total Policies Card */}
-                      <Card className="rounded-xl shadow-lg border-2">
+                      <Card className="!rounded-2xl !shadow-xl !border-2">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-xs font-medium text-muted-foreground">Policies</CardTitle>
                         </CardHeader>
@@ -11130,7 +11130,7 @@ export default function PoliciesPage() {
                       </Card>
 
                       {/* Total Applicants Card */}
-                      <Card className="rounded-xl shadow-lg border-2">
+                      <Card className="!rounded-2xl !shadow-xl !border-2">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-xs font-medium text-muted-foreground">Applicants</CardTitle>
                         </CardHeader>
@@ -11140,7 +11140,7 @@ export default function PoliciesPage() {
                       </Card>
 
                       {/* Canceled Policies Card */}
-                      <Card className="rounded-xl shadow-lg border-2">
+                      <Card className="!rounded-2xl !shadow-xl !border-2">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-xs font-medium text-muted-foreground">Canceled policies</CardTitle>
                         </CardHeader>
@@ -11150,7 +11150,7 @@ export default function PoliciesPage() {
                       </Card>
 
                       {/* Canceled Applicants Card */}
-                      <Card className="rounded-xl shadow-lg border-2">
+                      <Card className="!rounded-2xl !shadow-xl !border-2">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-xs font-medium text-muted-foreground">Canceled applicants</CardTitle>
                         </CardHeader>
