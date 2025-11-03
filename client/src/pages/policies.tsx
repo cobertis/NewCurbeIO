@@ -10971,8 +10971,8 @@ export default function PoliciesPage() {
           ) : (
             <>
               {/* LEFT SIDEBAR */}
-              <Card className="w-60 flex-shrink-0 overflow-y-auto rounded-lg border-r shadow-sm">
-                <CardContent className="p-4 space-y-6">
+              <div className="w-64 flex-shrink-0 overflow-y-auto bg-white border-r border-gray-200">
+                <div className="p-4 space-y-6">
                   {/* Views Section */}
                   <div className="space-y-1">
                     {/* Policies View */}
@@ -11110,8 +11110,8 @@ export default function PoliciesPage() {
                     </div>
                     <p className="text-xs text-muted-foreground pl-3">You have no personal folders.</p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* MAIN CONTENT AREA */}
               <div className="flex-1 flex flex-col min-h-0">
@@ -11120,52 +11120,40 @@ export default function PoliciesPage() {
                   <div className="px-6 py-4 border-b">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       {/* Total Policies Card */}
-                      <Card className="!rounded-2xl !shadow-xl !border-2">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-xs font-medium text-muted-foreground">Policies</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pb-3">
-                          <div className="text-2xl font-bold" data-testid="stat-total-policies">{stats.totalPolicies}</div>
-                        </CardContent>
-                      </Card>
+                      <div className="rounded-[18px] border border-gray-200 bg-white shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] px-6 py-5">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Policies</div>
+                        <div className="text-xs text-gray-400 mb-2">Number of policies</div>
+                        <div className="text-3xl font-bold text-green-600" data-testid="stat-total-policies">{stats.totalPolicies}</div>
+                      </div>
 
                       {/* Total Applicants Card */}
-                      <Card className="!rounded-2xl !shadow-xl !border-2">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-xs font-medium text-muted-foreground">Applicants</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pb-3">
-                          <div className="text-2xl font-bold" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
-                        </CardContent>
-                      </Card>
+                      <div className="rounded-[18px] border border-gray-200 bg-white shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] px-6 py-5">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Applicants</div>
+                        <div className="text-xs text-gray-400 mb-2">Number of applicants</div>
+                        <div className="text-3xl font-bold text-green-600" data-testid="stat-total-applicants">{stats.totalApplicants.toLocaleString()}</div>
+                      </div>
 
                       {/* Canceled Policies Card */}
-                      <Card className="!rounded-2xl !shadow-xl !border-2">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-xs font-medium text-muted-foreground">Canceled policies</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pb-3">
-                          <div className="text-2xl font-bold" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
-                        </CardContent>
-                      </Card>
+                      <div className="rounded-[18px] border border-gray-200 bg-white shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] px-6 py-5">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Canceled policies</div>
+                        <div className="text-xs text-gray-400 mb-2">Canceled policies</div>
+                        <div className="text-3xl font-bold text-gray-900" data-testid="stat-canceled-policies">{stats.canceledPolicies}</div>
+                      </div>
 
                       {/* Canceled Applicants Card */}
-                      <Card className="!rounded-2xl !shadow-xl !border-2">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-xs font-medium text-muted-foreground">Canceled applicants</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pb-3">
-                          <div className="text-2xl font-bold" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
-                        </CardContent>
-                      </Card>
+                      <div className="rounded-[18px] border border-gray-200 bg-white shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] px-6 py-5">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Cancelled applicants</div>
+                        <div className="text-xs text-gray-400 mb-2">Cancelled applicants</div>
+                        <div className="text-3xl font-bold text-gray-900" data-testid="stat-canceled-applicants">{stats.canceledApplicants}</div>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Policies Table - SCROLLABLE AREA */}
                 <div className="flex-1 px-6 py-4 overflow-y-auto">
-                  <Card className="flex flex-col min-h-0 rounded-lg shadow-sm">
-            <CardContent className="pt-6 flex flex-col flex-1 min-h-0">
+                  <div className="bg-white rounded-[18px] border border-gray-200 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] flex flex-col min-h-0">
+            <div className="pt-6 flex flex-col flex-1 min-h-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading policies...</div>
             ) : allQuotes.length === 0 ? (
@@ -11870,8 +11858,8 @@ export default function PoliciesPage() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
                 </div>
               </div>
             </>
