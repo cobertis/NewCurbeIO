@@ -691,6 +691,7 @@ export default function LandingPageBuilder() {
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
 
   // Local state for Settings fields with debouncing
+  const [pageTitle, setPageTitle] = useState("");
   const [slugInput, setSlugInput] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
@@ -759,18 +760,17 @@ export default function LandingPageBuilder() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks]);
 
-  // Sync local state with selectedPage (but skip if user is actively editing)
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  
+  // Sync local state with selectedPage
   useEffect(() => {
-    if (selectedPage?.landingPage && !isEditingProfile) {
+    if (selectedPage?.landingPage) {
+      setPageTitle(selectedPage.landingPage.title || "");
       setSlugInput(selectedPage.landingPage.slug);
       setSeoTitle(selectedPage.landingPage.seo.title || "");
       setSeoDescription(selectedPage.landingPage.seo.description || "");
       setProfileName(selectedPage.landingPage.profileName || "");
       setProfileBio(selectedPage.landingPage.profileBio || "");
     }
-  }, [selectedPage, isEditingProfile]);
+  }, [selectedPage?.landingPage?.id]); // Only sync when page changes, not on every update
 
   // Debounced slug update
   useEffect(() => {
@@ -829,57 +829,33 @@ export default function LandingPageBuilder() {
     return () => clearTimeout(timer);
   }, [seoDescription, selectedPageId, selectedPage]);
 
-  // Debounced profile name update
-  useEffect(() => {
-    if (profileName === selectedPage?.landingPage?.profileName) {
-      setIsEditingProfile(false);
-      return;
+  // Save handlers for profile fields (save on blur, not on change)
+  const handleProfileNameSave = () => {
+    if (profileName !== selectedPage?.landingPage?.profileName && selectedPageId) {
+      updatePageMutation.mutate({
+        id: selectedPageId,
+        data: { profileName },
+      });
     }
-    if (!selectedPage?.landingPage) return;
-    
-    setIsEditingProfile(true);
-    const timer = setTimeout(() => {
-      updatePageMutation.mutate(
-        {
-          id: selectedPageId!,
-          data: { profileName },
-        },
-        {
-          onSettled: () => {
-            setTimeout(() => setIsEditingProfile(false), 100);
-          },
-        }
-      );
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [profileName, selectedPageId, selectedPage]);
+  };
 
-  // Debounced profile bio update
-  useEffect(() => {
-    if (profileBio === selectedPage?.landingPage?.profileBio) {
-      setIsEditingProfile(false);
-      return;
+  const handleProfileBioSave = () => {
+    if (profileBio !== selectedPage?.landingPage?.profileBio && selectedPageId) {
+      updatePageMutation.mutate({
+        id: selectedPageId,
+        data: { profileBio },
+      });
     }
-    if (!selectedPage?.landingPage) return;
-    
-    setIsEditingProfile(true);
-    const timer = setTimeout(() => {
-      updatePageMutation.mutate(
-        {
-          id: selectedPageId!,
-          data: { profileBio },
-        },
-        {
-          onSettled: () => {
-            setTimeout(() => setIsEditingProfile(false), 100);
-          },
-        }
-      );
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [profileBio, selectedPageId, selectedPage]);
+  };
+
+  const handlePageTitleSave = () => {
+    if (pageTitle !== selectedPage?.landingPage?.title && selectedPageId) {
+      updatePageMutation.mutate({
+        id: selectedPageId,
+        data: { title: pageTitle },
+      });
+    }
+  };
 
   // Helper function to generate user-based slug
   const generateUserSlug = (user: any): string => {
@@ -2160,6 +2136,7 @@ export default function LandingPageBuilder() {
                             id="profileName"
                             value={profileName}
                             onChange={(e) => setProfileName(e.target.value)}
+                            onBlur={handleProfileNameSave}
                             placeholder="Your name"
                             data-testid="input-profile-name"
                           />
@@ -2173,6 +2150,7 @@ export default function LandingPageBuilder() {
                             id="profileBio"
                             value={profileBio}
                             onChange={(e) => setProfileBio(e.target.value)}
+                            onBlur={handleProfileBioSave}
                             placeholder="Your bio"
                             rows={3}
                             data-testid="input-profile-bio"
@@ -2214,13 +2192,9 @@ export default function LandingPageBuilder() {
                           </Label>
                           <Input
                             id="page-title"
-                            value={selectedPage.landingPage.title || ""}
-                            onChange={(e) =>
-                              updatePageMutation.mutate({
-                                id: selectedPageId!,
-                                data: { title: e.target.value },
-                              })
-                            }
+                            value={pageTitle}
+                            onChange={(e) => setPageTitle(e.target.value)}
+                            onBlur={handlePageTitleSave}
                             placeholder="e.g., SmartBio, YourBrand"
                             data-testid="input-page-title"
                           />
