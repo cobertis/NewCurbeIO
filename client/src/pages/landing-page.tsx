@@ -1137,15 +1137,17 @@ export default function LandingPageBuilder() {
       {/* Main 3-Column Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Add Blocks */}
-        <div className="w-[280px] bg-background border-r border-border overflow-y-auto">
+        <div className="w-[200px] bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 overflow-y-auto">
           <ScrollArea className="h-full">
-            <div className="p-4 space-y-6">
+            <div className="p-3 space-y-4">
               {/* Add Blocks Section */}
               <div>
-                <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add Blocks
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm">Add Blocks</h3>
+                  <button className="text-gray-400 hover:text-gray-600">
+                    <Minus className="w-4 h-4" />
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   {BLOCK_TYPES.map((blockType) => {
                     const Icon = blockType.icon;
@@ -1153,39 +1155,40 @@ export default function LandingPageBuilder() {
                       <button
                         key={blockType.type}
                         onClick={() => addBlock(blockType.type, {})}
-                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg bg-slate-800 hover:bg-slate-750 transition-colors group"
+                        className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:shadow-md transition-all group"
                         data-testid={`button-add-${blockType.type}`}
                       >
                         <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform"
                           style={{ backgroundColor: `${blockType.color}20` }}
                         >
-                          <Icon className="w-5 h-5" style={{ color: blockType.color }} />
+                          <Icon className="w-4 h-4" style={{ color: blockType.color }} />
                         </div>
-                        <span className="text-xs text-gray-300 font-medium">{blockType.label}</span>
+                        <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium text-center">{blockType.label}</span>
                       </button>
                     );
                   })}
                 </div>
                 
                 <Button 
-                  variant="outline" 
-                  className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-                  size="sm"
+                  variant="default" 
+                  className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
                   data-testid="button-see-more-blocks"
                 >
                   See Another Blocks
                 </Button>
               </div>
 
-              <Separator className="bg-slate-800" />
+              <Separator />
 
               {/* Social Media Section */}
               <div>
-                <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-                  <Share2 className="w-4 h-4" />
-                  Social Media
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm">Social Media</h3>
+                  <button className="text-gray-400 hover:text-gray-600">
+                    <Minus className="w-4 h-4" />
+                  </button>
+                </div>
                 <div className="space-y-2">
                   {SOCIAL_PLATFORMS.map((platform) => {
                     const Icon = platform.icon;
@@ -1197,15 +1200,15 @@ export default function LandingPageBuilder() {
                     return (
                       <div
                         key={platform.value}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-750 transition-colors group"
+                        className="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 transition-all group"
                       >
                         <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${platform.color}20` }}
+                          className="w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: platform.color }}
                         >
-                          <Icon className="w-4 h-4" style={{ color: platform.color }} />
+                          <Icon className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className="flex-1 text-sm text-gray-300">{platform.label}</span>
+                        <span className="flex-1 text-xs text-gray-600 dark:text-gray-300">{platform.label}</span>
                         {existingBlock ? (
                           <Button
                             variant="ghost"
@@ -1250,38 +1253,50 @@ export default function LandingPageBuilder() {
 
           {/* Content */}
           <div className="relative h-full overflow-y-auto">
-            <div className="p-8 flex flex-col items-center">
+            <div className="p-6 flex flex-col items-center">
               {/* Zoom Control */}
-              <div className="mb-6">
-                <Select value={`${zoomLevel}`} onValueChange={(v) => setZoomLevel(parseInt(v))}>
-                  <SelectTrigger className="w-32 bg-white" data-testid="select-zoom">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="90">90%</SelectItem>
-                    <SelectItem value="100">100%</SelectItem>
-                    <SelectItem value="110">110%</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-3 mb-6 bg-white rounded-lg px-3 py-1.5 shadow-sm border border-gray-200">
+                <button 
+                  onClick={() => setZoomLevel(Math.max(70, zoomLevel - 10))}
+                  className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  data-testid="button-zoom-out"
+                >
+                  <Minus className="w-4 h-4 text-gray-600" />
+                </button>
+                <span className="text-sm font-medium min-w-[50px] text-center text-gray-700">{zoomLevel}%</span>
+                <button
+                  onClick={() => setZoomLevel(Math.min(120, zoomLevel + 10))}
+                  className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  data-testid="button-zoom-in"
+                >
+                  <Plus className="w-4 h-4 text-gray-600" />
+                </button>
               </div>
 
               {/* Device Frame */}
               {selectedPage ? (
                 <div
-                  className={`relative overflow-hidden transition-all duration-300`}
                   style={{
-                    width: previewMode === "mobile" ? "430px" : "100%",
-                    maxWidth: previewMode === "desktop" ? "1024px" : undefined,
-                    height: previewMode === "mobile" ? "932px" : "auto",
-                    minHeight: previewMode === "desktop" ? "600px" : undefined,
-                    backgroundColor: "#1c1c1e",
-                    borderRadius: previewMode === "mobile" ? "60px" : "0",
-                    padding: previewMode === "mobile" ? "12px" : "0",
-                    boxShadow: previewMode === "mobile" 
-                      ? "0 0 0 8px #1c1c1e, 0 0 0 12px #2c2c2e, 0 20px 60px rgba(0,0,0,0.4)"
-                      : "none",
+                    transform: `scale(${zoomLevel / 100})`,
+                    transformOrigin: "top center",
+                    transition: "transform 0.2s ease",
                   }}
                 >
+                  <div
+                    className={`relative overflow-hidden transition-all duration-300`}
+                    style={{
+                      width: previewMode === "mobile" ? "430px" : "100%",
+                      maxWidth: previewMode === "desktop" ? "1024px" : undefined,
+                      height: previewMode === "mobile" ? "932px" : "auto",
+                      minHeight: previewMode === "desktop" ? "600px" : undefined,
+                      backgroundColor: "#1c1c1e",
+                      borderRadius: previewMode === "mobile" ? "60px" : "0",
+                      padding: previewMode === "mobile" ? "12px" : "0",
+                      boxShadow: previewMode === "mobile" 
+                        ? "0 0 0 8px #1c1c1e, 0 0 0 12px #2c2c2e, 0 20px 60px rgba(0,0,0,0.4)"
+                        : "none",
+                    }}
+                  >
                   {previewMode === "mobile" && (
                     <>
                       {/* iPhone 16 Pro Max Frame */}
@@ -1416,6 +1431,7 @@ export default function LandingPageBuilder() {
                       </div>
                     </ScrollArea>
                   </div>
+                  </div>
                 </div>
               ) : (
                 <Card className="border-dashed max-w-md">
@@ -1467,29 +1483,49 @@ export default function LandingPageBuilder() {
 
                         {/* Theme Grid */}
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                          {filteredThemes.slice(0, 4).map((themeData) => (
-                            <button
-                              key={themeData.name}
-                              onClick={() =>
-                                updatePageMutation.mutate({
-                                  id: selectedPageId!,
-                                  data: { theme: themeData.theme },
-                                })
-                              }
-                              className="group relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-purple-500 transition-colors"
-                              data-testid={`theme-${themeData.name.toLowerCase().replace(/\s+/g, "-")}`}
-                            >
-                              <div
-                                className="w-full h-full"
-                                style={{ background: themeData.gradient }}
-                              />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {themeData.name}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
+                          {filteredThemes.slice(0, 4).map((themeData) => {
+                            const isSelected = selectedPage.landingPage.theme.name === themeData.theme.name;
+                            return (
+                              <button
+                                key={themeData.name}
+                                onClick={() =>
+                                  updatePageMutation.mutate({
+                                    id: selectedPageId!,
+                                    data: { theme: themeData.theme },
+                                  })
+                                }
+                                className={`group relative rounded-xl overflow-hidden border-2 transition-all ${
+                                  isSelected 
+                                    ? "border-blue-500 shadow-lg" 
+                                    : "border-gray-200 hover:border-gray-300 hover:shadow-md"
+                                }`}
+                                style={{ aspectRatio: "4/3" }}
+                                data-testid={`theme-${themeData.name.toLowerCase().replace(/\s+/g, "-")}`}
+                              >
+                                <div
+                                  className="w-full h-full flex items-center justify-center p-4"
+                                  style={{ background: themeData.gradient }}
+                                >
+                                  {/* Mini mockup */}
+                                  <div className="w-full bg-white/20 backdrop-blur-sm rounded-lg p-2 space-y-1.5">
+                                    <div className="w-6 h-6 rounded-full bg-white/40 mx-auto" />
+                                    <div className="h-1 bg-white/40 rounded w-12 mx-auto" />
+                                    <div className="h-1 bg-white/40 rounded w-8 mx-auto" />
+                                    <div className="grid grid-cols-3 gap-1 mt-2">
+                                      <div className="h-1 bg-white/40 rounded" />
+                                      <div className="h-1 bg-white/40 rounded" />
+                                      <div className="h-1 bg-white/40 rounded" />
+                                    </div>
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <div className="absolute top-1 right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <Check className="w-3 h-3 text-white" />
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
 
                         <Button variant="outline" className="w-full" size="sm" data-testid="button-see-all-themes">
