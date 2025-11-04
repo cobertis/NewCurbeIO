@@ -759,16 +759,18 @@ export default function LandingPageBuilder() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks]);
 
-  // Sync local state with selectedPage
+  // Sync local state with selectedPage (but skip if user is actively editing)
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  
   useEffect(() => {
-    if (selectedPage?.landingPage) {
+    if (selectedPage?.landingPage && !isEditingProfile) {
       setSlugInput(selectedPage.landingPage.slug);
       setSeoTitle(selectedPage.landingPage.seo.title || "");
       setSeoDescription(selectedPage.landingPage.seo.description || "");
       setProfileName(selectedPage.landingPage.profileName || "");
       setProfileBio(selectedPage.landingPage.profileBio || "");
     }
-  }, [selectedPage]);
+  }, [selectedPage, isEditingProfile]);
 
   // Debounced slug update
   useEffect(() => {
@@ -829,14 +831,25 @@ export default function LandingPageBuilder() {
 
   // Debounced profile name update
   useEffect(() => {
-    if (profileName === selectedPage?.landingPage?.profileName) return;
+    if (profileName === selectedPage?.landingPage?.profileName) {
+      setIsEditingProfile(false);
+      return;
+    }
     if (!selectedPage?.landingPage) return;
     
+    setIsEditingProfile(true);
     const timer = setTimeout(() => {
-      updatePageMutation.mutate({
-        id: selectedPageId!,
-        data: { profileName },
-      });
+      updatePageMutation.mutate(
+        {
+          id: selectedPageId!,
+          data: { profileName },
+        },
+        {
+          onSettled: () => {
+            setTimeout(() => setIsEditingProfile(false), 100);
+          },
+        }
+      );
     }, 500);
     
     return () => clearTimeout(timer);
@@ -844,14 +857,25 @@ export default function LandingPageBuilder() {
 
   // Debounced profile bio update
   useEffect(() => {
-    if (profileBio === selectedPage?.landingPage?.profileBio) return;
+    if (profileBio === selectedPage?.landingPage?.profileBio) {
+      setIsEditingProfile(false);
+      return;
+    }
     if (!selectedPage?.landingPage) return;
     
+    setIsEditingProfile(true);
     const timer = setTimeout(() => {
-      updatePageMutation.mutate({
-        id: selectedPageId!,
-        data: { profileBio },
-      });
+      updatePageMutation.mutate(
+        {
+          id: selectedPageId!,
+          data: { profileBio },
+        },
+        {
+          onSettled: () => {
+            setTimeout(() => setIsEditingProfile(false), 100);
+          },
+        }
+      );
     }, 500);
     
     return () => clearTimeout(timer);
