@@ -3560,6 +3560,7 @@ export default function PoliciesPage() {
     networkType: '',
     rating: '',
     // Cost Details
+    planWas: '',
     premium: '',
     taxCredit: '',
     deductible: '',
@@ -7386,6 +7387,7 @@ export default function PoliciesPage() {
                               metal: plan.metal_level?.toLowerCase() || '',
                               networkType: networkType.toUpperCase(),
                               rating: plan.quality_rating?.global_rating?.toString() || '',
+                              planWas: plan.premium?.toString() || '',
                               premium: premiumAfterCredit.toString(),
                               taxCredit: taxCredit.toString(),
                               deductible: individualDeductible?.amount?.toString() || '',
@@ -10254,6 +10256,20 @@ export default function PoliciesPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <Label htmlFor="planWas" className="text-sm">Plan was</Label>
+                  <Input
+                    id="planWas"
+                    type="number"
+                    step="0.01"
+                    value={manualPlanData.planWas}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, planWas: e.target.value })}
+                    placeholder="e.g., 1481.93"
+                    className="mt-1"
+                    data-testid="input-plan-was"
+                  />
+                </div>
+
+                <div>
                   <Label htmlFor="premium" className="text-sm">Premium (monthly payment)</Label>
                   <Input
                     id="premium"
@@ -10266,7 +10282,9 @@ export default function PoliciesPage() {
                     data-testid="input-premium"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
                   <Label htmlFor="taxCredit" className="text-sm">Tax Credit / Subsidy (APTC)</Label>
                   <Input
@@ -10280,6 +10298,8 @@ export default function PoliciesPage() {
                     data-testid="input-tax-credit"
                   />
                 </div>
+
+                <div></div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-4">
