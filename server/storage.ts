@@ -5346,9 +5346,24 @@ export class DbStorage implements IStorage {
   }
   
   async getPolicyNotes(policyId: string, companyId: string): Promise<PolicyNote[]> {
-    return db
-      .select()
+    const notesWithCreator = await db
+      .select({
+        id: policyNotes.id,
+        policyId: policyNotes.policyId,
+        note: policyNotes.note,
+        attachments: policyNotes.attachments,
+        isImportant: policyNotes.isImportant,
+        isPinned: policyNotes.isPinned,
+        isResolved: policyNotes.isResolved,
+        companyId: policyNotes.companyId,
+        createdBy: policyNotes.createdBy,
+        createdAt: policyNotes.createdAt,
+        updatedAt: policyNotes.updatedAt,
+        creatorName: users.name,
+        creatorAvatar: users.avatar,
+      })
       .from(policyNotes)
+      .leftJoin(users, eq(policyNotes.createdBy, users.id))
       .where(
         and(
           eq(policyNotes.policyId, policyId),
@@ -5356,6 +5371,8 @@ export class DbStorage implements IStorage {
         )
       )
       .orderBy(desc(policyNotes.createdAt));
+    
+    return notesWithCreator as any;
   }
   
   async deletePolicyNote(id: string, companyId?: string): Promise<void> {
