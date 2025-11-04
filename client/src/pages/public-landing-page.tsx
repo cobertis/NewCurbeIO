@@ -777,28 +777,6 @@ export default function PublicLandingPage() {
           paddingBottom: "96px",
         }}
       >
-        {/* Header with Logo and Menu - INSIDE gradient NO STICKY */}
-        <div className="relative z-10 flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2 text-white">
-            {companyData?.logo ? (
-              <img 
-                src={companyData.logo} 
-                alt="Company Logo" 
-                className="h-12 w-auto object-contain max-w-[200px] brightness-110"
-              />
-            ) : (
-              <div className="w-12 h-12 bg-white/20 rounded flex items-center justify-center">
-                <span className="text-base font-bold">
-                  {(landingPage.title || "SB").substring(0, 2).toUpperCase()}
-                </span>
-              </div>
-            )}
-          </div>
-          <button className="text-white p-1" aria-label="Menu" data-testid="button-header-menu">
-            <Menu className="h-6 w-6" />
-          </button>
-        </div>
-        
         {/* Curved White Background - ADJUSTED for perfect transition */}
         <div className="absolute bottom-0 left-0 right-0 h-24 overflow-hidden">
           <svg viewBox="0 0 430 96" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
