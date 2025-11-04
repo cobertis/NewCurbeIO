@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system with integrated iMessage/SMS/RCS capabilities, designed for enterprise messaging and customer relationship management. The admin dashboard provides superadmins with tools to manage companies (tenants) and their users, featuring role-based access, Stripe billing, custom SMTP notifications, and a scalable full-stack architecture. It includes comprehensive modules for Quotes, Policies, Campaigns, and a real-time SMS Chat application. The system aims to streamline customer relationship management and communication for businesses.
+Curbe is a multi-tenant CRM system with integrated iMessage/SMS/RCS capabilities, providing an admin dashboard for superadmins to manage companies and users. It features role-based access, Stripe billing, custom SMTP notifications, and a scalable full-stack architecture. Key modules include Quotes, Policies, Campaigns, and a real-time SMS Chat application, all aimed at streamlining customer relationship management and communication for businesses.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -38,71 +38,56 @@ if (isLoading) {
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, supporting custom theming (light/dark modes). It features a mobile-first responsive design, with primary navigation via a sidebar and a dynamic three-column layout for the SMS chat application, optimized for mobile interactions.
+The frontend utilizes React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix UI, and Tailwind CSS, supporting custom theming (light/dark modes) and a mobile-first responsive design. Navigation is primarily via a sidebar, with a dynamic three-column layout for the SMS chat application optimized for mobile.
 
 ### Technical Implementations
-The frontend uses Wouter for routing and TanStack Query for state management. The backend is built with Express.js and TypeScript, offering a RESTful API with session-based authentication and role-based access control. The system employs a unified marketplace plans component for dynamic routing and API calls across Quotes and Policies.
+The frontend uses Wouter for routing and TanStack Query for state management. The backend is built with Express.js and TypeScript, offering a RESTful API with session-based authentication and role-based access control. A unified marketplace plans component dynamically handles routing and API calls for Quotes and Policies.
 
 **Key Features:**
--   **User & Company Management:** Comprehensive CRUD for users and companies, including RBAC, 2FA, and team features.
--   **Authentication & Security:** Bcrypt hashing, email activation, OTP-based 2FA, session management.
--   **Multi-tenancy:** Strict data isolation per company with superadmin oversight.
+-   **User & Company Management:** Comprehensive CRUD, RBAC, 2FA, team features.
+-   **Authentication & Security:** Bcrypt hashing, email activation, OTP 2FA, session management.
+-   **Multi-tenancy:** Strict data isolation per company.
 -   **Email System:** Global SMTP configuration and database-driven templates.
--   **Modular Feature System:** Superadmins can assign features to companies.
--   **Audit Logging:** Centralized service for tracking critical actions.
--   **Campaign System:** Unified interface for managing Email/SMS Campaigns and Contact Lists.
--   **Real-Time Notifications:** WebSocket-based system for instant updates.
--   **SMS Chat Application:** Bidirectional, real-time SMS chat with conversation management.
+-   **Modular Feature System:** Superadmins assign features to companies.
+-   **Audit Logging:** Centralized action tracking.
+-   **Campaign System:** Unified Email/SMS Campaign and Contact List management.
+-   **Real-Time Notifications:** WebSocket-based updates.
+-   **SMS Chat Application:** Bidirectional, real-time chat.
 -   **Billing & Stripe Integration:** Automated customer/subscription management.
--   **Quotes Management System:** A 3-step wizard for 11 product types, featuring Google Places Autocomplete, CMS Marketplace API integration for health insurance plans (including HHS Poverty Guidelines for APTC calculations), plan comparison, and professional credit card validation. Includes internal notes, document management, universal search with optional family member searching, and blocking functionality. Quotes have a comprehensive options menu. Manual plan entry is supported for states without marketplace API connectivity.
--   **Policies Management System:** Converts quotes to policies, migrating all associated data, with identical functionality to the Quotes module. Provides comprehensive policy status management and agent assignment capabilities, including universal search with optional family member searching and blocking functionality. Policy payment methods are shared across policies belonging to the same client (identified by SSN/email). The "Other policies of the applicant" section displays related policies in a full table layout. Manual plan entry is supported. **Statistics and calendar events use canonical client identification (SSN or email) to prevent double-counting renewed policies and duplicate birthday events** - ensuring accurate reporting across policy renewal years.
--   **Consent Document System:** Generates legal consent documents, supports email/SMS/link delivery, and captures electronic signatures with a full digital audit trail.
--   **Calendar System:** Full-screen professional calendar displaying company-wide events including birthdays and reminders, with multi-tenant isolation. **Birthday events are deduplicated across renewed policies using canonical client identification** (SSN+DOB or email+DOB), preventing the same person from appearing multiple times.
--   **Reminder System:** Background scheduler creates notifications for pending reminders, restores snoozed reminders, and prevents duplicate notifications. All notifications are in English.
--   **Agent Assignment System:** Flexible agent reassignment for quotes and policies with agent-based filtering and real-time, English-language notifications to new agents.
--   **Policy Renewal System:** Automated renewal period activation (October 1 - February 1) with dynamic year calculation. Renewal buttons and OEP filters automatically show/hide based on current date. System prevents double-counting of renewed policies in statistics by using canonical client identification (SSN or email) to track unique individuals across policy years.
--   **Landing Page Builder System:** Professional SmartBio/Lynku.id-style bio link page creator with **3-column editor interface** featuring drag & drop block management (@dnd-kit), real-time mobile preview, and modern gradient themes. **1 landing page per user** - automatically created on first access. Supports **14 professional block types**:
-    - **Basic Blocks**: Link Button, Social Media (Instagram/Facebook/Twitter/LinkedIn/YouTube/TikTok), Video Embed (YouTube/Vimeo), Text, Image, Divider, Contact (Phone/Email/WhatsApp)
-    - **Advanced Blocks**: Google Maps Location (embedded maps with address), Lead Capture Form (customizable fields with CRM integration), Calendar/Appointment Scheduler (with availability validation), Testimonials/Reviews (carousel/grid layouts with ratings), FAQ Accordion (expandable Q&A), Stats/Metrics Counter (dynamic statistics display)
-    
-    **Editor Interface (SmartBio Design):**
-    - **Fixed Header**: Logo, editable URL input with dynamic domain detection, **fully functional Undo/Redo buttons with optimistic updates**, Desktop/Mobile preview toggle, prominent Publish button
-    - **Left Sidebar (Dark, 280px)**: "Add Blocks" section with 2-column grid of colorful block buttons (Text, Calendar, Link, Image, Video, Social, Map, Newsletter), "See Another Blocks" button, and Social Media manager with 6 platforms (Instagram, Facebook, Twitter, LinkedIn, YouTube, TikTok) supporting quick add/delete
-    - **Center Preview Area**: CSS dotted background pattern, **iPhone 16 Pro Max frame (430x932px) with Dynamic Island, status bar icons (signal/WiFi/battery), and realistic shadows**, zoom control (90%/100%/110%), **SmartBio-style layout with sticky "SB SmartBio" header + hamburger menu, gradient hero section, curved white SVG transition, and large overlapping circular profile photo (w-36 h-36, ring-8 white, shadow-2xl)**, fully functional drag-and-drop block reordering within white content area
-    - **Right Panel (350px) with Tabs**:
-      - **Design Tab**: "Select Theme" with visual gradient thumbnails (8 predefined themes across All/Light/Dark categories in 2x2 grid), "See All Themes" button, Typography controls (Font Weight/Style dropdowns), Custom Colors (Primary/Background/Text color pickers), Profile editor (Name/Bio inputs)
-      - **Analytics Tab**: "Coming soon" placeholder for future analytics
-      - **Settings Tab**: URL slug configuration, password protection toggle, SEO meta tags (title/description), quick action buttons
-    
-    **Undo/Redo System**: Full undo/redo support for all block operations (add, delete, reorder, modify) using TanStack Query optimistic updates with automatic server persistence. All mutations use onMutate/onError/onSettled handlers for immediate UI feedback with automatic rollback on error. Server sync endpoint (`/api/landing-pages/:id/blocks/sync`) persists history state changes using bulk delete+insert pattern within PostgreSQL transactions for atomicity.
-    
-    **Theme System**: 8 modern gradient themes (Purple Dream, Pink Sunset, Ocean Blue, Dark Night, Mint Fresh, Orange Glow, Forest Green, Royal Purple) with visual previews, categorized by All/Light/Dark filters, instant preview updates via mutation system.
-    
-    **Slug & Input Management**: User-based slug generation (firstName or email prefix) ensures each user has a unique landing page URL. All editable fields (slug, SEO title, SEO description) use local state with 500ms debouncing to prevent excessive API calls during typing. Real-time validation feedback with color-coded borders (green for valid, red for invalid), check/X icons, and contextual error messages. Slug validation enforces lowercase letters, numbers, and hyphens only (min 3 chars, max 50 chars) via regex `/^[a-z0-9-]{3,50}$/`.
-    
-    **Block Styling (SmartBio Template)**: Social media blocks render as solid black circles (w-12 h-12) with white icons only, matching the professional SmartBio aesthetic. Google Maps blocks feature a blue "See Our Location" button overlay. Link buttons include globe icons for visual clarity. Bio text uses gray color (text-gray-600) for optimal readability.
-    
-    **Public Pages**: Published landing pages accessible at both `/:slug` and `/l/:slug` (e.g., `app.curbe.io/claudia` or `app.curbe.io/l/claudia`) without authentication. **Public pages use the same SmartBio layout as the editor preview** (sticky header, gradient hero with curved SVG, large overlapping avatar) for perfect visual consistency between editing and published experiences. Features complete theme customization (colors, fonts, gradients, button styles), password protection, SEO meta tags, and comprehensive analytics tracking (page views, block clicks, lead captures, appointments). System includes auto-creation on first visit, auto-save with debounce, slug uniqueness validation, multi-tenant company isolation, and dedicated database tables for leads and appointments with IP tracking and user agent logging for security. **All confirmation dialogs and system messages are in English.**
+-   **Quotes Management System:** 3-step wizard for 11 product types, Google Places Autocomplete, CMS Marketplace API integration (HHS Poverty Guidelines for APTC), plan comparison, credit card validation, internal notes, document management, universal search, blocking, and manual plan entry.
+-   **Policies Management System:** Converts quotes to policies, migrating data with similar functionality to Quotes, including status management, agent assignment, universal search, and blocking. Payment methods are shared by client (SSN/email). Canonical client identification (SSN or email) prevents double-counting renewed policies and duplicate birthday events in statistics and calendar.
+-   **Consent Document System:** Generates legal consent documents, supports multi-channel delivery, and captures e-signatures with a digital audit trail.
+-   **Calendar System:** Full-screen, multi-tenant calendar displaying company-wide events, including deduplicated birthday events using canonical client identification.
+-   **Reminder System:** Background scheduler for notifications, snooze functionality, and duplicate prevention.
+-   **Agent Assignment System:** Flexible reassignment for quotes and policies with filtering and real-time English notifications.
+-   **Policy Renewal System:** Automated renewal period activation (October 1 - February 1) with dynamic year calculation and OEP filter management. Prevents double-counting renewed policies in statistics using canonical client identification.
+-   **Landing Page Builder System:** Professional SmartBio/Lynku.id-style bio link page creator with a 3-column editor interface, drag & drop block management, real-time mobile preview, and modern gradient themes. Each user gets one automatically created landing page supporting 14 block types (Basic: Link Button, Social Media, Video Embed, Text, Image, Divider, Contact; Advanced: Google Maps, Lead Capture Form, Calendar/Appointment Scheduler, Testimonials/Reviews, FAQ Accordion, Stats/Metrics Counter).
+    -   **Editor Interface:** Fixed header with logo, editable URL, Undo/Redo, Desktop/Mobile preview, Publish button. Dark left sidebar for adding blocks and managing social media. Center preview area features an iPhone 16 Pro Max frame with Dynamic Island, status bar, zoom, and SmartBio-style layout (sticky header, gradient hero, curved SVG, large overlapping circular profile photo) with functional drag-and-drop. Right panel with Design (themes, typography, custom colors, profile editor), Analytics (coming soon), and Settings (URL slug, password protection, SEO meta tags) tabs.
+    -   **Undo/Redo System:** Full undo/redo for all block operations using TanStack Query optimistic updates with automatic server persistence.
+    -   **Theme System:** 8 modern gradient themes with visual previews and filters.
+    -   **Slug & Input Management:** User-based slug generation (firstName or email prefix) with debounced local state, real-time validation, and regex enforcement for slug format.
+    -   **Block Styling:** SmartBio aesthetic with solid black circular social media blocks, blue "See Our Location" button for maps, globe icons for link buttons, and gray bio text.
+    -   **Visual Design:** Fixed dark indigo/black gradient for both preview and public pages, specific avatar positioning (`-mt-20`), compact spacing, and pure black profile name text to match SmartBio.
+    -   **Public Pages:** Accessible at `/:slug` and `/l/:slug` without authentication, featuring identical SmartBio layout as the editor preview, theme customization, password protection, SEO meta tags, and analytics tracking. Auto-creation on first visit, auto-save, slug uniqueness validation, multi-tenant isolation, and dedicated database tables for leads/appointments with security logging. All confirmation dialogs and messages are in English.
 
 ### System Design Choices
-The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.
+Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.
 
-**CMS Marketplace API Integration:** 
-- APTC eligibility logic uses the `isApplicant` field to distinguish between dependents who need insurance (isApplicant=true → aptc_eligible=true, has_mec=false) vs those with Medicaid/CHIP (isApplicant=false → aptc_eligible=false, has_mec=true)
-- Request structure follows exact CMS API specifications
-- All required fields are sent correctly: dob, aptc_eligible, has_mec, gender, uses_tobacco, is_pregnant, relationship, effective_date, has_married_couple
-- Pregnancy status is forwarded accurately for all family members (client, spouses, dependents)
-- APTC calculations properly extract household APTC from Silver plans
-- Frontend displays premium prices with cents (e.g., $79.50) when not zero, and without cents when zero (e.g., $0)
-- Plan year badge is displayed on each plan card showing the coverage year
+**CMS Marketplace API Integration:**
+-   APTC eligibility logic distinguishes between applicants and dependents with Medicaid/CHIP.
+-   Request structure follows exact CMS API specifications with all required fields (dob, aptc_eligible, has_mec, gender, uses_tobacco, is_pregnant, relationship, effective_date, has_married_couple).
+-   Pregnancy status forwarded accurately.
+-   APTC calculations properly extract household APTC from Silver plans.
+-   Frontend displays premium prices with cents when not zero, and without cents when zero.
+-   Plan year badge displayed on each plan card.
 
 ### Security Architecture
--   **Session Security:** `SESSION_SECRET` environment variable is mandatory to prevent session hijacking.
--   **Webhook Validation:** Twilio webhook signature validation is fully enabled.
--   **Input Validation:** All public-facing endpoints enforce Zod schema validation.
--   **Open Redirect Protection:** Tracking endpoint validates redirect URLs against a strict allowlist.
+-   **Session Security:** `SESSION_SECRET` environment variable mandatory.
+-   **Webhook Validation:** Twilio webhook signature validation enabled.
+-   **Input Validation:** Zod schema validation on all public-facing endpoints.
+-   **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 -   **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
--   **Code Organization:** Shared carrier/product type data is centralized in `shared/carriers.ts`.
+-   **Code Organization:** Shared carrier/product type data centralized in `shared/carriers.ts`.
 
 ## External Dependencies
 
