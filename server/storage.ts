@@ -730,6 +730,7 @@ export interface IStorage {
   
   // Landing Blocks
   getBlocksByLandingPage(landingPageId: string): Promise<LandingBlock[]>;
+  getLandingBlockById(id: string): Promise<LandingBlock | undefined>;
   createLandingBlock(data: InsertLandingBlock): Promise<LandingBlock>;
   updateLandingBlock(id: string, data: Partial<InsertLandingBlock>): Promise<LandingBlock | undefined>;
   deleteLandingBlock(id: string): Promise<boolean>;
@@ -5784,6 +5785,15 @@ export class DbStorage implements IStorage {
       .orderBy(landingBlocks.position);
     
     return result;
+  }
+  
+  async getLandingBlockById(id: string): Promise<LandingBlock | undefined> {
+    const result = await db
+      .select()
+      .from(landingBlocks)
+      .where(eq(landingBlocks.id, id));
+    
+    return result[0];
   }
   
   async createLandingBlock(data: InsertLandingBlock): Promise<LandingBlock> {

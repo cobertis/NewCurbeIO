@@ -17168,8 +17168,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Landing page not found" });
       }
       
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && existingPage.companyId !== currentUser.companyId) {
+      // Check user ownership - users can only modify their OWN landing pages
+      if (currentUser.role !== "superadmin" && existingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
@@ -17227,8 +17227,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Landing page not found" });
       }
       
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+      // Check user ownership - users can only delete their OWN landing pages
+      if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
@@ -17266,8 +17266,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Landing page not found" });
       }
       
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+      // Check user ownership - users can only access blocks from their OWN landing pages
+      if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
@@ -17292,8 +17292,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Landing page not found" });
       }
       
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+      // Check user ownership - users can only create blocks on their OWN landing pages
+      if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
@@ -17335,20 +17335,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { blockId } = req.params;
     
     try {
-      // Validate partial update data
-      const validatedData = insertLandingBlockSchema.partial().parse(req.body);
+      // Get existing block first to verify ownership BEFORE updating
+      const existingBlock = await storage.getLandingBlockById(blockId);
       
-      // Update block
-      const block = await storage.updateLandingBlock(blockId, validatedData);
-      
-      if (!block) {
+      if (!existingBlock) {
         return res.status(404).json({ message: "Block not found" });
       }
       
-      // Verify ownership through landing page
-      const landingPage = await storage.getLandingPageById(block.landingPageId);
-      if (currentUser.role !== "superadmin" && landingPage?.companyId !== currentUser.companyId) {
+      // Verify ownership through landing page BEFORE updating
+      const landingPage = await storage.getLandingPageById(existingBlock.landingPageId);
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate partial update data
+      const validatedData = insertLandingBlockSchema.partial().parse(req.body);
+      
+      // Update block only after authorization
+      const block = await storage.updateLandingBlock(blockId, validatedData);
+      
+      if (!block) {
+        return res.status(500).json({ message: "Failed to update block" });
       }
       
       await logger.logCrud({
@@ -17380,10 +17391,27 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { blockId } = req.params;
     
     try {
+      // Get block to verify ownership BEFORE deleting
+      const block = await storage.getLandingBlockById(blockId);
+      
+      if (!block) {
+        return res.status(404).json({ message: "Block not found" });
+      }
+      
+      // Verify ownership through landing page BEFORE deleting
+      const landingPage = await storage.getLandingPageById(block.landingPageId);
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
       const deleted = await storage.deleteLandingBlock(blockId);
       
       if (!deleted) {
-        return res.status(404).json({ message: "Block not found" });
+        return res.status(500).json({ message: "Failed to delete block" });
       }
       
       await logger.logCrud({
@@ -17415,8 +17443,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Landing page not found" });
       }
       
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+      // Check user ownership - users can only reorder blocks on their OWN landing pages
+      if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
@@ -17457,8 +17485,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Landing page not found" });
       }
       
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+      // Check user ownership - users can only sync blocks on their OWN landing pages
+      if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
