@@ -642,7 +642,7 @@ export default function LandingPageBuilder() {
   // Create landing page mutation
   const createPageMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("/api/landing-pages", "POST", data);
+      return await apiRequest("POST", "/api/landing-pages", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/landing-pages"] });
@@ -671,7 +671,7 @@ export default function LandingPageBuilder() {
       id: string;
       data: Partial<LandingPage>;
     }) => {
-      return await apiRequest(`/api/landing-pages/${id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/landing-pages/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/landing-pages"] });
@@ -688,7 +688,7 @@ export default function LandingPageBuilder() {
   // Delete landing page mutation
   const deletePageMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/landing-pages/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/landing-pages/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/landing-pages"] });
@@ -710,8 +710,8 @@ export default function LandingPageBuilder() {
       data: any;
     }) => {
       return await apiRequest(
-        `/api/landing-pages/${landingPageId}/blocks`,
         "POST",
+        `/api/landing-pages/${landingPageId}/blocks`,
         data
       );
     },
@@ -726,8 +726,8 @@ export default function LandingPageBuilder() {
   const updateBlockMutation = useMutation({
     mutationFn: async ({ blockId, data }: { blockId: string; data: any }) => {
       return await apiRequest(
-        `/api/landing-pages/${selectedPageId}/blocks/${blockId}`,
         "PATCH",
+        `/api/landing-pages/${selectedPageId}/blocks/${blockId}`,
         data
       );
     },
@@ -744,8 +744,8 @@ export default function LandingPageBuilder() {
   const deleteBlockMutation = useMutation({
     mutationFn: async (blockId: string) => {
       return await apiRequest(
-        `/api/landing-pages/${selectedPageId}/blocks/${blockId}`,
-        "DELETE"
+        "DELETE",
+        `/api/landing-pages/${selectedPageId}/blocks/${blockId}`
       );
     },
     onSuccess: () => {
@@ -759,8 +759,8 @@ export default function LandingPageBuilder() {
   const reorderBlocksMutation = useMutation({
     mutationFn: async (blockIds: string[]) => {
       return await apiRequest(
-        `/api/landing-pages/${selectedPageId}/blocks/reorder`,
         "POST",
+        `/api/landing-pages/${selectedPageId}/blocks/reorder`,
         { blockIds }
       );
     },
