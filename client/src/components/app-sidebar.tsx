@@ -359,7 +359,7 @@ export function AppSidebar() {
         {!isSuperadmin && (
           <>
             {/* My Agency Section */}
-            <SidebarGroup className="mt-4">
+            <SidebarGroup>
               <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 My Agency
               </SidebarGroupLabel>
@@ -391,7 +391,7 @@ export function AppSidebar() {
             </SidebarGroup>
 
             {/* Marketing Section */}
-            <SidebarGroup className="mt-4">
+            <SidebarGroup>
               <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Marketing
               </SidebarGroupLabel>
@@ -423,7 +423,7 @@ export function AppSidebar() {
             </SidebarGroup>
 
             {/* Configuration Section */}
-            <SidebarGroup className="mt-4">
+            <SidebarGroup>
               <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Configuration
               </SidebarGroupLabel>
@@ -458,7 +458,7 @@ export function AppSidebar() {
 
         {/* For superadmin: rest of items after Calendar */}
         {isSuperadmin && (
-          <SidebarGroup className="mt-4">
+          <SidebarGroup>
             <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Administration
             </SidebarGroupLabel>
