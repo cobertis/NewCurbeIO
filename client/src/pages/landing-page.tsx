@@ -451,10 +451,11 @@ function BlockPreview({
           href={block.content.url || "#"}
           target={block.content.openInNewTab ? "_blank" : "_self"}
           rel="noopener noreferrer"
-          className="block rounded-lg px-4 py-3 text-center font-medium text-sm shadow-sm hover:shadow-md transition-shadow"
+          className="flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-center font-medium text-sm shadow-sm hover:shadow-md transition-shadow"
           style={buttonStyle}
           data-testid={`preview-link-${block.id}`}
         >
+          <Globe className="w-4 h-4" />
           {block.content.label || "Click Here"}
         </a>
       );
@@ -468,15 +469,10 @@ function BlockPreview({
           href={block.content.url || "#"}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium text-sm shadow-sm hover:shadow-md transition-shadow"
-          style={buttonStyle}
+          className="flex items-center justify-center w-12 h-12 bg-black rounded-full shadow-sm hover:shadow-md transition-shadow"
           data-testid={`preview-social-${block.id}`}
         >
-          <SocialIcon className="w-4 h-4" />
-          {block.content.customLabel ||
-            block.content.platform?.charAt(0).toUpperCase() +
-              block.content.platform?.slice(1) ||
-            "Social Media"}
+          <SocialIcon className="w-5 h-5 text-white" />
         </a>
       );
 
@@ -581,12 +577,19 @@ function BlockPreview({
 
     case "maps":
       return (
-        <Card className="p-3">
-          <MapPin className="h-4 w-4 mb-1" />
-          <p className="text-xs text-muted-foreground">
-            {block.content.address || "Map Location"}
-          </p>
-        </Card>
+        <div className="relative rounded-lg overflow-hidden" data-testid={`preview-maps-${block.id}`}>
+          <div className="w-full h-32 bg-gray-200 flex items-center justify-center">
+            <MapPin className="h-6 w-6 text-gray-400" />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Button 
+              className="rounded-lg shadow-lg"
+              style={{ backgroundColor: "#3B82F6", color: "#ffffff" }}
+            >
+              See Our Location
+            </Button>
+          </div>
+        </div>
       );
 
     case "lead-form":
@@ -1620,7 +1623,7 @@ export default function LandingPageBuilder() {
                         <div 
                           className="relative pb-32"
                           style={{
-                            background: selectedPage.landingPage.theme.gradient || selectedPage.landingPage.theme.backgroundColor,
+                            background: (selectedPage.landingPage.theme as any).backgroundGradient || selectedPage.landingPage.theme.backgroundColor,
                           }}
                         >
                           {/* Curved White Background */}
@@ -1659,8 +1662,7 @@ export default function LandingPageBuilder() {
                             )}
                             {selectedPage.landingPage.profileBio && (
                               <p
-                                className="text-sm leading-relaxed px-4"
-                                style={{ color: selectedPage.landingPage.theme.textColor, opacity: 0.7 }}
+                                className="text-sm leading-relaxed px-4 text-gray-600"
                               >
                                 {selectedPage.landingPage.profileBio}
                               </p>
@@ -1774,7 +1776,7 @@ export default function LandingPageBuilder() {
                         {/* Theme Grid */}
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           {filteredThemes.slice(0, 4).map((themeData) => {
-                            const isSelected = selectedPage.landingPage.theme.name === themeData.theme.name;
+                            const isSelected = selectedPage.landingPage.theme.primaryColor === themeData.theme.primaryColor;
                             return (
                               <button
                                 key={themeData.name}

@@ -290,20 +290,16 @@ function PublicBlock({
 
     case "social":
       const SocialIcon = SOCIAL_ICONS[block.content.platform] || Link2;
-      const platformName = block.content.platform?.charAt(0).toUpperCase() + block.content.platform?.slice(1) || "Social Media";
       return (
         <a
           href={block.content.url || "#"}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => onTrackClick(block.id)}
-          className="flex items-center justify-center gap-3 px-6 py-4 bg-black text-white rounded-full hover:bg-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+          className="flex items-center justify-center w-12 h-12 bg-black text-white rounded-full hover:bg-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
           data-testid={`social-block-${block.id}`}
         >
           <SocialIcon className="h-6 w-6" />
-          <span className="font-medium">
-            {block.content.customLabel || platformName}
-          </span>
         </a>
       );
 
@@ -433,7 +429,7 @@ function PublicBlock({
         : `https://www.google.com/maps?q=${encodeURIComponent(block.content.address || '')}&output=embed`;
       
       return (
-        <Card className="overflow-hidden rounded-[18px] shadow-lg transition-all duration-300 hover:shadow-xl" data-testid={`maps-block-${block.id}`}>
+        <Card className="overflow-hidden rounded-[18px] shadow-lg transition-all duration-300 hover:shadow-xl relative" data-testid={`maps-block-${block.id}`}>
           <iframe
             src={mapUrl}
             width="100%"
@@ -442,14 +438,22 @@ function PublicBlock({
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
           />
-          {block.content.address && (
-            <div className="p-4 bg-white">
-              <div className="flex items-center gap-2 text-gray-700">
-                <MapPin className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                <span className="font-medium">{block.content.address}</span>
-              </div>
-            </div>
-          )}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <Button 
+              className="rounded-lg shadow-xl pointer-events-auto"
+              style={{ backgroundColor: "#3B82F6", color: "#ffffff" }}
+              onClick={(e) => {
+                e.preventDefault();
+                onTrackClick(block.id);
+                const url = block.content.latitude && block.content.longitude
+                  ? `https://www.google.com/maps?q=${block.content.latitude},${block.content.longitude}`
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(block.content.address || '')}`;
+                window.open(url, '_blank');
+              }}
+            >
+              See Our Location
+            </Button>
+          </div>
         </Card>
       );
 
@@ -818,8 +822,7 @@ export default function PublicLandingPage() {
             )}
             {landingPage.profileBio && (
               <p
-                className="text-sm leading-relaxed px-4"
-                style={{ color: theme.textColor, opacity: 0.7 }}
+                className="text-sm leading-relaxed px-4 text-gray-600"
                 data-testid="profile-bio"
               >
                 {landingPage.profileBio}
