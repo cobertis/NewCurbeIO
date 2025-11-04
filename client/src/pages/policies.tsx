@@ -10132,50 +10132,26 @@ export default function PoliciesPage() {
 
                 <div>
                   <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
-                  <div className="mt-1">
-                    <Popover open={carrierPopoverOpen} onOpenChange={setCarrierPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={carrierPopoverOpen}
-                          className="w-full justify-between"
-                          disabled={!manualPlanData.productType}
-                          data-testid="button-carrier-select"
-                        >
-                          {manualPlanData.carrier || (manualPlanData.productType ? "Select carrier..." : "Select product type first")}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0" align="start">
-                        <Command>
-                          <CommandInput 
-                            placeholder="Search carrier..." 
-                            data-testid="input-carrier-search"
-                          />
-                          <CommandList className="max-h-[200px]">
-                            <CommandEmpty>No carrier found.</CommandEmpty>
-                            <CommandGroup>
-                              {getCarriersByProductType(manualPlanData.productType).map((carrier) => (
-                                <CommandItem
-                                  key={carrier}
-                                  value={carrier}
-                                  onSelect={() => {
-                                    setManualPlanData({ ...manualPlanData, carrier: carrier });
-                                    setCarrierPopoverOpen(false);
-                                  }}
-                                  data-testid={`carrier-item-${carrier.toLowerCase().replace(/\s+/g, '-')}`}
-                                >
-                                  <Check className={manualPlanData.carrier === carrier ? "mr-2 h-4 w-4" : "mr-2 h-4 w-4 opacity-0"} />
-                                  {carrier}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                  <Input
+                    id="carrier"
+                    value={manualPlanData.carrier}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, carrier: e.target.value })}
+                    placeholder="e.g., Ambetter Health, Blue Cross Blue Shield, etc."
+                    className="mt-1"
+                    list="carrier-suggestions"
+                    disabled={!manualPlanData.productType}
+                    data-testid="input-carrier"
+                  />
+                  <datalist id="carrier-suggestions">
+                    {manualPlanData.productType && getCarriersByProductType(manualPlanData.productType).map((carrier) => (
+                      <option key={carrier} value={carrier} />
+                    ))}
+                  </datalist>
+                  {manualPlanData.productType && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Suggested: {getCarriersByProductType(manualPlanData.productType).slice(0, 3).join(', ')}
+                    </p>
+                  )}
                 </div>
               </div>
 
