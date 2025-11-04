@@ -17428,6 +17428,63 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to reorder blocks" });
     }
   });
+
+  // POST /api/landing-pages/:id/blocks/sync - Sync blocks (for undo/redo persistence)
+  app.post("/api/landing-pages/:id/blocks/sync", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: landingPageId } = req.params;
+    const { blocks } = req.body;
+    
+    try {
+      // Verify landing page exists and user has access
+      const landingPage = await storage.getLandingPageById(landingPageId);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate blocks is an array
+      if (!Array.isArray(blocks)) {
+        return res.status(400).json({ message: "blocks must be an array" });
+      }
+      
+      // Validate all blocks belong to this landing page
+      const invalidBlocks = blocks.filter((block: any) => block.landingPageId !== landingPageId);
+      if (invalidBlocks.length > 0) {
+        return res.status(400).json({ 
+          message: "All blocks must belong to the specified landing page" 
+        });
+      }
+      
+      // Sync blocks (uses transaction for atomicity)
+      const syncedBlocks = await storage.syncLandingBlocks(landingPageId, blocks);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "landing_page_blocks",
+        entityId: landingPageId,
+        companyId: currentUser.companyId,
+        metadata: {
+          action: "sync",
+          blockCount: blocks.length,
+        },
+      });
+      
+      res.json({ 
+        message: "Blocks synced successfully", 
+        blocks: syncedBlocks 
+      });
+    } catch (error: any) {
+      console.error("Error syncing blocks:", error);
+      res.status(500).json({ message: "Failed to sync blocks" });
+    }
+  });
   
   // POST /api/landing-pages/:id/view - Track page view (public endpoint - no auth)
   app.post("/api/landing-pages/:id/view", async (req: Request, res: Response) => {

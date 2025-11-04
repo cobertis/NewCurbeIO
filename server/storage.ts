@@ -735,6 +735,7 @@ export interface IStorage {
   updateBlockPosition(id: string, position: number): Promise<LandingBlock | undefined>;
   incrementBlockClick(id: string): Promise<void>;
   reorderBlocks(landingPageId: string, blockIds: string[]): Promise<void>;
+  syncLandingBlocks(landingPageId: string, blocks: Array<Omit<LandingBlock, 'createdAt' | 'updatedAt'>>): Promise<LandingBlock[]>;
   
   // Landing Analytics
   createLandingAnalytics(data: InsertLandingAnalytics): Promise<LandingAnalytics>;
@@ -5838,6 +5839,41 @@ export class DbStorage implements IStorage {
           eq(landingBlocks.landingPageId, landingPageId)
         ));
     }
+  }
+
+  async syncLandingBlocks(
+    landingPageId: string, 
+    blocks: Array<Omit<LandingBlock, 'createdAt' | 'updatedAt'>>
+  ): Promise<LandingBlock[]> {
+    // Use a transaction to ensure atomicity
+    return await db.transaction(async (tx) => {
+      // Step 1: Delete all existing blocks for this landing page
+      await tx
+        .delete(landingBlocks)
+        .where(eq(landingBlocks.landingPageId, landingPageId));
+      
+      // Step 2: Insert all new blocks
+      if (blocks.length === 0) {
+        return [];
+      }
+      
+      const result = await tx
+        .insert(landingBlocks)
+        .values(
+          blocks.map((block) => ({
+            id: block.id,
+            landingPageId: block.landingPageId,
+            type: block.type,
+            content: block.content,
+            position: block.position,
+            isVisible: block.isVisible,
+            clickCount: block.clickCount || 0,
+          }))
+        )
+        .returning();
+      
+      return result;
+    });
   }
   
   // ==================== LANDING ANALYTICS ====================

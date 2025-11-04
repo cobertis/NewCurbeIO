@@ -898,9 +898,56 @@ export default function LandingPageBuilder() {
         data
       );
     },
-    onSuccess: () => {
+    onMutate: async ({ landingPageId, data }) => {
+      await queryClient.cancelQueries({ 
+        queryKey: ["/api/landing-pages", landingPageId] 
+      });
+      
+      const previous = queryClient.getQueryData(["/api/landing-pages", landingPageId]);
+      
+      queryClient.setQueryData(
+        ["/api/landing-pages", landingPageId],
+        (old: any) => {
+          if (!old) return old;
+          
+          const tempId = `temp-${Date.now()}-${Math.random()}`;
+          const newBlock: LandingBlock = {
+            id: tempId,
+            landingPageId: landingPageId,
+            type: data.type,
+            content: data.content,
+            position: data.position,
+            isVisible: data.isVisible ?? true,
+            clickCount: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          return {
+            ...old,
+            blocks: [...(old.blocks || []), newBlock],
+          };
+        }
+      );
+      
+      return { previous };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ["/api/landing-pages", variables.landingPageId],
+          context.previous
+        );
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create block. Please try again.",
+      });
+    },
+    onSettled: (data, error, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/landing-pages", selectedPageId],
+        queryKey: ["/api/landing-pages", variables.landingPageId],
       });
     },
   });
@@ -914,7 +961,45 @@ export default function LandingPageBuilder() {
         data
       );
     },
-    onSuccess: () => {
+    onMutate: async ({ blockId, data }) => {
+      await queryClient.cancelQueries({ 
+        queryKey: ["/api/landing-pages", selectedPageId] 
+      });
+      
+      const previous = queryClient.getQueryData(["/api/landing-pages", selectedPageId]);
+      
+      queryClient.setQueryData(
+        ["/api/landing-pages", selectedPageId],
+        (old: any) => {
+          if (!old) return old;
+          
+          return {
+            ...old,
+            blocks: (old.blocks || []).map((block: LandingBlock) =>
+              block.id === blockId
+                ? { ...block, ...data }
+                : block
+            ),
+          };
+        }
+      );
+      
+      return { previous };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ["/api/landing-pages", selectedPageId],
+          context.previous
+        );
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update block. Please try again.",
+      });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/landing-pages", selectedPageId],
       });
@@ -926,20 +1011,49 @@ export default function LandingPageBuilder() {
   // Delete block mutation
   const deleteBlockMutation = useMutation({
     mutationFn: async (blockId: string) => {
-      console.log('[DELETE BLOCK] Sending DELETE request for blockId:', blockId);
       return await apiRequest(
         "DELETE",
         `/api/landing-blocks/${blockId}`
       );
     },
-    onSuccess: () => {
-      console.log('[DELETE BLOCK] Successfully deleted, invalidating queries');
+    onMutate: async (blockId: string) => {
+      await queryClient.cancelQueries({ 
+        queryKey: ["/api/landing-pages", selectedPageId] 
+      });
+      
+      const previous = queryClient.getQueryData(["/api/landing-pages", selectedPageId]);
+      
+      queryClient.setQueryData(
+        ["/api/landing-pages", selectedPageId],
+        (old: any) => {
+          if (!old) return old;
+          
+          return {
+            ...old,
+            blocks: (old.blocks || []).filter((block: LandingBlock) => block.id !== blockId),
+          };
+        }
+      );
+      
+      return { previous };
+    },
+    onError: (err, blockId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ["/api/landing-pages", selectedPageId],
+          context.previous
+        );
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete block. Please try again.",
+      });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/landing-pages", selectedPageId],
       });
-    },
-    onError: (error) => {
-      console.error('[DELETE BLOCK] Error deleting block:', error);
     },
   });
 
@@ -951,6 +1065,63 @@ export default function LandingPageBuilder() {
         `/api/landing-pages/${selectedPageId}/blocks/reorder`,
         { blockIds }
       );
+    },
+  });
+
+  // Sync blocks mutation (for undo/redo persistence)
+  const syncBlocksMutation = useMutation({
+    mutationFn: async (blocks: LandingBlock[]) => {
+      if (!selectedPageId) {
+        throw new Error("No landing page selected");
+      }
+      return await apiRequest(
+        "POST",
+        `/api/landing-pages/${selectedPageId}/blocks/sync`,
+        { blocks }
+      );
+    },
+    onMutate: async (blocks: LandingBlock[]) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ 
+        queryKey: ["/api/landing-pages", selectedPageId] 
+      });
+      
+      // Save previous state
+      const previous = queryClient.getQueryData(["/api/landing-pages", selectedPageId]);
+      
+      // Optimistically update cache
+      queryClient.setQueryData(
+        ["/api/landing-pages", selectedPageId],
+        (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            blocks,
+          };
+        }
+      );
+      
+      return { previous };
+    },
+    onError: (err, blocks, context) => {
+      // Rollback on error
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ["/api/landing-pages", selectedPageId],
+          context.previous
+        );
+      }
+      toast({
+        variant: "destructive",
+        title: "Sync Error",
+        description: "Failed to sync blocks with server. Your changes may not persist.",
+      });
+    },
+    onSettled: () => {
+      // Refetch to ensure consistency
+      queryClient.invalidateQueries({
+        queryKey: ["/api/landing-pages", selectedPageId],
+      });
     },
   });
 
@@ -973,19 +1144,31 @@ export default function LandingPageBuilder() {
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
       const previousState = history[historyIndex - 1];
-      setBlocks(JSON.parse(JSON.stringify(previousState)));
+      const clonedState = JSON.parse(JSON.stringify(previousState));
+      setBlocks(clonedState);
       setHistoryIndex(prev => prev - 1);
+      
+      // Sync with server to persist undo operation
+      if (selectedPageId) {
+        syncBlocksMutation.mutate(clonedState);
+      }
     }
-  }, [history, historyIndex]);
+  }, [history, historyIndex, selectedPageId, syncBlocksMutation]);
 
   // Redo function
   const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const nextState = history[historyIndex + 1];
-      setBlocks(JSON.parse(JSON.stringify(nextState)));
+      const clonedState = JSON.parse(JSON.stringify(nextState));
+      setBlocks(clonedState);
       setHistoryIndex(prev => prev + 1);
+      
+      // Sync with server to persist redo operation
+      if (selectedPageId) {
+        syncBlocksMutation.mutate(clonedState);
+      }
     }
-  }, [history, historyIndex]);
+  }, [history, historyIndex, selectedPageId, syncBlocksMutation]);
 
   // Can undo/redo
   const canUndo = historyIndex > 0;
@@ -1415,42 +1598,74 @@ export default function LandingPageBuilder() {
 
                     {/* Scrollable Content Area */}
                     <ScrollArea className="h-full">
-                      <div
-                        className="p-6"
-                        style={{
-                          backgroundColor: selectedPage.landingPage.theme.backgroundColor,
-                          minHeight: previewMode === "mobile" ? "932px" : "600px",
-                        }}
-                      >
-                      {/* Profile Section */}
-                      <div className="text-center mb-6">
-                        <Avatar className="w-20 h-20 mx-auto mb-3 ring-4 ring-white dark:ring-slate-800">
-                          <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
-                          <AvatarFallback>
-                            {(selectedPage.landingPage.profileName ||
-                              selectedPage.landingPage.title ||
-                              "LP")
-                              .substring(0, 2)
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {selectedPage.landingPage.profileName && (
-                          <h1
-                            className="text-xl font-bold mb-1"
-                            style={{ color: selectedPage.landingPage.theme.textColor }}
-                          >
-                            {selectedPage.landingPage.profileName}
-                          </h1>
-                        )}
-                        {selectedPage.landingPage.profileBio && (
-                          <p
-                            className="text-sm"
-                            style={{ color: selectedPage.landingPage.theme.textColor, opacity: 0.8 }}
-                          >
-                            {selectedPage.landingPage.profileBio}
-                          </p>
-                        )}
-                      </div>
+                      <div className="relative" style={{ minHeight: previewMode === "mobile" ? "932px" : "600px" }}>
+                        {/* Header with Logo and Menu */}
+                        <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3">
+                          <div className="flex items-center gap-2 text-white">
+                            <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+                              <span className="text-xs font-bold">SB</span>
+                            </div>
+                            <span className="font-semibold text-sm">SmartBio</span>
+                          </div>
+                          <button className="text-white p-1">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="3" y1="12" x2="21" y2="12"/>
+                              <line x1="3" y1="6" x2="21" y2="6"/>
+                              <line x1="3" y1="18" x2="21" y2="18"/>
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* Hero Section with Gradient Background */}
+                        <div 
+                          className="relative pb-32"
+                          style={{
+                            background: selectedPage.landingPage.theme.gradient || selectedPage.landingPage.theme.backgroundColor,
+                          }}
+                        >
+                          {/* Curved White Background */}
+                          <div className="absolute bottom-0 left-0 right-0 h-32 overflow-hidden">
+                            <svg viewBox="0 0 430 128" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                              <path d="M0 128V64C0 64 107.5 0 215 0C322.5 0 430 64 430 64V128H0Z" fill="white"/>
+                            </svg>
+                          </div>
+
+                          {/* Profile Photo - positioned to overlap the curve */}
+                          <div className="relative z-10 flex justify-center pt-8">
+                            <Avatar className="w-36 h-36 ring-8 ring-white shadow-2xl">
+                              <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
+                              <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-500 to-pink-500 text-white">
+                                {(selectedPage.landingPage.profileName ||
+                                  selectedPage.landingPage.title ||
+                                  "LP")
+                                  .substring(0, 2)
+                                  .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                        </div>
+
+                        {/* Content Section - White Background */}
+                        <div className="bg-white px-6 pb-6">
+                          {/* Profile Info */}
+                          <div className="text-center mb-6 -mt-4">
+                            {selectedPage.landingPage.profileName && (
+                              <h1
+                                className="text-2xl font-bold mb-2"
+                                style={{ color: selectedPage.landingPage.theme.textColor }}
+                              >
+                                {selectedPage.landingPage.profileName}
+                              </h1>
+                            )}
+                            {selectedPage.landingPage.profileBio && (
+                              <p
+                                className="text-sm leading-relaxed px-4"
+                                style={{ color: selectedPage.landingPage.theme.textColor, opacity: 0.7 }}
+                              >
+                                {selectedPage.landingPage.profileBio}
+                              </p>
+                            )}
+                          </div>
 
                       {/* Blocks with Drag and Drop */}
                       <DndContext
@@ -1502,11 +1717,12 @@ export default function LandingPageBuilder() {
                           </div>
                         </SortableContext>
                       </DndContext>
+                        </div>
                       </div>
                     </ScrollArea>
                   </div>
-                  </div>
                 </div>
+              </div>
               ) : (
                 <Card className="border-dashed max-w-md">
                   <CardContent className="p-12 text-center">
