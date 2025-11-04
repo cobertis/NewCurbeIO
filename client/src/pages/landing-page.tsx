@@ -1780,9 +1780,11 @@ export default function LandingPageBuilder() {
                               return (
                                 <div className="flex items-center justify-center gap-2 mb-4">
                                   {socialBlocks.map((block) => {
-                                    const SocialIcon = SOCIAL_PLATFORMS.find(
+                                    const platform = SOCIAL_PLATFORMS.find(
                                       (p) => p.value === block.content.platform
-                                    )?.icon || Share2;
+                                    );
+                                    if (!platform) return null;
+                                    const SocialIcon = platform.icon;
                                     return (
                                       <div
                                         key={block.id}
