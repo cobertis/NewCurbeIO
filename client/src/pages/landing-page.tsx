@@ -59,6 +59,7 @@ import {
   Redo,
   BarChart,
   Layers,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -855,6 +856,27 @@ export default function LandingPageBuilder() {
         data: { title: pageTitle },
       });
     }
+  };
+
+  // Reusable avatar upload handler
+  const handleAvatarUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          updatePageMutation.mutate({
+            id: selectedPageId!,
+            data: { profilePhoto: reader.result as string },
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
   };
 
   // Helper function to generate user-based slug
@@ -1675,18 +1697,30 @@ export default function LandingPageBuilder() {
                             </svg>
                           </div>
 
-                          {/* Profile Photo - positioned to overlap the curve */}
+                          {/* Profile Photo - positioned to overlap the curve with upload overlay */}
                           <div className="relative z-10 flex justify-center pt-8">
-                            <Avatar className="w-36 h-36 ring-8 ring-white shadow-2xl">
-                              <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
-                              <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-500 to-pink-500 text-white">
-                                {(selectedPage.landingPage.profileName ||
-                                  selectedPage.landingPage.title ||
-                                  "LP")
-                                  .substring(0, 2)
-                                  .toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="relative group">
+                              <Avatar className="w-36 h-36 ring-8 ring-white shadow-2xl">
+                                <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
+                                <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-500 to-pink-500 text-white">
+                                  {(selectedPage.landingPage.profileName ||
+                                    selectedPage.landingPage.title ||
+                                    "LP")
+                                    .substring(0, 2)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              
+                              {/* Edit/Upload Overlay Button */}
+                              <button
+                                onClick={handleAvatarUpload}
+                                aria-label="Change profile photo"
+                                className="absolute bottom-2 right-2 w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-95"
+                                data-testid="button-upload-avatar-preview"
+                              >
+                                <Pencil className="w-5 h-5" />
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -2086,25 +2120,7 @@ export default function LandingPageBuilder() {
                               type="button"
                               variant="outline"
                               className="w-full"
-                              onClick={() => {
-                                const input = document.createElement('input');
-                                input.type = 'file';
-                                input.accept = 'image/*';
-                                input.onchange = (e) => {
-                                  const file = (e.target as HTMLInputElement).files?.[0];
-                                  if (file) {
-                                    const reader = new FileReader();
-                                    reader.onload = () => {
-                                      updatePageMutation.mutate({
-                                        id: selectedPageId!,
-                                        data: { profilePhoto: reader.result as string },
-                                      });
-                                    };
-                                    reader.readAsDataURL(file);
-                                  }
-                                };
-                                input.click();
-                              }}
+                              onClick={handleAvatarUpload}
                               data-testid="button-upload-photo"
                             >
                               <ImageIcon className="w-4 h-4 mr-2" />
