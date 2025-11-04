@@ -7359,6 +7359,8 @@ export default function PoliciesPage() {
                           onClick={() => {
                             console.log('[EDIT PLAN] Setting editingPlanId to:', policyPlan.id);
                             console.log('[EDIT PLAN] Plan data:', plan);
+                            console.log('[EDIT PLAN] plan.issuer:', plan.issuer);
+                            console.log('[EDIT PLAN] plan.issuer?.name:', plan.issuer?.name);
                             setEditingPlanId(policyPlan.id);
                             
                             // Extract benefit costs from the benefits array
