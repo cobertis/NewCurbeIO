@@ -1701,7 +1701,7 @@ export default function LandingPageBuilder() {
                         <div 
                           className="relative"
                           style={{
-                            background: "linear-gradient(180deg, #0f0b27 0%, #06010f 55%, #06010f 60%)",
+                            background: (selectedPage.landingPage.theme as any).backgroundGradient || "linear-gradient(180deg, #0f0b27 0%, #06010f 55%, #06010f 60%)",
                             minHeight: "280px",
                             paddingBottom: "96px",
                           }}
