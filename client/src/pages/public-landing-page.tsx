@@ -816,19 +816,25 @@ export default function PublicLandingPage() {
         {(landingPage.profileName || landingPage.profileBio) && (
           <div className="text-center mb-4 -mt-2">
             {landingPage.profileName && (
-              <h1
-                className="text-2xl font-bold mb-1"
-                style={{ 
-                  color: "#000000",
-                  textDecoration: "none",
-                  border: "none",
-                  borderBottom: "none",
-                  boxShadow: "none",
-                }}
-                data-testid="profile-name"
-              >
-                {landingPage.profileName}
-              </h1>
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <h1
+                  className="text-2xl font-bold mb-0"
+                  style={{ 
+                    color: "#000000",
+                    textDecoration: "none",
+                    border: "none",
+                    borderBottom: "none",
+                    boxShadow: "none",
+                  }}
+                  data-testid="profile-name"
+                >
+                  {landingPage.profileName}
+                </h1>
+                <svg className="w-5 h-5 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+              </div>
             )}
             {landingPage.profileBio && (
               <p

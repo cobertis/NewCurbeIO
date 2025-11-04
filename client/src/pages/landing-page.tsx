@@ -1746,18 +1746,24 @@ export default function LandingPageBuilder() {
                           {/* Profile Info - COMPACT and CLEAN */}
                           <div className="relative z-20 text-center mb-4 -mt-2">
                             {selectedPage.landingPage.profileName && (
-                              <h1
-                                className="text-2xl font-bold mb-1"
-                                style={{ 
-                                  color: "#000000",
-                                  textDecoration: "none",
-                                  border: "none",
-                                  borderBottom: "none",
-                                  boxShadow: "none",
-                                }}
-                              >
-                                {selectedPage.landingPage.profileName}
-                              </h1>
+                              <div className="flex items-center justify-center gap-1.5">
+                                <h1
+                                  className="text-2xl font-bold mb-0"
+                                  style={{ 
+                                    color: "#000000",
+                                    textDecoration: "none",
+                                    border: "none",
+                                    borderBottom: "none",
+                                    boxShadow: "none",
+                                  }}
+                                >
+                                  {selectedPage.landingPage.profileName}
+                                </h1>
+                                <svg className="w-5 h-5 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                                </svg>
+                              </div>
                             )}
                             {selectedPage.landingPage.profileBio && (
                               <p
