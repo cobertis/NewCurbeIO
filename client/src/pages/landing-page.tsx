@@ -1810,19 +1810,13 @@ export default function LandingPageBuilder() {
                                       (p) => p.value === block.content.platform
                                     )?.icon || Share2;
                                     return (
-                                      <button
+                                      <div
                                         key={block.id}
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          setEditingBlock(block);
-                                          setIsBlockEditorOpen(true);
-                                        }}
-                                        className="w-11 h-11 rounded-full bg-black flex items-center justify-center hover:scale-110 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer"
+                                        className="w-11 h-11 rounded-full bg-black flex items-center justify-center"
                                         data-testid={`preview-social-${block.id}`}
-                                        title={`Edit ${block.content.platform || 'social'} link`}
                                       >
                                         <SocialIcon className="w-5 h-5 text-white" />
-                                      </button>
+                                      </div>
                                     );
                                   })}
                                 </div>
