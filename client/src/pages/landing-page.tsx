@@ -1709,18 +1709,18 @@ export default function LandingPageBuilder() {
                             return null;
                           })()}
 
-                      {/* All Blocks (including Social) with Drag and Drop */}
+                      {/* All Blocks (EXCEPT Social) with Drag and Drop */}
                       <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
                         onDragEnd={handleDragEnd}
                       >
                         <SortableContext
-                          items={blocks.map((b) => b.id)}
+                          items={blocks.filter(b => b.type !== "social").map((b) => b.id)}
                           strategy={verticalListSortingStrategy}
                         >
                           <div className="space-y-3">
-                            {blocks.length === 0 ? (
+                            {blocks.filter(b => b.type !== "social").length === 0 ? (
                               <Card className="border-dashed">
                                 <CardContent className="p-8 text-center">
                                   <p className="text-gray-500 text-sm">
@@ -1729,7 +1729,7 @@ export default function LandingPageBuilder() {
                                 </CardContent>
                               </Card>
                             ) : (
-                              blocks.map((block) => (
+                              blocks.filter(b => b.type !== "social").map((block) => (
                                 <div key={block.id} className="space-y-2">
                                   {/* Editable block item */}
                                   <SortableBlock
