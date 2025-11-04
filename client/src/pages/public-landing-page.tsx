@@ -811,13 +811,19 @@ export default function PublicLandingPage() {
 
       {/* Content Section - White Background COMPACT like SmartBio */}
       <div className="bg-white px-4 pb-4">
-        {/* Profile Info */}
+        {/* Profile Info - COMPACT and CLEAN */}
         {(landingPage.profileName || landingPage.profileBio) && (
-          <div className="text-center mb-6 -mt-4">
+          <div className="text-center mb-4 -mt-2">
             {landingPage.profileName && (
               <h1
-                className="text-2xl font-bold mb-2"
-                style={{ color: theme.textColor }}
+                className="text-2xl font-bold mb-1"
+                style={{ 
+                  color: "#000000",
+                  textDecoration: "none",
+                  border: "none",
+                  borderBottom: "none",
+                  boxShadow: "none",
+                }}
                 data-testid="profile-name"
               >
                 {landingPage.profileName}
@@ -825,7 +831,7 @@ export default function PublicLandingPage() {
             )}
             {landingPage.profileBio && (
               <p
-                className="text-sm leading-relaxed px-4 text-gray-600"
+                className="text-sm leading-relaxed text-gray-600"
                 data-testid="profile-bio"
               >
                 {landingPage.profileBio}
@@ -834,7 +840,7 @@ export default function PublicLandingPage() {
           </div>
         )}
 
-        {/* Social Media Icons - Horizontal Row */}
+        {/* Social Media Icons - COMPACT like SmartBio */}
         {(() => {
           const socialBlocks = sortedBlocks.filter((b) => b.type === "social" && b.isVisible);
           if (socialBlocks.length > 0) {
@@ -847,7 +853,7 @@ export default function PublicLandingPage() {
               tiktok: SiTiktok,
             };
             return (
-              <div className="flex items-center justify-center gap-3 mb-6 max-w-2xl mx-auto">
+              <div className="flex items-center justify-center gap-2 mb-4 max-w-2xl mx-auto">
                 {socialBlocks.map((block) => {
                   const SocialIcon = SOCIAL_ICONS[block.content.platform] || SiInstagram;
                   return (
@@ -857,10 +863,10 @@ export default function PublicLandingPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => trackClick(block.id)}
-                      className="w-12 h-12 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
+                      className="w-11 h-11 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
                       data-testid={`public-social-${block.id}`}
                     >
-                      <SocialIcon className="w-6 h-6 text-white" />
+                      <SocialIcon className="w-5 h-5 text-white" />
                     </a>
                   );
                 })}
@@ -870,8 +876,8 @@ export default function PublicLandingPage() {
           return null;
         })()}
 
-        {/* Other Blocks (excluding social media) */}
-        <div className="space-y-3 max-w-2xl mx-auto" data-testid="blocks-container">
+        {/* Other Blocks (excluding social media) - COMPACT spacing */}
+        <div className="space-y-2 max-w-2xl mx-auto" data-testid="blocks-container">
           {sortedBlocks
             .filter((block) => block.isVisible && block.type !== "social")
             .map((block) => (
