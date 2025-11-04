@@ -60,6 +60,7 @@ import PublicConsentPage from "@/pages/public-consent";
 import Calendar from "@/pages/calendar";
 import Referrals from "@/pages/referrals";
 import LandingPageBuilder from "@/pages/landing-page";
+import PublicLandingPage from "@/pages/public-landing-page";
 import SmsMmsPage from "@/pages/sms-mms";
 import EmailMarketingPage from "@/pages/email-marketing";
 import IntegrationsPage from "@/pages/integrations";
@@ -1253,6 +1254,7 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/l/:slug" component={PublicLandingPage} />
       <Route path="/consent/:token" component={PublicConsentPage} />
       <Route path="/unsubscribe" component={Unsubscribe} />
       <Route component={NotFound} />
