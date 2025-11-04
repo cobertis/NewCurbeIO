@@ -1268,29 +1268,71 @@ export default function LandingPageBuilder() {
               {/* Device Frame */}
               {selectedPage ? (
                 <div
-                  className={`relative bg-white rounded-[32px] overflow-hidden shadow-2xl transition-all duration-300`}
+                  className={`relative overflow-hidden transition-all duration-300`}
                   style={{
-                    width: previewMode === "mobile" ? `${375 * (zoomLevel / 100)}px` : "100%",
+                    width: previewMode === "mobile" ? "430px" : "100%",
                     maxWidth: previewMode === "desktop" ? "1024px" : undefined,
-                    minHeight: previewMode === "mobile" ? `${812 * (zoomLevel / 100)}px` : "600px",
-                    transform: `scale(${zoomLevel / 100})`,
-                    transformOrigin: "top center",
+                    height: previewMode === "mobile" ? "932px" : "auto",
+                    minHeight: previewMode === "desktop" ? "600px" : undefined,
+                    backgroundColor: "#1c1c1e",
+                    borderRadius: previewMode === "mobile" ? "60px" : "0",
+                    padding: previewMode === "mobile" ? "12px" : "0",
+                    boxShadow: previewMode === "mobile" 
+                      ? "0 0 0 8px #1c1c1e, 0 0 0 12px #2c2c2e, 0 20px 60px rgba(0,0,0,0.4)"
+                      : "none",
                   }}
                 >
-                  {/* Phone Notch (only for mobile) */}
                   {previewMode === "mobile" && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-6 bg-black rounded-b-3xl z-10" />
+                    <>
+                      {/* iPhone 16 Pro Max Frame */}
+                      <div className="absolute inset-0 pointer-events-none z-50">
+                        {/* Dynamic Island */}
+                        <div className="absolute top-[12px] left-1/2 -translate-x-1/2 w-[126px] h-[37px] bg-black rounded-full" />
+                        
+                        {/* Status Bar */}
+                        <div className="absolute top-[20px] left-0 right-0 px-[32px] flex items-center justify-between text-white text-[15px] font-semibold">
+                          <div>9:41</div>
+                          <div className="flex items-center gap-1">
+                            {/* Signal */}
+                            <svg width="18" height="12" viewBox="0 0 18 12" fill="white">
+                              <rect x="0" y="8" width="3" height="4" rx="1"/>
+                              <rect x="5" y="5" width="3" height="7" rx="1"/>
+                              <rect x="10" y="2" width="3" height="10" rx="1"/>
+                              <rect x="15" y="0" width="3" height="12" rx="1"/>
+                            </svg>
+                            {/* WiFi */}
+                            <svg width="18" height="14" viewBox="0 0 18 14" fill="white">
+                              <path d="M9 13C9.552 13 10 12.552 10 12C10 11.448 9.552 11 9 11C8.448 11 8 11.448 8 12C8 12.552 8.448 13 9 13ZM9 9C10.381 9 11.673 9.562 12.627 10.515L11.214 11.929C10.635 11.349 9.854 11 9 11C8.146 11 7.365 11.349 6.786 11.929L5.373 10.515C6.327 9.562 7.619 9 9 9ZM9 5C11.209 5 13.234 5.902 14.698 7.365L13.284 8.778C12.186 7.68 10.671 7 9 7C7.329 7 5.814 7.68 4.716 8.778L3.302 7.365C4.766 5.902 6.791 5 9 5Z"/>
+                            </svg>
+                            {/* Battery */}
+                            <svg width="27" height="13" viewBox="0 0 27 13" fill="none">
+                              <rect x="0.5" y="0.5" width="22" height="12" rx="2.5" stroke="white" strokeOpacity="0.35"/>
+                              <path opacity="0.4" d="M24 4V9C25.105 8.665 25.5 7.5 25.5 6.5C25.5 5.5 25.105 4.335 24 4Z" fill="white"/>
+                              <rect x="2" y="2" width="18" height="9" rx="1" fill="white"/>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   )}
+                  
+                  {/* Screen Content */}
+                  <div 
+                    className="relative w-full h-full bg-white rounded-[48px] overflow-hidden"
+                    style={{
+                      backgroundColor: previewMode === "mobile" ? "white" : "transparent",
+                    }}
+                  >
 
-                  {/* Scrollable Content Area */}
-                  <ScrollArea className="h-full">
-                    <div
-                      className="p-6"
-                      style={{
-                        backgroundColor: selectedPage.landingPage.theme.backgroundColor,
-                        minHeight: previewMode === "mobile" ? "812px" : "600px",
-                      }}
-                    >
+                    {/* Scrollable Content Area */}
+                    <ScrollArea className="h-full">
+                      <div
+                        className="p-6"
+                        style={{
+                          backgroundColor: selectedPage.landingPage.theme.backgroundColor,
+                          minHeight: previewMode === "mobile" ? "932px" : "600px",
+                        }}
+                      >
                       {/* Profile Section */}
                       <div className="text-center mb-6">
                         <Avatar className="w-20 h-20 mx-auto mb-3 ring-4 ring-white dark:ring-slate-800">
@@ -1371,8 +1413,9 @@ export default function LandingPageBuilder() {
                           </div>
                         </SortableContext>
                       </DndContext>
-                    </div>
-                  </ScrollArea>
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </div>
               ) : (
                 <Card className="border-dashed max-w-md">
