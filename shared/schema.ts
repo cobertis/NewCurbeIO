@@ -2708,7 +2708,7 @@ export const insertLandingBlockSchema = createInsertSchema(landingBlocks).omit({
   updatedAt: true,
   clickCount: true,
 }).extend({
-  type: z.enum(["link", "social", "video", "text", "image", "email", "divider", "contact"]),
+  type: z.enum(["link", "social", "video", "text", "image", "email", "divider", "contact", "maps", "lead-form", "calendar", "testimonials", "faq", "stats"]),
   content: z.record(z.any()),
   position: z.number().int().min(0),
 });
@@ -2721,6 +2721,84 @@ export const insertLandingAnalyticsSchema = createInsertSchema(landingAnalytics)
   metadata: z.record(z.any()).optional(),
 });
 
+// Landing page leads capture
+export const landingLeads = pgTable("landing_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  landingPageId: varchar("landing_page_id").notNull().references(() => landingPages.id, { onDelete: "cascade" }),
+  blockId: varchar("block_id").references(() => landingBlocks.id, { onDelete: "set null" }),
+  
+  // Lead info
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  message: text("message"),
+  formData: jsonb("form_data").default({}), // Any additional custom fields
+  
+  // Metadata
+  source: text("source"), // utm params, referrer, etc.
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Landing page appointments
+export const landingAppointments = pgTable("landing_appointments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  landingPageId: varchar("landing_page_id").notNull().references(() => landingPages.id, { onDelete: "cascade" }),
+  blockId: varchar("block_id").references(() => landingBlocks.id, { onDelete: "set null" }),
+  
+  // Appointment info
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  appointmentDate: text("appointment_date").notNull(), // yyyy-MM-dd
+  appointmentTime: text("appointment_time").notNull(), // HH:mm
+  duration: integer("duration").notNull().default(30), // minutes
+  notes: text("notes"),
+  
+  // Status
+  status: text("status").notNull().default("pending"), // pending, confirmed, cancelled, completed
+  
+  // Metadata
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertLandingLeadSchema = createInsertSchema(landingLeads).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  fullName: z.string().min(1).max(100),
+  email: z.string().email(),
+  phone: z.string().max(20).optional(),
+  message: z.string().max(1000).optional(),
+  formData: z.record(z.any()).optional(),
+  source: z.string().max(500).optional(),
+  ipAddress: z.string().max(50).optional(),
+  userAgent: z.string().max(500).optional(),
+});
+
+export const insertLandingAppointmentSchema = createInsertSchema(landingAppointments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  fullName: z.string().min(1).max(100),
+  email: z.string().email(),
+  phone: z.string().max(20).optional(),
+  appointmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  appointmentTime: z.string().regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+  duration: z.number().int().min(15).max(240).default(30),
+  notes: z.string().max(1000).optional(),
+  status: z.enum(["pending", "confirmed", "cancelled", "completed"]).default("pending"),
+  ipAddress: z.string().max(50).optional(),
+  userAgent: z.string().max(500).optional(),
+});
+
 export type LandingPage = typeof landingPages.$inferSelect;
 export type InsertLandingPage = z.infer<typeof insertLandingPageSchema>;
 
@@ -2729,3 +2807,9 @@ export type InsertLandingBlock = z.infer<typeof insertLandingBlockSchema>;
 
 export type LandingAnalytics = typeof landingAnalytics.$inferSelect;
 export type InsertLandingAnalytics = z.infer<typeof insertLandingAnalyticsSchema>;
+
+export type LandingLead = typeof landingLeads.$inferSelect;
+export type InsertLandingLead = z.infer<typeof insertLandingLeadSchema>;
+
+export type LandingAppointment = typeof landingAppointments.$inferSelect;
+export type InsertLandingAppointment = z.infer<typeof insertLandingAppointmentSchema>;

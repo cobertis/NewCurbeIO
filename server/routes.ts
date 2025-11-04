@@ -57,7 +57,9 @@ import {
   policyNotes,
   insertLandingPageSchema,
   insertLandingBlockSchema,
-  insertLandingAnalyticsSchema
+  insertLandingAnalyticsSchema,
+  insertLandingLeadSchema,
+  insertLandingAppointmentSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq } from "drizzle-orm";
@@ -17521,6 +17523,278 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error fetching analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+  
+  // ==================== LANDING PAGE LEADS ====================
+  
+  // POST /api/landing-pages/:id/leads - Capture lead (PUBLIC endpoint)
+  app.post("/api/landing-pages/:id/leads", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    
+    try {
+      // Verify landing page exists and is published
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      if (!landingPage.isPublished) {
+        return res.status(403).json({ message: "Landing page is not published" });
+      }
+      
+      // Validate request body
+      const validatedData = insertLandingLeadSchema.parse({
+        ...req.body,
+        landingPageId: id,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
+      // Create lead
+      const lead = await storage.createLandingLead(validatedData);
+      
+      // Log activity
+      await logger.logActivity({
+        companyId: landingPage.companyId,
+        userId: landingPage.userId,
+        action: "landing_page_lead_captured",
+        entityType: "landing_page",
+        entityId: id,
+        description: `Lead captured: ${validatedData.fullName} (${validatedData.email})`,
+        metadata: {
+          leadId: lead.id,
+          blockId: validatedData.blockId,
+        },
+      });
+      
+      res.status(201).json({ 
+        message: "Lead captured successfully",
+        leadId: lead.id 
+      });
+    } catch (error: any) {
+      console.error("Error capturing lead:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to capture lead" });
+    }
+  });
+  
+  // GET /api/landing-pages/:id/leads - List leads (PROTECTED endpoint)
+  app.get("/api/landing-pages/:id/leads", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { limit, offset } = req.query;
+    
+    try {
+      // Verify landing page exists and user has access
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get leads
+      const leads = await storage.getLandingLeads(id, {
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+      
+      res.json({ leads });
+    } catch (error: any) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
+    }
+  });
+  
+  // ==================== LANDING PAGE APPOINTMENTS ====================
+  
+  // POST /api/landing-pages/:id/appointments - Create appointment (PUBLIC endpoint)
+  app.post("/api/landing-pages/:id/appointments", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    
+    try {
+      // Verify landing page exists and is published
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      if (!landingPage.isPublished) {
+        return res.status(403).json({ message: "Landing page is not published" });
+      }
+      
+      // Validate request body
+      const validatedData = insertLandingAppointmentSchema.parse({
+        ...req.body,
+        landingPageId: id,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
+      // Create appointment
+      const appointment = await storage.createLandingAppointment(validatedData);
+      
+      // Log activity
+      await logger.logActivity({
+        companyId: landingPage.companyId,
+        userId: landingPage.userId,
+        action: "landing_page_appointment_created",
+        entityType: "landing_page",
+        entityId: id,
+        description: `Appointment created: ${validatedData.fullName} on ${validatedData.appointmentDate} at ${validatedData.appointmentTime}`,
+        metadata: {
+          appointmentId: appointment.id,
+          blockId: validatedData.blockId,
+        },
+      });
+      
+      res.status(201).json({ 
+        message: "Appointment created successfully",
+        appointmentId: appointment.id 
+      });
+    } catch (error: any) {
+      console.error("Error creating appointment:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to create appointment" });
+    }
+  });
+  
+  // GET /api/landing-pages/:id/appointments - List appointments (PROTECTED endpoint)
+  app.get("/api/landing-pages/:id/appointments", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { limit, offset, status } = req.query;
+    
+    try {
+      // Verify landing page exists and user has access
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get appointments
+      const appointments = await storage.getLandingAppointments(id, {
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+        status: status as string | undefined,
+      });
+      
+      res.json({ appointments });
+    } catch (error: any) {
+      console.error("Error fetching appointments:", error);
+      res.status(500).json({ message: "Failed to fetch appointments" });
+    }
+  });
+  
+  // PATCH /api/appointments/:id/status - Update appointment status (PROTECTED endpoint)
+  app.patch("/api/appointments/:id/status", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    try {
+      // Validate status
+      const statusSchema = z.enum(["pending", "confirmed", "cancelled", "completed"]);
+      const validatedStatus = statusSchema.parse(status);
+      
+      // Update appointment status
+      const appointment = await storage.updateAppointmentStatus(id, validatedStatus);
+      
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      // Verify user has access to the landing page
+      const landingPage = await storage.getLandingPageById(appointment.landingPageId);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Log activity
+      await logger.logActivity({
+        companyId: landingPage.companyId,
+        userId: currentUser.id,
+        action: "appointment_status_updated",
+        entityType: "appointment",
+        entityId: id,
+        description: `Appointment status updated to: ${validatedStatus}`,
+        metadata: {
+          previousStatus: appointment.status,
+          newStatus: validatedStatus,
+        },
+      });
+      
+      res.json({ 
+        message: "Appointment status updated successfully",
+        appointment 
+      });
+    } catch (error: any) {
+      console.error("Error updating appointment status:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Invalid status value",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to update appointment status" });
+    }
+  });
+  
+  // GET /api/landing-blocks/:blockId/available-slots - Get available time slots (PUBLIC endpoint)
+  app.get("/api/landing-blocks/:blockId/available-slots", async (req: Request, res: Response) => {
+    const { blockId } = req.params;
+    const { date } = req.query;
+    
+    try {
+      // Validate date format
+      if (!date || typeof date !== 'string') {
+        return res.status(400).json({ message: "Date parameter is required (yyyy-MM-dd format)" });
+      }
+      
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        return res.status(400).json({ message: "Invalid date format. Use yyyy-MM-dd" });
+      }
+      
+      // Get available slots
+      const slots = await storage.getAvailableSlots(blockId, date);
+      
+      res.json({ 
+        date,
+        availableSlots: slots 
+      });
+    } catch (error: any) {
+      console.error("Error fetching available slots:", error);
+      res.status(500).json({ message: "Failed to fetch available slots" });
     }
   });
 

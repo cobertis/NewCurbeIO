@@ -47,6 +47,12 @@ import {
   User,
   Settings,
   Sparkles,
+  MapPin,
+  UserPlus,
+  Calendar as CalendarIcon,
+  Star,
+  HelpCircle,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -224,6 +230,18 @@ function SortableBlock({
         return <Minus className="w-4 h-4" />;
       case "contact":
         return <Phone className="w-4 h-4" />;
+      case "maps":
+        return <MapPin className="w-4 h-4" />;
+      case "lead-form":
+        return <UserPlus className="w-4 h-4" />;
+      case "calendar":
+        return <CalendarIcon className="w-4 h-4" />;
+      case "testimonials":
+        return <Star className="w-4 h-4" />;
+      case "faq":
+        return <HelpCircle className="w-4 h-4" />;
+      case "stats":
+        return <TrendingUp className="w-4 h-4" />;
       default:
         return null;
     }
@@ -247,6 +265,18 @@ function SortableBlock({
         return "Divider";
       case "contact":
         return `${block.content.type || "Contact"} Block`;
+      case "maps":
+        return "Maps Block";
+      case "lead-form":
+        return "Lead Form";
+      case "calendar":
+        return "Scheduler";
+      case "testimonials":
+        return "Testimonials";
+      case "faq":
+        return "FAQ";
+      case "stats":
+        return "Stats";
       default:
         return "Block";
     }
@@ -469,6 +499,88 @@ function BlockPreview({
         </a>
       );
 
+    case "maps":
+      return (
+        <Card className="p-4">
+          <MapPin className="h-6 w-6 mb-2" />
+          <p className="text-sm text-muted-foreground">
+            {block.content.address || "Map Location"}
+          </p>
+        </Card>
+      );
+
+    case "lead-form":
+      return (
+        <Card className="p-6" style={{ borderColor: theme.primaryColor }}>
+          <h3 className="font-semibold mb-2">{block.content.title}</h3>
+          <p className="text-sm text-muted-foreground mb-4">{block.content.subtitle}</p>
+          <div className="space-y-2">
+            {block.content.fields?.map((field: any, idx: number) => (
+              <div key={idx} className="h-10 bg-gray-100 rounded"></div>
+            ))}
+          </div>
+          <Button 
+            className="w-full mt-4" 
+            style={{ backgroundColor: theme.buttonColor }}
+          >
+            {block.content.submitText}
+          </Button>
+        </Card>
+      );
+
+    case "calendar":
+      return (
+        <Card className="p-6">
+          <CalendarIcon className="h-6 w-6 mb-2" />
+          <h3 className="font-semibold mb-2">{block.content.title}</h3>
+          <p className="text-sm text-muted-foreground">{block.content.subtitle}</p>
+        </Card>
+      );
+
+    case "testimonials":
+      return (
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+            <div>
+              <p className="font-semibold">{block.content.reviews?.[0]?.name || "Name"}</p>
+              <p className="text-sm text-muted-foreground">{block.content.reviews?.[0]?.role || "Role"}</p>
+            </div>
+          </div>
+          <div className="flex gap-1 mb-2">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            ))}
+          </div>
+          <p className="text-sm">{block.content.reviews?.[0]?.text || "Review text"}</p>
+        </Card>
+      );
+
+    case "faq":
+      return (
+        <Card className="p-4">
+          <HelpCircle className="h-6 w-6 mb-2" />
+          <p className="font-medium">{block.content.items?.[0]?.question || "Question"}</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            {block.content.items?.[0]?.answer || "Answer"}
+          </p>
+        </Card>
+      );
+
+    case "stats":
+      return (
+        <div className="grid grid-cols-2 gap-4">
+          {block.content.stats?.map((stat: any, idx: number) => (
+            <Card key={idx} className="p-6 text-center">
+              <p className="text-3xl font-bold" style={{ color: theme.primaryColor }}>
+                {stat.value}{stat.suffix}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">{stat.label}</p>
+            </Card>
+          ))}
+        </div>
+      );
+
     default:
       return null;
   }
@@ -675,15 +787,66 @@ export default function LandingPageBuilder() {
 
   // Add block functions
   const addBlock = useCallback(
-    (type: string, defaultContent: Record<string, any> = {}) => {
+    (type: string, customContent: Record<string, any> = {}) => {
       if (!selectedPageId) return;
+
+      const defaultContentMap: Record<string, any> = {
+        maps: {
+          address: "",
+          latitude: null,
+          longitude: null,
+          zoom: 14,
+          showMarker: true,
+        },
+        "lead-form": {
+          title: "Get in Touch",
+          subtitle: "We'll get back to you within 24 hours",
+          fields: [
+            { name: "fullName", type: "text", required: true, placeholder: "Full Name" },
+            { name: "email", type: "email", required: true, placeholder: "Email Address" },
+            { name: "phone", type: "tel", required: false, placeholder: "Phone Number" },
+            { name: "message", type: "textarea", required: false, placeholder: "Your Message" },
+          ],
+          submitText: "Submit",
+          successMessage: "Thank you! We'll be in touch soon.",
+          sendNotification: true,
+        },
+        calendar: {
+          title: "Schedule a Meeting",
+          subtitle: "Pick a time that works for you",
+          availableDays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
+          availableHours: { start: "09:00", end: "17:00" },
+          duration: 30,
+          timezone: "America/New_York",
+          successMessage: "Your appointment has been scheduled!",
+        },
+        testimonials: {
+          reviews: [
+            { name: "John Doe", role: "CEO", photo: "", rating: 5, text: "Great service!" },
+          ],
+          layout: "carousel",
+        },
+        faq: {
+          items: [
+            { question: "How can I help you?", answer: "We're here to assist with any questions." },
+          ],
+        },
+        stats: {
+          stats: [
+            { label: "Happy Clients", value: "500", suffix: "+", icon: "users" },
+            { label: "Projects", value: "100", suffix: "+", icon: "briefcase" },
+          ],
+        },
+      };
+
+      const defaultContent = defaultContentMap[type] || customContent;
 
       createBlockMutation.mutate({
         landingPageId: selectedPageId,
         data: {
           landingPageId: selectedPageId,
           type,
-          content: defaultContent,
+          content: { ...defaultContent, ...customContent },
           position: blocks.length,
           isVisible: true,
         },
@@ -1201,6 +1364,60 @@ export default function LandingPageBuilder() {
                       <Phone className="w-4 h-4 mr-2" />
                       Contact
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addBlock("maps")}
+                      data-testid="add-maps-block"
+                    >
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Maps
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addBlock("lead-form")}
+                      data-testid="add-lead-form-block"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Lead Form
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addBlock("calendar")}
+                      data-testid="add-calendar-block"
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      Scheduler
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addBlock("testimonials")}
+                      data-testid="add-testimonials-block"
+                    >
+                      <Star className="h-4 w-4 mr-2" />
+                      Testimonials
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addBlock("faq")}
+                      data-testid="add-faq-block"
+                    >
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      FAQ
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addBlock("stats")}
+                      data-testid="add-stats-block"
+                    >
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Stats
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1706,6 +1923,550 @@ export default function LandingPageBuilder() {
                                 })
                               }
                               placeholder="Contact Me"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {editingBlock.type === "maps" && (
+                        <>
+                          <div>
+                            <Label>Dirección</Label>
+                            <Input
+                              value={editingBlock.content.address || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    address: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="123 Main St, City, State"
+                            />
+                          </div>
+                          <div>
+                            <Label>Latitud</Label>
+                            <Input
+                              type="number"
+                              step="any"
+                              value={editingBlock.content.latitude || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    latitude: e.target.value ? parseFloat(e.target.value) : null,
+                                  },
+                                })
+                              }
+                              placeholder="40.7128"
+                            />
+                          </div>
+                          <div>
+                            <Label>Longitud</Label>
+                            <Input
+                              type="number"
+                              step="any"
+                              value={editingBlock.content.longitude || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    longitude: e.target.value ? parseFloat(e.target.value) : null,
+                                  },
+                                })
+                              }
+                              placeholder="-74.0060"
+                            />
+                          </div>
+                          <div>
+                            <Label>Zoom</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={editingBlock.content.zoom || 14}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    zoom: parseInt(e.target.value),
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={editingBlock.content.showMarker || false}
+                              onCheckedChange={(checked) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    showMarker: checked,
+                                  },
+                                })
+                              }
+                            />
+                            <Label>Mostrar marcador</Label>
+                          </div>
+                        </>
+                      )}
+
+                      {editingBlock.type === "lead-form" && (
+                        <>
+                          <div>
+                            <Label>Título</Label>
+                            <Input
+                              value={editingBlock.content.title || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    title: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="Get in Touch"
+                            />
+                          </div>
+                          <div>
+                            <Label>Subtítulo</Label>
+                            <Input
+                              value={editingBlock.content.subtitle || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    subtitle: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="We'll get back to you within 24 hours"
+                            />
+                          </div>
+                          <div>
+                            <Label>Texto del botón</Label>
+                            <Input
+                              value={editingBlock.content.submitText || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    submitText: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="Submit"
+                            />
+                          </div>
+                          <div>
+                            <Label>Mensaje de éxito</Label>
+                            <Input
+                              value={editingBlock.content.successMessage || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    successMessage: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="Thank you! We'll be in touch soon."
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {editingBlock.type === "calendar" && (
+                        <>
+                          <div>
+                            <Label>Título</Label>
+                            <Input
+                              value={editingBlock.content.title || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    title: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="Schedule a Meeting"
+                            />
+                          </div>
+                          <div>
+                            <Label>Subtítulo</Label>
+                            <Input
+                              value={editingBlock.content.subtitle || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    subtitle: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="Pick a time that works for you"
+                            />
+                          </div>
+                          <div>
+                            <Label>Duración (minutos)</Label>
+                            <Input
+                              type="number"
+                              value={editingBlock.content.duration || 30}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    duration: parseInt(e.target.value),
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Hora de inicio</Label>
+                            <Input
+                              type="time"
+                              value={editingBlock.content.availableHours?.start || "09:00"}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    availableHours: {
+                                      ...editingBlock.content.availableHours,
+                                      start: e.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Hora de fin</Label>
+                            <Input
+                              type="time"
+                              value={editingBlock.content.availableHours?.end || "17:00"}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    availableHours: {
+                                      ...editingBlock.content.availableHours,
+                                      end: e.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Mensaje de éxito</Label>
+                            <Input
+                              value={editingBlock.content.successMessage || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    successMessage: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="Your appointment has been scheduled!"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {editingBlock.type === "testimonials" && (
+                        <>
+                          <div>
+                            <Label>Nombre</Label>
+                            <Input
+                              value={editingBlock.content.reviews?.[0]?.name || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    reviews: [
+                                      {
+                                        ...(editingBlock.content.reviews?.[0] || {}),
+                                        name: e.target.value,
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="John Doe"
+                            />
+                          </div>
+                          <div>
+                            <Label>Cargo</Label>
+                            <Input
+                              value={editingBlock.content.reviews?.[0]?.role || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    reviews: [
+                                      {
+                                        ...(editingBlock.content.reviews?.[0] || {}),
+                                        role: e.target.value,
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="CEO"
+                            />
+                          </div>
+                          <div>
+                            <Label>Calificación (1-5)</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="5"
+                              value={editingBlock.content.reviews?.[0]?.rating || 5}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    reviews: [
+                                      {
+                                        ...(editingBlock.content.reviews?.[0] || {}),
+                                        rating: parseInt(e.target.value),
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Texto de la reseña</Label>
+                            <Textarea
+                              value={editingBlock.content.reviews?.[0]?.text || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    reviews: [
+                                      {
+                                        ...(editingBlock.content.reviews?.[0] || {}),
+                                        text: e.target.value,
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="Great service!"
+                              rows={4}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {editingBlock.type === "faq" && (
+                        <>
+                          <div>
+                            <Label>Pregunta</Label>
+                            <Input
+                              value={editingBlock.content.items?.[0]?.question || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    items: [
+                                      {
+                                        ...(editingBlock.content.items?.[0] || {}),
+                                        question: e.target.value,
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="How can I help you?"
+                            />
+                          </div>
+                          <div>
+                            <Label>Respuesta</Label>
+                            <Textarea
+                              value={editingBlock.content.items?.[0]?.answer || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    items: [
+                                      {
+                                        ...(editingBlock.content.items?.[0] || {}),
+                                        answer: e.target.value,
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="We're here to assist with any questions."
+                              rows={4}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {editingBlock.type === "stats" && (
+                        <>
+                          <div>
+                            <Label>Etiqueta (Estadística 1)</Label>
+                            <Input
+                              value={editingBlock.content.stats?.[0]?.label || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    stats: [
+                                      {
+                                        ...(editingBlock.content.stats?.[0] || {}),
+                                        label: e.target.value,
+                                      },
+                                      ...(editingBlock.content.stats?.slice(1) || []),
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="Happy Clients"
+                            />
+                          </div>
+                          <div>
+                            <Label>Valor (Estadística 1)</Label>
+                            <Input
+                              value={editingBlock.content.stats?.[0]?.value || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    stats: [
+                                      {
+                                        ...(editingBlock.content.stats?.[0] || {}),
+                                        value: e.target.value,
+                                      },
+                                      ...(editingBlock.content.stats?.slice(1) || []),
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="500"
+                            />
+                          </div>
+                          <div>
+                            <Label>Sufijo (Estadística 1)</Label>
+                            <Input
+                              value={editingBlock.content.stats?.[0]?.suffix || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    stats: [
+                                      {
+                                        ...(editingBlock.content.stats?.[0] || {}),
+                                        suffix: e.target.value,
+                                      },
+                                      ...(editingBlock.content.stats?.slice(1) || []),
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="+"
+                            />
+                          </div>
+                          <Separator />
+                          <div>
+                            <Label>Etiqueta (Estadística 2)</Label>
+                            <Input
+                              value={editingBlock.content.stats?.[1]?.label || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    stats: [
+                                      editingBlock.content.stats?.[0] || {},
+                                      {
+                                        ...(editingBlock.content.stats?.[1] || {}),
+                                        label: e.target.value,
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="Projects"
+                            />
+                          </div>
+                          <div>
+                            <Label>Valor (Estadística 2)</Label>
+                            <Input
+                              value={editingBlock.content.stats?.[1]?.value || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    stats: [
+                                      editingBlock.content.stats?.[0] || {},
+                                      {
+                                        ...(editingBlock.content.stats?.[1] || {}),
+                                        value: e.target.value,
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="100"
+                            />
+                          </div>
+                          <div>
+                            <Label>Sufijo (Estadística 2)</Label>
+                            <Input
+                              value={editingBlock.content.stats?.[1]?.suffix || ""}
+                              onChange={(e) =>
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    stats: [
+                                      editingBlock.content.stats?.[0] || {},
+                                      {
+                                        ...(editingBlock.content.stats?.[1] || {}),
+                                        suffix: e.target.value,
+                                      },
+                                    ],
+                                  },
+                                })
+                              }
+                              placeholder="+"
                             />
                           </div>
                         </>

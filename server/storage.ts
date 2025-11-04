@@ -130,7 +130,11 @@ import {
   type LandingBlock,
   type InsertLandingBlock,
   type LandingAnalytics,
-  type InsertLandingAnalytics
+  type InsertLandingAnalytics,
+  type LandingLead,
+  type InsertLandingLead,
+  type LandingAppointment,
+  type InsertLandingAppointment
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -194,7 +198,9 @@ import {
   policyConsentSignatureEvents,
   landingPages,
   landingBlocks,
-  landingAnalytics
+  landingAnalytics,
+  landingLeads,
+  landingAppointments
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -733,6 +739,16 @@ export interface IStorage {
   // Landing Analytics
   createLandingAnalytics(data: InsertLandingAnalytics): Promise<LandingAnalytics>;
   getLandingAnalytics(landingPageId: string, options?: { eventType?: string; limit?: number }): Promise<LandingAnalytics[]>;
+  
+  // Landing Leads
+  createLandingLead(data: InsertLandingLead): Promise<LandingLead>;
+  getLandingLeads(landingPageId: string, options?: { limit?: number; offset?: number }): Promise<LandingLead[]>;
+  
+  // Landing Appointments
+  createLandingAppointment(data: InsertLandingAppointment): Promise<LandingAppointment>;
+  getLandingAppointments(landingPageId: string, options?: { limit?: number; offset?: number; status?: string }): Promise<LandingAppointment[]>;
+  updateAppointmentStatus(id: string, status: string): Promise<LandingAppointment | undefined>;
+  getAvailableSlots(blockId: string, date: string): Promise<string[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -5868,6 +5884,163 @@ export class DbStorage implements IStorage {
     }
     
     return await query;
+  }
+  
+  // ==================== LANDING LEADS ====================
+  
+  async createLandingLead(data: InsertLandingLead): Promise<LandingLead> {
+    const result = await db
+      .insert(landingLeads)
+      .values({
+        ...data,
+        createdAt: new Date(),
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async getLandingLeads(
+    landingPageId: string,
+    options?: { limit?: number; offset?: number }
+  ): Promise<LandingLead[]> {
+    let query = db
+      .select()
+      .from(landingLeads)
+      .where(eq(landingLeads.landingPageId, landingPageId))
+      .orderBy(desc(landingLeads.createdAt));
+    
+    if (options?.offset) {
+      query = query.offset(options.offset) as any;
+    }
+    
+    if (options?.limit) {
+      query = query.limit(options.limit) as any;
+    }
+    
+    return await query;
+  }
+  
+  // ==================== LANDING APPOINTMENTS ====================
+  
+  async createLandingAppointment(data: InsertLandingAppointment): Promise<LandingAppointment> {
+    const result = await db
+      .insert(landingAppointments)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async getLandingAppointments(
+    landingPageId: string,
+    options?: { limit?: number; offset?: number; status?: string }
+  ): Promise<LandingAppointment[]> {
+    const whereConditions = options?.status
+      ? and(
+          eq(landingAppointments.landingPageId, landingPageId),
+          eq(landingAppointments.status, options.status)
+        )
+      : eq(landingAppointments.landingPageId, landingPageId);
+    
+    let query = db
+      .select()
+      .from(landingAppointments)
+      .where(whereConditions)
+      .orderBy(desc(landingAppointments.createdAt));
+    
+    if (options?.offset) {
+      query = query.offset(options.offset) as any;
+    }
+    
+    if (options?.limit) {
+      query = query.limit(options.limit) as any;
+    }
+    
+    return await query;
+  }
+  
+  async updateAppointmentStatus(id: string, status: string): Promise<LandingAppointment | undefined> {
+    const result = await db
+      .update(landingAppointments)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(landingAppointments.id, id))
+      .returning();
+    
+    return result[0];
+  }
+  
+  async getAvailableSlots(blockId: string, date: string): Promise<string[]> {
+    // Get the block configuration
+    const block = await db
+      .select()
+      .from(landingBlocks)
+      .where(eq(landingBlocks.id, blockId))
+      .limit(1);
+    
+    if (!block.length || block[0].type !== 'calendar') {
+      return [];
+    }
+    
+    const config = block[0].content as any;
+    const { availableHours, duration = 30 } = config;
+    
+    if (!availableHours?.start || !availableHours?.end) {
+      return [];
+    }
+    
+    // Get existing appointments for this date
+    const existingAppointments = await db
+      .select()
+      .from(landingAppointments)
+      .where(
+        and(
+          eq(landingAppointments.blockId, blockId),
+          eq(landingAppointments.appointmentDate, date),
+          sql`${landingAppointments.status} != 'cancelled'`
+        )
+      );
+    
+    // Generate all possible time slots
+    const slots: string[] = [];
+    const [startHour, startMinute] = availableHours.start.split(':').map(Number);
+    const [endHour, endMinute] = availableHours.end.split(':').map(Number);
+    
+    let currentTime = startHour * 60 + startMinute; // Convert to minutes
+    const endTime = endHour * 60 + endMinute;
+    
+    while (currentTime + duration <= endTime) {
+      const hours = Math.floor(currentTime / 60);
+      const minutes = currentTime % 60;
+      const timeSlot = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      
+      // Check if this slot is already booked
+      const isBooked = existingAppointments.some(apt => {
+        const aptTime = apt.appointmentTime;
+        const aptDuration = apt.duration || 30;
+        const [aptHour, aptMinute] = aptTime.split(':').map(Number);
+        const aptStartTime = aptHour * 60 + aptMinute;
+        const aptEndTime = aptStartTime + aptDuration;
+        
+        // Check for overlap
+        return currentTime < aptEndTime && (currentTime + duration) > aptStartTime;
+      });
+      
+      if (!isBooked) {
+        slots.push(timeSlot);
+      }
+      
+      currentTime += duration;
+    }
+    
+    return slots;
   }
 }
 
