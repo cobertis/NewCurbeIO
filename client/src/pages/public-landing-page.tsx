@@ -845,9 +845,9 @@ export default function PublicLandingPage() {
                 >
                   {landingPage.profileName}
                 </h1>
-                <svg className="w-5 h-5 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M512 0C229.2 0 0 229.2 0 512s229.2 512 512 512 512-229.2 512-512S794.8 0 512 0zm0 928c-229.8 0-416-186.2-416-416S282.2 96 512 96s416 186.2 416 416-186.2 416-416 416z" fill="#1D9BF0"/>
+                  <path d="M448 672L192 416l90.5-90.5L448 491l293.5-293.5L832 288z" fill="#1D9BF0"/>
                 </svg>
               </div>
             )}
