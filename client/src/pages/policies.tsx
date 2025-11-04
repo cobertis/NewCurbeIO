@@ -10254,7 +10254,7 @@ export default function PoliciesPage() {
             <div className="pt-4 border-t">
               <h3 className="text-sm font-semibold text-primary mb-3">Cost Details</h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="planWas" className="text-sm">Plan was</Label>
                   <Input
@@ -10282,9 +10282,7 @@ export default function PoliciesPage() {
                     data-testid="input-premium"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
                   <Label htmlFor="taxCredit" className="text-sm">Tax Credit / Subsidy (APTC)</Label>
                   <Input
@@ -10298,8 +10296,6 @@ export default function PoliciesPage() {
                     data-testid="input-tax-credit"
                   />
                 </div>
-
-                <div></div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-4">
