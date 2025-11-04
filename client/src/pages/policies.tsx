@@ -7365,6 +7365,14 @@ export default function PoliciesPage() {
                             // Extract network type from camelCase (stored format) with snake_case fallback
                             const rawNetwork = plan.networkType ?? plan.plan?.networkType ?? plan.planData?.networkType ?? plan.network_type;
                             
+                            // DEBUG: Log full plan structure to understand data format
+                            console.log('[PLAN DEBUG] Full plan object:', plan);
+                            console.log('[PLAN DEBUG] plan.premium:', plan.premium);
+                            console.log('[PLAN DEBUG] plan.deductible:', plan.deductible);
+                            console.log('[PLAN DEBUG] plan.outOfPocketMax:', plan.outOfPocketMax);
+                            console.log('[PLAN DEBUG] plan.deductibles array:', plan.deductibles);
+                            console.log('[PLAN DEBUG] plan.moops array:', plan.moops);
+                            
                             const mappedData = {
                               productType: plan.type || '',
                               carrier: plan.issuer?.name || '',
