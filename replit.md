@@ -76,6 +76,8 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     
     **Theme System**: 8 modern gradient themes (Purple Dream, Pink Sunset, Ocean Blue, Dark Night, Mint Fresh, Orange Glow, Forest Green, Royal Purple) with visual previews, categorized by All/Light/Dark filters, instant preview updates via mutation system.
     
+    **Slug & Input Management**: User-based slug generation (firstName or email prefix) ensures each user has a unique landing page URL. All editable fields (slug, SEO title, SEO description) use local state with 500ms debouncing to prevent excessive API calls during typing. Real-time validation feedback with color-coded borders (green for valid, red for invalid), check/X icons, and contextual error messages. Slug validation enforces lowercase letters, numbers, and hyphens only (min 3 chars, max 50 chars) via regex `/^[a-z0-9-]{3,50}$/`.
+    
     Features complete theme customization (colors, fonts, gradients, button styles), password protection, SEO meta tags, and comprehensive analytics tracking (page views, block clicks, lead captures, appointments). Public pages accessible at both `/:slug` and `/l/:slug` (e.g., `app.curbe.io/claudia` or `app.curbe.io/l/claudia`) without authentication, with automatic domain detection for "Open Landing Page" button. Mobile-responsive SmartBio-inspired design featuring large circular avatars, professional iconography, smooth transitions, and modern shadows. System includes auto-creation on first visit, auto-save with debounce, slug uniqueness validation, multi-tenant company isolation, and dedicated database tables for leads and appointments with IP tracking and user agent logging for security.
 
 ### System Design Choices
