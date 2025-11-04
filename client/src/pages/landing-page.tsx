@@ -1703,7 +1703,7 @@ export default function LandingPageBuilder() {
                             return null;
                           })()}
 
-                      {/* Other Blocks with Drag and Drop */}
+                      {/* All Blocks (including Social) with Drag and Drop */}
                       <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -1714,7 +1714,7 @@ export default function LandingPageBuilder() {
                           strategy={verticalListSortingStrategy}
                         >
                           <div className="space-y-3">
-                            {blocks.filter(b => b.type !== "social").length === 0 ? (
+                            {blocks.length === 0 ? (
                               <Card className="border-dashed">
                                 <CardContent className="p-8 text-center">
                                   <p className="text-gray-500 text-sm">
@@ -1723,7 +1723,7 @@ export default function LandingPageBuilder() {
                                 </CardContent>
                               </Card>
                             ) : (
-                              blocks.filter(b => b.type !== "social").map((block) => (
+                              blocks.map((block) => (
                                 <div key={block.id} className="space-y-2">
                                   {/* Editable block item */}
                                   <SortableBlock
@@ -1740,13 +1740,15 @@ export default function LandingPageBuilder() {
                                     }}
                                     onDelete={() => setBlockToDelete(block.id)}
                                   />
-                                  {/* Visual preview */}
-                                  <div className="pl-6">
-                                    <BlockPreview
-                                      block={block}
-                                      theme={selectedPage.landingPage.theme}
-                                    />
-                                  </div>
+                                  {/* Visual preview - only for non-social blocks */}
+                                  {block.type !== "social" && (
+                                    <div className="pl-6">
+                                      <BlockPreview
+                                        block={block}
+                                        theme={selectedPage.landingPage.theme}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               ))
                             )}
