@@ -1708,7 +1708,7 @@ export default function LandingPageBuilder() {
                           </div>
 
                           {/* Profile Photo - positioned to overlap the curve with upload overlay */}
-                          <div className="relative z-10 flex justify-center pt-8">
+                          <div className="relative z-10 flex justify-center pt-16">
                             <div className="relative group">
                               <Avatar className="w-36 h-36 ring-8 ring-white shadow-2xl">
                                 <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
