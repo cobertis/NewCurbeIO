@@ -812,7 +812,7 @@ export default function PublicLandingPage() {
       
       {/* Avatar positioned EXACTLY on the curve like SmartBio */}
       {landingPage.profilePhoto && (
-        <div className="relative -mt-32 z-10 flex justify-center mb-3" data-testid="profile-section">
+        <div className="relative -mt-40 z-10 flex justify-center mb-5" data-testid="profile-section">
           <Avatar className="w-40 h-40 ring-8 ring-white shadow-2xl">
             <AvatarImage src={landingPage.profilePhoto} />
             <AvatarFallback 

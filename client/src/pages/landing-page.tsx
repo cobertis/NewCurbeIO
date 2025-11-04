@@ -1740,7 +1740,7 @@ export default function LandingPageBuilder() {
                         </div>
                         
                         {/* Avatar positioned EXACTLY on the curve like SmartBio */}
-                        <div className="relative -mt-32 z-10 flex justify-center mb-3">
+                        <div className="relative -mt-40 z-10 flex justify-center mb-5">
                           <div className="relative group">
                             <Avatar className="w-40 h-40 ring-8 ring-white shadow-2xl">
                               <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
