@@ -2125,41 +2125,6 @@ export default function LandingPageBuilder() {
                         <h3 className="font-semibold">Profile</h3>
                         
                         <div>
-                          <Label className="text-xs mb-2 block">
-                            Profile Photo
-                          </Label>
-                          
-                          {/* Upload Photo Button */}
-                          <div className="space-y-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full"
-                              onClick={handleAvatarUpload}
-                              data-testid="button-upload-photo"
-                            >
-                              <ImageIcon className="w-4 h-4 mr-2" />
-                              Upload Photo
-                            </Button>
-                            
-                            <div className="text-xs text-center text-muted-foreground">or</div>
-                            
-                            <Input
-                              id="profilePhoto"
-                              value={selectedPage.landingPage.profilePhoto || ""}
-                              onChange={(e) =>
-                                updatePageMutation.mutate({
-                                  id: selectedPageId!,
-                                  data: { profilePhoto: e.target.value },
-                                })
-                              }
-                              placeholder="Paste image URL"
-                              data-testid="input-profile-photo"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div>
                           <Label htmlFor="profileName" className="text-xs mb-2 block">
                             Name
                           </Label>
