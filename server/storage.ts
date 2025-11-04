@@ -5366,7 +5366,7 @@ export class DbStorage implements IStorage {
       const usersData = await db
         .select()
         .from(users)
-        .where(sql`${users.id} = ANY(${userIds})`);
+        .where(inArray(users.id, userIds));
       
       usersData.forEach(user => {
         usersMap.set(user.id, user);
