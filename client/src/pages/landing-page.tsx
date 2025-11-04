@@ -683,6 +683,8 @@ export default function LandingPageBuilder() {
   const [blocks, setBlocks] = useState<LandingBlock[]>([]);
   const [editingBlock, setEditingBlock] = useState<LandingBlock | null>(null);
   const [isBlockEditorOpen, setIsBlockEditorOpen] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [themeCategory, setThemeCategory] = useState<"all" | "light" | "dark">("all");
@@ -763,6 +765,8 @@ export default function LandingPageBuilder() {
       setSlugInput(selectedPage.landingPage.slug);
       setSeoTitle(selectedPage.landingPage.seo.title || "");
       setSeoDescription(selectedPage.landingPage.seo.description || "");
+      setProfileName(selectedPage.landingPage.profileName || "");
+      setProfileBio(selectedPage.landingPage.profileBio || "");
     }
   }, [selectedPage]);
 
@@ -822,6 +826,36 @@ export default function LandingPageBuilder() {
     
     return () => clearTimeout(timer);
   }, [seoDescription, selectedPageId, selectedPage]);
+
+  // Debounced profile name update
+  useEffect(() => {
+    if (profileName === selectedPage?.landingPage?.profileName) return;
+    if (!selectedPage?.landingPage) return;
+    
+    const timer = setTimeout(() => {
+      updatePageMutation.mutate({
+        id: selectedPageId!,
+        data: { profileName },
+      });
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [profileName, selectedPageId, selectedPage]);
+
+  // Debounced profile bio update
+  useEffect(() => {
+    if (profileBio === selectedPage?.landingPage?.profileBio) return;
+    if (!selectedPage?.landingPage) return;
+    
+    const timer = setTimeout(() => {
+      updatePageMutation.mutate({
+        id: selectedPageId!,
+        data: { profileBio },
+      });
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [profileBio, selectedPageId, selectedPage]);
 
   // Helper function to generate user-based slug
   const generateUserSlug = (user: any): string => {
@@ -2100,13 +2134,8 @@ export default function LandingPageBuilder() {
                           </Label>
                           <Input
                             id="profileName"
-                            value={selectedPage.landingPage.profileName || ""}
-                            onChange={(e) =>
-                              updatePageMutation.mutate({
-                                id: selectedPageId!,
-                                data: { profileName: e.target.value },
-                              })
-                            }
+                            value={profileName}
+                            onChange={(e) => setProfileName(e.target.value)}
                             placeholder="Your name"
                             data-testid="input-profile-name"
                           />
@@ -2118,13 +2147,8 @@ export default function LandingPageBuilder() {
                           </Label>
                           <Textarea
                             id="profileBio"
-                            value={selectedPage.landingPage.profileBio || ""}
-                            onChange={(e) =>
-                              updatePageMutation.mutate({
-                                id: selectedPageId!,
-                                data: { profileBio: e.target.value },
-                              })
-                            }
+                            value={profileBio}
+                            onChange={(e) => setProfileBio(e.target.value)}
                             placeholder="Your bio"
                             rows={3}
                             data-testid="input-profile-bio"
