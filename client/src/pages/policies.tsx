@@ -7362,6 +7362,9 @@ export default function PoliciesPage() {
                               m.type === 'Family Medical' || m.family_cost
                             );
 
+                            console.log('[DEBUG PLAN] Raw plan.network_type:', plan.network_type);
+                            console.log('[DEBUG PLAN] Raw plan object:', plan);
+                            
                             const mappedData = {
                               productType: plan.type || '',
                               carrier: plan.issuer?.name || '',
@@ -7425,6 +7428,7 @@ export default function PoliciesPage() {
                             console.log('[MAPPED DATA] Carrier:', mappedData.carrier);
                             console.log('[MAPPED DATA] Product Type:', mappedData.productType);
                             console.log('[MAPPED DATA] Metal:', mappedData.metal);
+                            console.log('[MAPPED DATA] Network Type:', mappedData.networkType);
                             
                             setEditingPlanId(policyPlan.id);
                             setManualPlanData(mappedData);
