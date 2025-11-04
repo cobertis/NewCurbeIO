@@ -591,14 +591,8 @@ export default function LandingPageBuilder() {
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<LandingBlock[]>([]);
   const [editingBlock, setEditingBlock] = useState<LandingBlock | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBlockEditorOpen, setIsBlockEditorOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
-  const [newPageData, setNewPageData] = useState({
-    title: "",
-    slug: "",
-    description: "",
-  });
 
   // Sensors for drag and drop
   const sensors = useSensors(
@@ -632,7 +626,19 @@ export default function LandingPageBuilder() {
     }
   }, [selectedPage]);
 
-  // Select first page by default
+  // Auto-create landing page if user doesn't have one
+  useEffect(() => {
+    if (!isPagesLoading && landingPages && landingPages.length === 0) {
+      const slug = `page-${Date.now()}`;
+      createPageMutation.mutate({
+        title: "Mi Landing Page",
+        slug,
+        description: "Mi página de enlaces personalizada",
+      });
+    }
+  }, [isPagesLoading, landingPages]);
+
+  // Select first (and only) page by default
   useEffect(() => {
     if (landingPages && landingPages.length > 0 && !selectedPageId) {
       setSelectedPageId(landingPages[0].id);
@@ -646,12 +652,6 @@ export default function LandingPageBuilder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/landing-pages"] });
-      setIsCreateDialogOpen(false);
-      setNewPageData({ title: "", slug: "", description: "" });
-      toast({
-        title: "Landing page created",
-        description: "Your new landing page has been created successfully.",
-      });
     },
     onError: (error: any) => {
       toast({
@@ -681,21 +681,6 @@ export default function LandingPageBuilder() {
       toast({
         title: "Changes saved",
         description: "Your changes have been saved successfully.",
-      });
-    },
-  });
-
-  // Delete landing page mutation
-  const deletePageMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/landing-pages/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/landing-pages"] });
-      setSelectedPageId(null);
-      toast({
-        title: "Landing page deleted",
-        description: "The landing page has been deleted.",
       });
     },
   });
@@ -872,137 +857,9 @@ export default function LandingPageBuilder() {
 
   return (
     <div className="h-screen flex bg-gradient-to-br from-purple-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-      {/* Left Sidebar - Pages List & Customization */}
+      {/* Left Sidebar - Customization */}
       <div className="w-[300px] border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 overflow-y-auto">
         <div className="p-6 space-y-4">
-          {/* Pages Section */}
-          <Card className="rounded-[18px] shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)]">
-            <CardHeader className="px-6 py-4">
-              <CardTitle className="text-lg">Mis Landing Pages</CardTitle>
-            </CardHeader>
-            <CardContent className="px-6 pb-6">
-              <Dialog
-                open={isCreateDialogOpen}
-                onOpenChange={setIsCreateDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    className="w-full mb-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
-                    data-testid="button-create-landing-page"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Crear Nueva
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Crear Landing Page</DialogTitle>
-                    <DialogDescription>
-                      Crea una nueva landing page para compartir tus enlaces.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Título</Label>
-                      <Input
-                        id="title"
-                        value={newPageData.title}
-                        onChange={(e) =>
-                          setNewPageData((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        placeholder="Mi Landing Page"
-                        data-testid="input-page-title"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="slug">Slug (URL)</Label>
-                      <Input
-                        id="slug"
-                        value={newPageData.slug}
-                        onChange={(e) =>
-                          setNewPageData((prev) => ({
-                            ...prev,
-                            slug: e.target.value
-                              .toLowerCase()
-                              .replace(/[^a-z0-9-]/g, ""),
-                          }))
-                        }
-                        placeholder="mi-landing-page"
-                        data-testid="input-page-slug"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Descripción</Label>
-                      <Textarea
-                        id="description"
-                        value={newPageData.description}
-                        onChange={(e) =>
-                          setNewPageData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        placeholder="Descripción de tu landing page"
-                        data-testid="input-page-description"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      type="submit"
-                      onClick={() => createPageMutation.mutate(newPageData)}
-                      disabled={
-                        !newPageData.title ||
-                        !newPageData.slug ||
-                        createPageMutation.isPending
-                      }
-                      data-testid="button-submit-create-page"
-                    >
-                      Crear Landing Page
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <ScrollArea className="h-[200px]">
-                <div className="space-y-2">
-                  {landingPages?.map((page) => (
-                    <div
-                      key={page.id}
-                      onClick={() => setSelectedPageId(page.id)}
-                      className={`p-3 rounded-lg cursor-pointer border transition-colors ${
-                        selectedPageId === page.id
-                          ? "bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800 border-transparent"
-                      }`}
-                      data-testid={`page-item-${page.id}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {page.title}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
-                            /{page.slug}
-                          </p>
-                        </div>
-                        {page.isPublished && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Check className="w-3 h-3" />
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
           {/* Customization Panel */}
           {selectedPage && (
             <Accordion
