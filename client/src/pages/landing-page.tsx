@@ -36,6 +36,7 @@ import {
   Monitor,
   Smartphone,
   Check,
+  X,
   Globe,
   Instagram,
   Facebook,
@@ -665,6 +666,17 @@ export default function LandingPageBuilder() {
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [themeCategory, setThemeCategory] = useState<"all" | "light" | "dark">("all");
 
+  // Local state for Settings fields with debouncing
+  const [slugInput, setSlugInput] = useState("");
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
+
+  // Fetch current user
+  const { data: sessionData } = useQuery<{ user: any }>({
+    queryKey: ["/api/session"],
+  });
+  const currentUser = sessionData?.user;
+
   // Sensors for drag and drop
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -697,17 +709,94 @@ export default function LandingPageBuilder() {
     }
   }, [selectedPage]);
 
+  // Sync local state with selectedPage
+  useEffect(() => {
+    if (selectedPage?.landingPage) {
+      setSlugInput(selectedPage.landingPage.slug);
+      setSeoTitle(selectedPage.landingPage.seo.title || "");
+      setSeoDescription(selectedPage.landingPage.seo.description || "");
+    }
+  }, [selectedPage]);
+
+  // Debounced slug update
+  useEffect(() => {
+    if (!slugInput || slugInput === selectedPage?.landingPage?.slug) return;
+    
+    const isValid = /^[a-z0-9-]{3,50}$/.test(slugInput);
+    if (!isValid) return;
+    
+    const timer = setTimeout(() => {
+      updatePageMutation.mutate({
+        id: selectedPageId!,
+        data: { slug: slugInput },
+      });
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [slugInput, selectedPageId, selectedPage]);
+
+  // Debounced SEO title update
+  useEffect(() => {
+    if (seoTitle === selectedPage?.landingPage?.seo.title) return;
+    if (!selectedPage?.landingPage) return;
+    
+    const timer = setTimeout(() => {
+      updatePageMutation.mutate({
+        id: selectedPageId!,
+        data: {
+          seo: {
+            ...selectedPage.landingPage.seo,
+            title: seoTitle,
+          },
+        },
+      });
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [seoTitle, selectedPageId, selectedPage]);
+
+  // Debounced SEO description update
+  useEffect(() => {
+    if (seoDescription === selectedPage?.landingPage?.seo.description) return;
+    if (!selectedPage?.landingPage) return;
+    
+    const timer = setTimeout(() => {
+      updatePageMutation.mutate({
+        id: selectedPageId!,
+        data: {
+          seo: {
+            ...selectedPage.landingPage.seo,
+            description: seoDescription,
+          },
+        },
+      });
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [seoDescription, selectedPageId, selectedPage]);
+
+  // Helper function to generate user-based slug
+  const generateUserSlug = (user: any): string => {
+    if (!user) return `page-${Date.now()}`;
+    
+    const firstName = user.firstName?.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
+    const emailPrefix = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
+    
+    const baseSlug = firstName || emailPrefix || `page-${Date.now()}`;
+    return baseSlug.substring(0, 20);
+  };
+
   // Auto-create landing page if user doesn't have one
   useEffect(() => {
-    if (!isPagesLoading && landingPages && landingPages.length === 0) {
-      const slug = `page-${Date.now()}`;
+    if (!isPagesLoading && landingPages && landingPages.length === 0 && currentUser) {
+      const slug = generateUserSlug(currentUser);
       createPageMutation.mutate({
         title: "Mi Landing Page",
         slug,
         description: "Mi página de enlaces personalizada",
       });
     }
-  }, [isPagesLoading, landingPages]);
+  }, [isPagesLoading, landingPages, currentUser]);
 
   // Select first (and only) page by default
   useEffect(() => {
@@ -937,18 +1026,38 @@ export default function LandingPageBuilder() {
             <div className="relative">
               <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                value={selectedPage.landingPage.slug}
-                onChange={(e) =>
-                  updatePageMutation.mutate({
-                    id: selectedPageId!,
-                    data: { slug: e.target.value },
-                  })
-                }
-                className="pl-10 h-9 text-sm"
+                value={slugInput}
+                onChange={(e) => setSlugInput(e.target.value.toLowerCase())}
+                className={`pl-10 pr-10 h-9 text-sm ${
+                  slugInput.length >= 3 && /^[a-z0-9-]{3,50}$/.test(slugInput)
+                    ? "border-green-500 focus-visible:ring-green-500"
+                    : slugInput.length > 0 && (slugInput.length < 3 || !/^[a-z0-9-]{3,50}$/.test(slugInput))
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
+                }`}
                 placeholder="your-page-url"
-                data-testid="input-url"
+                data-testid="input-header-slug"
               />
+              {slugInput.length > 0 && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {slugInput.length >= 3 && /^[a-z0-9-]{3,50}$/.test(slugInput) ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-500" />
+                  )}
+                </div>
+              )}
             </div>
+            {slugInput.length > 0 && slugInput.length < 3 && (
+              <p className="text-xs text-red-500 mt-1">
+                Slug must be at least 3 characters
+              </p>
+            )}
+            {slugInput.length >= 3 && !/^[a-z0-9-]{3,50}$/.test(slugInput) && (
+              <p className="text-xs text-red-500 mt-1">
+                Only lowercase letters, numbers, and hyphens allowed
+              </p>
+            )}
           </div>
         )}
 
@@ -1582,17 +1691,27 @@ export default function LandingPageBuilder() {
                           <Label htmlFor="slug" className="text-xs mb-2 block">
                             URL Slug
                           </Label>
-                          <Input
-                            id="slug"
-                            value={selectedPage.landingPage.slug}
-                            onChange={(e) =>
-                              updatePageMutation.mutate({
-                                id: selectedPageId!,
-                                data: { slug: e.target.value },
-                              })
-                            }
-                            data-testid="input-slug"
-                          />
+                          <div className="relative">
+                            <Input
+                              id="slug"
+                              value={slugInput}
+                              onChange={(e) => setSlugInput(e.target.value.toLowerCase())}
+                              data-testid="input-slug"
+                              className={
+                                slugInput.length > 0 && slugInput.length < 3
+                                  ? "border-red-500 pr-10"
+                                  : /^[a-z0-9-]{3,50}$/.test(slugInput)
+                                  ? "border-green-500 pr-10"
+                                  : "pr-10"
+                              }
+                            />
+                            {slugInput.length > 0 && /^[a-z0-9-]{3,50}$/.test(slugInput) && (
+                              <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Mínimo 3 caracteres, solo minúsculas, números y guiones
+                          </p>
                         </div>
 
                         <div className="flex items-center justify-between">
@@ -1630,21 +1749,14 @@ export default function LandingPageBuilder() {
                           </Label>
                           <Input
                             id="seo-title"
-                            value={selectedPage.landingPage.seo.title || ""}
-                            onChange={(e) =>
-                              updatePageMutation.mutate({
-                                id: selectedPageId!,
-                                data: {
-                                  seo: {
-                                    ...selectedPage.landingPage.seo,
-                                    title: e.target.value,
-                                  },
-                                },
-                              })
-                            }
+                            value={seoTitle}
+                            onChange={(e) => setSeoTitle(e.target.value)}
                             placeholder="SEO title"
                             data-testid="input-seo-title"
                           />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Título que aparecerá en resultados de búsqueda
+                          </p>
                         </div>
 
                         <div>
@@ -1653,22 +1765,15 @@ export default function LandingPageBuilder() {
                           </Label>
                           <Textarea
                             id="seo-description"
-                            value={selectedPage.landingPage.seo.description || ""}
-                            onChange={(e) =>
-                              updatePageMutation.mutate({
-                                id: selectedPageId!,
-                                data: {
-                                  seo: {
-                                    ...selectedPage.landingPage.seo,
-                                    description: e.target.value,
-                                  },
-                                },
-                              })
-                            }
+                            value={seoDescription}
+                            onChange={(e) => setSeoDescription(e.target.value)}
                             placeholder="SEO description"
                             rows={3}
                             data-testid="input-seo-description"
                           />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Descripción breve para motores de búsqueda
+                          </p>
                         </div>
                       </div>
 
