@@ -1676,11 +1676,12 @@ export default function LandingPageBuilder() {
                     {/* Scrollable Content Area */}
                     <ScrollArea className="h-full">
                       <div className="relative" style={{ minHeight: previewMode === "mobile" ? "932px" : "600px" }}>
-                        {/* Hero Section with Gradient Background */}
+                        {/* Hero Section with SMARTBIO DARK Gradient Background */}
                         <div 
-                          className="relative pb-32"
+                          className="relative pb-24"
                           style={{
-                            background: (selectedPage.landingPage.theme as any).backgroundGradient || selectedPage.landingPage.theme.backgroundColor,
+                            background: "linear-gradient(180deg, #0f0b27 0%, #06010f 55%, #06010f 60%)",
+                            minHeight: "280px",
                           }}
                         >
                           {/* Header with Logo and Menu - INSIDE gradient */}
@@ -1703,60 +1704,67 @@ export default function LandingPageBuilder() {
                               </svg>
                             </button>
                           </div>
-                          {/* Curved White Background */}
-                          <div className="absolute bottom-0 left-0 right-0 h-32 overflow-hidden">
-                            <svg viewBox="0 0 430 128" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                              <path d="M0 128V64C0 64 107.5 0 215 0C322.5 0 430 64 430 64V128H0Z" fill="white"/>
+                          
+                          {/* Curved White Background - ADJUSTED for perfect transition */}
+                          <div className="absolute bottom-0 left-0 right-0 h-24 overflow-hidden">
+                            <svg viewBox="0 0 430 96" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                              <path d="M0 96V48C0 48 107.5 0 215 0C322.5 0 430 48 430 48V96H0Z" fill="white"/>
                             </svg>
                           </div>
-
-                          {/* Profile Photo - positioned to overlap the curve with upload overlay */}
-                          <div className="relative z-10 flex justify-center pt-16">
-                            <div className="relative group">
-                              <Avatar className="w-36 h-36 ring-8 ring-white shadow-2xl">
-                                <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
-                                <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-500 to-pink-500 text-white">
-                                  {(selectedPage.landingPage.profileName ||
-                                    selectedPage.landingPage.title ||
-                                    "LP")
-                                    .substring(0, 2)
-                                    .toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              
-                              {/* Edit/Upload Overlay Button */}
-                              <button
-                                onClick={handleAvatarUpload}
-                                disabled={isUploadingAvatar}
-                                aria-label="Change profile photo"
-                                className="absolute bottom-2 right-2 w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                data-testid="button-upload-avatar-preview"
-                              >
-                                {isUploadingAvatar ? (
-                                  <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                  <Pencil className="w-5 h-5" />
-                                )}
-                              </button>
-                            </div>
+                        </div>
+                        
+                        {/* Avatar positioned EXACTLY on the curve like SmartBio */}
+                        <div className="relative -mt-20 z-10 flex justify-center">
+                          <div className="relative group">
+                            <Avatar className="w-40 h-40 ring-8 ring-white shadow-2xl">
+                              <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
+                              <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-500 to-pink-500 text-white">
+                                {(selectedPage.landingPage.profileName ||
+                                  selectedPage.landingPage.title ||
+                                  "LP")
+                                  .substring(0, 2)
+                                  .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            {/* Edit/Upload Overlay Button */}
+                            <button
+                              onClick={handleAvatarUpload}
+                              disabled={isUploadingAvatar}
+                              aria-label="Change profile photo"
+                              className="absolute bottom-2 right-2 w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                              data-testid="button-upload-avatar-preview"
+                            >
+                              {isUploadingAvatar ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <Pencil className="w-5 h-5" />
+                              )}
+                            </button>
                           </div>
                         </div>
 
-                        {/* Content Section - White Background */}
-                        <div className="bg-white px-6 pb-6">
-                          {/* Profile Info */}
-                          <div className="relative z-20 text-center mb-6 -mt-4">
+                        {/* Content Section - White Background COMPACT like SmartBio */}
+                        <div className="bg-white px-4 pb-4">
+                          {/* Profile Info - COMPACT and CLEAN */}
+                          <div className="relative z-20 text-center mb-4 -mt-2">
                             {selectedPage.landingPage.profileName && (
                               <h1
-                                className="text-2xl font-bold mb-2 no-underline border-0"
-                                style={{ color: selectedPage.landingPage.theme.textColor }}
+                                className="text-2xl font-bold mb-1"
+                                style={{ 
+                                  color: "#000000",
+                                  textDecoration: "none",
+                                  border: "none",
+                                  borderBottom: "none",
+                                  boxShadow: "none",
+                                }}
                               >
                                 {selectedPage.landingPage.profileName}
                               </h1>
                             )}
                             {selectedPage.landingPage.profileBio && (
                               <p
-                                className="text-sm leading-relaxed px-4 text-gray-600"
+                                className="text-sm leading-relaxed text-gray-600"
                               >
                                 {selectedPage.landingPage.profileBio}
                               </p>
