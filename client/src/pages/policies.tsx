@@ -3624,16 +3624,6 @@ export default function PoliciesPage() {
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/policies/new";
   
-  // Clear carrier when product type changes
-  useEffect(() => {
-    if (manualPlanData.productType) {
-      const validCarriers = getCarriersByProductType(manualPlanData.productType);
-      if (!validCarriers.includes(manualPlanData.carrier)) {
-        setManualPlanData(prev => ({ ...prev, carrier: '' }));
-      }
-    }
-  }, [manualPlanData.productType, manualPlanData.carrier]);
-  
   // Fetch policies statistics
   const { data: stats, isLoading: isLoadingStats } = useQuery<{
     totalPolicies: number;
