@@ -124,7 +124,13 @@ import {
   type PolicyConsentSignatureEvent,
   type InsertPolicyConsentEvent,
   type PolicyPlan,
-  type InsertPolicyPlan
+  type InsertPolicyPlan,
+  type LandingPage,
+  type InsertLandingPage,
+  type LandingBlock,
+  type InsertLandingBlock,
+  type LandingAnalytics,
+  type InsertLandingAnalytics
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -185,7 +191,10 @@ import {
   policyReminders,
   policyNotes,
   policyConsentDocuments,
-  policyConsentSignatureEvents
+  policyConsentSignatureEvents,
+  landingPages,
+  landingBlocks,
+  landingAnalytics
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -702,6 +711,28 @@ export interface IStorage {
   updatePolicyPlan(planId: string, companyId: string, data: Partial<InsertPolicyPlan>): Promise<PolicyPlan | null>;
   removePolicyPlan(planId: string, companyId: string): Promise<boolean>;
   setPrimaryPolicyPlan(planId: string, policyId: string, companyId: string): Promise<void>;
+  
+  // Landing Pages
+  getLandingPagesByCompany(companyId: string): Promise<LandingPage[]>;
+  getLandingPageBySlug(slug: string): Promise<LandingPage | undefined>;
+  getLandingPageById(id: string): Promise<LandingPage | undefined>;
+  createLandingPage(data: InsertLandingPage): Promise<LandingPage>;
+  updateLandingPage(id: string, data: Partial<InsertLandingPage>): Promise<LandingPage | undefined>;
+  deleteLandingPage(id: string): Promise<boolean>;
+  incrementLandingPageView(id: string): Promise<void>;
+  
+  // Landing Blocks
+  getBlocksByLandingPage(landingPageId: string): Promise<LandingBlock[]>;
+  createLandingBlock(data: InsertLandingBlock): Promise<LandingBlock>;
+  updateLandingBlock(id: string, data: Partial<InsertLandingBlock>): Promise<LandingBlock | undefined>;
+  deleteLandingBlock(id: string): Promise<boolean>;
+  updateBlockPosition(id: string, position: number): Promise<LandingBlock | undefined>;
+  incrementBlockClick(id: string): Promise<void>;
+  reorderBlocks(landingPageId: string, blockIds: string[]): Promise<void>;
+  
+  // Landing Analytics
+  createLandingAnalytics(data: InsertLandingAnalytics): Promise<LandingAnalytics>;
+  getLandingAnalytics(landingPageId: string, options?: { eventType?: string; limit?: number }): Promise<LandingAnalytics[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -5634,6 +5665,209 @@ export class DbStorage implements IStorage {
           eq(policyPlans.companyId, companyId)
         ));
     });
+  }
+  
+  // ==================== LANDING PAGES ====================
+  
+  async getLandingPagesByCompany(companyId: string): Promise<LandingPage[]> {
+    const result = await db
+      .select()
+      .from(landingPages)
+      .where(eq(landingPages.companyId, companyId))
+      .orderBy(desc(landingPages.createdAt));
+    
+    return result;
+  }
+  
+  async getLandingPageBySlug(slug: string): Promise<LandingPage | undefined> {
+    const result = await db
+      .select()
+      .from(landingPages)
+      .where(eq(landingPages.slug, slug));
+    
+    return result[0];
+  }
+  
+  async getLandingPageById(id: string): Promise<LandingPage | undefined> {
+    const result = await db
+      .select()
+      .from(landingPages)
+      .where(eq(landingPages.id, id));
+    
+    return result[0];
+  }
+  
+  async createLandingPage(data: InsertLandingPage): Promise<LandingPage> {
+    const result = await db
+      .insert(landingPages)
+      .values({
+        ...data,
+        viewCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async updateLandingPage(id: string, data: Partial<InsertLandingPage>): Promise<LandingPage | undefined> {
+    const result = await db
+      .update(landingPages)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(landingPages.id, id))
+      .returning();
+    
+    return result[0];
+  }
+  
+  async deleteLandingPage(id: string): Promise<boolean> {
+    const result = await db
+      .delete(landingPages)
+      .where(eq(landingPages.id, id))
+      .returning();
+    
+    return result.length > 0;
+  }
+  
+  async incrementLandingPageView(id: string): Promise<void> {
+    await db
+      .update(landingPages)
+      .set({
+        viewCount: sql`${landingPages.viewCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(landingPages.id, id));
+  }
+  
+  // ==================== LANDING BLOCKS ====================
+  
+  async getBlocksByLandingPage(landingPageId: string): Promise<LandingBlock[]> {
+    const result = await db
+      .select()
+      .from(landingBlocks)
+      .where(eq(landingBlocks.landingPageId, landingPageId))
+      .orderBy(landingBlocks.position);
+    
+    return result;
+  }
+  
+  async createLandingBlock(data: InsertLandingBlock): Promise<LandingBlock> {
+    const result = await db
+      .insert(landingBlocks)
+      .values({
+        ...data,
+        clickCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async updateLandingBlock(id: string, data: Partial<InsertLandingBlock>): Promise<LandingBlock | undefined> {
+    const result = await db
+      .update(landingBlocks)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(landingBlocks.id, id))
+      .returning();
+    
+    return result[0];
+  }
+  
+  async deleteLandingBlock(id: string): Promise<boolean> {
+    const result = await db
+      .delete(landingBlocks)
+      .where(eq(landingBlocks.id, id))
+      .returning();
+    
+    return result.length > 0;
+  }
+  
+  async updateBlockPosition(id: string, position: number): Promise<LandingBlock | undefined> {
+    const result = await db
+      .update(landingBlocks)
+      .set({
+        position,
+        updatedAt: new Date(),
+      })
+      .where(eq(landingBlocks.id, id))
+      .returning();
+    
+    return result[0];
+  }
+  
+  async incrementBlockClick(id: string): Promise<void> {
+    await db
+      .update(landingBlocks)
+      .set({
+        clickCount: sql`${landingBlocks.clickCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(landingBlocks.id, id));
+  }
+  
+  async reorderBlocks(landingPageId: string, blockIds: string[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < blockIds.length; i++) {
+        await tx
+          .update(landingBlocks)
+          .set({
+            position: i,
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(landingBlocks.id, blockIds[i]),
+            eq(landingBlocks.landingPageId, landingPageId)
+          ));
+      }
+    });
+  }
+  
+  // ==================== LANDING ANALYTICS ====================
+  
+  async createLandingAnalytics(data: InsertLandingAnalytics): Promise<LandingAnalytics> {
+    const result = await db
+      .insert(landingAnalytics)
+      .values({
+        ...data,
+        occurredAt: new Date(),
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async getLandingAnalytics(
+    landingPageId: string,
+    options?: { eventType?: string; limit?: number }
+  ): Promise<LandingAnalytics[]> {
+    const whereConditions = options?.eventType
+      ? and(
+          eq(landingAnalytics.landingPageId, landingPageId),
+          eq(landingAnalytics.eventType, options.eventType)
+        )
+      : eq(landingAnalytics.landingPageId, landingPageId);
+    
+    let query = db
+      .select()
+      .from(landingAnalytics)
+      .where(whereConditions)
+      .orderBy(desc(landingAnalytics.occurredAt));
+    
+    if (options?.limit) {
+      const result = await query.limit(options.limit);
+      return result;
+    }
+    
+    return await query;
   }
 }
 

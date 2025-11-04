@@ -2613,3 +2613,119 @@ export type InsertPolicyConsentDocument = z.infer<typeof insertPolicyConsentDocu
 
 export type PolicyConsentSignatureEvent = typeof policyConsentSignatureEvents.$inferSelect;
 export type InsertPolicyConsentEvent = z.infer<typeof insertPolicyConsentEventSchema>;
+
+// =====================================================
+// LANDING PAGES (Bio Link Builder)
+// =====================================================
+
+export const landingPages = pgTable("landing_pages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description"),
+  
+  profileName: text("profile_name"),
+  profileBio: text("profile_bio"),
+  profilePhoto: text("profile_photo"),
+  
+  theme: jsonb("theme").default({
+    layout: "list",
+    primaryColor: "#8B5CF6",
+    backgroundColor: "#ffffff",
+    textColor: "#1a1a1a",
+    font: "Inter",
+    buttonStyle: "rounded",
+    buttonColor: "#8B5CF6",
+    buttonTextColor: "#ffffff",
+    backgroundImage: null,
+    backgroundGradient: null,
+  }),
+  
+  seo: jsonb("seo").default({
+    title: "",
+    description: "",
+    ogImage: null,
+  }),
+  
+  isPublished: boolean("is_published").notNull().default(false),
+  isPasswordProtected: boolean("is_password_protected").notNull().default(false),
+  password: text("password"),
+  
+  viewCount: integer("view_count").notNull().default(0),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const landingBlocks = pgTable("landing_blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  landingPageId: varchar("landing_page_id").notNull().references(() => landingPages.id, { onDelete: "cascade" }),
+  
+  type: text("type").notNull(),
+  
+  content: jsonb("content").default({}),
+  
+  position: integer("position").notNull().default(0),
+  isVisible: boolean("is_visible").notNull().default(true),
+  
+  clickCount: integer("click_count").notNull().default(0),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const landingAnalytics = pgTable("landing_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  landingPageId: varchar("landing_page_id").notNull().references(() => landingPages.id, { onDelete: "cascade" }),
+  blockId: varchar("block_id").references(() => landingBlocks.id, { onDelete: "set null" }),
+  
+  eventType: text("event_type").notNull(),
+  
+  metadata: jsonb("metadata").default({}),
+  
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+});
+
+export const insertLandingPageSchema = createInsertSchema(landingPages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  viewCount: true,
+}).extend({
+  slug: z.string().min(3).max(50).regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
+  title: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  theme: z.record(z.any()).optional(),
+  seo: z.record(z.any()).optional(),
+});
+
+export const insertLandingBlockSchema = createInsertSchema(landingBlocks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  clickCount: true,
+}).extend({
+  type: z.enum(["link", "social", "video", "text", "image", "email", "divider", "contact"]),
+  content: z.record(z.any()),
+  position: z.number().int().min(0),
+});
+
+export const insertLandingAnalyticsSchema = createInsertSchema(landingAnalytics).omit({
+  id: true,
+  occurredAt: true,
+}).extend({
+  eventType: z.enum(["view", "click", "submit"]),
+  metadata: z.record(z.any()).optional(),
+});
+
+export type LandingPage = typeof landingPages.$inferSelect;
+export type InsertLandingPage = z.infer<typeof insertLandingPageSchema>;
+
+export type LandingBlock = typeof landingBlocks.$inferSelect;
+export type InsertLandingBlock = z.infer<typeof insertLandingBlockSchema>;
+
+export type LandingAnalytics = typeof landingAnalytics.$inferSelect;
+export type InsertLandingAnalytics = z.infer<typeof insertLandingAnalyticsSchema>;

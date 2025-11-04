@@ -54,10 +54,14 @@ import {
   updatePolicyPaymentMethodSchema,
   insertPolicyReminderSchema,
   updatePolicyReminderSchema,
-  policyNotes
+  policyNotes,
+  insertLandingPageSchema,
+  insertLandingBlockSchema,
+  insertLandingAnalyticsSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq } from "drizzle-orm";
+import { landingBlocks } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -17006,6 +17010,517 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting policy consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
+    }
+  });
+
+  // ==================== LANDING PAGES API ====================
+  
+  // GET /api/landing-pages - List all landing pages for current company
+  app.get("/api/landing-pages", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const landingPages = await storage.getLandingPagesByCompany(currentUser.companyId!);
+      res.json({ landingPages });
+    } catch (error: any) {
+      console.error("Error fetching landing pages:", error);
+      res.status(500).json({ message: "Failed to fetch landing pages" });
+    }
+  });
+  
+  // GET /api/landing-pages/:id - Get specific landing page with blocks
+  app.get("/api/landing-pages/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get blocks for this landing page
+      const blocks = await storage.getBlocksByLandingPage(id);
+      
+      res.json({ landingPage, blocks });
+    } catch (error: any) {
+      console.error("Error fetching landing page:", error);
+      res.status(500).json({ message: "Failed to fetch landing page" });
+    }
+  });
+  
+  // GET /l/:slug - Public endpoint to view landing page (no auth required)
+  app.get("/l/:slug", async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    
+    try {
+      const landingPage = await storage.getLandingPageBySlug(slug);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Only show published pages
+      if (!landingPage.isPublished) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check password protection
+      if (landingPage.isPasswordProtected) {
+        const { password } = req.query;
+        
+        if (!password || password !== landingPage.password) {
+          return res.status(401).json({ 
+            message: "Password required", 
+            passwordProtected: true 
+          });
+        }
+      }
+      
+      // Get visible blocks for this landing page
+      const allBlocks = await storage.getBlocksByLandingPage(landingPage.id);
+      const blocks = allBlocks.filter(block => block.isVisible);
+      
+      res.json({ landingPage, blocks });
+    } catch (error: any) {
+      console.error("Error fetching public landing page:", error);
+      res.status(500).json({ message: "Failed to fetch landing page" });
+    }
+  });
+  
+  // POST /api/landing-pages - Create new landing page
+  app.post("/api/landing-pages", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      // Validate request body
+      const validatedData = insertLandingPageSchema.parse(req.body);
+      
+      // Check if slug already exists
+      const existingPage = await storage.getLandingPageBySlug(validatedData.slug);
+      if (existingPage) {
+        return res.status(400).json({ message: "Slug already exists" });
+      }
+      
+      // Create landing page
+      const landingPage = await storage.createLandingPage({
+        ...validatedData,
+        companyId: currentUser.companyId!,
+        userId: currentUser.id,
+      });
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "landing_page",
+        entityId: landingPage.id,
+        companyId: currentUser.companyId,
+      });
+      
+      res.status(201).json({ landingPage });
+    } catch (error: any) {
+      console.error("Error creating landing page:", error);
+      
+      if (error.name === "ZodError") {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to create landing page" });
+    }
+  });
+  
+  // PATCH /api/landing-pages/:id - Update landing page
+  app.patch("/api/landing-pages/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Get existing landing page
+      const existingPage = await storage.getLandingPageById(id);
+      
+      if (!existingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && existingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate partial update data
+      const validatedData = insertLandingPageSchema.partial().parse(req.body);
+      
+      // If slug is being updated, check it doesn't exist
+      if (validatedData.slug && validatedData.slug !== existingPage.slug) {
+        const slugExists = await storage.getLandingPageBySlug(validatedData.slug);
+        if (slugExists) {
+          return res.status(400).json({ message: "Slug already exists" });
+        }
+      }
+      
+      // Update landing page
+      const landingPage = await storage.updateLandingPage(id, validatedData);
+      
+      if (!landingPage) {
+        return res.status(500).json({ message: "Failed to update landing page" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "landing_page",
+        entityId: id,
+        companyId: currentUser.companyId,
+      });
+      
+      res.json({ landingPage });
+    } catch (error: any) {
+      console.error("Error updating landing page:", error);
+      
+      if (error.name === "ZodError") {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to update landing page" });
+    }
+  });
+  
+  // DELETE /api/landing-pages/:id - Delete landing page
+  app.delete("/api/landing-pages/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Get landing page to verify ownership
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const deleted = await storage.deleteLandingPage(id);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete landing page" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "landing_page",
+        entityId: id,
+        companyId: currentUser.companyId,
+      });
+      
+      res.json({ message: "Landing page deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting landing page:", error);
+      res.status(500).json({ message: "Failed to delete landing page" });
+    }
+  });
+  
+  // GET /api/landing-pages/:id/blocks - Get all blocks for a landing page
+  app.get("/api/landing-pages/:id/blocks", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Verify landing page exists and user has access
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const blocks = await storage.getBlocksByLandingPage(id);
+      res.json({ blocks });
+    } catch (error: any) {
+      console.error("Error fetching blocks:", error);
+      res.status(500).json({ message: "Failed to fetch blocks" });
+    }
+  });
+  
+  // POST /api/landing-pages/:id/blocks - Create new block
+  app.post("/api/landing-pages/:id/blocks", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: landingPageId } = req.params;
+    
+    try {
+      // Verify landing page exists and user has access
+      const landingPage = await storage.getLandingPageById(landingPageId);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate request body
+      const validatedData = insertLandingBlockSchema.parse(req.body);
+      
+      // Create block
+      const block = await storage.createLandingBlock({
+        ...validatedData,
+        landingPageId,
+      });
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "landing_block",
+        entityId: block.id,
+        companyId: currentUser.companyId,
+      });
+      
+      res.status(201).json({ block });
+    } catch (error: any) {
+      console.error("Error creating block:", error);
+      
+      if (error.name === "ZodError") {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to create block" });
+    }
+  });
+  
+  // PATCH /api/landing-blocks/:blockId - Update specific block
+  app.patch("/api/landing-blocks/:blockId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { blockId } = req.params;
+    
+    try {
+      // Validate partial update data
+      const validatedData = insertLandingBlockSchema.partial().parse(req.body);
+      
+      // Update block
+      const block = await storage.updateLandingBlock(blockId, validatedData);
+      
+      if (!block) {
+        return res.status(404).json({ message: "Block not found" });
+      }
+      
+      // Verify ownership through landing page
+      const landingPage = await storage.getLandingPageById(block.landingPageId);
+      if (currentUser.role !== "superadmin" && landingPage?.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "landing_block",
+        entityId: blockId,
+        companyId: currentUser.companyId,
+      });
+      
+      res.json({ block });
+    } catch (error: any) {
+      console.error("Error updating block:", error);
+      
+      if (error.name === "ZodError") {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to update block" });
+    }
+  });
+  
+  // DELETE /api/landing-blocks/:blockId - Delete specific block
+  app.delete("/api/landing-blocks/:blockId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { blockId } = req.params;
+    
+    try {
+      const deleted = await storage.deleteLandingBlock(blockId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Block not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "landing_block",
+        entityId: blockId,
+        companyId: currentUser.companyId,
+      });
+      
+      res.json({ message: "Block deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting block:", error);
+      res.status(500).json({ message: "Failed to delete block" });
+    }
+  });
+  
+  // POST /api/landing-pages/:id/blocks/reorder - Reorder blocks
+  app.post("/api/landing-pages/:id/blocks/reorder", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id: landingPageId } = req.params;
+    const { blockIds } = req.body;
+    
+    try {
+      // Verify landing page exists and user has access
+      const landingPage = await storage.getLandingPageById(landingPageId);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Validate blockIds is an array
+      if (!Array.isArray(blockIds)) {
+        return res.status(400).json({ message: "blockIds must be an array" });
+      }
+      
+      // Reorder blocks
+      await storage.reorderBlocks(landingPageId, blockIds);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "landing_page_blocks",
+        entityId: landingPageId,
+        companyId: currentUser.companyId,
+      });
+      
+      res.json({ message: "Blocks reordered successfully" });
+    } catch (error: any) {
+      console.error("Error reordering blocks:", error);
+      res.status(500).json({ message: "Failed to reorder blocks" });
+    }
+  });
+  
+  // POST /api/landing-pages/:id/view - Track page view (public endpoint - no auth)
+  app.post("/api/landing-pages/:id/view", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    
+    try {
+      // Verify landing page exists
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Increment view count
+      await storage.incrementLandingPageView(id);
+      
+      // Create analytics event
+      await storage.createLandingAnalytics({
+        landingPageId: id,
+        blockId: null,
+        eventType: "view",
+        metadata: {
+          userAgent: req.get('user-agent'),
+          ip: req.ip,
+          referer: req.get('referer'),
+        },
+      });
+      
+      res.json({ message: "View tracked successfully" });
+    } catch (error: any) {
+      console.error("Error tracking view:", error);
+      res.status(500).json({ message: "Failed to track view" });
+    }
+  });
+  
+  // POST /api/landing-blocks/:blockId/click - Track block click (public endpoint - no auth)
+  app.post("/api/landing-blocks/:blockId/click", async (req: Request, res: Response) => {
+    const { blockId } = req.params;
+    
+    try {
+      // Increment click count
+      await storage.incrementBlockClick(blockId);
+      
+      // Create analytics event (need to get landing page ID from block)
+      const blocks = await db.select().from(landingBlocks).where(eq(landingBlocks.id, blockId));
+      const block = blocks[0];
+      
+      if (block) {
+        await storage.createLandingAnalytics({
+          landingPageId: block.landingPageId,
+          blockId: blockId,
+          eventType: "click",
+          metadata: {
+            userAgent: req.get('user-agent'),
+            ip: req.ip,
+            blockType: block.type,
+          },
+        });
+      }
+      
+      res.json({ message: "Click tracked successfully" });
+    } catch (error: any) {
+      console.error("Error tracking click:", error);
+      res.status(500).json({ message: "Failed to track click" });
+    }
+  });
+  
+  // GET /api/landing-pages/:id/analytics - Get analytics for a landing page
+  app.get("/api/landing-pages/:id/analytics", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { eventType, limit } = req.query;
+    
+    try {
+      // Verify landing page exists and user has access
+      const landingPage = await storage.getLandingPageById(id);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check company ownership
+      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Get analytics
+      const analytics = await storage.getLandingAnalytics(id, {
+        eventType: eventType as string | undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+      });
+      
+      res.json({ analytics });
+    } catch (error: any) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
     }
   });
 
