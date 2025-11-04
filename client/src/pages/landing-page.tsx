@@ -1752,7 +1752,7 @@ export default function LandingPageBuilder() {
                             {selectedPage.landingPage.profileName && (
                               <div className="flex items-center justify-center gap-1.5">
                                 <h1
-                                  className="text-2xl font-bold mb-0"
+                                  className="text-2xl font-bold mb-0 no-underline"
                                   style={{ 
                                     color: "#000000",
                                   }}
