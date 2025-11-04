@@ -22,7 +22,12 @@ import {
   FileCheck,
   Heart,
   Stethoscope,
-  ChevronRight
+  ChevronRight,
+  UserPlus,
+  Globe,
+  Send,
+  Inbox,
+  Workflow
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -32,6 +37,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -162,6 +168,9 @@ const regularUserMenuItems = [
     url: "/calendar",
     icon: Calendar,
   },
+];
+
+const myAgencyMenuItems = [
   {
     title: "Policies",
     url: "/policies",
@@ -171,6 +180,47 @@ const regularUserMenuItems = [
     title: "Quotes",
     url: "/quotes",
     icon: ClipboardList,
+  },
+];
+
+const marketingMenuItems = [
+  {
+    title: "Contacts",
+    url: "/contacts",
+    icon: Mail,
+  },
+  {
+    title: "Referrals",
+    url: "/referrals",
+    icon: UserPlus,
+  },
+  {
+    title: "Landing page",
+    url: "/landing-page",
+    icon: Globe,
+  },
+  {
+    title: "SMS / MMS",
+    url: "/sms-mms",
+    icon: Send,
+  },
+  {
+    title: "Email",
+    url: "/email-marketing",
+    icon: Inbox,
+  },
+  {
+    title: "Integrations",
+    url: "/integrations",
+    icon: Workflow,
+  },
+];
+
+const configurationMenuItems = [
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
   },
 ];
 
@@ -190,9 +240,15 @@ export function AppSidebar() {
   });
 
   // Determine which menu to show based on user role
-  const menuItems = userData?.user?.role === "superadmin" 
-    ? superadminMenuItems 
-    : regularUserMenuItems;
+  const isSuperadmin = userData?.user?.role === "superadmin";
+  
+  // For superadmin, use old logic (split at Calendar)
+  const menuItems = isSuperadmin ? superadminMenuItems : regularUserMenuItems;
+  
+  // Split menu items into sections (before and after "My Agency") - only for superadmin
+  const calendarIndex = menuItems.findIndex(item => item.title === "Calendar");
+  const topMenuItems = isSuperadmin ? menuItems.slice(0, calendarIndex + 1) : regularUserMenuItems;
+  const superadminRestItems = isSuperadmin ? menuItems.slice(calendarIndex + 1) : [];
 
   // Load cached logo from localStorage on mount
   useEffect(() => {
@@ -270,10 +326,11 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-3 pt-2 pb-4">
+        {/* Top Menu Items */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => (
+              {topMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -297,6 +354,141 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* For regular users: My Agency, Marketing, Configuration */}
+        {!isSuperadmin && (
+          <>
+            {/* My Agency Section */}
+            <SidebarGroup className="mt-6">
+              <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                My Agency
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {myAgencyMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`link-${item.title.toLowerCase()}`}
+                        className={`
+                          h-11 rounded-md transition-colors
+                          ${location === item.url 
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          }
+                        `}
+                      >
+                        <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Marketing Section */}
+            <SidebarGroup className="mt-6">
+              <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Marketing
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {marketingMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`link-${item.title.toLowerCase()}`}
+                        className={`
+                          h-11 rounded-md transition-colors
+                          ${location === item.url 
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          }
+                        `}
+                      >
+                        <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Configuration Section */}
+            <SidebarGroup className="mt-6">
+              <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Configuration
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {configurationMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`link-${item.title.toLowerCase()}`}
+                        className={`
+                          h-11 rounded-md transition-colors
+                          ${location === item.url 
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          }
+                        `}
+                      >
+                        <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        {/* For superadmin: rest of items after Calendar */}
+        {isSuperadmin && (
+          <SidebarGroup className="mt-6">
+            <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Administration
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {superadminRestItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === item.url}
+                      data-testid={`link-${item.title.toLowerCase()}`}
+                      className={`
+                        h-11 rounded-md transition-colors
+                        ${location === item.url 
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        }
+                      `}
+                    >
+                      <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span className="flex-1">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-border">

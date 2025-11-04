@@ -58,6 +58,11 @@ import MarketplacePlans from "@/pages/marketplace-plans";
 import PolicyPrintPage from "@/pages/policy-print";
 import PublicConsentPage from "@/pages/public-consent";
 import Calendar from "@/pages/calendar";
+import Referrals from "@/pages/referrals";
+import LandingPageBuilder from "@/pages/landing-page";
+import SmsMmsPage from "@/pages/sms-mms";
+import EmailMarketingPage from "@/pages/email-marketing";
+import IntegrationsPage from "@/pages/integrations";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -1168,6 +1173,41 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Contacts />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/referrals">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Referrals />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/landing-page">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <LandingPageBuilder />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/sms-mms">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsMmsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/email-marketing">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <EmailMarketingPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <IntegrationsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
