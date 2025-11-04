@@ -17104,7 +17104,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const allBlocks = await storage.getBlocksByLandingPage(landingPage.id);
       const blocks = allBlocks.filter(block => block.isVisible);
       
-      res.json({ landingPage, blocks });
+      // Get company data (including logo) for public display
+      const company = await storage.getCompanyById(landingPage.companyId);
+      
+      res.json({ 
+        landingPage, 
+        blocks,
+        company: company ? { logo: company.logo } : null
+      });
     } catch (error: any) {
       console.error("Error fetching public landing page:", error);
       res.status(500).json({ message: "Failed to fetch landing page" });

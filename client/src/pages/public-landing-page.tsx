@@ -571,10 +571,10 @@ export default function PublicLandingPage() {
   const { toast } = useToast();
 
   const {
-    data: landingPage,
+    data,
     isLoading,
     isError,
-  } = useQuery<LandingPage>({
+  } = useQuery<{ landingPage: LandingPage; company: { logo: string } | null }>({
     queryKey: ["/l", slug],
     queryFn: async () => {
       const res = await fetch(`/l/${slug}`);
@@ -584,17 +584,17 @@ export default function PublicLandingPage() {
         }
         throw new Error("Failed to load landing page");
       }
-      const { landingPage, blocks } = await res.json();
-      return { ...landingPage, blocks };
+      const { landingPage, blocks, company } = await res.json();
+      return { 
+        landingPage: { ...landingPage, blocks },
+        company
+      };
     },
     enabled: !!slug,
   });
 
-  // Fetch company data to get logo
-  const { data: companyData } = useQuery<{ company: any }>({
-    queryKey: ["/api/companies", landingPage?.companyId],
-    enabled: !!landingPage?.companyId,
-  });
+  const landingPage = data?.landingPage;
+  const companyData = data?.company;
 
   useEffect(() => {
     if (landingPage?.id) {
@@ -780,9 +780,9 @@ export default function PublicLandingPage() {
         {/* Header with Logo and Menu - INSIDE gradient NO STICKY */}
         <div className="relative z-10 flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2 text-white">
-            {companyData?.company?.logo ? (
+            {companyData?.logo ? (
               <img 
-                src={companyData.company.logo} 
+                src={companyData.logo} 
                 alt="Company Logo" 
                 className="h-12 w-auto object-contain max-w-[200px] brightness-110"
               />
