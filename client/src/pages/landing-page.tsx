@@ -53,6 +53,7 @@ import {
   Star,
   HelpCircle,
   TrendingUp,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2394,7 +2395,7 @@ export default function LandingPageBuilder() {
 
           {selectedPage && (
             <>
-              <div className="mb-4">
+              <div className="mb-4 space-y-2">
                 <Button
                   className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
                   onClick={() => {
@@ -2411,6 +2412,21 @@ export default function LandingPageBuilder() {
                     ? "Despublicar"
                     : "Publicar"}
                 </Button>
+                
+                {selectedPage.landingPage.isPublished && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      const publicUrl = `${window.location.origin}/l/${selectedPage.landingPage.slug}`;
+                      window.open(publicUrl, '_blank');
+                    }}
+                    data-testid="button-open-landing-page"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Abrir Landing Page
+                  </Button>
+                )}
               </div>
 
               <div
