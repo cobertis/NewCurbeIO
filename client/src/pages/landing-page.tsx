@@ -497,11 +497,12 @@ export default function LandingPageBuilder() {
   );
 
   // Fetch landing pages
-  const { data: landingPages, isLoading: isPagesLoading } = useQuery<
-    LandingPage[]
-  >({
+  const { data: landingPagesResponse, isLoading: isPagesLoading } = useQuery<{
+    landingPages: LandingPage[];
+  }>({
     queryKey: ["/api/landing-pages"],
   });
+  const landingPages = landingPagesResponse?.landingPages || [];
 
   // Fetch selected page details
   const { data: selectedPage, isLoading: isPageLoading } = useQuery<{

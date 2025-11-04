@@ -61,6 +61,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **Reminder System:** Background scheduler creates notifications for pending reminders, restores snoozed reminders, and prevents duplicate notifications. All notifications are in English.
 -   **Agent Assignment System:** Flexible agent reassignment for quotes and policies with agent-based filtering and real-time, English-language notifications to new agents.
 -   **Policy Renewal System:** Automated renewal period activation (October 1 - February 1) with dynamic year calculation. Renewal buttons and OEP filters automatically show/hide based on current date. System prevents double-counting of renewed policies in statistics by using canonical client identification (SSN or email) to track unique individuals across policy years.
+-   **Landing Page Builder System:** Modern Linktree-style bio link page creator with three-column bento box editor featuring drag & drop block management (@dnd-kit), real-time preview, and professional purple gradient theme (#8B5CF6). Supports 8 block types (Link Button, Social Media, Video Embed, Text, Image, Email Form, Divider, Contact), complete theme customization (colors, fonts, backgrounds, button styles), password protection, SEO meta tags, and analytics tracking (page views, block clicks). Public pages are accessible at `/l/:slug` without authentication, with mobile-responsive design and optional password protection. System includes auto-save with debounce, slug uniqueness validation, and multi-tenant company isolation.
 
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Quote family members display logic merges normalized and JSONB data.
@@ -89,6 +90,7 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 -   **SMS:** Twilio.
 -   **Payments:** Stripe.
 -   **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
+-   **Drag & Drop:** @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities.
 -   **Form Management & Validation:** React Hook Form, Zod.
 -   **Session Management:** `express-session`, `connect-pg-simple`.
 -   **Security:** Bcrypt.
