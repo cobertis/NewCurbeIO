@@ -679,6 +679,12 @@ export default function LandingPageBuilder() {
       queryClient.invalidateQueries({
         queryKey: ["/api/landing-pages", selectedPageId],
       });
+      // Invalidate public landing page cache when publishing/unpublishing
+      if (selectedPage) {
+        queryClient.invalidateQueries({
+          queryKey: ["/l", selectedPage.landingPage.slug],
+        });
+      }
       toast({
         title: "Changes saved",
         description: "Your changes have been saved successfully.",
@@ -2418,7 +2424,7 @@ export default function LandingPageBuilder() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      const publicUrl = `${window.location.origin}/l/${selectedPage.landingPage.slug}`;
+                      const publicUrl = `${window.location.origin}/${selectedPage.landingPage.slug}`;
                       window.open(publicUrl, '_blank');
                     }}
                     data-testid="button-open-landing-page"

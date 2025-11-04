@@ -555,8 +555,11 @@ function PublicBlock({
 }
 
 export default function PublicLandingPage() {
-  const [, params] = useRoute("/l/:slug");
-  const slug = params?.slug;
+  // Try both route patterns: /l/:slug and /:slug
+  const [matchL, paramsL] = useRoute("/l/:slug");
+  const [matchDirect, paramsDirect] = useRoute("/:slug");
+  
+  const slug = matchL ? paramsL?.slug : paramsDirect?.slug;
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const { toast } = useToast();
