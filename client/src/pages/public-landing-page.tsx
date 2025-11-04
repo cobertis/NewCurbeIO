@@ -762,31 +762,27 @@ export default function PublicLandingPage() {
       className="min-h-screen bg-white"
       data-testid="public-landing-page"
     >
-      {/* Header with Logo and Menu */}
-      <div 
-        className="sticky top-0 z-50 flex items-center justify-between px-4 py-3"
-        style={{ background }}
-      >
-        <div className="flex items-center gap-2 text-white">
-          <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-            <span className="text-xs font-bold">
-              {(landingPage.title || "SB").substring(0, 2).toUpperCase()}
-            </span>
-          </div>
-          <span className="font-semibold text-sm">
-            {landingPage.title || "SmartBio"}
-          </span>
-        </div>
-        <button className="text-white p-1" aria-label="Menu" data-testid="button-header-menu">
-          <Menu className="h-6 w-6" />
-        </button>
-      </div>
-
       {/* Hero Section with Gradient Background */}
       <div 
         className="relative pb-32"
         style={{ background }}
       >
+        {/* Header with Logo and Menu - INSIDE gradient */}
+        <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2 text-white">
+            <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+              <span className="text-xs font-bold">
+                {(landingPage.title || "SB").substring(0, 2).toUpperCase()}
+              </span>
+            </div>
+            <span className="font-semibold text-sm">
+              {landingPage.title || "SmartBio"}
+            </span>
+          </div>
+          <button className="text-white p-1" aria-label="Menu" data-testid="button-header-menu">
+            <Menu className="h-6 w-6" />
+          </button>
+        </div>
         {/* Curved White Background */}
         <div className="absolute bottom-0 left-0 right-0 h-32 overflow-hidden">
           <svg viewBox="0 0 430 128" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">

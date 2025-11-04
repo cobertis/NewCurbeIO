@@ -1607,27 +1607,6 @@ export default function LandingPageBuilder() {
                     {/* Scrollable Content Area */}
                     <ScrollArea className="h-full">
                       <div className="relative" style={{ minHeight: previewMode === "mobile" ? "932px" : "600px" }}>
-                        {/* Header with Logo and Menu */}
-                        <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3">
-                          <div className="flex items-center gap-2 text-white">
-                            <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-                              <span className="text-xs font-bold">
-                                {(selectedPage.landingPage.title || "SB").substring(0, 2).toUpperCase()}
-                              </span>
-                            </div>
-                            <span className="font-semibold text-sm">
-                              {selectedPage.landingPage.title || "SmartBio"}
-                            </span>
-                          </div>
-                          <button className="text-white p-1">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <line x1="3" y1="12" x2="21" y2="12"/>
-                              <line x1="3" y1="6" x2="21" y2="6"/>
-                              <line x1="3" y1="18" x2="21" y2="18"/>
-                            </svg>
-                          </button>
-                        </div>
-
                         {/* Hero Section with Gradient Background */}
                         <div 
                           className="relative pb-32"
@@ -1635,6 +1614,26 @@ export default function LandingPageBuilder() {
                             background: (selectedPage.landingPage.theme as any).backgroundGradient || selectedPage.landingPage.theme.backgroundColor,
                           }}
                         >
+                          {/* Header with Logo and Menu - INSIDE gradient */}
+                          <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3">
+                            <div className="flex items-center gap-2 text-white">
+                              <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+                                <span className="text-xs font-bold">
+                                  {(selectedPage.landingPage.title || "SB").substring(0, 2).toUpperCase()}
+                                </span>
+                              </div>
+                              <span className="font-semibold text-sm">
+                                {selectedPage.landingPage.title || "SmartBio"}
+                              </span>
+                            </div>
+                            <button className="text-white p-1">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="3" y1="12" x2="21" y2="12"/>
+                                <line x1="3" y1="6" x2="21" y2="6"/>
+                                <line x1="3" y1="18" x2="21" y2="18"/>
+                              </svg>
+                            </button>
+                          </div>
                           {/* Curved White Background */}
                           <div className="absolute bottom-0 left-0 right-0 h-32 overflow-hidden">
                             <svg viewBox="0 0 430 128" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
