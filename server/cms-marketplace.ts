@@ -12,8 +12,7 @@ interface MarketplaceQuoteRequest {
     effective_date?: string;
     has_married_couple?: boolean;
     people: Array<{
-      age: number;
-      dob?: string;
+      dob: string; // CRITICAL: Send ONLY dob (not age) for accurate "plan specific rating-age adjustments"
       gender?: string;
       uses_tobacco?: boolean;
       is_pregnant?: boolean;
@@ -22,6 +21,7 @@ interface MarketplaceQuoteRequest {
       is_parent?: boolean;
       relationship?: string;
       utilization?: 'Low' | 'Medium' | 'High';
+      does_not_cohabitate?: boolean;
     }>;
   };
   market: 'Individual';
@@ -297,9 +297,9 @@ async function fetchSinglePage(
   }
 
   // Build household members array following CMS API format from documentation
-  // CRITICAL: CMS API requires BOTH age AND dob for accurate APTC/CSR calculations
-  // Per documentation: "Either an age or dob value must be provided"
-  // Without age, API cannot calculate household_aptc, household_csr, household_slcsp_premium
+  // CRITICAL: Send ONLY dob (not age) to allow CMS API to apply "plan specific rating-age adjustments"
+  // Per documentation: "If dob is provided, a more accurate age is calculated using dob + effective_date + plan specific rating-age adjustments"
+  // This is essential for accurate APTC/CSR calculations, especially for children under 19 (pediatric dental costs)
   const people = [];
   
   // Check if there's a married couple (spouse exists)
@@ -307,8 +307,7 @@ async function fetchSinglePage(
   
   // Add client - Always the "Self" relationship
   people.push({
-    age: calculateAge(quoteData.client.dateOfBirth, quoteData.effectiveDate), // CRITICAL: Age on effective date for accurate APTC
-    dob: quoteData.client.dateOfBirth, // DOB for accurate age calculation with effective_date
+    dob: quoteData.client.dateOfBirth, // CRITICAL: Send ONLY dob (not age) to let API apply "plan specific rating-age adjustments"
     aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
     does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
     has_mec: false, // No Minimal Essential Coverage (client needs insurance)
@@ -324,8 +323,7 @@ async function fetchSinglePage(
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       people.push({
-        age: calculateAge(spouse.dateOfBirth, quoteData.effectiveDate), // CRITICAL: Age on effective date for accurate APTC
-        dob: spouse.dateOfBirth, // DOB for accurate age calculation with effective_date
+        dob: spouse.dateOfBirth, // CRITICAL: Send ONLY dob (not age) to let API apply "plan specific rating-age adjustments"
         aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
         does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
         has_mec: false, // No Minimal Essential Coverage (spouse needs insurance)
@@ -348,8 +346,7 @@ async function fetchSinglePage(
       const needsInsurance = dependent.isApplicant !== false; // Default to true if not specified
       
       people.push({
-        age: calculateAge(dependent.dateOfBirth, quoteData.effectiveDate), // CRITICAL: Age on effective date for accurate APTC
-        dob: dependent.dateOfBirth, // DOB for accurate age calculation with effective_date
+        dob: dependent.dateOfBirth, // CRITICAL: Send ONLY dob (not age) to let API apply "plan specific rating-age adjustments"
         aptc_eligible: needsInsurance, // Per CMS docs: only eligible if they need insurance (not on Medicaid/CHIP)
         does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
         has_mec: !needsInsurance, // Minimal Essential Coverage (Medicaid/CHIP) if NOT applicant
@@ -487,7 +484,7 @@ async function fetchSinglePage(
       household_income: quoteData.householdIncome,
       people_count: people.length,
       people: people.map((p: any) => ({
-        age: p.age,
+        dob: p.dob,
         gender: p.gender,
         tobacco: p.uses_tobacco,
         pregnant: p.is_pregnant,
