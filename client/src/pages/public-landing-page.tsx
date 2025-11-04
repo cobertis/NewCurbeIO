@@ -23,6 +23,7 @@ import {
   HelpCircle,
   BarChart3,
   ChevronDown,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -754,31 +755,61 @@ export default function PublicLandingPage() {
 
   return (
     <div
-      className="min-h-screen"
-      style={{ background }}
+      className="min-h-screen bg-white"
       data-testid="public-landing-page"
     >
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        {(landingPage.profilePhoto ||
-          landingPage.profileName ||
-          landingPage.profileBio) && (
-          <div className="text-center mb-8" data-testid="profile-section">
-            {landingPage.profilePhoto && (
-              <div className="flex justify-center mb-6">
-                <Avatar className="w-32 h-32 ring-4 ring-white shadow-2xl">
-                  <AvatarImage src={landingPage.profilePhoto} />
-                  <AvatarFallback 
-                    className="text-4xl" 
-                    style={{ backgroundColor: theme.primaryColor, color: 'white' }}
-                  >
-                    {landingPage.profileName?.[0]?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            )}
+      {/* Header with Logo and Menu */}
+      <div 
+        className="sticky top-0 z-50 flex items-center justify-between px-4 py-3"
+        style={{ background }}
+      >
+        <div className="flex items-center gap-2 text-white">
+          <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+            <span className="text-xs font-bold">SB</span>
+          </div>
+          <span className="font-semibold text-sm">SmartBio</span>
+        </div>
+        <button className="text-white p-1" aria-label="Menu" data-testid="button-header-menu">
+          <Menu className="h-6 w-6" />
+        </button>
+      </div>
+
+      {/* Hero Section with Gradient Background */}
+      <div 
+        className="relative pb-32"
+        style={{ background }}
+      >
+        {/* Curved White Background */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 overflow-hidden">
+          <svg viewBox="0 0 430 128" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+            <path d="M0 128V64C0 64 107.5 0 215 0C322.5 0 430 64 430 64V128H0Z" fill="white"/>
+          </svg>
+        </div>
+
+        {/* Profile Photo - positioned to overlap the curve */}
+        {landingPage.profilePhoto && (
+          <div className="relative z-10 flex justify-center pt-8" data-testid="profile-section">
+            <Avatar className="w-36 h-36 ring-8 ring-white shadow-2xl">
+              <AvatarImage src={landingPage.profilePhoto} />
+              <AvatarFallback 
+                className="text-4xl" 
+                style={{ backgroundColor: theme.primaryColor, color: 'white' }}
+              >
+                {landingPage.profileName?.[0]?.toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        )}
+      </div>
+
+      {/* Content Section - White Background */}
+      <div className="bg-white px-6 pb-6">
+        {/* Profile Info */}
+        {(landingPage.profileName || landingPage.profileBio) && (
+          <div className="text-center mb-6 -mt-4">
             {landingPage.profileName && (
               <h1
-                className="text-4xl font-bold mb-3 tracking-tight"
+                className="text-2xl font-bold mb-2"
                 style={{ color: theme.textColor }}
                 data-testid="profile-name"
               >
@@ -787,8 +818,8 @@ export default function PublicLandingPage() {
             )}
             {landingPage.profileBio && (
               <p
-                className="text-lg max-w-md mx-auto leading-relaxed"
-                style={{ color: theme.textColor, opacity: 0.9 }}
+                className="text-sm leading-relaxed px-4"
+                style={{ color: theme.textColor, opacity: 0.7 }}
                 data-testid="profile-bio"
               >
                 {landingPage.profileBio}
@@ -797,7 +828,8 @@ export default function PublicLandingPage() {
           </div>
         )}
 
-        <div className="space-y-4" data-testid="blocks-container">
+        {/* Blocks */}
+        <div className="space-y-3 max-w-2xl mx-auto" data-testid="blocks-container">
           {sortedBlocks
             .filter((block) => block.isVisible)
             .map((block) => (
@@ -811,8 +843,9 @@ export default function PublicLandingPage() {
             ))}
         </div>
 
+        {/* Footer */}
         <div
-          className="text-center mt-12 opacity-50"
+          className="text-center mt-12 opacity-50 max-w-2xl mx-auto"
           style={{ color: theme.textColor }}
           data-testid="footer"
         >
