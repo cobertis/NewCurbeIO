@@ -5346,24 +5346,9 @@ export class DbStorage implements IStorage {
   }
   
   async getPolicyNotes(policyId: string, companyId: string): Promise<PolicyNote[]> {
-    const notesWithCreator = await db
-      .select({
-        id: policyNotes.id,
-        policyId: policyNotes.policyId,
-        note: policyNotes.note,
-        attachments: policyNotes.attachments,
-        isImportant: policyNotes.isImportant,
-        isPinned: policyNotes.isPinned,
-        isResolved: policyNotes.isResolved,
-        companyId: policyNotes.companyId,
-        createdBy: policyNotes.createdBy,
-        createdAt: policyNotes.createdAt,
-        updatedAt: policyNotes.updatedAt,
-        creatorName: users.name,
-        creatorAvatar: users.avatar,
-      })
+    const notes = await db
+      .select()
       .from(policyNotes)
-      .leftJoin(users, eq(policyNotes.createdBy, users.id))
       .where(
         and(
           eq(policyNotes.policyId, policyId),
@@ -5371,8 +5356,32 @@ export class DbStorage implements IStorage {
         )
       )
       .orderBy(desc(policyNotes.createdAt));
+
+    // Get unique user IDs
+    const userIds = [...new Set(notes.map(n => n.createdBy))];
     
-    return notesWithCreator as any;
+    // Fetch user details
+    const usersMap = new Map();
+    if (userIds.length > 0) {
+      const usersData = await db
+        .select()
+        .from(users)
+        .where(sql`${users.id} = ANY(${userIds})`);
+      
+      usersData.forEach(user => {
+        usersMap.set(user.id, user);
+      });
+    }
+
+    // Combine notes with user data
+    return notes.map(note => {
+      const user = usersMap.get(note.createdBy);
+      return {
+        ...note,
+        creatorName: user?.name || null,
+        creatorAvatar: user?.avatar || null,
+      };
+    }) as any;
   }
   
   async deletePolicyNote(id: string, companyId?: string): Promise<void> {
