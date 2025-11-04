@@ -719,7 +719,8 @@ export interface IStorage {
   setPrimaryPolicyPlan(planId: string, policyId: string, companyId: string): Promise<void>;
   
   // Landing Pages
-  getLandingPagesByCompany(companyId: string): Promise<LandingPage[]>;
+  getLandingPagesByUser(userId: string, companyId: string): Promise<LandingPage[]>;
+  checkSlugAvailability(slug: string, userId?: string): Promise<boolean>;
   getLandingPageBySlug(slug: string): Promise<LandingPage | undefined>;
   getLandingPageById(id: string): Promise<LandingPage | undefined>;
   createLandingPage(data: InsertLandingPage): Promise<LandingPage>;
@@ -5686,14 +5687,32 @@ export class DbStorage implements IStorage {
   
   // ==================== LANDING PAGES ====================
   
-  async getLandingPagesByCompany(companyId: string): Promise<LandingPage[]> {
+  async getLandingPagesByUser(userId: string, companyId: string): Promise<LandingPage[]> {
     const result = await db
       .select()
       .from(landingPages)
-      .where(eq(landingPages.companyId, companyId))
+      .where(and(
+        eq(landingPages.userId, userId),
+        eq(landingPages.companyId, companyId)
+      ))
       .orderBy(desc(landingPages.createdAt));
     
     return result;
+  }
+  
+  async checkSlugAvailability(slug: string, userId?: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(landingPages)
+      .where(eq(landingPages.slug, slug));
+    
+    // Si encontramos un registro con ese slug
+    if (result.length === 0) return true; // Está disponible
+    
+    // Si hay userId, verificar que no sea del mismo usuario
+    if (userId && result[0].userId === userId) return true; // Es su propio slug
+    
+    return false; // Ya está ocupado por otro usuario
   }
   
   async getLandingPageBySlug(slug: string): Promise<LandingPage | undefined> {

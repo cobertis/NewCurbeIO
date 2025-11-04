@@ -17018,16 +17018,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== LANDING PAGES API ====================
   
-  // GET /api/landing-pages - List all landing pages for current company
+  // GET /api/landing-pages - List landing pages for current user
   app.get("/api/landing-pages", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     
     try {
-      const landingPages = await storage.getLandingPagesByCompany(currentUser.companyId!);
+      const landingPages = await storage.getLandingPagesByUser(currentUser.id, currentUser.companyId!);
       res.json({ landingPages });
     } catch (error: any) {
       console.error("Error fetching landing pages:", error);
       res.status(500).json({ message: "Failed to fetch landing pages" });
+    }
+  });
+  
+  // GET /api/landing-pages/check-slug/:slug - Check if slug is available
+  app.get("/api/landing-pages/check-slug/:slug", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { slug } = req.params;
+    
+    try {
+      const isAvailable = await storage.checkSlugAvailability(slug, currentUser.id);
+      res.json({ available: isAvailable });
+    } catch (error: any) {
+      console.error("Error checking slug availability:", error);
+      res.status(500).json({ message: "Failed to check slug availability" });
     }
   });
   
@@ -17043,8 +17057,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Landing page not found" });
       }
       
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
+      // Check user ownership - users can only access their OWN landing pages
+      if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
