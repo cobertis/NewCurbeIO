@@ -5359,8 +5359,8 @@ export class DbStorage implements IStorage {
         createdBy: policyNotes.createdBy,
         createdAt: policyNotes.createdAt,
         updatedAt: policyNotes.updatedAt,
-        creatorName: users.name,
-        creatorAvatar: users.avatar,
+        creatorName: sql<string>`${users.name}`.as('creator_name'),
+        creatorAvatar: sql<string>`${users.avatar}`.as('creator_avatar'),
       })
       .from(policyNotes)
       .leftJoin(users, eq(policyNotes.createdBy, users.id))
