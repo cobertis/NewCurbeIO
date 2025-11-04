@@ -763,14 +763,15 @@ export default function PublicLandingPage() {
     >
       {/* Hero Section with SMARTBIO DARK Gradient - FIXED */}
       <div 
-        className="relative pb-24"
+        className="relative"
         style={{
           background: "linear-gradient(180deg, #0f0b27 0%, #06010f 55%, #06010f 60%)",
           minHeight: "280px",
+          paddingBottom: "96px",
         }}
       >
-        {/* Header with Logo and Menu - INSIDE gradient */}
-        <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3">
+        {/* Header with Logo and Menu - INSIDE gradient NO STICKY */}
+        <div className="relative z-10 flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2 text-white">
             <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
               <span className="text-xs font-bold">

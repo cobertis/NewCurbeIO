@@ -1678,14 +1678,15 @@ export default function LandingPageBuilder() {
                       <div className="relative" style={{ minHeight: previewMode === "mobile" ? "932px" : "600px" }}>
                         {/* Hero Section with SMARTBIO DARK Gradient Background */}
                         <div 
-                          className="relative pb-24"
+                          className="relative"
                           style={{
                             background: "linear-gradient(180deg, #0f0b27 0%, #06010f 55%, #06010f 60%)",
                             minHeight: "280px",
+                            paddingBottom: "96px",
                           }}
                         >
-                          {/* Header with Logo and Menu - INSIDE gradient */}
-                          <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3">
+                          {/* Header with Logo and Menu - INSIDE gradient NO STICKY */}
+                          <div className="relative z-10 flex items-center justify-between px-4 py-3">
                             <div className="flex items-center gap-2 text-white">
                               <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
                                 <span className="text-xs font-bold">
@@ -1697,11 +1698,7 @@ export default function LandingPageBuilder() {
                               </span>
                             </div>
                             <button className="text-white p-1">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="3" y1="12" x2="21" y2="12"/>
-                                <line x1="3" y1="6" x2="21" y2="6"/>
-                                <line x1="3" y1="18" x2="21" y2="18"/>
-                              </svg>
+                              <Menu className="h-6 w-6" />
                             </button>
                           </div>
                           
