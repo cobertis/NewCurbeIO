@@ -1678,7 +1678,7 @@ export default function LandingPageBuilder() {
                             )}
                           </div>
 
-                          {/* Social Media Icons - Horizontal Row */}
+                          {/* Social Media Icons - Horizontal Row - CLICKABLE for editing */}
                           {(() => {
                             const socialBlocks = blocks.filter(b => b.type === "social" && b.isVisible);
                             if (socialBlocks.length > 0) {
@@ -1689,16 +1689,19 @@ export default function LandingPageBuilder() {
                                       (p) => p.value === block.content.platform
                                     )?.icon || Share2;
                                     return (
-                                      <a
+                                      <button
                                         key={block.id}
-                                        href={block.content.url || "#"}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-12 h-12 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          setEditingBlock(block);
+                                          setIsBlockEditorOpen(true);
+                                        }}
+                                        className="w-12 h-12 rounded-full bg-black flex items-center justify-center hover:scale-110 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer"
                                         data-testid={`preview-social-${block.id}`}
+                                        title={`Edit ${block.content.platform || 'social'} link`}
                                       >
                                         <SocialIcon className="w-6 h-6 text-white" />
-                                      </a>
+                                      </button>
                                     );
                                   })}
                                 </div>
@@ -2040,24 +2043,56 @@ export default function LandingPageBuilder() {
                         <h3 className="font-semibold">Profile</h3>
                         
                         <div>
-                          <Label htmlFor="profilePhoto" className="text-xs mb-2 block">
-                            Profile Photo URL
+                          <Label className="text-xs mb-2 block">
+                            Profile Photo
                           </Label>
-                          <Input
-                            id="profilePhoto"
-                            value={selectedPage.landingPage.profilePhoto || ""}
-                            onChange={(e) =>
-                              updatePageMutation.mutate({
-                                id: selectedPageId!,
-                                data: { profilePhoto: e.target.value },
-                              })
-                            }
-                            placeholder="https://example.com/photo.jpg"
-                            data-testid="input-profile-photo"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            URL of your profile photo (appears in the large circular avatar)
-                          </p>
+                          
+                          {/* Upload Photo Button */}
+                          <div className="space-y-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.onchange = (e) => {
+                                  const file = (e.target as HTMLInputElement).files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      updatePageMutation.mutate({
+                                        id: selectedPageId!,
+                                        data: { profilePhoto: reader.result as string },
+                                      });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                };
+                                input.click();
+                              }}
+                              data-testid="button-upload-photo"
+                            >
+                              <ImageIcon className="w-4 h-4 mr-2" />
+                              Upload Photo
+                            </Button>
+                            
+                            <div className="text-xs text-center text-muted-foreground">or</div>
+                            
+                            <Input
+                              id="profilePhoto"
+                              value={selectedPage.landingPage.profilePhoto || ""}
+                              onChange={(e) =>
+                                updatePageMutation.mutate({
+                                  id: selectedPageId!,
+                                  data: { profilePhoto: e.target.value },
+                                })
+                              }
+                              placeholder="Paste image URL"
+                              data-testid="input-profile-photo"
+                            />
+                          </div>
                         </div>
                         
                         <div>
