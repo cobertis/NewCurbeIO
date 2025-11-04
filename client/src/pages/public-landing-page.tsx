@@ -752,7 +752,6 @@ export default function PublicLandingPage() {
   }
 
   const theme = landingPage.theme;
-  const background = theme.backgroundGradient || theme.backgroundColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
   const sortedBlocks = [...landingPage.blocks].sort(
     (a, b) => a.position - b.position
   );
@@ -762,10 +761,13 @@ export default function PublicLandingPage() {
       className="min-h-screen bg-white"
       data-testid="public-landing-page"
     >
-      {/* Hero Section with Gradient Background */}
+      {/* Hero Section with SMARTBIO DARK Gradient - FIXED */}
       <div 
-        className="relative pb-32"
-        style={{ background }}
+        className="relative pb-24"
+        style={{
+          background: "linear-gradient(180deg, #0f0b27 0%, #06010f 55%, #06010f 60%)",
+          minHeight: "280px",
+        }}
       >
         {/* Header with Logo and Menu - INSIDE gradient */}
         <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3">
@@ -783,31 +785,32 @@ export default function PublicLandingPage() {
             <Menu className="h-6 w-6" />
           </button>
         </div>
-        {/* Curved White Background */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 overflow-hidden">
-          <svg viewBox="0 0 430 128" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-            <path d="M0 128V64C0 64 107.5 0 215 0C322.5 0 430 64 430 64V128H0Z" fill="white"/>
+        
+        {/* Curved White Background - ADJUSTED for perfect transition */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 overflow-hidden">
+          <svg viewBox="0 0 430 96" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+            <path d="M0 96V48C0 48 107.5 0 215 0C322.5 0 430 48 430 48V96H0Z" fill="white"/>
           </svg>
         </div>
-
-        {/* Profile Photo - positioned to overlap the curve */}
-        {landingPage.profilePhoto && (
-          <div className="relative z-10 flex justify-center pt-8" data-testid="profile-section">
-            <Avatar className="w-36 h-36 ring-8 ring-white shadow-2xl">
-              <AvatarImage src={landingPage.profilePhoto} />
-              <AvatarFallback 
-                className="text-4xl" 
-                style={{ backgroundColor: theme.primaryColor, color: 'white' }}
-              >
-                {landingPage.profileName?.[0]?.toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        )}
       </div>
+      
+      {/* Avatar positioned EXACTLY on the curve like SmartBio */}
+      {landingPage.profilePhoto && (
+        <div className="relative -mt-20 z-10 flex justify-center" data-testid="profile-section">
+          <Avatar className="w-40 h-40 ring-8 ring-white shadow-2xl">
+            <AvatarImage src={landingPage.profilePhoto} />
+            <AvatarFallback 
+              className="text-4xl" 
+              style={{ backgroundColor: theme.primaryColor, color: 'white' }}
+            >
+              {landingPage.profileName?.[0]?.toUpperCase() || "U"}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      )}
 
-      {/* Content Section - White Background */}
-      <div className="bg-white px-6 pb-6">
+      {/* Content Section - White Background COMPACT like SmartBio */}
+      <div className="bg-white px-4 pb-4">
         {/* Profile Info */}
         {(landingPage.profileName || landingPage.profileBio) && (
           <div className="text-center mb-6 -mt-4">
