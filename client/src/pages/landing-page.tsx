@@ -61,6 +61,7 @@ import {
   Layers,
   Pencil,
   Loader2,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -734,6 +735,15 @@ export default function LandingPageBuilder() {
     enabled: !!selectedPageId,
   });
 
+  // Check slug availability in real-time
+  const isSlugValidFormat = slugInput.length >= 3 && /^[a-z0-9-]{3,50}$/.test(slugInput);
+  const shouldCheckSlug = isSlugValidFormat && slugInput !== selectedPage?.landingPage?.slug;
+  
+  const { data: slugCheckData, isLoading: isCheckingSlug } = useQuery<{ available: boolean }>({
+    queryKey: ["/api/landing-pages/check-slug", slugInput],
+    enabled: shouldCheckSlug,
+  });
+
   // Update blocks when page changes and initialize history
   useEffect(() => {
     if (selectedPage) {
@@ -1366,9 +1376,9 @@ export default function LandingPageBuilder() {
                 onChange={(e) => setSlugInput(e.target.value.toLowerCase())}
                 disabled={updatePageMutation.isPending}
                 className={`pl-10 pr-10 h-9 text-sm ${
-                  slugInput.length >= 3 && /^[a-z0-9-]{3,50}$/.test(slugInput)
+                  isSlugValidFormat && (slugInput === selectedPage.landingPage.slug || slugCheckData?.available === true)
                     ? "border-green-500 focus-visible:ring-green-500"
-                    : slugInput.length > 0 && (slugInput.length < 3 || !/^[a-z0-9-]{3,50}$/.test(slugInput))
+                    : slugInput.length > 0 && (!isSlugValidFormat || slugCheckData?.available === false)
                     ? "border-red-500 focus-visible:ring-red-500"
                     : ""
                 }`}
@@ -1377,9 +1387,9 @@ export default function LandingPageBuilder() {
               />
               {slugInput.length > 0 && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {updatePageMutation.isPending && slugInput !== selectedPage.landingPage.slug ? (
+                  {(updatePageMutation.isPending && slugInput !== selectedPage.landingPage.slug) || isCheckingSlug ? (
                     <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-                  ) : slugInput.length >= 3 && /^[a-z0-9-]{3,50}$/.test(slugInput) ? (
+                  ) : isSlugValidFormat && (slugInput === selectedPage.landingPage.slug || slugCheckData?.available === true) ? (
                     <Check className="w-4 h-4 text-green-500" />
                   ) : (
                     <X className="w-4 h-4 text-red-500" />
@@ -1395,6 +1405,11 @@ export default function LandingPageBuilder() {
             {slugInput.length >= 3 && !/^[a-z0-9-]{3,50}$/.test(slugInput) && (
               <p className="text-xs text-red-500 mt-1">
                 Only lowercase letters, numbers, and hyphens allowed
+              </p>
+            )}
+            {isSlugValidFormat && slugCheckData?.available === false && (
+              <p className="text-xs text-red-500 mt-1">
+                This URL is already taken
               </p>
             )}
           </div>
@@ -2232,20 +2247,33 @@ export default function LandingPageBuilder() {
                               onChange={(e) => setSlugInput(e.target.value.toLowerCase())}
                               data-testid="input-slug"
                               className={
-                                slugInput.length > 0 && slugInput.length < 3
-                                  ? "border-red-500 pr-10"
-                                  : /^[a-z0-9-]{3,50}$/.test(slugInput)
+                                isSlugValidFormat && (slugInput === selectedPage.landingPage.slug || slugCheckData?.available === true)
                                   ? "border-green-500 pr-10"
+                                  : slugInput.length > 0 && (!isSlugValidFormat || slugCheckData?.available === false)
+                                  ? "border-red-500 pr-10"
                                   : "pr-10"
                               }
                             />
-                            {slugInput.length > 0 && /^[a-z0-9-]{3,50}$/.test(slugInput) && (
-                              <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                            {slugInput.length > 0 && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                {isCheckingSlug ? (
+                                  <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                                ) : isSlugValidFormat && (slugInput === selectedPage.landingPage.slug || slugCheckData?.available === true) ? (
+                                  <Check className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <X className="w-4 h-4 text-red-500" />
+                                )}
+                              </div>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Mínimo 3 caracteres, solo minúsculas, números y guiones
+                            Minimum 3 characters, lowercase letters, numbers, and hyphens only
                           </p>
+                          {isSlugValidFormat && slugCheckData?.available === false && (
+                            <p className="text-xs text-red-500 mt-1">
+                              This URL is already taken
+                            </p>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between">
