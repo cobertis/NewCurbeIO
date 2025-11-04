@@ -1364,6 +1364,7 @@ export default function LandingPageBuilder() {
               <Input
                 value={slugInput}
                 onChange={(e) => setSlugInput(e.target.value.toLowerCase())}
+                disabled={updatePageMutation.isPending}
                 className={`pl-10 pr-10 h-9 text-sm ${
                   slugInput.length >= 3 && /^[a-z0-9-]{3,50}$/.test(slugInput)
                     ? "border-green-500 focus-visible:ring-green-500"
@@ -1376,7 +1377,9 @@ export default function LandingPageBuilder() {
               />
               {slugInput.length > 0 && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {slugInput.length >= 3 && /^[a-z0-9-]{3,50}$/.test(slugInput) ? (
+                  {updatePageMutation.isPending && slugInput !== selectedPage.landingPage.slug ? (
+                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                  ) : slugInput.length >= 3 && /^[a-z0-9-]{3,50}$/.test(slugInput) ? (
                     <Check className="w-4 h-4 text-green-500" />
                   ) : (
                     <X className="w-4 h-4 text-red-500" />
@@ -1911,7 +1914,8 @@ export default function LandingPageBuilder() {
                                     data: { theme: themeData.theme },
                                   })
                                 }
-                                className={`group relative rounded-xl overflow-hidden border-2 transition-all ${
+                                disabled={updatePageMutation.isPending}
+                                className={`group relative rounded-xl overflow-hidden border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                                   isSelected 
                                     ? "border-blue-500 shadow-lg" 
                                     : "border-gray-200 hover:border-gray-300 hover:shadow-md"
@@ -1923,6 +1927,13 @@ export default function LandingPageBuilder() {
                                   className="w-full h-full flex items-center justify-center p-4"
                                   style={{ background: themeData.gradient }}
                                 >
+                                  {/* Loading spinner overlay */}
+                                  {updatePageMutation.isPending && (
+                                    <div className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-10">
+                                      <Loader2 className="w-8 h-8 animate-spin text-white" />
+                                    </div>
+                                  )}
+                                  
                                   {/* Mini mockup */}
                                   <div className="w-full bg-white/20 backdrop-blur-sm rounded-lg p-2 space-y-1.5">
                                     <div className="w-6 h-6 rounded-full bg-white/40 mx-auto" />
@@ -1935,7 +1946,7 @@ export default function LandingPageBuilder() {
                                     </div>
                                   </div>
                                 </div>
-                                {isSelected && (
+                                {isSelected && !updatePageMutation.isPending && (
                                   <div className="absolute top-1 right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                                     <Check className="w-3 h-3 text-white" />
                                   </div>
