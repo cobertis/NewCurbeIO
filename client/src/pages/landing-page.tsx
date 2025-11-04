@@ -884,7 +884,7 @@ export default function LandingPageBuilder() {
     mutationFn: async ({ blockId, data }: { blockId: string; data: any }) => {
       return await apiRequest(
         "PATCH",
-        `/api/landing-pages/${selectedPageId}/blocks/${blockId}`,
+        `/api/landing-blocks/${blockId}`,
         data
       );
     },
@@ -900,15 +900,20 @@ export default function LandingPageBuilder() {
   // Delete block mutation
   const deleteBlockMutation = useMutation({
     mutationFn: async (blockId: string) => {
+      console.log('[DELETE BLOCK] Sending DELETE request for blockId:', blockId);
       return await apiRequest(
         "DELETE",
-        `/api/landing-pages/${selectedPageId}/blocks/${blockId}`
+        `/api/landing-blocks/${blockId}`
       );
     },
     onSuccess: () => {
+      console.log('[DELETE BLOCK] Successfully deleted, invalidating queries');
       queryClient.invalidateQueries({
         queryKey: ["/api/landing-pages", selectedPageId],
       });
+    },
+    onError: (error) => {
+      console.error('[DELETE BLOCK] Error deleting block:', error);
     },
   });
 
