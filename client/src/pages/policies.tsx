@@ -7362,8 +7362,8 @@ export default function PoliciesPage() {
                               m.type === 'Family Medical' || m.family_cost
                             );
 
-                            console.log('[DEBUG PLAN] Raw plan.network_type:', plan.network_type);
-                            console.log('[DEBUG PLAN] Raw plan object:', plan);
+                            // Extract network type from camelCase (stored format) with snake_case fallback
+                            const rawNetwork = plan.networkType ?? plan.plan?.networkType ?? plan.planData?.networkType ?? plan.network_type;
                             
                             const mappedData = {
                               productType: plan.type || '',
@@ -7372,7 +7372,7 @@ export default function PoliciesPage() {
                               planName: plan.name || '',
                               cmsPlanId: plan.id || '',
                               metal: plan.metal_level?.toLowerCase() || '',
-                              networkType: plan.network_type?.toUpperCase() || '',
+                              networkType: rawNetwork?.toUpperCase() || '',
                               rating: plan.quality_rating?.global_rating?.toString() || '',
                               premium: plan.premium?.toString() || '',
                               taxCredit: plan.premium_w_credit !== null && plan.premium !== undefined 
@@ -7424,11 +7424,6 @@ export default function PoliciesPage() {
                               policyTotalCost: '',
                             };
                             
-                            console.log('[MAPPED DATA] Extracted plan data:', mappedData);
-                            console.log('[MAPPED DATA] Carrier:', mappedData.carrier);
-                            console.log('[MAPPED DATA] Product Type:', mappedData.productType);
-                            console.log('[MAPPED DATA] Metal:', mappedData.metal);
-                            console.log('[MAPPED DATA] Network Type:', mappedData.networkType);
                             
                             setEditingPlanId(policyPlan.id);
                             setManualPlanData(mappedData);
