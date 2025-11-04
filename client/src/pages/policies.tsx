@@ -6937,7 +6937,10 @@ export default function PoliciesPage() {
                 return (
                   <>
                     {plans.map((policyPlan: any, index: number) => {
-                      const plan = policyPlan.planData;
+                      // Parse planData if it's a string (JSON)
+                      const plan = typeof policyPlan.planData === 'string' 
+                        ? JSON.parse(policyPlan.planData) 
+                        : policyPlan.planData;
                       if (!plan) return null;
                 
                 // Plan exists, show full details
