@@ -7388,7 +7388,7 @@ export default function PoliciesPage() {
                               carrierIssuerId: plan.issuer?.id || '',
                               planName: plan.name || '',
                               cmsPlanId: plan.id || '',
-                              metal: plan.metal_level || '',
+                              metal: plan.metal_level?.toLowerCase() || '',
                               networkType: plan.network_type || '',
                               rating: plan.quality_rating?.global_rating?.toString() || '',
                               premium: plan.premium?.toString() || '',
