@@ -7379,7 +7379,7 @@ export default function PoliciesPage() {
                               planName: plan.name || '',
                               cmsPlanId: plan.id || '',
                               metal: plan.metal_level?.toLowerCase() || '',
-                              networkType: plan.network_type || '',
+                              networkType: plan.network_type?.toUpperCase() || '',
                               rating: plan.quality_rating?.global_rating?.toString() || '',
                               premium: plan.premium?.toString() || '',
                               taxCredit: plan.premium_w_credit !== null && plan.premium !== undefined 
