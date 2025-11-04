@@ -811,10 +811,6 @@ export default function PublicLandingPage() {
                   className="text-2xl font-bold mb-0"
                   style={{ 
                     color: "#000000",
-                    textDecoration: "none",
-                    border: "none",
-                    borderBottom: "none",
-                    boxShadow: "none",
                   }}
                   data-testid="profile-name"
                 >

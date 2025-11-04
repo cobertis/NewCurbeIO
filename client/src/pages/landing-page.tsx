@@ -1755,10 +1755,6 @@ export default function LandingPageBuilder() {
                                   className="text-2xl font-bold mb-0"
                                   style={{ 
                                     color: "#000000",
-                                    textDecoration: "none",
-                                    border: "none",
-                                    borderBottom: "none",
-                                    boxShadow: "none",
                                   }}
                                 >
                                   {selectedPage.landingPage.profileName}
