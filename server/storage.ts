@@ -5378,7 +5378,7 @@ export class DbStorage implements IStorage {
       const user = usersMap.get(note.createdBy);
       return {
         ...note,
-        creatorName: user?.name || null,
+        creatorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : null,
         creatorAvatar: user?.avatar || null,
       };
     }) as any;
