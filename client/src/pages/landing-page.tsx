@@ -2645,13 +2645,13 @@ export default function LandingPageBuilder() {
       <AlertDialog open={!!blockToDelete} onOpenChange={() => setBlockToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar bloque?</AlertDialogTitle>
+            <AlertDialogTitle>Delete block?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. El bloque será eliminado permanentemente.
+              This action cannot be undone. The block will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (blockToDelete) {
@@ -2662,7 +2662,7 @@ export default function LandingPageBuilder() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
             >
-              Eliminar
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
