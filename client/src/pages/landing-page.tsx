@@ -1722,9 +1722,6 @@ export default function LandingPageBuilder() {
                                   </span>
                                 </div>
                               )}
-                              <span className="font-semibold text-sm">
-                                {selectedPage.landingPage.title || companyData?.company?.name || "SmartBio"}
-                              </span>
                             </div>
                             <button className="text-white p-1">
                               <Menu className="h-6 w-6" />

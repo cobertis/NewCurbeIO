@@ -793,9 +793,6 @@ export default function PublicLandingPage() {
                 </span>
               </div>
             )}
-            <span className="font-semibold text-sm">
-              {landingPage.title || companyData?.company?.name || "SmartBio"}
-            </span>
           </div>
           <button className="text-white p-1" aria-label="Menu" data-testid="button-header-menu">
             <Menu className="h-6 w-6" />
