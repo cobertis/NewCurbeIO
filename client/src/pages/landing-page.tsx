@@ -1611,9 +1611,13 @@ export default function LandingPageBuilder() {
                         <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3">
                           <div className="flex items-center gap-2 text-white">
                             <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-                              <span className="text-xs font-bold">SB</span>
+                              <span className="text-xs font-bold">
+                                {(selectedPage.landingPage.title || "SB").substring(0, 2).toUpperCase()}
+                              </span>
                             </div>
-                            <span className="font-semibold text-sm">SmartBio</span>
+                            <span className="font-semibold text-sm">
+                              {selectedPage.landingPage.title || "SmartBio"}
+                            </span>
                           </div>
                           <button className="text-white p-1">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2036,6 +2040,27 @@ export default function LandingPageBuilder() {
                         <h3 className="font-semibold">Profile</h3>
                         
                         <div>
+                          <Label htmlFor="profilePhoto" className="text-xs mb-2 block">
+                            Profile Photo URL
+                          </Label>
+                          <Input
+                            id="profilePhoto"
+                            value={selectedPage.landingPage.profilePhoto || ""}
+                            onChange={(e) =>
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: { profilePhoto: e.target.value },
+                              })
+                            }
+                            placeholder="https://example.com/photo.jpg"
+                            data-testid="input-profile-photo"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            URL of your profile photo (appears in the large circular avatar)
+                          </p>
+                        </div>
+                        
+                        <div>
                           <Label htmlFor="profileName" className="text-xs mb-2 block">
                             Name
                           </Label>
@@ -2100,6 +2125,27 @@ export default function LandingPageBuilder() {
                       {/* Page Settings */}
                       <div className="space-y-4">
                         <h3 className="font-semibold">Page Settings</h3>
+                        
+                        <div>
+                          <Label htmlFor="page-title" className="text-xs mb-2 block">
+                            Logo / Brand Name
+                          </Label>
+                          <Input
+                            id="page-title"
+                            value={selectedPage.landingPage.title || ""}
+                            onChange={(e) =>
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: { title: e.target.value },
+                              })
+                            }
+                            placeholder="e.g., SmartBio, YourBrand"
+                            data-testid="input-page-title"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Appears in the header logo and initials
+                          </p>
+                        </div>
                         
                         <div>
                           <Label htmlFor="slug" className="text-xs mb-2 block">

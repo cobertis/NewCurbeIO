@@ -769,9 +769,13 @@ export default function PublicLandingPage() {
       >
         <div className="flex items-center gap-2 text-white">
           <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-            <span className="text-xs font-bold">SB</span>
+            <span className="text-xs font-bold">
+              {(landingPage.title || "SB").substring(0, 2).toUpperCase()}
+            </span>
           </div>
-          <span className="font-semibold text-sm">SmartBio</span>
+          <span className="font-semibold text-sm">
+            {landingPage.title || "SmartBio"}
+          </span>
         </div>
         <button className="text-white p-1" aria-label="Menu" data-testid="button-header-menu">
           <Menu className="h-6 w-6" />
