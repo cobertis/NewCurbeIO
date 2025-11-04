@@ -159,6 +159,7 @@ const THEMES = [
       textColor: "#1a1a1a",
       buttonColor: "#667eea",
       buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     },
   },
   {
@@ -171,6 +172,7 @@ const THEMES = [
       textColor: "#1a1a1a",
       buttonColor: "#f093fb",
       buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
     },
   },
   {
@@ -183,6 +185,7 @@ const THEMES = [
       textColor: "#1a1a1a",
       buttonColor: "#4facfe",
       buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
     },
   },
   {
@@ -195,6 +198,7 @@ const THEMES = [
       textColor: "#f8fafc",
       buttonColor: "#60A5FA",
       buttonTextColor: "#0f172a",
+      backgroundGradient: "linear-gradient(135deg, #2c3e50 0%, #000000 100%)",
     },
   },
   {
@@ -207,6 +211,7 @@ const THEMES = [
       textColor: "#1a1a1a",
       buttonColor: "#43e97b",
       buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
     },
   },
   {
@@ -219,6 +224,7 @@ const THEMES = [
       textColor: "#1a1a1a",
       buttonColor: "#fa709a",
       buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
     },
   },
   {
@@ -231,6 +237,7 @@ const THEMES = [
       textColor: "#1a1a1a",
       buttonColor: "#7f00ff",
       buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #7f00ff 0%, #e100ff 100%)",
     },
   },
   {
@@ -243,6 +250,7 @@ const THEMES = [
       textColor: "#f8fafc",
       buttonColor: "#004e92",
       buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #000428 0%, #004e92 100%)",
     },
   },
 ];
@@ -916,14 +924,11 @@ export default function LandingPageBuilder() {
           const tempId = `temp-${Date.now()}-${Math.random()}`;
           const newBlock: LandingBlock = {
             id: tempId,
-            landingPageId: landingPageId,
             type: data.type,
             content: data.content,
             position: data.position,
             isVisible: data.isVisible ?? true,
             clickCount: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
           };
           
           return {
