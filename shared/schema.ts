@@ -2691,6 +2691,8 @@ export const landingAnalytics = pgTable("landing_analytics", {
 
 export const insertLandingPageSchema = createInsertSchema(landingPages).omit({
   id: true,
+  companyId: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
   viewCount: true,
