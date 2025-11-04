@@ -3,8 +3,8 @@ import { ChevronLeft, ChevronRight, Plus, Cake, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 interface CalendarEvent {
   type: 'birthday' | 'reminder';
@@ -98,14 +98,7 @@ export default function Calendar() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen w-full">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg text-muted-foreground">Loading calendar...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading calendar..." />;
   }
 
   return (

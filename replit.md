@@ -12,26 +12,26 @@ Design style: Extremely professional corporate design - NO bright colors, NO emo
 - Users can still manually dismiss toasts before the timeout
 
 **Loading State Pattern (MANDATORY):**
-ALWAYS use centered full-screen loading states for async operations in sheets, dialogs, and major UI components. Pattern:
+ALWAYS use the standardized `LoadingSpinner` component for all loading states across the application:
 ```tsx
-if (isLoading || !data) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max_w-2xl flex items-center justify-center" side="right">
-        <div className="flex flex_col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg text-muted-foreground">Loading [description]...</p>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
+import { LoadingSpinner } from "@/components/loading-spinner";
+
+// For full-screen loading (pages, major components):
+if (isLoading) {
+  return <LoadingSpinner message="Loading data..." />;
+}
+
+// For smaller containers (sheets, dialogs):
+if (isLoading) {
+  return <LoadingSpinner message="Loading..." fullScreen={false} />;
 }
 ```
-- User strongly prefers this pattern over skeleton loaders or inline spinners
+- User strongly prefers consistent loading indicators across all pages
 - Shows large, centered spinner (h-12 w-12) with descriptive text
-- Components open immediately and show loading state internally
-- NO prefetching - let queries load naturally and show full-screen loading
-- Apply consistently across all sheets, dialogs, and async components
+- `fullScreen={true}` (default) for pages, `fullScreen={false}` for sheets/dialogs
+- NO prefetching - let queries load naturally and show loading state
+- Apply consistently across ALL pages, sheets, dialogs, and async components
+- This ensures a uniform user experience throughout the entire application
 
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
 
