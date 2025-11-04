@@ -1078,12 +1078,6 @@ export default function LandingPageBuilder() {
         )}
 
         <div className="flex items-center gap-2 ml-auto">
-          {/* Connect Domain (stub) */}
-          <Button variant="outline" size="sm" disabled data-testid="button-connect-domain">
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Connect Domain
-          </Button>
-
           {/* Undo/Redo (disabled) */}
           <div className="hidden sm:flex gap-1">
             <Button variant="ghost" size="sm" disabled data-testid="button-undo">
