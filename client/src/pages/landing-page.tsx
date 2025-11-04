@@ -1669,7 +1669,36 @@ export default function LandingPageBuilder() {
                             )}
                           </div>
 
-                      {/* Blocks with Drag and Drop */}
+                          {/* Social Media Icons - Horizontal Row */}
+                          {(() => {
+                            const socialBlocks = blocks.filter(b => b.type === "social" && b.isVisible);
+                            if (socialBlocks.length > 0) {
+                              return (
+                                <div className="flex items-center justify-center gap-3 mb-6">
+                                  {socialBlocks.map((block) => {
+                                    const SocialIcon = SOCIAL_PLATFORMS.find(
+                                      (p) => p.value === block.content.platform
+                                    )?.icon || Share2;
+                                    return (
+                                      <a
+                                        key={block.id}
+                                        href={block.content.url || "#"}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-12 h-12 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
+                                        data-testid={`preview-social-${block.id}`}
+                                      >
+                                        <SocialIcon className="w-6 h-6 text-white" />
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+
+                      {/* Other Blocks with Drag and Drop */}
                       <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -1680,7 +1709,7 @@ export default function LandingPageBuilder() {
                           strategy={verticalListSortingStrategy}
                         >
                           <div className="space-y-3">
-                            {blocks.length === 0 ? (
+                            {blocks.filter(b => b.type !== "social").length === 0 ? (
                               <Card className="border-dashed">
                                 <CardContent className="p-8 text-center">
                                   <p className="text-gray-500 text-sm">
@@ -1689,7 +1718,7 @@ export default function LandingPageBuilder() {
                                 </CardContent>
                               </Card>
                             ) : (
-                              blocks.map((block) => (
+                              blocks.filter(b => b.type !== "social").map((block) => (
                                 <div key={block.id} className="space-y-2">
                                   {/* Editable block item */}
                                   <SortableBlock

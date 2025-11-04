@@ -831,10 +831,46 @@ export default function PublicLandingPage() {
           </div>
         )}
 
-        {/* Blocks */}
+        {/* Social Media Icons - Horizontal Row */}
+        {(() => {
+          const socialBlocks = sortedBlocks.filter((b) => b.type === "social" && b.isVisible);
+          if (socialBlocks.length > 0) {
+            const SOCIAL_ICONS: Record<string, any> = {
+              instagram: SiInstagram,
+              facebook: SiFacebook,
+              twitter: SiX,
+              linkedin: SiLinkedin,
+              youtube: SiYoutube,
+              tiktok: SiTiktok,
+            };
+            return (
+              <div className="flex items-center justify-center gap-3 mb-6 max-w-2xl mx-auto">
+                {socialBlocks.map((block) => {
+                  const SocialIcon = SOCIAL_ICONS[block.content.platform] || SiInstagram;
+                  return (
+                    <a
+                      key={block.id}
+                      href={block.content.url || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => trackClick(block.id)}
+                      className="w-12 h-12 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
+                      data-testid={`public-social-${block.id}`}
+                    >
+                      <SocialIcon className="w-6 h-6 text-white" />
+                    </a>
+                  );
+                })}
+              </div>
+            );
+          }
+          return null;
+        })()}
+
+        {/* Other Blocks (excluding social media) */}
         <div className="space-y-3 max-w-2xl mx-auto" data-testid="blocks-container">
           {sortedBlocks
-            .filter((block) => block.isVisible)
+            .filter((block) => block.isVisible && block.type !== "social")
             .map((block) => (
               <PublicBlock
                 key={block.id}
