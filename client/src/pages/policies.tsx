@@ -3553,6 +3553,7 @@ export default function PoliciesPage() {
     // Basic Info
     productType: '',
     carrier: '',
+    carrierIssuerId: '',
     planName: '',
     cmsPlanId: '',
     metal: '',
@@ -3562,7 +3563,9 @@ export default function PoliciesPage() {
     premium: '',
     taxCredit: '',
     deductible: '',
+    deductibleFamily: '',
     outOfPocketMax: '',
+    outOfPocketMaxFamily: '',
     // Copays/Benefits
     primaryCare: '',
     specialist: '',
@@ -3570,11 +3573,33 @@ export default function PoliciesPage() {
     emergency: '',
     mentalHealth: '',
     genericDrugs: '',
+    // Additional Benefits
+    preferredBrandDrugs: '',
+    nonPreferredBrandDrugs: '',
+    specialtyDrugs: '',
+    inpatientFacility: '',
+    inpatientPhysician: '',
+    outpatientFacility: '',
+    outpatientPhysician: '',
+    imaging: '',
+    labWork: '',
+    xrays: '',
+    preventiveCare: '',
+    rehabilitation: '',
+    habilitationServices: '',
+    skilledNursing: '',
+    durableMedicalEquipment: '',
+    hospiceCare: '',
+    emergencyTransport: '',
     // Features
     dentalChild: false,
     dentalAdult: false,
     hsaEligible: false,
     simpleChoice: false,
+    specialistReferralRequired: false,
+    hasNationalNetwork: false,
+    // Disease Management Programs
+    diseaseManagementPrograms: '',
     // Policy Information
     effectiveDate: '',
     cancellationDate: '',
@@ -7348,19 +7373,26 @@ export default function PoliciesPage() {
                               return '';
                             };
 
-                            // Extract deductible
-                            const mainDeductible = plan.deductibles?.find((d: any) => 
-                              d.type === 'Medical Individual Standard' || d.type === 'Individual Medical'
+                            // Extract deductibles
+                            const individualDeductible = plan.deductibles?.find((d: any) => 
+                              d.type === 'Medical Individual Standard' || d.type === 'Individual Medical' || d.individual_cost
+                            );
+                            const familyDeductible = plan.deductibles?.find((d: any) => 
+                              d.type === 'Medical Family Standard' || d.type === 'Family Medical' || d.family_cost
                             );
 
-                            // Extract out-of-pocket maximum
-                            const outOfPocketMax = plan.moops?.find((m: any) => 
-                              m.type === 'Individual Medical'
+                            // Extract out-of-pocket maximums
+                            const individualMoop = plan.moops?.find((m: any) => 
+                              m.type === 'Individual Medical' || m.individual_cost
+                            );
+                            const familyMoop = plan.moops?.find((m: any) => 
+                              m.type === 'Family Medical' || m.family_cost
                             );
 
                             setManualPlanData({
                               productType: plan.type || '',
                               carrier: plan.issuer?.name || '',
+                              carrierIssuerId: plan.issuer?.id || '',
                               planName: plan.name || '',
                               cmsPlanId: plan.id || '',
                               metal: plan.metal_level || '',
@@ -7370,18 +7402,40 @@ export default function PoliciesPage() {
                               taxCredit: plan.premium_w_credit !== null && plan.premium !== undefined 
                                 ? (plan.premium - (plan.premium_w_credit || 0)).toString() 
                                 : '',
-                              deductible: mainDeductible?.amount?.toString() || '',
-                              outOfPocketMax: outOfPocketMax?.amount?.toString() || '',
+                              deductible: individualDeductible?.amount?.toString() || '',
+                              deductibleFamily: familyDeductible?.amount?.toString() || '',
+                              outOfPocketMax: individualMoop?.amount?.toString() || '',
+                              outOfPocketMaxFamily: familyMoop?.amount?.toString() || '',
                               primaryCare: getBenefitCost('Primary Care'),
                               specialist: getBenefitCost('Specialist'),
                               urgentCare: getBenefitCost('Urgent Care'),
                               emergency: getBenefitCost('Emergency'),
                               mentalHealth: getBenefitCost('Mental'),
                               genericDrugs: getBenefitCost('Generic Drugs'),
+                              preferredBrandDrugs: getBenefitCost('Preferred Brand Drugs'),
+                              nonPreferredBrandDrugs: getBenefitCost('Non-Preferred Brand Drugs'),
+                              specialtyDrugs: getBenefitCost('Specialty Drugs'),
+                              inpatientFacility: getBenefitCost('Inpatient Facility'),
+                              inpatientPhysician: getBenefitCost('Inpatient Physician'),
+                              outpatientFacility: getBenefitCost('Outpatient Facility'),
+                              outpatientPhysician: getBenefitCost('Outpatient Physician'),
+                              imaging: getBenefitCost('Imaging'),
+                              labWork: getBenefitCost('Lab'),
+                              xrays: getBenefitCost('X-Ray'),
+                              preventiveCare: getBenefitCost('Preventive'),
+                              rehabilitation: getBenefitCost('Rehabilitation'),
+                              habilitationServices: getBenefitCost('Habilitation'),
+                              skilledNursing: getBenefitCost('Skilled Nursing'),
+                              durableMedicalEquipment: getBenefitCost('Durable Medical Equipment'),
+                              hospiceCare: getBenefitCost('Hospice'),
+                              emergencyTransport: getBenefitCost('Emergency Transport'),
                               dentalChild: plan.has_dental_child_coverage || false,
                               dentalAdult: plan.has_dental_adult_coverage || false,
                               hsaEligible: plan.hsa_eligible || false,
                               simpleChoice: plan.simple_choice || false,
+                              specialistReferralRequired: plan.specialist_referral_required || false,
+                              hasNationalNetwork: plan.has_national_network || false,
+                              diseaseManagementPrograms: plan.disease_mgmt_programs?.join(', ') || '',
                               effectiveDate: policyInfo.effectiveDate || '',
                               cancellationDate: policyInfo.cancellationDate || '',
                               specialEnrollmentDate: policyInfo.specialEnrollmentDate || '',
@@ -10155,6 +10209,18 @@ export default function PoliciesPage() {
                 </div>
               </div>
 
+              <div className="mt-4">
+                <Label htmlFor="carrierIssuerId" className="text-sm">Carrier Issuer ID</Label>
+                <Input
+                  id="carrierIssuerId"
+                  value={manualPlanData.carrierIssuerId}
+                  onChange={(e) => setManualPlanData({ ...manualPlanData, carrierIssuerId: e.target.value })}
+                  placeholder="e.g., 12345"
+                  className="mt-1"
+                  data-testid="input-carrier-issuer-id"
+                />
+              </div>
+
               <div className="grid grid-cols-3 gap-4 mt-4">
                 <div>
                   <Label htmlFor="metal" className="text-sm">Metal level</Label>
@@ -10261,7 +10327,23 @@ export default function PoliciesPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="outOfPocketMax" className="text-sm">Out-of-pocket maximum</Label>
+                  <Label htmlFor="deductibleFamily" className="text-sm">Deductible (Family)</Label>
+                  <Input
+                    id="deductibleFamily"
+                    type="number"
+                    step="0.01"
+                    value={manualPlanData.deductibleFamily}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, deductibleFamily: e.target.value })}
+                    placeholder="e.g., 4000.00"
+                    className="mt-1"
+                    data-testid="input-deductible-family"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="outOfPocketMax" className="text-sm">Out-of-pocket max (Individual)</Label>
                   <Input
                     id="outOfPocketMax"
                     type="number"
@@ -10271,6 +10353,20 @@ export default function PoliciesPage() {
                     placeholder="e.g., 8000.00"
                     className="mt-1"
                     data-testid="input-out-of-pocket-max"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="outOfPocketMaxFamily" className="text-sm">Out-of-pocket max (Family)</Label>
+                  <Input
+                    id="outOfPocketMaxFamily"
+                    type="number"
+                    step="0.01"
+                    value={manualPlanData.outOfPocketMaxFamily}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, outOfPocketMaxFamily: e.target.value })}
+                    placeholder="e.g., 16000.00"
+                    className="mt-1"
+                    data-testid="input-out-of-pocket-max-family"
                   />
                 </div>
               </div>
@@ -10359,7 +10455,232 @@ export default function PoliciesPage() {
               </div>
             </div>
 
-            {/* 4. Plan Features */}
+            {/* 4. Extended Benefits & Services */}
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-semibold text-primary mb-3">Extended Benefits & Services</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="preferredBrandDrugs" className="text-sm">Preferred brand drugs</Label>
+                  <Input
+                    id="preferredBrandDrugs"
+                    value={manualPlanData.preferredBrandDrugs}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, preferredBrandDrugs: e.target.value })}
+                    placeholder='e.g., "$40" or "25%"'
+                    className="mt-1"
+                    data-testid="input-preferred-brand-drugs"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="nonPreferredBrandDrugs" className="text-sm">Non-preferred brand drugs</Label>
+                  <Input
+                    id="nonPreferredBrandDrugs"
+                    value={manualPlanData.nonPreferredBrandDrugs}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, nonPreferredBrandDrugs: e.target.value })}
+                    placeholder='e.g., "$80" or "50%"'
+                    className="mt-1"
+                    data-testid="input-non-preferred-brand-drugs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="specialtyDrugs" className="text-sm">Specialty drugs</Label>
+                  <Input
+                    id="specialtyDrugs"
+                    value={manualPlanData.specialtyDrugs}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, specialtyDrugs: e.target.value })}
+                    placeholder='e.g., "$150" or "30%"'
+                    className="mt-1"
+                    data-testid="input-specialty-drugs"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="preventiveCare" className="text-sm">Preventive care</Label>
+                  <Input
+                    id="preventiveCare"
+                    value={manualPlanData.preventiveCare}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, preventiveCare: e.target.value })}
+                    placeholder='e.g., "No Charge"'
+                    className="mt-1"
+                    data-testid="input-preventive-care"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="inpatientFacility" className="text-sm">Inpatient facility</Label>
+                  <Input
+                    id="inpatientFacility"
+                    value={manualPlanData.inpatientFacility}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, inpatientFacility: e.target.value })}
+                    placeholder='e.g., "$1,500" or "30%"'
+                    className="mt-1"
+                    data-testid="input-inpatient-facility"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="inpatientPhysician" className="text-sm">Inpatient physician</Label>
+                  <Input
+                    id="inpatientPhysician"
+                    value={manualPlanData.inpatientPhysician}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, inpatientPhysician: e.target.value })}
+                    placeholder='e.g., "No Charge"'
+                    className="mt-1"
+                    data-testid="input-inpatient-physician"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="outpatientFacility" className="text-sm">Outpatient facility</Label>
+                  <Input
+                    id="outpatientFacility"
+                    value={manualPlanData.outpatientFacility}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, outpatientFacility: e.target.value })}
+                    placeholder='e.g., "$250"'
+                    className="mt-1"
+                    data-testid="input-outpatient-facility"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="outpatientPhysician" className="text-sm">Outpatient physician</Label>
+                  <Input
+                    id="outpatientPhysician"
+                    value={manualPlanData.outpatientPhysician}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, outpatientPhysician: e.target.value })}
+                    placeholder='e.g., "No Charge"'
+                    className="mt-1"
+                    data-testid="input-outpatient-physician"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="imaging" className="text-sm">Imaging (CT/PET/MRI)</Label>
+                  <Input
+                    id="imaging"
+                    value={manualPlanData.imaging}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, imaging: e.target.value })}
+                    placeholder='e.g., "$200" or "20%"'
+                    className="mt-1"
+                    data-testid="input-imaging"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="xrays" className="text-sm">X-rays and diagnostic imaging</Label>
+                  <Input
+                    id="xrays"
+                    value={manualPlanData.xrays}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, xrays: e.target.value })}
+                    placeholder='e.g., "$50"'
+                    className="mt-1"
+                    data-testid="input-xrays"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="labWork" className="text-sm">Laboratory services</Label>
+                  <Input
+                    id="labWork"
+                    value={manualPlanData.labWork}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, labWork: e.target.value })}
+                    placeholder='e.g., "$35"'
+                    className="mt-1"
+                    data-testid="input-lab-work"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="rehabilitation" className="text-sm">Rehabilitation services</Label>
+                  <Input
+                    id="rehabilitation"
+                    value={manualPlanData.rehabilitation}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, rehabilitation: e.target.value })}
+                    placeholder='e.g., "$45"'
+                    className="mt-1"
+                    data-testid="input-rehabilitation"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="habilitationServices" className="text-sm">Habilitation services</Label>
+                  <Input
+                    id="habilitationServices"
+                    value={manualPlanData.habilitationServices}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, habilitationServices: e.target.value })}
+                    placeholder='e.g., "$45"'
+                    className="mt-1"
+                    data-testid="input-habilitation-services"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="skilledNursing" className="text-sm">Skilled nursing facility</Label>
+                  <Input
+                    id="skilledNursing"
+                    value={manualPlanData.skilledNursing}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, skilledNursing: e.target.value })}
+                    placeholder='e.g., "$200/day"'
+                    className="mt-1"
+                    data-testid="input-skilled-nursing"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="durableMedicalEquipment" className="text-sm">Durable medical equipment</Label>
+                  <Input
+                    id="durableMedicalEquipment"
+                    value={manualPlanData.durableMedicalEquipment}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, durableMedicalEquipment: e.target.value })}
+                    placeholder='e.g., "20%"'
+                    className="mt-1"
+                    data-testid="input-durable-medical-equipment"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="hospiceCare" className="text-sm">Hospice care</Label>
+                  <Input
+                    id="hospiceCare"
+                    value={manualPlanData.hospiceCare}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, hospiceCare: e.target.value })}
+                    placeholder='e.g., "No Charge"'
+                    className="mt-1"
+                    data-testid="input-hospice-care"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label htmlFor="emergencyTransport" className="text-sm">Emergency medical transportation</Label>
+                <Input
+                  id="emergencyTransport"
+                  value={manualPlanData.emergencyTransport}
+                  onChange={(e) => setManualPlanData({ ...manualPlanData, emergencyTransport: e.target.value })}
+                  placeholder='e.g., "$300"'
+                  className="mt-1"
+                  data-testid="input-emergency-transport"
+                />
+              </div>
+            </div>
+
+            {/* 5. Plan Features */}
             <div className="pt-4 border-t">
               <h3 className="text-sm font-semibold text-primary mb-3">Plan Features</h3>
               
@@ -10414,9 +10735,47 @@ export default function PoliciesPage() {
                   </Label>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="specialistReferralRequired"
+                    checked={manualPlanData.specialistReferralRequired}
+                    onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, specialistReferralRequired: !!checked })}
+                    data-testid="checkbox-specialist-referral-required"
+                  />
+                  <Label htmlFor="specialistReferralRequired" className="text-sm font-normal cursor-pointer">
+                    Specialist referral required
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="hasNationalNetwork"
+                    checked={manualPlanData.hasNationalNetwork}
+                    onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, hasNationalNetwork: !!checked })}
+                    data-testid="checkbox-has-national-network"
+                  />
+                  <Label htmlFor="hasNationalNetwork" className="text-sm font-normal cursor-pointer">
+                    Has national network
+                  </Label>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label htmlFor="diseaseManagementPrograms" className="text-sm">Disease management programs</Label>
+                <Input
+                  id="diseaseManagementPrograms"
+                  value={manualPlanData.diseaseManagementPrograms}
+                  onChange={(e) => setManualPlanData({ ...manualPlanData, diseaseManagementPrograms: e.target.value })}
+                  placeholder='e.g., "Diabetes, Asthma, Heart Disease"'
+                  className="mt-1"
+                  data-testid="input-disease-management-programs"
+                />
+              </div>
             </div>
 
-            {/* 5. Enrollment Information */}
+            {/* 6. Enrollment Information */}
             <div className="pt-4 border-t">
               <h3 className="text-sm font-semibold text-primary mb-3">Enrollment Information</h3>
               
@@ -10556,6 +10915,7 @@ export default function PoliciesPage() {
                   setManualPlanData({
                     productType: '',
                     carrier: '',
+                    carrierIssuerId: '',
                     planName: '',
                     cmsPlanId: '',
                     metal: '',
@@ -10564,17 +10924,39 @@ export default function PoliciesPage() {
                     premium: '',
                     taxCredit: '',
                     deductible: '',
+                    deductibleFamily: '',
                     outOfPocketMax: '',
+                    outOfPocketMaxFamily: '',
                     primaryCare: '',
                     specialist: '',
                     urgentCare: '',
                     emergency: '',
                     mentalHealth: '',
                     genericDrugs: '',
+                    preferredBrandDrugs: '',
+                    nonPreferredBrandDrugs: '',
+                    specialtyDrugs: '',
+                    inpatientFacility: '',
+                    inpatientPhysician: '',
+                    outpatientFacility: '',
+                    outpatientPhysician: '',
+                    imaging: '',
+                    labWork: '',
+                    xrays: '',
+                    preventiveCare: '',
+                    rehabilitation: '',
+                    habilitationServices: '',
+                    skilledNursing: '',
+                    durableMedicalEquipment: '',
+                    hospiceCare: '',
+                    emergencyTransport: '',
                     dentalChild: false,
                     dentalAdult: false,
                     hsaEligible: false,
                     simpleChoice: false,
+                    specialistReferralRequired: false,
+                    hasNationalNetwork: false,
+                    diseaseManagementPrograms: '',
                     effectiveDate: '',
                     cancellationDate: '',
                     specialEnrollmentDate: '',
@@ -10608,10 +10990,51 @@ export default function PoliciesPage() {
                   }
 
                   try {
+                    // Build deductibles array
+                    const deductibles = [];
+                    if (manualPlanData.deductible) {
+                      deductibles.push({
+                        amount: parseFloat(manualPlanData.deductible),
+                        type: 'Individual Medical',
+                        individual_cost: true,
+                        family_cost: false
+                      });
+                    }
+                    if (manualPlanData.deductibleFamily) {
+                      deductibles.push({
+                        amount: parseFloat(manualPlanData.deductibleFamily),
+                        type: 'Family Medical',
+                        individual_cost: false,
+                        family_cost: true
+                      });
+                    }
+
+                    // Build MOOPs array
+                    const moops = [];
+                    if (manualPlanData.outOfPocketMax) {
+                      moops.push({
+                        amount: parseFloat(manualPlanData.outOfPocketMax),
+                        type: 'Individual Medical',
+                        individual_cost: true,
+                        family_cost: false
+                      });
+                    }
+                    if (manualPlanData.outOfPocketMaxFamily) {
+                      moops.push({
+                        amount: parseFloat(manualPlanData.outOfPocketMaxFamily),
+                        type: 'Family Medical',
+                        individual_cost: false,
+                        family_cost: true
+                      });
+                    }
+
                     const planObject = {
                       id: manualPlanData.cmsPlanId || 'MANUAL-' + Date.now(),
                       name: manualPlanData.planName || `${manualPlanData.carrier} Plan`,
-                      issuer: { name: manualPlanData.carrier },
+                      issuer: { 
+                        name: manualPlanData.carrier,
+                        id: manualPlanData.carrierIssuerId || ''
+                      },
                       metal_level: manualPlanData.metal,
                       type: manualPlanData.productType,
                       network_type: manualPlanData.networkType,
@@ -10619,10 +11042,8 @@ export default function PoliciesPage() {
                       premium_w_credit: manualPlanData.taxCredit 
                         ? (parseFloat(manualPlanData.premium) || 0) - (parseFloat(manualPlanData.taxCredit) || 0) 
                         : null,
-                      deductibles: manualPlanData.deductible ? [{
-                        amount: parseFloat(manualPlanData.deductible),
-                        family: false
-                      }] : [],
+                      deductibles: deductibles,
+                      moops: moops,
                       out_of_pocket_limit: manualPlanData.outOfPocketMax ? parseFloat(manualPlanData.outOfPocketMax) : null,
                       copay_primary: manualPlanData.primaryCare,
                       copay_specialist: manualPlanData.specialist,
@@ -10630,10 +11051,32 @@ export default function PoliciesPage() {
                       copay_emergency: manualPlanData.emergency,
                       copay_mental_health: manualPlanData.mentalHealth,
                       copay_generic_drugs: manualPlanData.genericDrugs,
+                      copay_preferred_brand_drugs: manualPlanData.preferredBrandDrugs,
+                      copay_non_preferred_brand_drugs: manualPlanData.nonPreferredBrandDrugs,
+                      copay_specialty_drugs: manualPlanData.specialtyDrugs,
+                      copay_inpatient_facility: manualPlanData.inpatientFacility,
+                      copay_inpatient_physician: manualPlanData.inpatientPhysician,
+                      copay_outpatient_facility: manualPlanData.outpatientFacility,
+                      copay_outpatient_physician: manualPlanData.outpatientPhysician,
+                      copay_imaging: manualPlanData.imaging,
+                      copay_lab_work: manualPlanData.labWork,
+                      copay_xrays: manualPlanData.xrays,
+                      copay_preventive_care: manualPlanData.preventiveCare,
+                      copay_rehabilitation: manualPlanData.rehabilitation,
+                      copay_habilitation_services: manualPlanData.habilitationServices,
+                      copay_skilled_nursing: manualPlanData.skilledNursing,
+                      copay_durable_medical_equipment: manualPlanData.durableMedicalEquipment,
+                      copay_hospice_care: manualPlanData.hospiceCare,
+                      copay_emergency_transport: manualPlanData.emergencyTransport,
                       has_dental_child_coverage: manualPlanData.dentalChild,
                       has_dental_adult_coverage: manualPlanData.dentalAdult,
                       hsa_eligible: manualPlanData.hsaEligible,
                       simple_choice: manualPlanData.simpleChoice,
+                      specialist_referral_required: manualPlanData.specialistReferralRequired,
+                      has_national_network: manualPlanData.hasNationalNetwork,
+                      disease_mgmt_programs: manualPlanData.diseaseManagementPrograms 
+                        ? manualPlanData.diseaseManagementPrograms.split(',').map(p => p.trim()).filter(Boolean)
+                        : [],
                       quality_rating: manualPlanData.rating ? {
                         available: true,
                         global_rating: parseFloat(manualPlanData.rating)
@@ -10689,6 +11132,7 @@ export default function PoliciesPage() {
                     setManualPlanData({
                       productType: '',
                       carrier: '',
+                      carrierIssuerId: '',
                       planName: '',
                       cmsPlanId: '',
                       metal: '',
@@ -10697,17 +11141,39 @@ export default function PoliciesPage() {
                       premium: '',
                       taxCredit: '',
                       deductible: '',
+                      deductibleFamily: '',
                       outOfPocketMax: '',
+                      outOfPocketMaxFamily: '',
                       primaryCare: '',
                       specialist: '',
                       urgentCare: '',
                       emergency: '',
                       mentalHealth: '',
                       genericDrugs: '',
+                      preferredBrandDrugs: '',
+                      nonPreferredBrandDrugs: '',
+                      specialtyDrugs: '',
+                      inpatientFacility: '',
+                      inpatientPhysician: '',
+                      outpatientFacility: '',
+                      outpatientPhysician: '',
+                      imaging: '',
+                      labWork: '',
+                      xrays: '',
+                      preventiveCare: '',
+                      rehabilitation: '',
+                      habilitationServices: '',
+                      skilledNursing: '',
+                      durableMedicalEquipment: '',
+                      hospiceCare: '',
+                      emergencyTransport: '',
                       dentalChild: false,
                       dentalAdult: false,
                       hsaEligible: false,
                       simpleChoice: false,
+                      specialistReferralRequired: false,
+                      hasNationalNetwork: false,
+                      diseaseManagementPrograms: '',
                       effectiveDate: '',
                       cancellationDate: '',
                       specialEnrollmentDate: '',
