@@ -72,6 +72,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -665,6 +675,7 @@ export default function LandingPageBuilder() {
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [themeCategory, setThemeCategory] = useState<"all" | "light" | "dark">("all");
+  const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
 
   // Local state for Settings fields with debouncing
   const [slugInput, setSlugInput] = useState("");
@@ -1125,8 +1136,8 @@ export default function LandingPageBuilder() {
 
       {/* Main 3-Column Layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Dark with Add Blocks */}
-        <div className="w-[280px] bg-slate-900 dark:bg-black border-r border-slate-800 overflow-y-auto">
+        {/* Left Sidebar - Add Blocks */}
+        <div className="w-[280px] bg-background border-r border-border overflow-y-auto">
           <ScrollArea className="h-full">
             <div className="p-4 space-y-6">
               {/* Add Blocks Section */}
@@ -1345,11 +1356,7 @@ export default function LandingPageBuilder() {
                                         data: { isVisible: !block.isVisible },
                                       });
                                     }}
-                                    onDelete={() => {
-                                      if (confirm("¿Estás seguro de eliminar este bloque?")) {
-                                        deleteBlockMutation.mutate(block.id);
-                                      }
-                                    }}
+                                    onDelete={() => setBlockToDelete(block.id)}
                                   />
                                   {/* Visual preview */}
                                   <div className="pl-6">
@@ -2264,6 +2271,33 @@ export default function LandingPageBuilder() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Block Confirmation Dialog */}
+      <AlertDialog open={!!blockToDelete} onOpenChange={() => setBlockToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar bloque?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El bloque será eliminado permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (blockToDelete) {
+                  deleteBlockMutation.mutate(blockToDelete);
+                  setBlockToDelete(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
