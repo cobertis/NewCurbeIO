@@ -7344,12 +7344,6 @@ export default function PoliciesPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            console.log('[EDIT PLAN] Setting editingPlanId to:', policyPlan.id);
-                            console.log('[EDIT PLAN] Plan data:', plan);
-                            console.log('[EDIT PLAN] plan.issuer:', plan.issuer);
-                            console.log('[EDIT PLAN] plan.issuer?.name:', plan.issuer?.name);
-                            setEditingPlanId(policyPlan.id);
-                            
                             // Extract benefit costs from the benefits array
                             const getBenefitCost = (name: string) => {
                               const benefit = plan.benefits?.find((b: any) => 
@@ -7378,7 +7372,7 @@ export default function PoliciesPage() {
                               m.type === 'Family Medical' || m.family_cost
                             );
 
-                            setManualPlanData({
+                            const mappedData = {
                               productType: plan.type || '',
                               carrier: plan.issuer?.name || '',
                               carrierIssuerId: plan.issuer?.id || '',
@@ -7435,8 +7429,16 @@ export default function PoliciesPage() {
                               marketplaceId: policyInfo.marketplaceId || '',
                               memberId: policyInfo.memberId || '',
                               policyTotalCost: '',
-                            });
-                            setManualPlanDialogOpen(true);
+                            };
+                            
+                            console.log('[MAPPED DATA]', mappedData);
+                            setEditingPlanId(policyPlan.id);
+                            setManualPlanData(mappedData);
+                            
+                            // Use setTimeout to ensure state updates before opening dialog
+                            setTimeout(() => {
+                              setManualPlanDialogOpen(true);
+                            }, 0);
                           }}
                           data-testid="button-edit-plan"
                         >
