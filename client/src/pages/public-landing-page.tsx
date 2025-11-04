@@ -826,7 +826,7 @@ export default function PublicLandingPage() {
       <div className="bg-white px-4 pb-4">
         {/* Profile Info - COMPACT and CLEAN */}
         {(landingPage.profileName || landingPage.profileBio) && (
-          <div className="text-center mb-4 -mt-2">
+          <div className="relative z-50 text-center mb-4 -mt-2">
             {landingPage.profileName && (
               <div className="flex items-center justify-center gap-1.5 mb-1">
                 <h1

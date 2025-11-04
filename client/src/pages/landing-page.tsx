@@ -1770,7 +1770,7 @@ export default function LandingPageBuilder() {
                         {/* Content Section - White Background COMPACT like SmartBio */}
                         <div className="bg-white px-4 pb-4">
                           {/* Profile Info - COMPACT and CLEAN */}
-                          <div className="relative z-20 text-center mb-4 -mt-2">
+                          <div className="relative z-50 text-center mb-4 -mt-2">
                             {selectedPage.landingPage.profileName && (
                               <div className="flex items-center justify-center gap-1.5">
                                 <h1
