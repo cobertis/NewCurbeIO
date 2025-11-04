@@ -7362,30 +7362,29 @@ export default function PoliciesPage() {
                               m.type === 'Family Medical' || m.family_cost
                             );
 
-                            // Extract network type from camelCase (stored format) with snake_case fallback
-                            const rawNetwork = plan.networkType ?? plan.plan?.networkType ?? plan.planData?.networkType ?? plan.network_type;
+                            // Map data from CMS API format (snake_case) to form fields
+                            // Network type is stored in plan.type (HMO, PPO, EPO, POS)
+                            const networkType = plan.type || '';
                             
-                            // DEBUG: Log full plan structure to understand data format
-                            console.log('[PLAN DEBUG] Full plan object:', plan);
-                            console.log('[PLAN DEBUG] plan.premium:', plan.premium);
-                            console.log('[PLAN DEBUG] plan.deductible:', plan.deductible);
-                            console.log('[PLAN DEBUG] plan.outOfPocketMax:', plan.outOfPocketMax);
-                            console.log('[PLAN DEBUG] plan.deductibles array:', plan.deductibles);
-                            console.log('[PLAN DEBUG] plan.moops array:', plan.moops);
+                            // Premium after tax credit (what user pays)
+                            const premiumAfterCredit = plan.premium_w_credit ?? plan.premium ?? 0;
+                            
+                            // Tax credit (APTC) = Original premium - Premium with credit
+                            const taxCredit = plan.premium !== undefined && plan.premium_w_credit !== undefined
+                              ? plan.premium - plan.premium_w_credit
+                              : 0;
                             
                             const mappedData = {
-                              productType: plan.type || '',
+                              productType: policyInfo.productType || '',
                               carrier: plan.issuer?.name || '',
                               carrierIssuerId: plan.issuer?.id || '',
                               planName: plan.name || '',
                               cmsPlanId: plan.id || '',
                               metal: plan.metal_level?.toLowerCase() || '',
-                              networkType: rawNetwork?.toUpperCase() || '',
+                              networkType: networkType.toUpperCase(),
                               rating: plan.quality_rating?.global_rating?.toString() || '',
-                              premium: plan.premium?.toString() || '',
-                              taxCredit: plan.premium_w_credit !== null && plan.premium !== undefined 
-                                ? (plan.premium - (plan.premium_w_credit || 0)).toString() 
-                                : '',
+                              premium: premiumAfterCredit.toString(),
+                              taxCredit: taxCredit.toString(),
                               deductible: individualDeductible?.amount?.toString() || '',
                               deductibleFamily: familyDeductible?.amount?.toString() || '',
                               outOfPocketMax: individualMoop?.amount?.toString() || '',
