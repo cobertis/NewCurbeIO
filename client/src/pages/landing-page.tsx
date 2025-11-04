@@ -681,6 +681,10 @@ export default function LandingPageBuilder() {
   const [slugInput, setSlugInput] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
+  
+  // Undo/Redo state
+  const [history, setHistory] = useState<LandingBlock[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
   // Fetch current user
   const { data: sessionData } = useQuery<{ user: any }>({
@@ -713,12 +717,34 @@ export default function LandingPageBuilder() {
     enabled: !!selectedPageId,
   });
 
-  // Update blocks when page changes
+  // Update blocks when page changes and initialize history
   useEffect(() => {
     if (selectedPage) {
-      setBlocks(selectedPage.blocks || []);
+      const pageBlocks = selectedPage.blocks || [];
+      setBlocks(pageBlocks);
+      // Initialize history with the loaded state
+      setHistory([JSON.parse(JSON.stringify(pageBlocks))]);
+      setHistoryIndex(0);
     }
   }, [selectedPage]);
+
+  // Save to history when blocks change (with debounce to avoid too many snapshots)
+  useEffect(() => {
+    if (blocks.length > 0 || history.length > 0) {
+      const timeoutId = setTimeout(() => {
+        const currentSnapshot = JSON.stringify(blocks);
+        const lastSnapshot = history[historyIndex] ? JSON.stringify(history[historyIndex]) : null;
+        
+        // Only save if state has actually changed
+        if (currentSnapshot !== lastSnapshot) {
+          saveToHistory(blocks);
+        }
+      }, 500); // Debounce for 500ms
+      
+      return () => clearTimeout(timeoutId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks]);
 
   // Sync local state with selectedPage
   useEffect(() => {
@@ -928,6 +954,43 @@ export default function LandingPageBuilder() {
     },
   });
 
+  // Save current state to history
+  const saveToHistory = useCallback((currentBlocks: LandingBlock[]) => {
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(JSON.parse(JSON.stringify(currentBlocks)));
+      // Keep only last 50 states
+      if (newHistory.length > 50) {
+        newHistory.shift();
+        return newHistory;
+      }
+      return newHistory;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  }, [historyIndex]);
+
+  // Undo function
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const previousState = history[historyIndex - 1];
+      setBlocks(JSON.parse(JSON.stringify(previousState)));
+      setHistoryIndex(prev => prev - 1);
+    }
+  }, [history, historyIndex]);
+
+  // Redo function
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setBlocks(JSON.parse(JSON.stringify(nextState)));
+      setHistoryIndex(prev => prev + 1);
+    }
+  }, [history, historyIndex]);
+
+  // Can undo/redo
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
   // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -1078,12 +1141,24 @@ export default function LandingPageBuilder() {
         )}
 
         <div className="flex items-center gap-2 ml-auto">
-          {/* Undo/Redo (disabled) */}
+          {/* Undo/Redo */}
           <div className="hidden sm:flex gap-1">
-            <Button variant="ghost" size="sm" disabled data-testid="button-undo">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              disabled={!canUndo}
+              onClick={handleUndo}
+              data-testid="button-undo"
+            >
               <Undo className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="sm" disabled data-testid="button-redo">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              disabled={!canRedo}
+              onClick={handleRedo}
+              data-testid="button-redo"
+            >
               <Redo className="w-4 h-4" />
             </Button>
           </div>
