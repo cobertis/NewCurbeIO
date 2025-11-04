@@ -578,7 +578,8 @@ export default function PublicLandingPage() {
         }
         throw new Error("Failed to load landing page");
       }
-      return res.json();
+      const { landingPage, blocks } = await res.json();
+      return { ...landingPage, blocks };
     },
     enabled: !!slug,
   });
