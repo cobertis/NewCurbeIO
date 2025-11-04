@@ -3549,7 +3549,6 @@ export default function PoliciesPage() {
   const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [carrierPopoverOpen, setCarrierPopoverOpen] = useState(false);
-  const [pendingPlanEdit, setPendingPlanEdit] = useState(false);
   const [manualPlanData, setManualPlanData] = useState({
     // Basic Info
     productType: '',
@@ -3634,15 +3633,6 @@ export default function PoliciesPage() {
       }
     }
   }, [manualPlanData.productType, manualPlanData.carrier]);
-  
-  // Open dialog only after manual plan data is set (for editing)
-  useEffect(() => {
-    if (pendingPlanEdit && manualPlanData.carrier && manualPlanData.productType) {
-      console.log('[OPENING DIALOG] manualPlanData ready:', manualPlanData);
-      setManualPlanDialogOpen(true);
-      setPendingPlanEdit(false);
-    }
-  }, [pendingPlanEdit, manualPlanData]);
   
   // Fetch policies statistics
   const { data: stats, isLoading: isLoadingStats } = useQuery<{
@@ -7441,10 +7431,19 @@ export default function PoliciesPage() {
                               policyTotalCost: '',
                             };
                             
-                            console.log('[MAPPED DATA]', mappedData);
+                            console.log('[MAPPED DATA] Extracted plan data:', mappedData);
+                            console.log('[MAPPED DATA] Carrier:', mappedData.carrier);
+                            console.log('[MAPPED DATA] Product Type:', mappedData.productType);
+                            console.log('[MAPPED DATA] Metal:', mappedData.metal);
+                            
                             setEditingPlanId(policyPlan.id);
                             setManualPlanData(mappedData);
-                            setPendingPlanEdit(true);
+                            
+                            // Open dialog after React state update (next event loop)
+                            setTimeout(() => {
+                              console.log('[OPENING DIALOG] State updated, opening dialog');
+                              setManualPlanDialogOpen(true);
+                            }, 50);
                           }}
                           data-testid="button-edit-plan"
                         >
