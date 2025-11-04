@@ -3549,6 +3549,7 @@ export default function PoliciesPage() {
   const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [carrierPopoverOpen, setCarrierPopoverOpen] = useState(false);
+  const [pendingPlanEdit, setPendingPlanEdit] = useState(false);
   const [manualPlanData, setManualPlanData] = useState({
     // Basic Info
     productType: '',
@@ -3633,6 +3634,15 @@ export default function PoliciesPage() {
       }
     }
   }, [manualPlanData.productType, manualPlanData.carrier]);
+  
+  // Open dialog only after manual plan data is set (for editing)
+  useEffect(() => {
+    if (pendingPlanEdit && manualPlanData.carrier && manualPlanData.productType) {
+      console.log('[OPENING DIALOG] manualPlanData ready:', manualPlanData);
+      setManualPlanDialogOpen(true);
+      setPendingPlanEdit(false);
+    }
+  }, [pendingPlanEdit, manualPlanData]);
   
   // Fetch policies statistics
   const { data: stats, isLoading: isLoadingStats } = useQuery<{
@@ -7434,11 +7444,7 @@ export default function PoliciesPage() {
                             console.log('[MAPPED DATA]', mappedData);
                             setEditingPlanId(policyPlan.id);
                             setManualPlanData(mappedData);
-                            
-                            // Use setTimeout to ensure state updates before opening dialog
-                            setTimeout(() => {
-                              setManualPlanDialogOpen(true);
-                            }, 0);
+                            setPendingPlanEdit(true);
                           }}
                           data-testid="button-edit-plan"
                         >
