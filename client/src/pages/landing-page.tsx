@@ -1742,7 +1742,7 @@ export default function LandingPageBuilder() {
                         {/* Content Section - White Background */}
                         <div className="bg-white px-6 pb-6">
                           {/* Profile Info */}
-                          <div className="text-center mb-6 -mt-4">
+                          <div className="relative z-20 text-center mb-6 -mt-4">
                             {selectedPage.landingPage.profileName && (
                               <h1
                                 className="text-2xl font-bold mb-2"
