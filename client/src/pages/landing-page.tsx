@@ -1713,11 +1713,11 @@ export default function LandingPageBuilder() {
                                 <img 
                                   src={companyData.company.logo} 
                                   alt="Company Logo" 
-                                  className="h-10 w-auto object-contain"
+                                  className="h-12 w-auto object-contain max-w-[200px] brightness-110"
                                 />
                               ) : (
-                                <div className="w-10 h-10 bg-white/20 rounded flex items-center justify-center">
-                                  <span className="text-sm font-bold">
+                                <div className="w-12 h-12 bg-white/20 rounded flex items-center justify-center">
+                                  <span className="text-base font-bold">
                                     {(selectedPage.landingPage.title || "SB").substring(0, 2).toUpperCase()}
                                   </span>
                                 </div>
