@@ -1748,7 +1748,7 @@ export default function LandingPageBuilder() {
                           <div className="relative z-20 text-center mb-6 -mt-4">
                             {selectedPage.landingPage.profileName && (
                               <h1
-                                className="text-2xl font-bold mb-2"
+                                className="text-2xl font-bold mb-2 no-underline border-0"
                                 style={{ color: selectedPage.landingPage.theme.textColor }}
                               >
                                 {selectedPage.landingPage.profileName}
