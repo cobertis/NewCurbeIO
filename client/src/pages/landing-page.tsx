@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  Link,
+  Link as LinkIcon,
   Share2,
   Video,
   Type,
@@ -45,7 +45,7 @@ import {
   MessageCircle,
   Palette,
   User,
-  Settings,
+  Settings as SettingsIcon,
   Sparkles,
   MapPin,
   UserPlus,
@@ -54,6 +54,10 @@ import {
   HelpCircle,
   TrendingUp,
   ExternalLink,
+  Undo,
+  Redo,
+  BarChart,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,11 +79,11 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -132,30 +136,48 @@ type LandingBlock = {
   clickCount: number;
 };
 
-// Predefined themes
-const PREDEFINED_THEMES = [
+// Predefined themes with gradients
+const THEMES = [
   {
-    name: "Purple Gradient",
+    name: "Purple Dream",
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    category: "all",
     theme: {
-      primaryColor: "#8B5CF6",
+      primaryColor: "#667eea",
       backgroundColor: "#ffffff",
       textColor: "#1a1a1a",
-      buttonColor: "#8B5CF6",
+      buttonColor: "#667eea",
       buttonTextColor: "#ffffff",
     },
   },
   {
-    name: "Clean White",
+    name: "Pink Sunset",
+    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    category: "light",
     theme: {
-      primaryColor: "#000000",
+      primaryColor: "#f093fb",
       backgroundColor: "#ffffff",
-      textColor: "#000000",
-      buttonColor: "#000000",
+      textColor: "#1a1a1a",
+      buttonColor: "#f093fb",
       buttonTextColor: "#ffffff",
     },
   },
   {
-    name: "Dark Mode",
+    name: "Ocean Blue",
+    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    category: "all",
+    theme: {
+      primaryColor: "#4facfe",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#4facfe",
+      buttonTextColor: "#ffffff",
+    },
+  },
+  {
+    name: "Dark Night",
+    gradient: "linear-gradient(135deg, #2c3e50 0%, #000000 100%)",
+    category: "dark",
     theme: {
       primaryColor: "#60A5FA",
       backgroundColor: "#0f172a",
@@ -165,12 +187,50 @@ const PREDEFINED_THEMES = [
     },
   },
   {
-    name: "Sunset",
+    name: "Mint Fresh",
+    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    category: "light",
     theme: {
-      primaryColor: "#F59E0B",
-      backgroundColor: "#FEF3C7",
-      textColor: "#78350F",
-      buttonColor: "#F59E0B",
+      primaryColor: "#43e97b",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#43e97b",
+      buttonTextColor: "#ffffff",
+    },
+  },
+  {
+    name: "Sunset Orange",
+    gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+    category: "light",
+    theme: {
+      primaryColor: "#fa709a",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#fa709a",
+      buttonTextColor: "#ffffff",
+    },
+  },
+  {
+    name: "Royal Purple",
+    gradient: "linear-gradient(135deg, #7f00ff 0%, #e100ff 100%)",
+    category: "all",
+    theme: {
+      primaryColor: "#7f00ff",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#7f00ff",
+      buttonTextColor: "#ffffff",
+    },
+  },
+  {
+    name: "Deep Space",
+    gradient: "linear-gradient(135deg, #000428 0%, #004e92 100%)",
+    category: "dark",
+    theme: {
+      primaryColor: "#004e92",
+      backgroundColor: "#000428",
+      textColor: "#f8fafc",
+      buttonColor: "#004e92",
       buttonTextColor: "#ffffff",
     },
   },
@@ -178,15 +238,27 @@ const PREDEFINED_THEMES = [
 
 // Social Media Platforms
 const SOCIAL_PLATFORMS = [
-  { value: "instagram", label: "Instagram", icon: Instagram },
-  { value: "facebook", label: "Facebook", icon: Facebook },
-  { value: "twitter", label: "Twitter", icon: Twitter },
-  { value: "linkedin", label: "LinkedIn", icon: Linkedin },
-  { value: "youtube", label: "YouTube", icon: Youtube },
-  { value: "tiktok", label: "TikTok", icon: Video },
+  { value: "instagram", label: "Instagram", icon: Instagram, color: "#E4405F" },
+  { value: "facebook", label: "Facebook", icon: Facebook, color: "#1877F2" },
+  { value: "twitter", label: "Twitter", icon: Twitter, color: "#1DA1F2" },
+  { value: "linkedin", label: "LinkedIn", icon: Linkedin, color: "#0A66C2" },
+  { value: "youtube", label: "YouTube", icon: Youtube, color: "#FF0000" },
+  { value: "tiktok", label: "TikTok", icon: Video, color: "#000000" },
 ];
 
-// SortableBlock Component
+// Block types for the sidebar
+const BLOCK_TYPES = [
+  { type: "text", label: "Text", icon: Type, color: "#8B5CF6" },
+  { type: "calendar", label: "Calendar", icon: CalendarIcon, color: "#F59E0B" },
+  { type: "link", label: "Button", icon: LinkIcon, color: "#3B82F6" },
+  { type: "image", label: "Image", icon: ImageIcon, color: "#EC4899" },
+  { type: "video", label: "Video", icon: Video, color: "#EF4444" },
+  { type: "social", label: "Link", icon: Share2, color: "#10B981" },
+  { type: "maps", label: "Map", icon: MapPin, color: "#F97316" },
+  { type: "email", label: "Newsletter", icon: Mail, color: "#6366F1" },
+];
+
+// SortableBlock Component - renders inside the device preview
 function SortableBlock({
   block,
   onEdit,
@@ -216,33 +288,33 @@ function SortableBlock({
   const getBlockIcon = () => {
     switch (block.type) {
       case "link":
-        return <Link className="w-4 h-4" />;
+        return <LinkIcon className="w-3 h-3" />;
       case "social":
-        return <Share2 className="w-4 h-4" />;
+        return <Share2 className="w-3 h-3" />;
       case "video":
-        return <Video className="w-4 h-4" />;
+        return <Video className="w-3 h-3" />;
       case "text":
-        return <Type className="w-4 h-4" />;
+        return <Type className="w-3 h-3" />;
       case "image":
-        return <ImageIcon className="w-4 h-4" />;
+        return <ImageIcon className="w-3 h-3" />;
       case "email":
-        return <Mail className="w-4 h-4" />;
+        return <Mail className="w-3 h-3" />;
       case "divider":
-        return <Minus className="w-4 h-4" />;
+        return <Minus className="w-3 h-3" />;
       case "contact":
-        return <Phone className="w-4 h-4" />;
+        return <Phone className="w-3 h-3" />;
       case "maps":
-        return <MapPin className="w-4 h-4" />;
+        return <MapPin className="w-3 h-3" />;
       case "lead-form":
-        return <UserPlus className="w-4 h-4" />;
+        return <UserPlus className="w-3 h-3" />;
       case "calendar":
-        return <CalendarIcon className="w-4 h-4" />;
+        return <CalendarIcon className="w-3 h-3" />;
       case "testimonials":
-        return <Star className="w-4 h-4" />;
+        return <Star className="w-3 h-3" />;
       case "faq":
-        return <HelpCircle className="w-4 h-4" />;
+        return <HelpCircle className="w-3 h-3" />;
       case "stats":
-        return <TrendingUp className="w-4 h-4" />;
+        return <TrendingUp className="w-3 h-3" />;
       default:
         return null;
     }
@@ -287,51 +359,47 @@ function SortableBlock({
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white dark:bg-slate-900 rounded-[18px] border border-gray-200 dark:border-gray-700 p-4 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] hover:shadow-[0_12px_32px_-12px_rgba(15,23,42,0.18)] transition-shadow"
+      className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2 shadow-sm hover:shadow-md transition-shadow group"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <div
           {...attributes}
           {...listeners}
           className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
           data-testid={`drag-handle-${block.id}`}
         >
-          <GripVertical className="w-5 h-5" />
+          <GripVertical className="w-4 h-4" />
         </div>
 
-        <div className="flex-1 flex items-center gap-2">
+        <div className="flex-1 flex items-center gap-1.5 min-w-0">
           <div className="text-purple-600 dark:text-purple-400">
             {getBlockIcon()}
           </div>
-          <span className="font-medium text-sm">{getBlockTitle()}</span>
+          <span className="font-medium text-xs truncate">{getBlockTitle()}</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {block.clickCount > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {block.clickCount} clicks
-            </Badge>
-          )}
-
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"
             size="sm"
             onClick={onEdit}
+            className="h-6 w-6 p-0"
             data-testid={`edit-block-${block.id}`}
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="w-3 h-3" />
           </Button>
 
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggleVisibility}
+            className="h-6 w-6 p-0"
             data-testid={`toggle-visibility-${block.id}`}
           >
             {block.isVisible ? (
-              <Eye className="w-4 h-4" />
+              <Eye className="w-3 h-3" />
             ) : (
-              <EyeOff className="w-4 h-4 text-gray-400" />
+              <EyeOff className="w-3 h-3 text-gray-400" />
             )}
           </Button>
 
@@ -339,10 +407,10 @@ function SortableBlock({
             variant="ghost"
             size="sm"
             onClick={onDelete}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
             data-testid={`delete-block-${block.id}`}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3 h-3" />
           </Button>
         </div>
       </div>
@@ -350,7 +418,7 @@ function SortableBlock({
   );
 }
 
-// BlockPreview Component
+// BlockPreview Component - displays the visual representation
 function BlockPreview({
   block,
   theme,
@@ -372,7 +440,7 @@ function BlockPreview({
           href={block.content.url || "#"}
           target={block.content.openInNewTab ? "_blank" : "_self"}
           rel="noopener noreferrer"
-          className="block rounded-[18px] px-6 py-4 text-center font-medium shadow-sm hover:shadow-md transition-shadow"
+          className="block rounded-lg px-4 py-3 text-center font-medium text-sm shadow-sm hover:shadow-md transition-shadow"
           style={buttonStyle}
           data-testid={`preview-link-${block.id}`}
         >
@@ -389,11 +457,11 @@ function BlockPreview({
           href={block.content.url || "#"}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-[18px] px-6 py-4 font-medium shadow-sm hover:shadow-md transition-shadow"
+          className="flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium text-sm shadow-sm hover:shadow-md transition-shadow"
           style={buttonStyle}
           data-testid={`preview-social-${block.id}`}
         >
-          <SocialIcon className="w-5 h-5" />
+          <SocialIcon className="w-4 h-4" />
           {block.content.customLabel ||
             block.content.platform?.charAt(0).toUpperCase() +
               block.content.platform?.slice(1) ||
@@ -404,7 +472,7 @@ function BlockPreview({
     case "video":
       return (
         <div
-          className="rounded-[18px] overflow-hidden shadow-sm"
+          className="rounded-lg overflow-hidden shadow-sm"
           style={{ aspectRatio: block.content.aspectRatio || "16/9" }}
           data-testid={`preview-video-${block.id}`}
         >
@@ -422,10 +490,10 @@ function BlockPreview({
         <div
           className={`text-${block.content.alignment || "left"} ${
             block.content.size === "sm"
-              ? "text-sm"
+              ? "text-xs"
               : block.content.size === "lg"
-              ? "text-lg"
-              : "text-base"
+              ? "text-base"
+              : "text-sm"
           }`}
           style={{ color: theme.textColor }}
           data-testid={`preview-text-${block.id}`}
@@ -436,7 +504,7 @@ function BlockPreview({
 
     case "image":
       return (
-        <div className="rounded-[18px] overflow-hidden shadow-sm" data-testid={`preview-image-${block.id}`}>
+        <div className="rounded-lg overflow-hidden shadow-sm" data-testid={`preview-image-${block.id}`}>
           <img
             src={block.content.url || "/placeholder.png"}
             alt={block.content.alt || "Image"}
@@ -448,13 +516,13 @@ function BlockPreview({
 
     case "email":
       return (
-        <div className="space-y-3" data-testid={`preview-email-${block.id}`}>
+        <div className="space-y-2" data-testid={`preview-email-${block.id}`}>
           <Input
             type="email"
             placeholder={block.content.placeholder || "Enter your email"}
-            className="rounded-[18px]"
+            className="rounded-lg text-xs h-8"
           />
-          <Button className="w-full rounded-[18px]" style={buttonStyle}>
+          <Button className="w-full rounded-lg text-xs h-8" style={buttonStyle}>
             {block.content.buttonText || "Subscribe"}
           </Button>
         </div>
@@ -463,7 +531,7 @@ function BlockPreview({
     case "divider":
       return (
         <hr
-          className="my-4"
+          className="my-3"
           style={{
             borderStyle: block.content.style || "solid",
             borderColor: theme.textColor,
@@ -491,20 +559,20 @@ function BlockPreview({
               ? "https://wa.me/"
               : "tel:"
           }${block.content.value || ""}`}
-          className="flex items-center justify-center gap-2 rounded-[18px] px-6 py-4 font-medium shadow-sm hover:shadow-md transition-shadow"
+          className="flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium text-sm shadow-sm hover:shadow-md transition-shadow"
           style={buttonStyle}
           data-testid={`preview-contact-${block.id}`}
         >
-          <ContactIcon className="w-5 h-5" />
+          <ContactIcon className="w-4 h-4" />
           {block.content.label || block.content.value || "Contact"}
         </a>
       );
 
     case "maps":
       return (
-        <Card className="p-4">
-          <MapPin className="h-6 w-6 mb-2" />
-          <p className="text-sm text-muted-foreground">
+        <Card className="p-3">
+          <MapPin className="h-4 w-4 mb-1" />
+          <p className="text-xs text-muted-foreground">
             {block.content.address || "Map Location"}
           </p>
         </Card>
@@ -512,16 +580,16 @@ function BlockPreview({
 
     case "lead-form":
       return (
-        <Card className="p-6" style={{ borderColor: theme.primaryColor }}>
-          <h3 className="font-semibold mb-2">{block.content.title}</h3>
-          <p className="text-sm text-muted-foreground mb-4">{block.content.subtitle}</p>
+        <Card className="p-4" style={{ borderColor: theme.primaryColor }}>
+          <h3 className="font-semibold text-sm mb-1">{block.content.title}</h3>
+          <p className="text-xs text-muted-foreground mb-3">{block.content.subtitle}</p>
           <div className="space-y-2">
             {block.content.fields?.map((field: any, idx: number) => (
-              <div key={idx} className="h-10 bg-gray-100 rounded"></div>
+              <div key={idx} className="h-8 bg-gray-100 rounded"></div>
             ))}
           </div>
           <Button 
-            className="w-full mt-4" 
+            className="w-full mt-3 text-xs h-8" 
             style={{ backgroundColor: theme.buttonColor }}
           >
             {block.content.submitText}
@@ -531,38 +599,38 @@ function BlockPreview({
 
     case "calendar":
       return (
-        <Card className="p-6">
-          <CalendarIcon className="h-6 w-6 mb-2" />
-          <h3 className="font-semibold mb-2">{block.content.title}</h3>
-          <p className="text-sm text-muted-foreground">{block.content.subtitle}</p>
+        <Card className="p-4">
+          <CalendarIcon className="h-4 w-4 mb-1" />
+          <h3 className="font-semibold text-sm mb-1">{block.content.title}</h3>
+          <p className="text-xs text-muted-foreground">{block.content.subtitle}</p>
         </Card>
       );
 
     case "testimonials":
       return (
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
             <div>
-              <p className="font-semibold">{block.content.reviews?.[0]?.name || "Name"}</p>
-              <p className="text-sm text-muted-foreground">{block.content.reviews?.[0]?.role || "Role"}</p>
+              <p className="font-semibold text-xs">{block.content.reviews?.[0]?.name || "Name"}</p>
+              <p className="text-xs text-muted-foreground">{block.content.reviews?.[0]?.role || "Role"}</p>
             </div>
           </div>
-          <div className="flex gap-1 mb-2">
+          <div className="flex gap-0.5 mb-1">
             {[...Array(5)].map((_, i) => (
-              <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+              <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
             ))}
           </div>
-          <p className="text-sm">{block.content.reviews?.[0]?.text || "Review text"}</p>
+          <p className="text-xs">{block.content.reviews?.[0]?.text || "Review text"}</p>
         </Card>
       );
 
     case "faq":
       return (
-        <Card className="p-4">
-          <HelpCircle className="h-6 w-6 mb-2" />
-          <p className="font-medium">{block.content.items?.[0]?.question || "Question"}</p>
-          <p className="text-sm text-muted-foreground mt-2">
+        <Card className="p-3">
+          <HelpCircle className="h-4 w-4 mb-1" />
+          <p className="font-medium text-xs">{block.content.items?.[0]?.question || "Question"}</p>
+          <p className="text-xs text-muted-foreground mt-1">
             {block.content.items?.[0]?.answer || "Answer"}
           </p>
         </Card>
@@ -570,13 +638,13 @@ function BlockPreview({
 
     case "stats":
       return (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {block.content.stats?.map((stat: any, idx: number) => (
-            <Card key={idx} className="p-6 text-center">
-              <p className="text-3xl font-bold" style={{ color: theme.primaryColor }}>
+            <Card key={idx} className="p-4 text-center">
+              <p className="text-2xl font-bold" style={{ color: theme.primaryColor }}>
                 {stat.value}{stat.suffix}
               </p>
-              <p className="text-sm text-muted-foreground mt-2">{stat.label}</p>
+              <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
             </Card>
           ))}
         </div>
@@ -593,7 +661,9 @@ export default function LandingPageBuilder() {
   const [blocks, setBlocks] = useState<LandingBlock[]>([]);
   const [editingBlock, setEditingBlock] = useState<LandingBlock | null>(null);
   const [isBlockEditorOpen, setIsBlockEditorOpen] = useState(false);
-  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [themeCategory, setThemeCategory] = useState<"all" | "light" | "dark">("all");
 
   // Sensors for drag and drop
   const sensors = useSensors(
@@ -679,16 +749,11 @@ export default function LandingPageBuilder() {
       queryClient.invalidateQueries({
         queryKey: ["/api/landing-pages", selectedPageId],
       });
-      // Invalidate public landing page cache when publishing/unpublishing
       if (selectedPage) {
         queryClient.invalidateQueries({
           queryKey: ["/l", selectedPage.landingPage.slug],
         });
       }
-      toast({
-        title: "Changes saved",
-        description: "Your changes have been saved successfully.",
-      });
     },
   });
 
@@ -768,7 +833,6 @@ export default function LandingPageBuilder() {
         const newIndex = items.findIndex((item) => item.id === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
 
-        // Update positions and save to backend
         const blockIds = newItems.map((block) => block.id);
         reorderBlocksMutation.mutate(blockIds);
 
@@ -847,1661 +911,1254 @@ export default function LandingPageBuilder() {
     [selectedPageId, blocks.length]
   );
 
-  // Auto-save with debounce
-  useEffect(() => {
-    if (!selectedPage) return;
-
-    const timer = setTimeout(() => {
-      // Auto-save logic here if needed
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [selectedPage]);
-
   if (isPagesLoading) {
     return <LoadingSpinner message="Loading landing page builder..." />;
   }
 
+  const filteredThemes = THEMES.filter(
+    (theme) => themeCategory === "all" || theme.category === themeCategory
+  );
+
   return (
-    <div className="h-screen flex bg-gradient-to-br from-purple-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-      {/* Left Sidebar - Customization */}
-      <div className="w-[300px] border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 overflow-y-auto">
-        <div className="p-6 space-y-4">
-          {/* Customization Panel */}
-          {selectedPage && (
-            <Accordion
-              type="single"
-              collapsible
-              defaultValue="theme"
-              className="space-y-2"
-            >
-              <AccordionItem
-                value="theme"
-                className="rounded-[18px] border bg-white dark:bg-slate-900 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)]"
-              >
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-4 h-4" />
-                    <span className="font-medium">Temas</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    {PREDEFINED_THEMES.map((preset) => (
-                      <button
-                        key={preset.name}
-                        onClick={() =>
-                          updatePageMutation.mutate({
-                            id: selectedPageId!,
-                            data: { theme: preset.theme },
-                          })
-                        }
-                        className="p-3 rounded-lg border hover:border-purple-500 transition-colors text-left"
-                        data-testid={`theme-${preset.name.toLowerCase().replace(" ", "-")}`}
-                      >
-                        <div
-                          className="w-full h-8 rounded mb-2"
-                          style={{
-                            background: `linear-gradient(135deg, ${preset.theme.primaryColor}, ${preset.theme.backgroundColor})`,
-                          }}
-                        />
-                        <p className="text-xs font-medium">{preset.name}</p>
-                      </button>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem
-                value="colors"
-                className="rounded-[18px] border bg-white dark:bg-slate-900 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)]"
-              >
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" />
-                    <span className="font-medium">Colores</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 space-y-4">
-                  <div>
-                    <Label htmlFor="primaryColor" className="text-xs">
-                      Color Primario
-                    </Label>
-                    <Input
-                      id="primaryColor"
-                      type="color"
-                      value={selectedPage.landingPage.theme.primaryColor}
-                      onChange={(e) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: {
-                            theme: {
-                              ...selectedPage.landingPage.theme,
-                              primaryColor: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                      className="h-10"
-                      data-testid="input-primary-color"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="backgroundColor" className="text-xs">
-                      Color de Fondo
-                    </Label>
-                    <Input
-                      id="backgroundColor"
-                      type="color"
-                      value={selectedPage.landingPage.theme.backgroundColor}
-                      onChange={(e) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: {
-                            theme: {
-                              ...selectedPage.landingPage.theme,
-                              backgroundColor: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                      className="h-10"
-                      data-testid="input-background-color"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="textColor" className="text-xs">
-                      Color de Texto
-                    </Label>
-                    <Input
-                      id="textColor"
-                      type="color"
-                      value={selectedPage.landingPage.theme.textColor}
-                      onChange={(e) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: {
-                            theme: {
-                              ...selectedPage.landingPage.theme,
-                              textColor: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                      className="h-10"
-                      data-testid="input-text-color"
-                    />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem
-                value="profile"
-                className="rounded-[18px] border bg-white dark:bg-slate-900 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)]"
-              >
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    <span className="font-medium">Perfil</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 space-y-4">
-                  <div>
-                    <Label htmlFor="profileName" className="text-xs">
-                      Nombre
-                    </Label>
-                    <Input
-                      id="profileName"
-                      value={selectedPage.landingPage.profileName || ""}
-                      onChange={(e) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: { profileName: e.target.value },
-                        })
-                      }
-                      placeholder="Tu nombre"
-                      data-testid="input-profile-name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="profileBio" className="text-xs">
-                      Bio
-                    </Label>
-                    <Textarea
-                      id="profileBio"
-                      value={selectedPage.landingPage.profileBio || ""}
-                      onChange={(e) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: { profileBio: e.target.value },
-                        })
-                      }
-                      placeholder="Tu biografía"
-                      data-testid="input-profile-bio"
-                    />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem
-                value="settings"
-                className="rounded-[18px] border bg-white dark:bg-slate-900 shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)]"
-              >
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <Settings className="w-4 h-4" />
-                    <span className="font-medium">Configuración</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 space-y-4">
-                  <div>
-                    <Label htmlFor="slug" className="text-xs">
-                      Slug (URL)
-                    </Label>
-                    <Input
-                      id="slug"
-                      value={selectedPage.landingPage.slug}
-                      onChange={(e) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: { slug: e.target.value },
-                        })
-                      }
-                      data-testid="input-slug"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password-protection" className="text-xs">
-                      Protección con contraseña
-                    </Label>
-                    <Switch
-                      id="password-protection"
-                      checked={
-                        selectedPage.landingPage.isPasswordProtected || false
-                      }
-                      onCheckedChange={(checked) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: { isPasswordProtected: checked },
-                        })
-                      }
-                      data-testid="switch-password-protection"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="seo-title" className="text-xs">
-                      SEO Título
-                    </Label>
-                    <Input
-                      id="seo-title"
-                      value={selectedPage.landingPage.seo.title || ""}
-                      onChange={(e) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: {
-                            seo: {
-                              ...selectedPage.landingPage.seo,
-                              title: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                      placeholder="Título para SEO"
-                      data-testid="input-seo-title"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="seo-description" className="text-xs">
-                      SEO Descripción
-                    </Label>
-                    <Textarea
-                      id="seo-description"
-                      value={selectedPage.landingPage.seo.description || ""}
-                      onChange={(e) =>
-                        updatePageMutation.mutate({
-                          id: selectedPageId!,
-                          data: {
-                            seo: {
-                              ...selectedPage.landingPage.seo,
-                              description: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                      placeholder="Descripción para SEO"
-                      data-testid="input-seo-description"
-                    />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+    <div className="h-screen flex flex-col bg-white dark:bg-slate-900">
+      {/* Header */}
+      <div className="h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 flex items-center px-6 gap-4">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+            <Layers className="w-5 h-5 text-white" />
+          </div>
+          <span className="font-semibold text-sm hidden sm:inline">Landing Builder</span>
         </div>
-      </div>
 
-      {/* Center - Editor */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto p-8 space-y-6">
-          {isPageLoading ? (
-            <LoadingSpinner
-              message="Loading page..."
-              fullScreen={false}
-            />
-          ) : selectedPage ? (
-            <>
-              {/* Block Toolbar */}
-              <Card className="rounded-[18px] shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)]">
-                <CardContent className="p-6">
-                  <p className="text-sm font-medium mb-3">Agregar Bloques</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("link", { label: "My Link" })}
-                      data-testid="button-add-link"
-                    >
-                      <Link className="w-4 h-4 mr-2" />
-                      Link
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        addBlock("social", { platform: "instagram" })
-                      }
-                      data-testid="button-add-social"
-                    >
-                      <Share2 className="w-4 h-4 mr-2" />
-                      Social
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("video", { aspectRatio: "16/9" })}
-                      data-testid="button-add-video"
-                    >
-                      <Video className="w-4 h-4 mr-2" />
-                      Video
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("text", { alignment: "center" })}
-                      data-testid="button-add-text"
-                    >
-                      <Type className="w-4 h-4 mr-2" />
-                      Text
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("image", {})}
-                      data-testid="button-add-image"
-                    >
-                      <ImageIcon className="w-4 h-4 mr-2" />
-                      Image
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("email", {})}
-                      data-testid="button-add-email"
-                    >
-                      <Mail className="w-4 h-4 mr-2" />
-                      Email
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("divider", { style: "solid" })}
-                      data-testid="button-add-divider"
-                    >
-                      <Minus className="w-4 h-4 mr-2" />
-                      Divider
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("contact", { type: "email" })}
-                      data-testid="button-add-contact"
-                    >
-                      <Phone className="w-4 h-4 mr-2" />
-                      Contact
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("maps")}
-                      data-testid="add-maps-block"
-                    >
-                      <MapPin className="h-4 w-4 mr-2" />
-                      Maps
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("lead-form")}
-                      data-testid="add-lead-form-block"
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Lead Form
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("calendar")}
-                      data-testid="add-calendar-block"
-                    >
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      Scheduler
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("testimonials")}
-                      data-testid="add-testimonials-block"
-                    >
-                      <Star className="h-4 w-4 mr-2" />
-                      Testimonials
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("faq")}
-                      data-testid="add-faq-block"
-                    >
-                      <HelpCircle className="h-4 w-4 mr-2" />
-                      FAQ
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBlock("stats")}
-                      data-testid="add-stats-block"
-                    >
-                      <TrendingUp className="h-4 w-4 mr-2" />
-                      Stats
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Blocks List */}
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={blocks.map((b) => b.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-3">
-                    {blocks.length === 0 ? (
-                      <Card className="rounded-[18px] border-dashed">
-                        <CardContent className="p-12 text-center">
-                          <p className="text-gray-500">
-                            No hay bloques aún. Agrega tu primer bloque desde
-                            arriba.
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      blocks.map((block) => (
-                        <SortableBlock
-                          key={block.id}
-                          block={block}
-                          onEdit={() => {
-                            setEditingBlock(block);
-                            setIsBlockEditorOpen(true);
-                          }}
-                          onToggleVisibility={() => {
-                            updateBlockMutation.mutate({
-                              blockId: block.id,
-                              data: { isVisible: !block.isVisible },
-                            });
-                          }}
-                          onDelete={() => {
-                            if (
-                              confirm(
-                                "¿Estás seguro de eliminar este bloque?"
-                              )
-                            ) {
-                              deleteBlockMutation.mutate(block.id);
-                            }
-                          }}
-                        />
-                      ))
-                    )}
-                  </div>
-                </SortableContext>
-              </DndContext>
-
-              {/* Block Editor Sheet */}
-              <Sheet
-                open={isBlockEditorOpen}
-                onOpenChange={setIsBlockEditorOpen}
-              >
-                <SheetContent className="sm:max-w-md overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Editar Bloque</SheetTitle>
-                    <SheetDescription>
-                      Configura el contenido de tu bloque
-                    </SheetDescription>
-                  </SheetHeader>
-                  {editingBlock && (
-                    <div className="space-y-4 py-6">
-                      {editingBlock.type === "link" && (
-                        <>
-                          <div>
-                            <Label>Etiqueta</Label>
-                            <Input
-                              value={editingBlock.content.label || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    label: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Click Here"
-                            />
-                          </div>
-                          <div>
-                            <Label>URL</Label>
-                            <Input
-                              value={editingBlock.content.url || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    url: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="https://example.com"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={editingBlock.content.openInNewTab || false}
-                              onCheckedChange={(checked) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    openInNewTab: checked,
-                                  },
-                                })
-                              }
-                            />
-                            <Label>Abrir en nueva pestaña</Label>
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "social" && (
-                        <>
-                          <div>
-                            <Label>Plataforma</Label>
-                            <Select
-                              value={editingBlock.content.platform || "instagram"}
-                              onValueChange={(value) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    platform: value,
-                                  },
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SOCIAL_PLATFORMS.map((platform) => (
-                                  <SelectItem
-                                    key={platform.value}
-                                    value={platform.value}
-                                  >
-                                    {platform.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>URL</Label>
-                            <Input
-                              value={editingBlock.content.url || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    url: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="https://instagram.com/username"
-                            />
-                          </div>
-                          <div>
-                            <Label>Etiqueta personalizada (opcional)</Label>
-                            <Input
-                              value={editingBlock.content.customLabel || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    customLabel: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Síguenos en Instagram"
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "video" && (
-                        <>
-                          <div>
-                            <Label>URL del Video (YouTube/Vimeo embed)</Label>
-                            <Input
-                              value={editingBlock.content.url || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    url: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="https://www.youtube.com/embed/..."
-                            />
-                          </div>
-                          <div>
-                            <Label>Aspecto de Ratio</Label>
-                            <Select
-                              value={editingBlock.content.aspectRatio || "16/9"}
-                              onValueChange={(value) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    aspectRatio: value,
-                                  },
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="16/9">16:9</SelectItem>
-                                <SelectItem value="1/1">1:1</SelectItem>
-                                <SelectItem value="9/16">9:16</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "text" && (
-                        <>
-                          <div>
-                            <Label>Contenido</Label>
-                            <Textarea
-                              value={editingBlock.content.content || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    content: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Tu texto aquí"
-                              rows={4}
-                            />
-                          </div>
-                          <div>
-                            <Label>Alineación</Label>
-                            <Select
-                              value={editingBlock.content.alignment || "left"}
-                              onValueChange={(value) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    alignment: value,
-                                  },
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="left">Izquierda</SelectItem>
-                                <SelectItem value="center">Centro</SelectItem>
-                                <SelectItem value="right">Derecha</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Tamaño</Label>
-                            <Select
-                              value={editingBlock.content.size || "md"}
-                              onValueChange={(value) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    size: value,
-                                  },
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="sm">Pequeño</SelectItem>
-                                <SelectItem value="md">Mediano</SelectItem>
-                                <SelectItem value="lg">Grande</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "image" && (
-                        <>
-                          <div>
-                            <Label>URL de la Imagen</Label>
-                            <Input
-                              value={editingBlock.content.url || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    url: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="https://example.com/image.jpg"
-                            />
-                          </div>
-                          <div>
-                            <Label>Texto Alternativo</Label>
-                            <Input
-                              value={editingBlock.content.alt || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    alt: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Descripción de la imagen"
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "email" && (
-                        <>
-                          <div>
-                            <Label>Placeholder</Label>
-                            <Input
-                              value={editingBlock.content.placeholder || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    placeholder: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Enter your email"
-                            />
-                          </div>
-                          <div>
-                            <Label>Texto del Botón</Label>
-                            <Input
-                              value={editingBlock.content.buttonText || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    buttonText: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Subscribe"
-                            />
-                          </div>
-                          <div>
-                            <Label>Mensaje de Éxito</Label>
-                            <Input
-                              value={editingBlock.content.successMessage || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    successMessage: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Thanks for subscribing!"
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "divider" && (
-                        <>
-                          <div>
-                            <Label>Estilo</Label>
-                            <Select
-                              value={editingBlock.content.style || "solid"}
-                              onValueChange={(value) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    style: value,
-                                  },
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="solid">Sólido</SelectItem>
-                                <SelectItem value="dashed">Punteado</SelectItem>
-                                <SelectItem value="dotted">Puntos</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Ancho</Label>
-                            <Select
-                              value={editingBlock.content.width || "100%"}
-                              onValueChange={(value) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    width: value,
-                                  },
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="25%">25%</SelectItem>
-                                <SelectItem value="50%">50%</SelectItem>
-                                <SelectItem value="100%">100%</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "contact" && (
-                        <>
-                          <div>
-                            <Label>Tipo</Label>
-                            <Select
-                              value={editingBlock.content.type || "email"}
-                              onValueChange={(value) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    type: value,
-                                  },
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="phone">Teléfono</SelectItem>
-                                <SelectItem value="email">Email</SelectItem>
-                                <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Valor</Label>
-                            <Input
-                              value={editingBlock.content.value || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    value: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder={
-                                editingBlock.content.type === "email"
-                                  ? "email@example.com"
-                                  : "+1234567890"
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label>Etiqueta</Label>
-                            <Input
-                              value={editingBlock.content.label || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    label: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Contact Me"
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "maps" && (
-                        <>
-                          <div>
-                            <Label>Dirección</Label>
-                            <Input
-                              value={editingBlock.content.address || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    address: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="123 Main St, City, State"
-                            />
-                          </div>
-                          <div>
-                            <Label>Latitud</Label>
-                            <Input
-                              type="number"
-                              step="any"
-                              value={editingBlock.content.latitude || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    latitude: e.target.value ? parseFloat(e.target.value) : null,
-                                  },
-                                })
-                              }
-                              placeholder="40.7128"
-                            />
-                          </div>
-                          <div>
-                            <Label>Longitud</Label>
-                            <Input
-                              type="number"
-                              step="any"
-                              value={editingBlock.content.longitude || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    longitude: e.target.value ? parseFloat(e.target.value) : null,
-                                  },
-                                })
-                              }
-                              placeholder="-74.0060"
-                            />
-                          </div>
-                          <div>
-                            <Label>Zoom</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="20"
-                              value={editingBlock.content.zoom || 14}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    zoom: parseInt(e.target.value),
-                                  },
-                                })
-                              }
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={editingBlock.content.showMarker || false}
-                              onCheckedChange={(checked) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    showMarker: checked,
-                                  },
-                                })
-                              }
-                            />
-                            <Label>Mostrar marcador</Label>
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "lead-form" && (
-                        <>
-                          <div>
-                            <Label>Título</Label>
-                            <Input
-                              value={editingBlock.content.title || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    title: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Get in Touch"
-                            />
-                          </div>
-                          <div>
-                            <Label>Subtítulo</Label>
-                            <Input
-                              value={editingBlock.content.subtitle || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    subtitle: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="We'll get back to you within 24 hours"
-                            />
-                          </div>
-                          <div>
-                            <Label>Texto del botón</Label>
-                            <Input
-                              value={editingBlock.content.submitText || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    submitText: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Submit"
-                            />
-                          </div>
-                          <div>
-                            <Label>Mensaje de éxito</Label>
-                            <Input
-                              value={editingBlock.content.successMessage || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    successMessage: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Thank you! We'll be in touch soon."
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "calendar" && (
-                        <>
-                          <div>
-                            <Label>Título</Label>
-                            <Input
-                              value={editingBlock.content.title || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    title: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Schedule a Meeting"
-                            />
-                          </div>
-                          <div>
-                            <Label>Subtítulo</Label>
-                            <Input
-                              value={editingBlock.content.subtitle || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    subtitle: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Pick a time that works for you"
-                            />
-                          </div>
-                          <div>
-                            <Label>Duración (minutos)</Label>
-                            <Input
-                              type="number"
-                              value={editingBlock.content.duration || 30}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    duration: parseInt(e.target.value),
-                                  },
-                                })
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label>Hora de inicio</Label>
-                            <Input
-                              type="time"
-                              value={editingBlock.content.availableHours?.start || "09:00"}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    availableHours: {
-                                      ...editingBlock.content.availableHours,
-                                      start: e.target.value,
-                                    },
-                                  },
-                                })
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label>Hora de fin</Label>
-                            <Input
-                              type="time"
-                              value={editingBlock.content.availableHours?.end || "17:00"}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    availableHours: {
-                                      ...editingBlock.content.availableHours,
-                                      end: e.target.value,
-                                    },
-                                  },
-                                })
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label>Mensaje de éxito</Label>
-                            <Input
-                              value={editingBlock.content.successMessage || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    successMessage: e.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Your appointment has been scheduled!"
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "testimonials" && (
-                        <>
-                          <div>
-                            <Label>Nombre</Label>
-                            <Input
-                              value={editingBlock.content.reviews?.[0]?.name || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    reviews: [
-                                      {
-                                        ...(editingBlock.content.reviews?.[0] || {}),
-                                        name: e.target.value,
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="John Doe"
-                            />
-                          </div>
-                          <div>
-                            <Label>Cargo</Label>
-                            <Input
-                              value={editingBlock.content.reviews?.[0]?.role || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    reviews: [
-                                      {
-                                        ...(editingBlock.content.reviews?.[0] || {}),
-                                        role: e.target.value,
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="CEO"
-                            />
-                          </div>
-                          <div>
-                            <Label>Calificación (1-5)</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="5"
-                              value={editingBlock.content.reviews?.[0]?.rating || 5}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    reviews: [
-                                      {
-                                        ...(editingBlock.content.reviews?.[0] || {}),
-                                        rating: parseInt(e.target.value),
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label>Texto de la reseña</Label>
-                            <Textarea
-                              value={editingBlock.content.reviews?.[0]?.text || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    reviews: [
-                                      {
-                                        ...(editingBlock.content.reviews?.[0] || {}),
-                                        text: e.target.value,
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="Great service!"
-                              rows={4}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "faq" && (
-                        <>
-                          <div>
-                            <Label>Pregunta</Label>
-                            <Input
-                              value={editingBlock.content.items?.[0]?.question || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    items: [
-                                      {
-                                        ...(editingBlock.content.items?.[0] || {}),
-                                        question: e.target.value,
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="How can I help you?"
-                            />
-                          </div>
-                          <div>
-                            <Label>Respuesta</Label>
-                            <Textarea
-                              value={editingBlock.content.items?.[0]?.answer || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    items: [
-                                      {
-                                        ...(editingBlock.content.items?.[0] || {}),
-                                        answer: e.target.value,
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="We're here to assist with any questions."
-                              rows={4}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {editingBlock.type === "stats" && (
-                        <>
-                          <div>
-                            <Label>Etiqueta (Estadística 1)</Label>
-                            <Input
-                              value={editingBlock.content.stats?.[0]?.label || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    stats: [
-                                      {
-                                        ...(editingBlock.content.stats?.[0] || {}),
-                                        label: e.target.value,
-                                      },
-                                      ...(editingBlock.content.stats?.slice(1) || []),
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="Happy Clients"
-                            />
-                          </div>
-                          <div>
-                            <Label>Valor (Estadística 1)</Label>
-                            <Input
-                              value={editingBlock.content.stats?.[0]?.value || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    stats: [
-                                      {
-                                        ...(editingBlock.content.stats?.[0] || {}),
-                                        value: e.target.value,
-                                      },
-                                      ...(editingBlock.content.stats?.slice(1) || []),
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="500"
-                            />
-                          </div>
-                          <div>
-                            <Label>Sufijo (Estadística 1)</Label>
-                            <Input
-                              value={editingBlock.content.stats?.[0]?.suffix || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    stats: [
-                                      {
-                                        ...(editingBlock.content.stats?.[0] || {}),
-                                        suffix: e.target.value,
-                                      },
-                                      ...(editingBlock.content.stats?.slice(1) || []),
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="+"
-                            />
-                          </div>
-                          <Separator />
-                          <div>
-                            <Label>Etiqueta (Estadística 2)</Label>
-                            <Input
-                              value={editingBlock.content.stats?.[1]?.label || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    stats: [
-                                      editingBlock.content.stats?.[0] || {},
-                                      {
-                                        ...(editingBlock.content.stats?.[1] || {}),
-                                        label: e.target.value,
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="Projects"
-                            />
-                          </div>
-                          <div>
-                            <Label>Valor (Estadística 2)</Label>
-                            <Input
-                              value={editingBlock.content.stats?.[1]?.value || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    stats: [
-                                      editingBlock.content.stats?.[0] || {},
-                                      {
-                                        ...(editingBlock.content.stats?.[1] || {}),
-                                        value: e.target.value,
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="100"
-                            />
-                          </div>
-                          <div>
-                            <Label>Sufijo (Estadística 2)</Label>
-                            <Input
-                              value={editingBlock.content.stats?.[1]?.suffix || ""}
-                              onChange={(e) =>
-                                setEditingBlock({
-                                  ...editingBlock,
-                                  content: {
-                                    ...editingBlock.content,
-                                    stats: [
-                                      editingBlock.content.stats?.[0] || {},
-                                      {
-                                        ...(editingBlock.content.stats?.[1] || {}),
-                                        suffix: e.target.value,
-                                      },
-                                    ],
-                                  },
-                                })
-                              }
-                              placeholder="+"
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  <SheetFooter>
-                    <Button
-                      onClick={() => {
-                        if (editingBlock) {
-                          updateBlockMutation.mutate({
-                            blockId: editingBlock.id,
-                            data: { content: editingBlock.content },
-                          });
-                        }
-                      }}
-                      disabled={updateBlockMutation.isPending}
-                      data-testid="button-save-block"
-                    >
-                      Guardar Cambios
-                    </Button>
-                  </SheetFooter>
-                </SheetContent>
-              </Sheet>
-            </>
-          ) : (
-            <Card className="rounded-[18px] border-dashed">
-              <CardContent className="p-12 text-center">
-                <p className="text-gray-500">
-                  Selecciona una landing page o crea una nueva
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      {/* Right Sidebar - Preview */}
-      <div className="w-[380px] border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 overflow-y-auto">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Vista Previa</h3>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPreviewMode("desktop")}
-                className={
-                  previewMode === "desktop" ? "bg-purple-100" : ""
+        {/* URL Input */}
+        {selectedPage && (
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                value={selectedPage.landingPage.slug}
+                onChange={(e) =>
+                  updatePageMutation.mutate({
+                    id: selectedPageId!,
+                    data: { slug: e.target.value },
+                  })
                 }
-                data-testid="button-preview-desktop"
-              >
-                <Monitor className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPreviewMode("mobile")}
-                className={
-                  previewMode === "mobile" ? "bg-purple-100" : ""
-                }
-                data-testid="button-preview-mobile"
-              >
-                <Smartphone className="w-4 h-4" />
-              </Button>
+                className="pl-10 h-9 text-sm"
+                placeholder="your-page-url"
+                data-testid="input-url"
+              />
             </div>
           </div>
+        )}
 
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Connect Domain (stub) */}
+          <Button variant="outline" size="sm" disabled data-testid="button-connect-domain">
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Connect Domain
+          </Button>
+
+          {/* Undo/Redo (disabled) */}
+          <div className="hidden sm:flex gap-1">
+            <Button variant="ghost" size="sm" disabled data-testid="button-undo">
+              <Undo className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="sm" disabled data-testid="button-redo">
+              <Redo className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <Separator orientation="vertical" className="h-6" />
+
+          {/* Desktop/Mobile Toggle */}
+          <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 rounded-lg p-1">
+            <Button
+              variant={previewMode === "desktop" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setPreviewMode("desktop")}
+              className="h-7 px-2"
+              data-testid="button-preview-desktop"
+            >
+              <Monitor className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={previewMode === "mobile" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setPreviewMode("mobile")}
+              className="h-7 px-2"
+              data-testid="button-preview-mobile"
+            >
+              <Smartphone className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Publish Button */}
           {selectedPage && (
-            <>
-              <div className="mb-4 space-y-2">
-                <Button
-                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
-                  onClick={() => {
-                    updatePageMutation.mutate({
-                      id: selectedPageId!,
-                      data: {
-                        isPublished: !selectedPage.landingPage.isPublished,
-                      },
-                    });
-                  }}
-                  data-testid="button-publish-page"
-                >
-                  {selectedPage.landingPage.isPublished
-                    ? "Despublicar"
-                    : "Publicar"}
-                </Button>
-                
-                {selectedPage.landingPage.isPublished && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      const publicUrl = `${window.location.origin}/${selectedPage.landingPage.slug}`;
-                      window.open(publicUrl, '_blank');
-                    }}
-                    data-testid="button-open-landing-page"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Abrir Landing Page
-                  </Button>
-                )}
-              </div>
-
-              <div
-                className={`rounded-[18px] overflow-hidden shadow-lg ${
-                  previewMode === "mobile" ? "max-w-[350px] mx-auto" : ""
-                }`}
-              >
-                <div
-                  className="p-8"
-                  style={{
-                    backgroundColor:
-                      selectedPage.landingPage.theme.backgroundColor,
-                  }}
-                >
-                  {/* Profile Section */}
-                  <div className="text-center mb-8">
-                    <Avatar className="w-24 h-24 mx-auto mb-4">
-                      <AvatarImage
-                        src={selectedPage.landingPage.profilePhoto || ""}
-                      />
-                      <AvatarFallback>
-                        {(selectedPage.landingPage.profileName ||
-                          selectedPage.landingPage.title ||
-                          "LP")
-                          .substring(0, 2)
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {selectedPage.landingPage.profileName && (
-                      <h1
-                        className="text-2xl font-bold mb-2"
-                        style={{
-                          color: selectedPage.landingPage.theme.textColor,
-                        }}
-                      >
-                        {selectedPage.landingPage.profileName}
-                      </h1>
-                    )}
-                    {selectedPage.landingPage.profileBio && (
-                      <p
-                        className="text-sm"
-                        style={{
-                          color: selectedPage.landingPage.theme.textColor,
-                          opacity: 0.8,
-                        }}
-                      >
-                        {selectedPage.landingPage.profileBio}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Blocks */}
-                  <div className="space-y-3">
-                    {blocks
-                      .filter((b) => b.isVisible)
-                      .map((block) => (
-                        <BlockPreview
-                          key={block.id}
-                          block={block}
-                          theme={selectedPage.landingPage.theme}
-                        />
-                      ))}
-                  </div>
-                </div>
-              </div>
-            </>
+            <Button
+              onClick={() => {
+                updatePageMutation.mutate({
+                  id: selectedPageId!,
+                  data: {
+                    isPublished: !selectedPage.landingPage.isPublished,
+                  },
+                });
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              size="sm"
+              data-testid="button-publish-page"
+            >
+              {selectedPage.landingPage.isPublished ? "Unpublish" : "Publish"}
+            </Button>
           )}
         </div>
       </div>
+
+      {/* Main 3-Column Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Dark with Add Blocks */}
+        <div className="w-[280px] bg-slate-900 dark:bg-black border-r border-slate-800 overflow-y-auto">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-6">
+              {/* Add Blocks Section */}
+              <div>
+                <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Blocks
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {BLOCK_TYPES.map((blockType) => {
+                    const Icon = blockType.icon;
+                    return (
+                      <button
+                        key={blockType.type}
+                        onClick={() => addBlock(blockType.type, {})}
+                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg bg-slate-800 hover:bg-slate-750 transition-colors group"
+                        data-testid={`button-add-${blockType.type}`}
+                      >
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform"
+                          style={{ backgroundColor: `${blockType.color}20` }}
+                        >
+                          <Icon className="w-5 h-5" style={{ color: blockType.color }} />
+                        </div>
+                        <span className="text-xs text-gray-300 font-medium">{blockType.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                  size="sm"
+                  data-testid="button-see-more-blocks"
+                >
+                  See Another Blocks
+                </Button>
+              </div>
+
+              <Separator className="bg-slate-800" />
+
+              {/* Social Media Section */}
+              <div>
+                <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                  <Share2 className="w-4 h-4" />
+                  Social Media
+                </h3>
+                <div className="space-y-2">
+                  {SOCIAL_PLATFORMS.map((platform) => {
+                    const Icon = platform.icon;
+                    // Find if there's already a social block for this platform
+                    const existingBlock = blocks.find(
+                      b => b.type === "social" && b.content.platform === platform.value
+                    );
+                    
+                    return (
+                      <div
+                        key={platform.value}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-750 transition-colors group"
+                      >
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: `${platform.color}20` }}
+                        >
+                          <Icon className="w-4 h-4" style={{ color: platform.color }} />
+                        </div>
+                        <span className="flex-1 text-sm text-gray-300">{platform.label}</span>
+                        {existingBlock ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteBlockMutation.mutate(existingBlock.id)}
+                            className="h-7 w-7 p-0 text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`button-delete-social-${platform.value}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => addBlock("social", { platform: platform.value })}
+                            className="h-7 w-7 p-0 text-green-400 hover:text-green-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`button-add-social-${platform.value}`}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Center - Preview with Dotted Background */}
+        <div className="flex-1 overflow-hidden relative">
+          {/* Dotted Background Pattern */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "radial-gradient(circle, #d1d5db 1px, transparent 1px)",
+              backgroundColor: "#f9fafb",
+              backgroundSize: "20px 20px",
+            }}
+          />
+
+          {/* Content */}
+          <div className="relative h-full overflow-y-auto">
+            <div className="p-8 flex flex-col items-center">
+              {/* Zoom Control */}
+              <div className="mb-6">
+                <Select value={`${zoomLevel}`} onValueChange={(v) => setZoomLevel(parseInt(v))}>
+                  <SelectTrigger className="w-32 bg-white" data-testid="select-zoom">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="90">90%</SelectItem>
+                    <SelectItem value="100">100%</SelectItem>
+                    <SelectItem value="110">110%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Device Frame */}
+              {selectedPage ? (
+                <div
+                  className={`relative bg-white rounded-[32px] overflow-hidden shadow-2xl transition-all duration-300`}
+                  style={{
+                    width: previewMode === "mobile" ? `${375 * (zoomLevel / 100)}px` : "100%",
+                    maxWidth: previewMode === "desktop" ? "1024px" : undefined,
+                    minHeight: previewMode === "mobile" ? `${812 * (zoomLevel / 100)}px` : "600px",
+                    transform: `scale(${zoomLevel / 100})`,
+                    transformOrigin: "top center",
+                  }}
+                >
+                  {/* Phone Notch (only for mobile) */}
+                  {previewMode === "mobile" && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-6 bg-black rounded-b-3xl z-10" />
+                  )}
+
+                  {/* Scrollable Content Area */}
+                  <ScrollArea className="h-full">
+                    <div
+                      className="p-6"
+                      style={{
+                        backgroundColor: selectedPage.landingPage.theme.backgroundColor,
+                        minHeight: previewMode === "mobile" ? "812px" : "600px",
+                      }}
+                    >
+                      {/* Profile Section */}
+                      <div className="text-center mb-6">
+                        <Avatar className="w-20 h-20 mx-auto mb-3 ring-4 ring-white dark:ring-slate-800">
+                          <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
+                          <AvatarFallback>
+                            {(selectedPage.landingPage.profileName ||
+                              selectedPage.landingPage.title ||
+                              "LP")
+                              .substring(0, 2)
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {selectedPage.landingPage.profileName && (
+                          <h1
+                            className="text-xl font-bold mb-1"
+                            style={{ color: selectedPage.landingPage.theme.textColor }}
+                          >
+                            {selectedPage.landingPage.profileName}
+                          </h1>
+                        )}
+                        {selectedPage.landingPage.profileBio && (
+                          <p
+                            className="text-sm"
+                            style={{ color: selectedPage.landingPage.theme.textColor, opacity: 0.8 }}
+                          >
+                            {selectedPage.landingPage.profileBio}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Blocks with Drag and Drop */}
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={blocks.map((b) => b.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-3">
+                            {blocks.length === 0 ? (
+                              <Card className="border-dashed">
+                                <CardContent className="p-8 text-center">
+                                  <p className="text-gray-500 text-sm">
+                                    Add your first block from the left sidebar
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            ) : (
+                              blocks.map((block) => (
+                                <div key={block.id} className="space-y-2">
+                                  {/* Editable block item */}
+                                  <SortableBlock
+                                    block={block}
+                                    onEdit={() => {
+                                      setEditingBlock(block);
+                                      setIsBlockEditorOpen(true);
+                                    }}
+                                    onToggleVisibility={() => {
+                                      updateBlockMutation.mutate({
+                                        blockId: block.id,
+                                        data: { isVisible: !block.isVisible },
+                                      });
+                                    }}
+                                    onDelete={() => {
+                                      if (confirm("¿Estás seguro de eliminar este bloque?")) {
+                                        deleteBlockMutation.mutate(block.id);
+                                      }
+                                    }}
+                                  />
+                                  {/* Visual preview */}
+                                  <div className="pl-6">
+                                    <BlockPreview
+                                      block={block}
+                                      theme={selectedPage.landingPage.theme}
+                                    />
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    </div>
+                  </ScrollArea>
+                </div>
+              ) : (
+                <Card className="border-dashed max-w-md">
+                  <CardContent className="p-12 text-center">
+                    <p className="text-gray-500">Loading...</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Panel - Design/Analytics/Settings Tabs */}
+        <div className="w-[350px] bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-gray-700 overflow-hidden">
+          <Tabs defaultValue="design" className="h-full flex flex-col">
+            <TabsList className="w-full rounded-none border-b justify-start px-4">
+              <TabsTrigger value="design" className="gap-2" data-testid="tab-design">
+                <Palette className="w-4 h-4" />
+                Design
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="gap-2" data-testid="tab-analytics">
+                <BarChart className="w-4 h-4" />
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-2" data-testid="tab-settings">
+                <SettingsIcon className="w-4 h-4" />
+                Settings
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Design Tab */}
+            <TabsContent value="design" className="flex-1 overflow-hidden m-0">
+              <ScrollArea className="h-full">
+                <div className="p-6 space-y-6">
+                  {selectedPage && (
+                    <>
+                      {/* Select Theme Section */}
+                      <div>
+                        <h3 className="font-semibold mb-3">Select Theme</h3>
+                        
+                        {/* Theme Category Tabs */}
+                        <Tabs value={themeCategory} onValueChange={(v: any) => setThemeCategory(v)} className="mb-4">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="all" className="text-xs" data-testid="theme-cat-all">All</TabsTrigger>
+                            <TabsTrigger value="light" className="text-xs" data-testid="theme-cat-light">Light</TabsTrigger>
+                            <TabsTrigger value="dark" className="text-xs" data-testid="theme-cat-dark">Dark</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+
+                        {/* Theme Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          {filteredThemes.slice(0, 4).map((themeData) => (
+                            <button
+                              key={themeData.name}
+                              onClick={() =>
+                                updatePageMutation.mutate({
+                                  id: selectedPageId!,
+                                  data: { theme: themeData.theme },
+                                })
+                              }
+                              className="group relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-purple-500 transition-colors"
+                              data-testid={`theme-${themeData.name.toLowerCase().replace(/\s+/g, "-")}`}
+                            >
+                              <div
+                                className="w-full h-full"
+                                style={{ background: themeData.gradient }}
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {themeData.name}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+
+                        <Button variant="outline" className="w-full" size="sm" data-testid="button-see-all-themes">
+                          See All Themes
+                        </Button>
+                      </div>
+
+                      <Separator />
+
+                      {/* Typography Section */}
+                      <div className="space-y-4">
+                        <h3 className="font-semibold">Typography</h3>
+                        
+                        <div>
+                          <Label className="text-xs mb-2 block">Font Weight</Label>
+                          <Select defaultValue="regular">
+                            <SelectTrigger data-testid="select-font-weight">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="light">Light</SelectItem>
+                              <SelectItem value="regular">Regular</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="semibold">Semibold</SelectItem>
+                              <SelectItem value="bold">Bold</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs mb-2 block">Font Style</Label>
+                          <Select defaultValue="inter">
+                            <SelectTrigger data-testid="select-font-style">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="inter">Inter</SelectItem>
+                              <SelectItem value="roboto">Roboto</SelectItem>
+                              <SelectItem value="poppins">Poppins</SelectItem>
+                              <SelectItem value="montserrat">Montserrat</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Custom Colors */}
+                      <div className="space-y-4">
+                        <h3 className="font-semibold">Custom Colors</h3>
+                        
+                        <div>
+                          <Label htmlFor="primaryColor" className="text-xs mb-2 block">
+                            Primary Color
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="primaryColor"
+                              type="color"
+                              value={selectedPage.landingPage.theme.primaryColor}
+                              onChange={(e) =>
+                                updatePageMutation.mutate({
+                                  id: selectedPageId!,
+                                  data: {
+                                    theme: {
+                                      ...selectedPage.landingPage.theme,
+                                      primaryColor: e.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                              className="w-16 h-10 p-1"
+                              data-testid="input-primary-color"
+                            />
+                            <Input
+                              value={selectedPage.landingPage.theme.primaryColor}
+                              onChange={(e) =>
+                                updatePageMutation.mutate({
+                                  id: selectedPageId!,
+                                  data: {
+                                    theme: {
+                                      ...selectedPage.landingPage.theme,
+                                      primaryColor: e.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="backgroundColor" className="text-xs mb-2 block">
+                            Background Color
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="backgroundColor"
+                              type="color"
+                              value={selectedPage.landingPage.theme.backgroundColor}
+                              onChange={(e) =>
+                                updatePageMutation.mutate({
+                                  id: selectedPageId!,
+                                  data: {
+                                    theme: {
+                                      ...selectedPage.landingPage.theme,
+                                      backgroundColor: e.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                              className="w-16 h-10 p-1"
+                              data-testid="input-background-color"
+                            />
+                            <Input
+                              value={selectedPage.landingPage.theme.backgroundColor}
+                              onChange={(e) =>
+                                updatePageMutation.mutate({
+                                  id: selectedPageId!,
+                                  data: {
+                                    theme: {
+                                      ...selectedPage.landingPage.theme,
+                                      backgroundColor: e.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="textColor" className="text-xs mb-2 block">
+                            Text Color
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="textColor"
+                              type="color"
+                              value={selectedPage.landingPage.theme.textColor}
+                              onChange={(e) =>
+                                updatePageMutation.mutate({
+                                  id: selectedPageId!,
+                                  data: {
+                                    theme: {
+                                      ...selectedPage.landingPage.theme,
+                                      textColor: e.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                              className="w-16 h-10 p-1"
+                              data-testid="input-text-color"
+                            />
+                            <Input
+                              value={selectedPage.landingPage.theme.textColor}
+                              onChange={(e) =>
+                                updatePageMutation.mutate({
+                                  id: selectedPageId!,
+                                  data: {
+                                    theme: {
+                                      ...selectedPage.landingPage.theme,
+                                      textColor: e.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Profile Section */}
+                      <div className="space-y-4">
+                        <h3 className="font-semibold">Profile</h3>
+                        
+                        <div>
+                          <Label htmlFor="profileName" className="text-xs mb-2 block">
+                            Name
+                          </Label>
+                          <Input
+                            id="profileName"
+                            value={selectedPage.landingPage.profileName || ""}
+                            onChange={(e) =>
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: { profileName: e.target.value },
+                              })
+                            }
+                            placeholder="Your name"
+                            data-testid="input-profile-name"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="profileBio" className="text-xs mb-2 block">
+                            Bio
+                          </Label>
+                          <Textarea
+                            id="profileBio"
+                            value={selectedPage.landingPage.profileBio || ""}
+                            onChange={(e) =>
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: { profileBio: e.target.value },
+                              })
+                            }
+                            placeholder="Your bio"
+                            rows={3}
+                            data-testid="input-profile-bio"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="flex-1 m-0">
+              <div className="h-full flex items-center justify-center p-6">
+                <div className="text-center">
+                  <BarChart className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <h3 className="font-semibold mb-2">Analytics Coming Soon</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Track your page performance and visitor insights.
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="flex-1 overflow-hidden m-0">
+              <ScrollArea className="h-full">
+                <div className="p-6 space-y-6">
+                  {selectedPage && (
+                    <>
+                      {/* Page Settings */}
+                      <div className="space-y-4">
+                        <h3 className="font-semibold">Page Settings</h3>
+                        
+                        <div>
+                          <Label htmlFor="slug" className="text-xs mb-2 block">
+                            URL Slug
+                          </Label>
+                          <Input
+                            id="slug"
+                            value={selectedPage.landingPage.slug}
+                            onChange={(e) =>
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: { slug: e.target.value },
+                              })
+                            }
+                            data-testid="input-slug"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="password-protection" className="text-sm font-medium">
+                              Password Protection
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Require a password to view this page
+                            </p>
+                          </div>
+                          <Switch
+                            id="password-protection"
+                            checked={selectedPage.landingPage.isPasswordProtected || false}
+                            onCheckedChange={(checked) =>
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: { isPasswordProtected: checked },
+                              })
+                            }
+                            data-testid="switch-password-protection"
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* SEO Settings */}
+                      <div className="space-y-4">
+                        <h3 className="font-semibold">SEO</h3>
+                        
+                        <div>
+                          <Label htmlFor="seo-title" className="text-xs mb-2 block">
+                            Meta Title
+                          </Label>
+                          <Input
+                            id="seo-title"
+                            value={selectedPage.landingPage.seo.title || ""}
+                            onChange={(e) =>
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: {
+                                  seo: {
+                                    ...selectedPage.landingPage.seo,
+                                    title: e.target.value,
+                                  },
+                                },
+                              })
+                            }
+                            placeholder="SEO title"
+                            data-testid="input-seo-title"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="seo-description" className="text-xs mb-2 block">
+                            Meta Description
+                          </Label>
+                          <Textarea
+                            id="seo-description"
+                            value={selectedPage.landingPage.seo.description || ""}
+                            onChange={(e) =>
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: {
+                                  seo: {
+                                    ...selectedPage.landingPage.seo,
+                                    description: e.target.value,
+                                  },
+                                },
+                              })
+                            }
+                            placeholder="SEO description"
+                            rows={3}
+                            data-testid="input-seo-description"
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Quick Actions */}
+                      <div className="space-y-3">
+                        <h3 className="font-semibold">Quick Actions</h3>
+                        
+                        {selectedPage.landingPage.isPublished && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              const publicUrl = `${window.location.origin}/${selectedPage.landingPage.slug}`;
+                              window.open(publicUrl, '_blank');
+                            }}
+                            data-testid="button-open-landing-page"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            View Published Page
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+
+      {/* Block Editor Sheet - Keep all existing functionality */}
+      <Sheet open={isBlockEditorOpen} onOpenChange={setIsBlockEditorOpen}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Edit Block</SheetTitle>
+            <SheetDescription>
+              Configure your block content
+            </SheetDescription>
+          </SheetHeader>
+          {editingBlock && (
+            <div className="space-y-4 py-6">
+              {editingBlock.type === "link" && (
+                <>
+                  <div>
+                    <Label>Label</Label>
+                    <Input
+                      value={editingBlock.content.label || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            label: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Click Here"
+                    />
+                  </div>
+                  <div>
+                    <Label>URL</Label>
+                    <Input
+                      value={editingBlock.content.url || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            url: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="https://example.com"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={editingBlock.content.openInNewTab || false}
+                      onCheckedChange={(checked) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            openInNewTab: checked,
+                          },
+                        })
+                      }
+                    />
+                    <Label>Open in new tab</Label>
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "social" && (
+                <>
+                  <div>
+                    <Label>Platform</Label>
+                    <Select
+                      value={editingBlock.content.platform || "instagram"}
+                      onValueChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            platform: value,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SOCIAL_PLATFORMS.map((platform) => (
+                          <SelectItem
+                            key={platform.value}
+                            value={platform.value}
+                          >
+                            {platform.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>URL</Label>
+                    <Input
+                      value={editingBlock.content.url || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            url: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="https://instagram.com/username"
+                    />
+                  </div>
+                  <div>
+                    <Label>Custom Label (optional)</Label>
+                    <Input
+                      value={editingBlock.content.customLabel || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            customLabel: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Follow us on Instagram"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "video" && (
+                <>
+                  <div>
+                    <Label>Video URL (YouTube/Vimeo embed)</Label>
+                    <Input
+                      value={editingBlock.content.url || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            url: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="https://www.youtube.com/embed/..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Aspect Ratio</Label>
+                    <Select
+                      value={editingBlock.content.aspectRatio || "16/9"}
+                      onValueChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            aspectRatio: value,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="16/9">16:9</SelectItem>
+                        <SelectItem value="1/1">1:1</SelectItem>
+                        <SelectItem value="9/16">9:16</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "text" && (
+                <>
+                  <div>
+                    <Label>Content</Label>
+                    <Textarea
+                      value={editingBlock.content.content || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            content: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Your text here"
+                      rows={4}
+                    />
+                  </div>
+                  <div>
+                    <Label>Alignment</Label>
+                    <Select
+                      value={editingBlock.content.alignment || "left"}
+                      onValueChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            alignment: value,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="left">Left</SelectItem>
+                        <SelectItem value="center">Center</SelectItem>
+                        <SelectItem value="right">Right</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Size</Label>
+                    <Select
+                      value={editingBlock.content.size || "base"}
+                      onValueChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            size: value,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sm">Small</SelectItem>
+                        <SelectItem value="base">Normal</SelectItem>
+                        <SelectItem value="lg">Large</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "image" && (
+                <>
+                  <div>
+                    <Label>Image URL</Label>
+                    <Input
+                      value={editingBlock.content.url || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            url: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  </div>
+                  <div>
+                    <Label>Alt Text</Label>
+                    <Input
+                      value={editingBlock.content.alt || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            alt: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Description of image"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "email" && (
+                <>
+                  <div>
+                    <Label>Placeholder</Label>
+                    <Input
+                      value={editingBlock.content.placeholder || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            placeholder: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Enter your email"
+                    />
+                  </div>
+                  <div>
+                    <Label>Button Text</Label>
+                    <Input
+                      value={editingBlock.content.buttonText || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            buttonText: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Subscribe"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "contact" && (
+                <>
+                  <div>
+                    <Label>Type</Label>
+                    <Select
+                      value={editingBlock.content.type || "email"}
+                      onValueChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            type: value,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="phone">Phone</SelectItem>
+                        <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Value</Label>
+                    <Input
+                      value={editingBlock.content.value || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            value: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder={
+                        editingBlock.content.type === "email"
+                          ? "email@example.com"
+                          : "+1234567890"
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label>Label</Label>
+                    <Input
+                      value={editingBlock.content.label || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            label: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Contact me"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "divider" && (
+                <>
+                  <div>
+                    <Label>Style</Label>
+                    <Select
+                      value={editingBlock.content.style || "solid"}
+                      onValueChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            style: value,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solid">Solid</SelectItem>
+                        <SelectItem value="dashed">Dashed</SelectItem>
+                        <SelectItem value="dotted">Dotted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Width</Label>
+                    <Select
+                      value={editingBlock.content.width || "100%"}
+                      onValueChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            width: value,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="100%">Full Width</SelectItem>
+                        <SelectItem value="75%">75%</SelectItem>
+                        <SelectItem value="50%">50%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              {/* Add other block type editors (maps, lead-form, calendar, testimonials, faq, stats) with same pattern */}
+            </div>
+          )}
+          <SheetFooter>
+            <Button
+              onClick={() => {
+                if (editingBlock) {
+                  updateBlockMutation.mutate({
+                    blockId: editingBlock.id,
+                    data: { content: editingBlock.content },
+                  });
+                }
+              }}
+              disabled={updateBlockMutation.isPending}
+              data-testid="button-save-block"
+            >
+              Save Changes
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
