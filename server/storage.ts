@@ -5716,12 +5716,7 @@ export class DbStorage implements IStorage {
   async createLandingPage(data: InsertLandingPage): Promise<LandingPage> {
     const result = await db
       .insert(landingPages)
-      .values({
-        ...data,
-        viewCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .values(data)
       .returning();
     
     return result[0];
@@ -5831,20 +5826,18 @@ export class DbStorage implements IStorage {
   }
   
   async reorderBlocks(landingPageId: string, blockIds: string[]): Promise<void> {
-    await db.transaction(async (tx) => {
-      for (let i = 0; i < blockIds.length; i++) {
-        await tx
-          .update(landingBlocks)
-          .set({
-            position: i,
-            updatedAt: new Date(),
-          })
-          .where(and(
-            eq(landingBlocks.id, blockIds[i]),
-            eq(landingBlocks.landingPageId, landingPageId)
-          ));
-      }
-    });
+    for (let i = 0; i < blockIds.length; i++) {
+      await db
+        .update(landingBlocks)
+        .set({
+          position: i,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(landingBlocks.id, blockIds[i]),
+          eq(landingBlocks.landingPageId, landingPageId)
+        ));
+    }
   }
   
   // ==================== LANDING ANALYTICS ====================
