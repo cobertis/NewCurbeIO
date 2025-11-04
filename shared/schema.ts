@@ -734,7 +734,7 @@ export const updateUserSchema = z.object({
   lastName: z.string().optional(),
   avatar: z.union([
     z.string().url(),
-    z.string().regex(/^data:image\/(png|jpg|jpeg|gif|webp);base64,/, "Avatar must be a valid URL or base64 image"),
+    z.string().regex(/^data:image\/[a-zA-Z+]+;base64,/, "Avatar must be a valid URL or base64 image"),
     z.literal(""),
     z.null()
   ]).optional(),
