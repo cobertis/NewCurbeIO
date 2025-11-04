@@ -17105,7 +17105,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const blocks = allBlocks.filter(block => block.isVisible);
       
       // Get company data (including logo) for public display
-      const company = await storage.getCompanyById(landingPage.companyId);
+      const company = await storage.getCompany(landingPage.companyId);
       
       res.json({ 
         landingPage, 
