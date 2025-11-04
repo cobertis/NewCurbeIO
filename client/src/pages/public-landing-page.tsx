@@ -42,6 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type LandingPage = {
   id: string;
+  companyId: string;
   slug: string;
   title: string;
   description?: string;
@@ -589,6 +590,12 @@ export default function PublicLandingPage() {
     enabled: !!slug,
   });
 
+  // Fetch company data to get logo
+  const { data: companyData } = useQuery<{ company: any }>({
+    queryKey: ["/api/companies", landingPage?.companyId],
+    enabled: !!landingPage?.companyId,
+  });
+
   useEffect(() => {
     if (landingPage?.id) {
       fetch(`/api/landing-pages/${landingPage.id}/view`, {
@@ -773,13 +780,21 @@ export default function PublicLandingPage() {
         {/* Header with Logo and Menu - INSIDE gradient NO STICKY */}
         <div className="relative z-10 flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2 text-white">
-            <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-              <span className="text-xs font-bold">
-                {(landingPage.title || "SB").substring(0, 2).toUpperCase()}
-              </span>
-            </div>
+            {companyData?.company?.logo ? (
+              <img 
+                src={companyData.company.logo} 
+                alt="Company Logo" 
+                className="w-6 h-6 rounded object-cover"
+              />
+            ) : (
+              <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+                <span className="text-xs font-bold">
+                  {(landingPage.title || "SB").substring(0, 2).toUpperCase()}
+                </span>
+              </div>
+            )}
             <span className="font-semibold text-sm">
-              {landingPage.title || "SmartBio"}
+              {landingPage.title || companyData?.company?.name || "SmartBio"}
             </span>
           </div>
           <button className="text-white p-1" aria-label="Menu" data-testid="button-header-menu">

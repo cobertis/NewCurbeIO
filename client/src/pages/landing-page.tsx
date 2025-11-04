@@ -710,6 +710,12 @@ export default function LandingPageBuilder() {
   });
   const currentUser = sessionData?.user;
 
+  // Fetch company data to get logo
+  const { data: companyData } = useQuery<{ company: any }>({
+    queryKey: ["/api/companies", currentUser?.companyId],
+    enabled: !!currentUser?.companyId,
+  });
+
   // Sensors for drag and drop
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1703,13 +1709,21 @@ export default function LandingPageBuilder() {
                           {/* Header with Logo and Menu - INSIDE gradient NO STICKY */}
                           <div className="relative z-10 flex items-center justify-between px-4 py-3">
                             <div className="flex items-center gap-2 text-white">
-                              <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-                                <span className="text-xs font-bold">
-                                  {(selectedPage.landingPage.title || "SB").substring(0, 2).toUpperCase()}
-                                </span>
-                              </div>
+                              {companyData?.company?.logo ? (
+                                <img 
+                                  src={companyData.company.logo} 
+                                  alt="Company Logo" 
+                                  className="w-6 h-6 rounded object-cover"
+                                />
+                              ) : (
+                                <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+                                  <span className="text-xs font-bold">
+                                    {(selectedPage.landingPage.title || "SB").substring(0, 2).toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
                               <span className="font-semibold text-sm">
-                                {selectedPage.landingPage.title || "SmartBio"}
+                                {selectedPage.landingPage.title || companyData?.company?.name || "SmartBio"}
                               </span>
                             </div>
                             <button className="text-white p-1">
