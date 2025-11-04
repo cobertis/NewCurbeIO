@@ -2704,6 +2704,27 @@ export const insertLandingPageSchema = createInsertSchema(landingPages).omit({
   seo: z.record(z.any()).optional(),
 });
 
+export const updateLandingPageSchema = createInsertSchema(landingPages).omit({
+  id: true,
+  companyId: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+  viewCount: true,
+}).extend({
+  slug: z.string().min(3).max(50).regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens").optional(),
+  title: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  profileName: z.string().max(100).optional(),
+  profileBio: z.string().max(500).optional(),
+  profilePhoto: z.string().optional(),
+  theme: z.record(z.any()).optional(),
+  seo: z.record(z.any()).optional(),
+  isPublished: z.boolean().optional(),
+  isPasswordProtected: z.boolean().optional(),
+  password: z.string().optional(),
+}).partial();
+
 export const insertLandingBlockSchema = createInsertSchema(landingBlocks).omit({
   id: true,
   createdAt: true,

@@ -56,6 +56,7 @@ import {
   updatePolicyReminderSchema,
   policyNotes,
   insertLandingPageSchema,
+  updateLandingPageSchema,
   insertLandingBlockSchema,
   insertLandingAnalyticsSchema,
   insertLandingLeadSchema,
@@ -17159,7 +17160,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Validate partial update data
-      const validatedData = insertLandingPageSchema.partial().parse(req.body);
+      const validatedData = updateLandingPageSchema.parse(req.body);
       
       // If slug is being updated, check it doesn't exist
       if (validatedData.slug && validatedData.slug !== existingPage.slug) {
@@ -17857,7 +17858,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
     }
   });
-
 
   const httpServer = createServer(app);
 

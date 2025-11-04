@@ -1257,7 +1257,6 @@ function Router() {
       <Route path="/l/:slug" component={PublicLandingPage} />
       <Route path="/consent/:token" component={PublicConsentPage} />
       <Route path="/unsubscribe" component={Unsubscribe} />
-      <Route path="/:slug" component={PublicLandingPage} />
       <Route component={NotFound} />
     </Switch>
   );
