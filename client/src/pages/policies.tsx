@@ -7360,10 +7360,10 @@ export default function PoliciesPage() {
 
                             // Extract out-of-pocket maximums
                             const individualMoop = plan.moops?.find((m: any) => 
-                              m.type === 'Individual Medical' || m.individual_cost
+                              m.family_cost === 'Family Per Person' || (!m.family && m.amount)
                             );
                             const familyMoop = plan.moops?.find((m: any) => 
-                              m.type === 'Family Medical' || m.family_cost
+                              m.family_cost === 'Family' || (m.family && m.amount)
                             );
 
                             // Map data from CMS API format (snake_case) to form fields
