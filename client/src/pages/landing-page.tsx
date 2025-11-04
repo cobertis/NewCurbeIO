@@ -1771,12 +1771,12 @@ export default function LandingPageBuilder() {
                             )}
                           </div>
 
-                          {/* Social Media Icons - Horizontal Row - CLICKABLE for editing */}
+                          {/* Social Media Icons - COMPACT like SmartBio */}
                           {(() => {
                             const socialBlocks = blocks.filter(b => b.type === "social" && b.isVisible);
                             if (socialBlocks.length > 0) {
                               return (
-                                <div className="flex items-center justify-center gap-3 mb-6">
+                                <div className="flex items-center justify-center gap-2 mb-4">
                                   {socialBlocks.map((block) => {
                                     const SocialIcon = SOCIAL_PLATFORMS.find(
                                       (p) => p.value === block.content.platform
@@ -1789,11 +1789,11 @@ export default function LandingPageBuilder() {
                                           setEditingBlock(block);
                                           setIsBlockEditorOpen(true);
                                         }}
-                                        className="w-12 h-12 rounded-full bg-black flex items-center justify-center hover:scale-110 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer"
+                                        className="w-11 h-11 rounded-full bg-black flex items-center justify-center hover:scale-110 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer"
                                         data-testid={`preview-social-${block.id}`}
                                         title={`Edit ${block.content.platform || 'social'} link`}
                                       >
-                                        <SocialIcon className="w-6 h-6 text-white" />
+                                        <SocialIcon className="w-5 h-5 text-white" />
                                       </button>
                                     );
                                   })}
@@ -1813,10 +1813,10 @@ export default function LandingPageBuilder() {
                           items={blocks.filter(b => b.type !== "social").map((b) => b.id)}
                           strategy={verticalListSortingStrategy}
                         >
-                          <div className="space-y-3">
+                          <div className="space-y-2">
                             {blocks.filter(b => b.type !== "social").length === 0 ? (
                               <Card className="border-dashed">
-                                <CardContent className="p-8 text-center">
+                                <CardContent className="p-6 text-center">
                                   <p className="text-gray-500 text-sm">
                                     Add your first block from the left sidebar
                                   </p>
@@ -1824,7 +1824,7 @@ export default function LandingPageBuilder() {
                               </Card>
                             ) : (
                               blocks.filter(b => b.type !== "social").map((block) => (
-                                <div key={block.id} className="space-y-2">
+                                <div key={block.id} className="space-y-1">
                                   {/* Editable block item */}
                                   <SortableBlock
                                     block={block}
@@ -1842,7 +1842,7 @@ export default function LandingPageBuilder() {
                                   />
                                   {/* Visual preview - only for non-social blocks */}
                                   {block.type !== "social" && (
-                                    <div className="pl-6">
+                                    <div className="pl-4">
                                       <BlockPreview
                                         block={block}
                                         theme={selectedPage.landingPage.theme}
