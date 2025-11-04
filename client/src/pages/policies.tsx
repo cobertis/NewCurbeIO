@@ -6245,8 +6245,9 @@ export default function PoliciesPage() {
 
   // If viewing a specific quote, show modern dashboard
   if (isViewingQuote) {
-    // Show loading state until ALL data is ready
-    if (isLoadingQuoteDetail || !quoteDetail) {
+    // ROBUST FIX: Show loading state until viewingQuote is actually available
+    // This prevents the "Policy not found" flash before data loads
+    if (isLoadingQuoteDetail || !viewingQuote) {
       return (
         <>
           <div className="flex items-center justify-center h-screen">
@@ -6256,20 +6257,6 @@ export default function PoliciesPage() {
             </div>
           </div>
         </>
-      );
-    }
-    
-    if (!viewingQuote) {
-      return (
-        <div className="h-full p-6 flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Policy not found</h2>
-            <p className="text-muted-foreground mb-4">The policy you're looking for doesn't exist or has been deleted.</p>
-            <Button onClick={() => setLocation("/policies")}>
-              Back to Policies
-            </Button>
-          </div>
-        </div>
       );
     }
 
