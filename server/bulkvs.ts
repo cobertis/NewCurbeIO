@@ -280,6 +280,130 @@ class BulkVSClient {
       throw new Error(`Failed to update call forwarding: ${error.response?.data?.message || error.message}`);
     }
   }
+  /**
+   * Complete activation sequence for a phone number
+   * This function enables all required features for a number to work properly:
+   * 1. SMS/MMS enable (CRITICAL - hard-stop if fails)
+   * 2. Webhook setup (CRITICAL)
+   * 3. CNAM update (soft-fail)
+   * 4. Messaging campaign assignment (soft-fail)
+   * 5. Call forwarding (soft-fail, only if configured)
+   * 
+   * @param did - Phone number in E.164 format
+   * @param companyName - Company name for CNAM
+   * @param webhookUrl - Webhook URL for incoming messages
+   * @param callForwardNumber - Optional call forwarding destination
+   * @returns Activation result with status for each step
+   */
+  async activateNumber(params: {
+    did: string;
+    companyName: string;
+    webhookUrl: string;
+    callForwardNumber?: string | null;
+  }) {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    const { did, companyName, webhookUrl, callForwardNumber } = params;
+    const FIXED_CAMPAIGN_ID = "C3JXHXH"; // BulkVS messaging campaign ID
+    
+    const result = {
+      did,
+      smsEnabled: false,
+      webhookConfigured: false,
+      cnamUpdated: false,
+      campaignAssigned: false,
+      callForwardingConfigured: false,
+      errors: [] as string[],
+      warnings: [] as string[],
+    };
+
+    try {
+      // STEP 1: Enable SMS/MMS (CRITICAL - hard-stop if fails)
+      console.log(`[BulkVS] [1/5] Enabling SMS/MMS for ${did}...`);
+      try {
+        await this.enableSmsMms(did);
+        result.smsEnabled = true;
+        console.log(`[BulkVS] ✓ SMS/MMS enabled successfully`);
+      } catch (error: any) {
+        const errorMsg = `Failed to enable SMS/MMS: ${error.message}`;
+        console.error(`[BulkVS] ✗ ${errorMsg}`);
+        result.errors.push(errorMsg);
+        // HARD-STOP: SMS/MMS is critical, throw error
+        throw new Error(`Critical error during number activation: ${errorMsg}`);
+      }
+
+      // STEP 2: Configure webhook (CRITICAL)
+      console.log(`[BulkVS] [2/5] Configuring messaging webhook...`);
+      try {
+        await this.setMessagingWebhook(did, webhookUrl);
+        result.webhookConfigured = true;
+        console.log(`[BulkVS] ✓ Webhook configured successfully`);
+      } catch (error: any) {
+        const errorMsg = `Failed to configure webhook: ${error.message}`;
+        console.error(`[BulkVS] ✗ ${errorMsg}`);
+        result.errors.push(errorMsg);
+        // HARD-STOP: Webhook is critical for receiving messages
+        throw new Error(`Critical error during number activation: ${errorMsg}`);
+      }
+
+      // STEP 3: Update CNAM (SOFT-FAIL)
+      console.log(`[BulkVS] [3/5] Updating CNAM to "${companyName}"...`);
+      try {
+        const cnamResult = await this.updateCNAM(did, companyName);
+        if (cnamResult.success) {
+          result.cnamUpdated = true;
+          console.log(`[BulkVS] ✓ CNAM updated to "${cnamResult.cnam}"`);
+        } else {
+          result.warnings.push(cnamResult.message || "CNAM update not available");
+          console.log(`[BulkVS] ⚠ CNAM warning: ${cnamResult.message}`);
+        }
+      } catch (error: any) {
+        const warnMsg = `Failed to update CNAM: ${error.message}`;
+        result.warnings.push(warnMsg);
+        console.warn(`[BulkVS] ⚠ ${warnMsg} (continuing...)`);
+      }
+
+      // STEP 4: Assign to messaging campaign (SOFT-FAIL)
+      console.log(`[BulkVS] [4/5] Assigning to messaging campaign ${FIXED_CAMPAIGN_ID}...`);
+      try {
+        await this.assignToCampaign(did, FIXED_CAMPAIGN_ID);
+        result.campaignAssigned = true;
+        console.log(`[BulkVS] ✓ Campaign assigned successfully`);
+      } catch (error: any) {
+        const warnMsg = `Failed to assign campaign: ${error.message}`;
+        result.warnings.push(warnMsg);
+        console.warn(`[BulkVS] ⚠ ${warnMsg} (continuing...)`);
+      }
+
+      // STEP 5: Configure call forwarding (SOFT-FAIL, only if specified)
+      if (callForwardNumber) {
+        console.log(`[BulkVS] [5/5] Configuring call forwarding to ${callForwardNumber}...`);
+        try {
+          await this.updateCallForwarding(did, callForwardNumber);
+          result.callForwardingConfigured = true;
+          console.log(`[BulkVS] ✓ Call forwarding configured successfully`);
+        } catch (error: any) {
+          const warnMsg = `Failed to configure call forwarding: ${error.message}`;
+          result.warnings.push(warnMsg);
+          console.warn(`[BulkVS] ⚠ ${warnMsg} (continuing...)`);
+        }
+      } else {
+        console.log(`[BulkVS] [5/5] Skipping call forwarding (not configured)`);
+      }
+
+      console.log(`[BulkVS] ✓ Number activation complete for ${did}`);
+      console.log(`[BulkVS] Results: SMS=${result.smsEnabled}, Webhook=${result.webhookConfigured}, CNAM=${result.cnamUpdated}, Campaign=${result.campaignAssigned}, CallFwd=${result.callForwardingConfigured}`);
+      
+      if (result.warnings.length > 0) {
+        console.log(`[BulkVS] Warnings (${result.warnings.length}):`, result.warnings);
+      }
+
+      return result;
+    } catch (error: any) {
+      console.error(`[BulkVS] Number activation failed for ${did}:`, error.message);
+      throw error;
+    }
+  }
 }
 
 export const bulkVSClient = new BulkVSClient();
