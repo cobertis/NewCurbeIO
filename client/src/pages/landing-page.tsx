@@ -2101,12 +2101,18 @@ export default function LandingPageBuilder() {
 
                           {/* Social Media Icons - COMPACT like SmartBio */}
                           {(() => {
-                            const socialBlocks = blocks.filter((b) => b.type === "social" && b.isVisible);
+                            const socialBlocks = blocks
+                              .filter((b) => b.type === "social" && b.isVisible)
+                              .filter((b) => SOCIAL_PLATFORMS.find((p) => p.value === b.content.platform)); // Only show blocks with valid icons
+                            
                             if (socialBlocks.length > 0) {
                               return (
                                 <div className="flex items-center justify-center gap-2 mb-4">
                                   {socialBlocks.map((block) => {
-                                    const SocialIcon = SOCIAL_PLATFORMS.find((p) => p.value === block.content.platform)?.icon || Share2;
+                                    const platform = SOCIAL_PLATFORMS.find((p) => p.value === block.content.platform);
+                                    if (!platform) return null; // Skip if no platform found
+                                    const SocialIcon = platform.icon;
+                                    
                                     return (
                                       <a
                                         key={block.id}
