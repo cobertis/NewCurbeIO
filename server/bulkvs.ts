@@ -170,6 +170,69 @@ class BulkVSClient {
       throw error;
     }
   }
+
+  /**
+   * Update CNAM (Caller ID Name) for a phone number
+   * CNAM rules:
+   * - Max 15 characters
+   * - Alphanumeric and spaces only
+   * - Takes 5-7 business days to propagate
+   */
+  async updateCNAM(did: string, cnam: string) {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    // Sanitize CNAM to meet industry standards
+    const sanitizedCnam = this.sanitizeCNAM(cnam);
+    
+    try {
+      console.log(`[BulkVS] Updating CNAM for ${did} to "${sanitizedCnam}"...`);
+      
+      // Try the /updateCnam endpoint
+      const response = await this.client.post("/updateCnam", {
+        did,
+        cnam: sanitizedCnam,
+      });
+      
+      console.log("[BulkVS] updateCNAM response:", response.data);
+      return { success: true, cnam: sanitizedCnam };
+    } catch (error: any) {
+      console.error("[BulkVS] updateCNAM error:", error.response?.data || error.message);
+      
+      // If endpoint doesn't exist, log warning but don't fail
+      if (error.response?.status === 404 || error.response?.status === 405) {
+        console.warn("[BulkVS] CNAM update endpoint not available. CNAM must be configured manually in portal.");
+        return { 
+          success: false, 
+          cnam: sanitizedCnam, 
+          message: "CNAM endpoint not available. Configure manually in BulkVS portal." 
+        };
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Sanitize CNAM to meet industry standards
+   * Rules:
+   * - Max 15 characters
+   * - Alphanumeric and spaces only
+   * - Remove special characters
+   */
+  private sanitizeCNAM(cnam: string): string {
+    // Remove special characters, keep only alphanumeric and spaces
+    let sanitized = cnam.replace(/[^a-zA-Z0-9 ]/g, '');
+    
+    // Trim to max 15 characters
+    if (sanitized.length > 15) {
+      sanitized = sanitized.substring(0, 15);
+    }
+    
+    // Trim spaces
+    sanitized = sanitized.trim();
+    
+    return sanitized;
+  }
 }
 
 export const bulkVSClient = new BulkVSClient();

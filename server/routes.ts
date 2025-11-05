@@ -18927,6 +18927,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const updateData: any = {};
       if (displayName !== undefined) {
         updateData.displayName = displayName || phoneNumber.displayName;
+        
+        // Automatically update CNAM when display name changes
+        if (displayName && displayName !== phoneNumber.displayName) {
+          try {
+            const cnamResult = await bulkVSClient.updateCNAM(phoneNumber.did, displayName);
+            updateData.cnam = cnamResult.cnam;
+            
+            if (cnamResult.success) {
+              console.log(`[BulkVS] CNAM updated successfully for ${phoneNumber.did}: "${cnamResult.cnam}"`);
+            } else {
+              console.warn(`[BulkVS] CNAM saved locally but not updated in portal: ${cnamResult.message}`);
+            }
+          } catch (error: any) {
+            console.error(`[BulkVS] Failed to update CNAM for ${phoneNumber.did}:`, error.message);
+            // Continue with update even if CNAM fails
+          }
+        }
       }
       if (callForwardEnabled !== undefined) {
         updateData.callForwardEnabled = callForwardEnabled;

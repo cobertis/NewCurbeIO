@@ -183,45 +183,58 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
               <Separator />
 
               <div>
-                <Label className="text-sm text-muted-foreground mb-2 block">Display Name</Label>
+                <Label className="text-sm text-muted-foreground mb-2 block">Display Name / CNAM</Label>
                 {isEditingName ? (
-                  <div className="flex gap-2">
-                    <Input
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Enter display name"
-                      data-testid="input-display-name"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleSaveName}
-                      disabled={updateNameMutation.isPending}
-                      data-testid="button-save-name"
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleCancelEdit}
-                      data-testid="button-cancel-edit"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Enter display name"
+                        maxLength={50}
+                        data-testid="input-display-name"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleSaveName}
+                        disabled={updateNameMutation.isPending}
+                        data-testid="button-save-name"
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleCancelEdit}
+                        data-testid="button-cancel-edit"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      CNAM (Caller ID) will be set to first 15 characters (alphanumeric only). Propagation takes 5-7 business days.
+                    </p>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="text-lg font-medium" data-testid="display-name">
-                      {phoneNumber.displayName}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsEditingName(true)}
-                      data-testid="button-edit-name"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-lg font-medium" data-testid="display-name">
+                        {phoneNumber.displayName}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingName(true)}
+                        data-testid="button-edit-name"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {phoneNumber.cnam && (
+                      <p className="text-sm text-muted-foreground mt-1" data-testid="cnam-display">
+                        CNAM: {phoneNumber.cnam}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

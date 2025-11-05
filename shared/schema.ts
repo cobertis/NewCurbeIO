@@ -3027,6 +3027,7 @@ export const bulkvsPhoneNumbers = pgTable("bulkvs_phone_numbers", {
   
   did: text("did").notNull().unique(), // E.164 format number (e.g., +17865551234)
   displayName: text("display_name"), // Friendly name for the number
+  cnam: text("cnam"), // Caller ID Name (max 15 chars, alphanumeric + spaces only)
   
   smsEnabled: boolean("sms_enabled").notNull().default(false),
   mmsEnabled: boolean("mms_enabled").notNull().default(false),
