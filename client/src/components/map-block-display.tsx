@@ -274,7 +274,7 @@ export function MapBlockDisplay({
             style={{ backgroundColor: buttonColor }}
             data-testid="button-see-location"
           >
-            Get Directions →
+            Cómo Llegar →
           </a>
         </div>
       )}
