@@ -5435,6 +5435,61 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Sync company phone numbers to Stripe customers
+  app.post("/api/billing/sync-phone-numbers", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmin can sync phone numbers
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Only superadmin can sync phone numbers" });
+    }
+
+    try {
+      console.log('[SYNC-PHONES] Starting phone number sync to Stripe...');
+      const { updateStripeCustomer } = await import("./stripe");
+      
+      // Get all companies
+      const companies = await storage.getAllCompanies();
+      const results = {
+        total: companies.length,
+        updated: 0,
+        skipped: 0,
+        errors: [] as string[],
+      };
+
+      for (const company of companies) {
+        try {
+          // Skip if no phone or no Stripe customer
+          if (!company.phone || !company.stripeCustomerId) {
+            results.skipped++;
+            console.log(`[SYNC-PHONES] Skipping ${company.name}: ${!company.phone ? 'no phone' : 'no Stripe customer'}`);
+            continue;
+          }
+
+          // Update Stripe customer with phone number
+          await updateStripeCustomer(company.stripeCustomerId, {
+            phone: company.phone,
+          });
+
+          results.updated++;
+          console.log(`[SYNC-PHONES] Updated ${company.name} (${company.phone})`);
+        } catch (error: any) {
+          results.errors.push(`${company.name}: ${error.message}`);
+          console.error(`[SYNC-PHONES] Error updating ${company.name}:`, error.message);
+        }
+      }
+
+      console.log('[SYNC-PHONES] Sync completed:', results);
+      res.json({ 
+        message: "Phone number sync completed", 
+        results,
+      });
+    } catch (error: any) {
+      console.error('[SYNC-PHONES] Fatal error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get payment methods
   app.get("/api/billing/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -5770,13 +5825,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Update Stripe customer with new billing information
       const subscription = await storage.getSubscriptionByCompany(companyId);
       if (subscription?.stripeCustomerId) {
-        const { stripe } = await import("./stripe");
+        const { updateStripeCustomer } = await import("./stripe");
         
-        // Get company to use its country
+        // Get company to use its country and phone
         const company = await storage.getCompany(companyId);
         
-        await stripe.customers.update(subscription.stripeCustomerId, {
+        await updateStripeCustomer(subscription.stripeCustomerId, {
           name: fullName,
+          phone: company?.phone || undefined,
           address: {
             line1: addressLine1,
             line2: addressLine2 || undefined,
@@ -5787,7 +5843,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
         
-        console.log('[BILLING] Updated Stripe customer billing information:', subscription.stripeCustomerId);
+        console.log('[BILLING] Updated Stripe customer billing information with phone:', subscription.stripeCustomerId);
       }
 
       res.json({ billingAddress, message: "Billing address saved successfully" });

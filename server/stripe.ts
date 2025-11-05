@@ -2,6 +2,7 @@
 import Stripe from "stripe";
 import { storage } from "./storage";
 import type { InsertInvoice, InsertInvoiceItem, InsertPayment, InsertSubscription } from "@shared/schema";
+import { formatE164 } from "@shared/phone";
 
 // Check if Stripe is configured
 const STRIPE_CONFIGURED = !!process.env.STRIPE_SECRET_KEY;
@@ -292,10 +293,14 @@ export async function createStripeCustomer(company: {
   const uniqueSuffix = Date.now().toString().slice(-4);
   const invoicePrefix = `${basePrefix}${uniqueSuffix}`; // e.g., "COB1234"
   
+  // Format phone number for Stripe (E.164 format: +13054883848)
+  const phoneNumber = company.representativePhone || company.phone;
+  const formattedPhone = phoneNumber ? formatE164(phoneNumber) : undefined;
+
   const customerData: Stripe.CustomerCreateParams = {
     email: company.representativeEmail || company.email,
     name: individualName || company.name, // Individual's name first, fallback to company name
-    phone: company.representativePhone || company.phone,
+    phone: formattedPhone,
     invoice_prefix: invoicePrefix, // e.g., "COB-" for "Cobertis Insurance"
     metadata: {
       companyId: company.id,
@@ -339,8 +344,17 @@ export async function updateStripeCustomer(customerId: string, data: {
   address?: Stripe.AddressParam;
   metadata?: Stripe.MetadataParam;
 }) {
-  console.log('[STRIPE] Updating customer:', customerId, data);
-  const updated = await ensureStripeConfigured().customers.update(customerId, data);
+  // Format phone number for Stripe (E.164 format: +13054883848)
+  const updateData: Stripe.CustomerUpdateParams = {
+    ...data,
+  };
+  
+  if (data.phone) {
+    updateData.phone = formatE164(data.phone);
+  }
+  
+  console.log('[STRIPE] Updating customer:', customerId, updateData);
+  const updated = await ensureStripeConfigured().customers.update(customerId, updateData);
   console.log('[STRIPE] Customer updated successfully');
   return updated;
 }

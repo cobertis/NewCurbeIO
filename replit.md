@@ -72,6 +72,8 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **Call Forwarding:** Configurable via BulkVS API.
     -   **Security:** User-scoped data isolation, webhook signature validation, E.164 phone number normalization.
 -   **Billing & Stripe Integration:** Automated customer/subscription management.
+    -   **Phone Number in Invoices:** All Stripe invoices automatically include company phone numbers in E.164 format (+13054883848).
+    -   **Phone Sync Tool:** Superadmin utility to sync existing company phone numbers to Stripe customer records retroactively.
 -   **Quotes Management System:** 3-step wizard for 11 product types, Google Places Autocomplete, CMS Marketplace API integration (HHS Poverty Guidelines for APTC), plan comparison, credit card validation, notes, document management, universal search, blocking, and manual plan entry.
 -   **Policies Management System:** Converts quotes to policies, similar functionality to Quotes, including status management, agent assignment, universal search, and blocking. Canonical client identification (SSN or email).
 -   **Consent Document System:** Generates legal consent documents, supports multi-channel delivery, and captures e-signatures.
@@ -99,6 +101,7 @@ Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security inclu
 -   **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 -   **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 -   **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
+-   **Phone Number Standardization:** Centralized phone utilities in `shared/phone.ts` for consistent formatting across storage (10 digits: 3054883848), BulkVS API (11 digits: 13054883848), display (+1 (305) 488-3848), and E.164 (+13054883848).
 
 ## External Dependencies
 

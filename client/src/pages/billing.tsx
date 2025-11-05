@@ -803,8 +803,62 @@ export default function Billing() {
     );
   };
 
+  // Sync phone numbers mutation
+  const syncPhonesMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/billing/sync-phone-numbers', {
+        method: 'POST',
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Phone Numbers Synced",
+        description: `Updated: ${data.results.updated}, Skipped: ${data.results.skipped}, Errors: ${data.results.errors.length}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync phone numbers",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div className="flex flex-col gap-6 p-6">
+      {/* Superadmin Tools */}
+      {user?.role === 'superadmin' && (
+        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+              <Shield className="h-5 w-5" />
+              Superadmin Tools
+            </CardTitle>
+            <CardDescription className="text-blue-700 dark:text-blue-300">
+              Administrative utilities for managing billing system
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <Button
+                onClick={() => syncPhonesMutation.mutate()}
+                disabled={syncPhonesMutation.isPending}
+                variant="outline"
+                className="border-blue-300 hover:bg-blue-100 dark:border-blue-700 dark:hover:bg-blue-900/50"
+                data-testid="button-sync-phones"
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                {syncPhonesMutation.isPending ? "Syncing..." : "Sync Phone Numbers to Stripe"}
+              </Button>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Updates all Stripe customer records with company phone numbers for invoices
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
