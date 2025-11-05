@@ -11526,10 +11526,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // ============== LANDING PAGE APPOINTMENTS ==============
-      // Fetch confirmed appointments for the current user
+      // Fetch pending and confirmed appointments for the current user
       // Wrapped in try-catch to prevent breaking the calendar if appointments fail
       try {
-        const appointments = await storage.getLandingAppointmentsByUser(currentUser.id, { status: 'confirmed' });
+        const allAppointments = await storage.getLandingAppointmentsByUser(currentUser.id);
+        const appointments = allAppointments.filter(a => 
+          a.status === 'pending' || a.status === 'confirmed'
+        );
         
         for (const appointment of appointments) {
           events.push({
