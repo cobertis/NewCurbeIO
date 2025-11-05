@@ -877,6 +877,7 @@ export default function LandingPageBuilder() {
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
   const [loadingTheme, setLoadingTheme] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showAllThemes, setShowAllThemes] = useState(false);
 
   // Local state for Settings fields with debouncing
   const [pageTitle, setPageTitle] = useState("");
@@ -1818,32 +1819,6 @@ export default function LandingPageBuilder() {
                   See Another Blocks
                 </Button>
               </div>
-
-              {/* Social Media Section */}
-              <div>
-                <h3 className="font-semibold text-sm mb-3">Social Media</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {SOCIAL_BLOCK_TYPES.map((socialType) => {
-                    const Icon = socialType.icon;
-                    return (
-                      <button
-                        key={socialType.platform}
-                        onClick={() => addBlock("social", { platform: socialType.platform })}
-                        className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:shadow-md transition-all group"
-                        data-testid={`button-add-social-${socialType.platform}`}
-                      >
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform"
-                          style={{ backgroundColor: `${socialType.color}20` }}
-                        >
-                          <Icon className="w-4 h-4" style={{ color: socialType.color }} />
-                        </div>
-                        <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium text-center">{socialType.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </ScrollArea>
         </div>
@@ -2057,50 +2032,6 @@ export default function LandingPageBuilder() {
                             )}
                           </div>
 
-                          {/* Social Media Icons - COMPACT like SmartBio */}
-                          {(() => {
-                            const socialBlocks = blocks.filter(b => b.type === "social" && b.isVisible);
-                            if (socialBlocks.length > 0) {
-                              return (
-                                <div className="flex items-center justify-center gap-2 mb-4">
-                                  {socialBlocks.map((block) => {
-                                    const platform = SOCIAL_PLATFORMS.find(
-                                      (p) => p.value === block.content.platform
-                                    );
-                                    if (!platform) return null;
-                                    const SocialIcon = platform.icon;
-                                    return (
-                                      <div
-                                        key={block.id}
-                                        className="relative group"
-                                      >
-                                        <div
-                                          className="w-11 h-11 rounded-full flex items-center justify-center"
-                                          style={{ backgroundColor: selectedPage.landingPage.theme?.primaryColor ?? '#000000' }}
-                                          data-testid={`preview-social-${block.id}`}
-                                        >
-                                          <SocialIcon className="w-5 h-5 text-white" />
-                                        </div>
-                                        {/* Edit button overlay */}
-                                        <button
-                                          onClick={() => {
-                                            setEditingBlock(block);
-                                            setIsBlockEditorOpen(true);
-                                          }}
-                                          className="absolute inset-0 w-11 h-11 rounded-full bg-blue-600/90 hover:bg-blue-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                          data-testid={`button-edit-social-${block.id}`}
-                                        >
-                                          <Pencil className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-
                       {/* All Blocks (EXCEPT Social) with Drag and Drop */}
                       <DndContext
                         sensors={sensors}
@@ -2209,7 +2140,7 @@ export default function LandingPageBuilder() {
 
                         {/* Theme Grid */}
                         <div className="grid grid-cols-2 gap-3">
-                          {filteredThemes.map((themeData) => {
+                          {(showAllThemes ? filteredThemes : filteredThemes.slice(0, 4)).map((themeData) => {
                             const isSelected = selectedPage.landingPage.theme.primaryColor === themeData.theme.primaryColor;
                             return (
                               <button
@@ -2263,6 +2194,30 @@ export default function LandingPageBuilder() {
                             );
                           })}
                         </div>
+                        
+                        {/* Load More Button */}
+                        {!showAllThemes && filteredThemes.length > 4 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAllThemes(true)}
+                            className="w-full mt-3"
+                            data-testid="button-load-more-themes"
+                          >
+                            Load More ({filteredThemes.length - 4} more)
+                          </Button>
+                        )}
+                        {showAllThemes && filteredThemes.length > 4 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAllThemes(false)}
+                            className="w-full mt-3"
+                            data-testid="button-show-less-themes"
+                          >
+                            Show Less
+                          </Button>
+                        )}
                       </div>
 
                       <Separator />
