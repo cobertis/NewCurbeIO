@@ -797,11 +797,21 @@ function BlockPreview({
 
     case "calendar":
       return (
-        <Card className="p-4">
-          <CalendarIcon className="h-4 w-4 mb-1" />
-          <h3 className="font-semibold text-sm mb-1">{block.content.title}</h3>
-          <p className="text-xs text-muted-foreground">{block.content.subtitle}</p>
-        </Card>
+        <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 bg-white">
+          <div className="flex-1">
+            <h3 className="font-semibold text-sm">{block.content.title || "Programar llamada"}</h3>
+            {block.content.subtitle && (
+              <p className="text-xs text-muted-foreground mt-0.5">{block.content.subtitle}</p>
+            )}
+          </div>
+          <Button 
+            size="sm"
+            className="text-xs h-8 whitespace-nowrap"
+            style={{ backgroundColor: theme.primaryColor }}
+          >
+            Agendar →
+          </Button>
+        </div>
       );
 
     case "testimonials":

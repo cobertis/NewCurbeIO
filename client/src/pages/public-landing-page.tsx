@@ -447,29 +447,27 @@ function PublicBlock({
 
     case "calendar":
       return (
-        <Card className="p-6 rounded-[18px] shadow-lg transition-all duration-300 hover:shadow-xl" data-testid={`calendar-block-${block.id}`}>
-          <div className="flex items-center gap-3 mb-4">
-            <CalendarIcon className="h-6 w-6" style={{ color: theme.primaryColor }} />
-            <h3 className="text-xl font-bold">{block.content.title || "Schedule a Meeting"}</h3>
+        <div className="flex items-center justify-between gap-4 p-4 rounded-[18px] bg-white shadow-md hover:shadow-lg transition-all" data-testid={`calendar-block-${block.id}`}>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-gray-900">{block.content.title || "Programar llamada"}</h3>
+            {block.content.description && (
+              <p className="text-sm text-gray-600 mt-1">{block.content.description}</p>
+            )}
           </div>
-          {block.content.description && (
-            <p className="text-gray-600 mb-4">{block.content.description}</p>
-          )}
           <a
             href={block.content.url || "#"}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => onTrackClick(block.id)}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90 whitespace-nowrap flex-shrink-0"
             style={{
               backgroundColor: theme.buttonColor || theme.primaryColor,
               color: theme.buttonTextColor || '#ffffff',
             }}
           >
-            <CalendarIcon className="h-5 w-5" />
-            <span>Book Now</span>
+            Agendar →
           </a>
-        </Card>
+        </div>
       );
 
     case "testimonials":
