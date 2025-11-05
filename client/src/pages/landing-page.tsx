@@ -2005,7 +2005,7 @@ export default function LandingPageBuilder() {
                         {/* Avatar positioned EXACTLY on the curve like SmartBio */}
                         <div className="relative -mt-48 z-10 flex justify-center mb-5">
                           <div className="relative group">
-                            <Avatar className="w-40 h-40 ring-8 ring-white shadow-2xl avatar-ring-animated">
+                            <Avatar className="w-40 h-40 ring-8 ring-white shadow-2xl">
                               <AvatarImage src={selectedPage.landingPage.profilePhoto || ""} />
                               <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-500 to-pink-500 text-white">
                                 {(selectedPage.landingPage.profileName ||
