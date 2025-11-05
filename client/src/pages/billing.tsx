@@ -87,6 +87,68 @@ import { StripeCardForm } from "@/components/stripe-card-form";
 import { ManagePaymentMethodsDialog } from "@/components/manage-payment-methods-dialog";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 
+// Reactivate Phone Button Component
+function ReactivatePhoneButton({ phoneNumber }: { phoneNumber: BulkvsPhoneNumber }) {
+  const { toast } = useToast();
+  const [showConfirm, setShowConfirm] = useState(false);
+  
+  const reactivateMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/bulkvs/numbers/${phoneNumber.id}/reactivate`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/numbers"] });
+      toast({
+        title: "Number reactivated",
+        description: "Your phone number has been reactivated successfully. Billing will resume immediately.",
+      });
+      setShowConfirm(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Reactivation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowConfirm(true)}
+        data-testid={`button-reactivate-${phoneNumber.id}`}
+      >
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Reactivate
+      </Button>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reactivate Phone Number?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reactivate your phone number <strong>{formatPhoneNumber(phoneNumber.did)}</strong> and create a new subscription at ${phoneNumber.monthlyPrice}/month. Billing will start immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => reactivateMutation.mutate()}
+              disabled={reactivateMutation.isPending}
+              data-testid="button-confirm-reactivate"
+            >
+              {reactivateMutation.isPending ? "Reactivating..." : "Reactivate Number"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 interface Subscription {
   id: string;
   companyId: string;
@@ -1030,33 +1092,45 @@ export default function Billing() {
                     {bulkvsPhoneNumbers.map((phoneNumber) => (
                       <div
                         key={phoneNumber.id}
-                        className="flex items-center justify-between p-4 rounded-lg border"
+                        className={`flex items-center justify-between p-4 rounded-lg border ${
+                          phoneNumber.billingStatus === 'cancelled' ? 'bg-muted/30' : ''
+                        }`}
                         data-testid={`addon-phone-${phoneNumber.id}`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10">
-                            <Phone className="h-5 w-5 text-primary" />
+                          <div className={`p-2 rounded-lg ${phoneNumber.billingStatus === 'cancelled' ? 'bg-muted' : 'bg-primary/10'}`}>
+                            <Phone className={`h-5 w-5 ${phoneNumber.billingStatus === 'cancelled' ? 'text-muted-foreground' : 'text-primary'}`} />
                           </div>
                           <div>
-                            <p className="font-medium" data-testid={`addon-phone-number-${phoneNumber.id}`}>
-                              {formatPhoneNumber(phoneNumber.did)}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium" data-testid={`addon-phone-number-${phoneNumber.id}`}>
+                                {formatPhoneNumber(phoneNumber.did)}
+                              </p>
+                              {phoneNumber.billingStatus === 'cancelled' && (
+                                <span className="text-xs text-muted-foreground">(Previous Number)</span>
+                              )}
+                            </div>
                             <p className="text-sm text-muted-foreground">
                               {phoneNumber.displayName}
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold" data-testid={`addon-phone-price-${phoneNumber.id}`}>
-                            ${phoneNumber.monthlyPrice}/mo
-                          </p>
-                          <Badge
-                            variant={phoneNumber.billingStatus === 'active' ? 'default' : 'secondary'}
-                            className="mt-1"
-                            data-testid={`addon-phone-status-${phoneNumber.id}`}
-                          >
-                            {phoneNumber.billingStatus}
-                          </Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className={`font-semibold ${phoneNumber.billingStatus === 'cancelled' ? 'line-through text-muted-foreground' : ''}`} data-testid={`addon-phone-price-${phoneNumber.id}`}>
+                              ${phoneNumber.monthlyPrice}/mo
+                            </p>
+                            <Badge
+                              variant={phoneNumber.billingStatus === 'active' ? 'default' : 'secondary'}
+                              className="mt-1"
+                              data-testid={`addon-phone-status-${phoneNumber.id}`}
+                            >
+                              {phoneNumber.billingStatus}
+                            </Badge>
+                          </div>
+                          {phoneNumber.billingStatus === 'cancelled' && (
+                            <ReactivatePhoneButton phoneNumber={phoneNumber} />
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1064,17 +1138,18 @@ export default function Billing() {
 
                   <Separator />
 
-                  {/* Total Addons Cost */}
+                  {/* Total Addons Cost - Only count active numbers */}
                   <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                     <div>
                       <p className="font-medium">Total Addons Cost</p>
                       <p className="text-sm text-muted-foreground">
-                        {bulkvsPhoneNumbers.length} phone {bulkvsPhoneNumbers.length === 1 ? 'number' : 'numbers'}
+                        {bulkvsPhoneNumbers.filter(p => p.billingStatus === 'active').length} active phone {bulkvsPhoneNumbers.filter(p => p.billingStatus === 'active').length === 1 ? 'number' : 'numbers'}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-3xl font-bold" data-testid="total-addons-cost">
                         ${bulkvsPhoneNumbers
+                          .filter(phone => phone.billingStatus === 'active')
                           .reduce((sum, phone) => sum + parseFloat(phone.monthlyPrice || '0'), 0)
                           .toFixed(2)}
                       </p>

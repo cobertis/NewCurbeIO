@@ -19036,6 +19036,150 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // 3c. POST /api/bulkvs/numbers/:id/reactivate - Reactivate a cancelled phone number
+  app.post("/api/bulkvs/numbers/:id/reactivate", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+
+      // Verify phone number belongs to user
+      const phoneNumber = await storage.getBulkvsPhoneNumber(id);
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+
+      if (phoneNumber.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Verify phone number is cancelled
+      if (phoneNumber.status !== "inactive" || phoneNumber.billingStatus !== "cancelled") {
+        return res.status(400).json({ message: "Phone number is not cancelled" });
+      }
+
+      // Check if user already has an active phone number (1 number per user limit)
+      const userPhoneNumbers = await storage.getBulkvsPhoneNumbersByUser(user.id);
+      const hasActiveNumber = userPhoneNumbers.some(p => p.id !== id && p.status === "active");
+      if (hasActiveNumber) {
+        return res.status(400).json({ message: "You already have an active phone number. Each user can only have one phone number." });
+      }
+
+      // Create new Stripe subscription
+      const company = await storage.getCompany(user.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      let subscription;
+      const monthlyPrice = parseFloat(phoneNumber.monthlyPrice || "10.00");
+
+      try {
+        console.log(`[STRIPE] Creating subscription for reactivated phone number ${phoneNumber.did}`);
+
+        // Get or create Stripe customer
+        let stripeCustomerId = company.stripeCustomerId;
+        if (!stripeCustomerId) {
+          const customer = await stripeClient.customers.create({
+            email: user.email,
+            name: company.name,
+            metadata: {
+              companyId: company.id,
+              userId: user.id,
+            },
+          });
+          stripeCustomerId = customer.id;
+          await storage.updateCompany(company.id, { stripeCustomerId });
+        }
+
+        // Get or create product for BulkVS Phone Numbers
+        const products = await stripeClient.products.search({
+          query: `name:"BulkVS Phone Number" AND metadata["companyId"]:"${company.id}"`,
+        });
+
+        let product;
+        if (products.data.length > 0) {
+          product = products.data[0];
+        } else {
+          product = await stripeClient.products.create({
+            name: "BulkVS Phone Number",
+            description: "Dedicated phone number for SMS/MMS messaging",
+            metadata: {
+              companyId: company.id,
+              feature: "bulkvs_phone_number",
+            },
+          });
+        }
+
+        // Get or create price
+        const prices = await stripeClient.prices.list({
+          product: product.id,
+          active: true,
+          type: "recurring",
+        });
+
+        let price;
+        if (prices.data.length > 0) {
+          price = prices.data[0];
+        } else {
+          price = await stripeClient.prices.create({
+            product: product.id,
+            unit_amount: Math.round(monthlyPrice * 100),
+            currency: "usd",
+            recurring: {
+              interval: "month",
+              interval_count: 1,
+            },
+          });
+        }
+
+        // Create subscription
+        subscription = await stripeClient.subscriptions.create({
+          customer: stripeCustomerId,
+          items: [{
+            price: price.id,
+          }],
+          metadata: {
+            companyId: company.id,
+            userId: user.id,
+            phoneNumberId: phoneNumber.id,
+            phoneNumber: phoneNumber.did,
+          },
+        });
+
+        console.log(`[STRIPE] Subscription created: ${subscription.id}`);
+
+        // Calculate next billing date (30 days from now)
+        const nextBillingDate = new Date();
+        nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+
+        // Update phone number with active status and new subscription info
+        await storage.updateBulkvsPhoneNumber(id, {
+          status: "active",
+          billingStatus: "active",
+          stripeSubscriptionId: subscription.id,
+          stripeProductId: product.id,
+          stripePriceId: price.id,
+          nextBillingDate,
+        });
+
+        res.json({ 
+          message: "Phone number reactivated successfully",
+          phoneNumber: await storage.getBulkvsPhoneNumber(id)
+        });
+      } catch (stripeError: any) {
+        console.error(`[STRIPE] Error creating subscription:`, stripeError);
+        return res.status(500).json({ message: `Failed to create subscription: ${stripeError.message}` });
+      }
+    } catch (error: any) {
+      console.error("Error reactivating phone number:", error);
+      res.status(500).json({ message: "Failed to reactivate phone number" });
+    }
+  });
+
   // 4. POST /api/webhooks/bulkvs - Webhook for incoming messages and DLRs
   app.post("/api/webhooks/bulkvs", async (req: Request, res: Response) => {
     try {
