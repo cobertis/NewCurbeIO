@@ -4621,6 +4621,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
+      // Get company to check for Stripe customer ID
+      const company = await storage.getCompany(companyId);
+      
+      // If company has a Stripe customer ID, sync latest invoices from Stripe
+      if (company?.stripeCustomerId) {
+        try {
+          const { stripe, syncInvoiceFromStripe } = await import("./stripe");
+          if (stripe) {
+            console.log('[BILLING] Syncing invoices from Stripe for customer:', company.stripeCustomerId);
+            
+            // Get recent invoices from Stripe (last 100)
+            const stripeInvoices = await stripe.invoices.list({
+              customer: company.stripeCustomerId,
+              limit: 100,
+            });
+
+            console.log('[BILLING] Found', stripeInvoices.data.length, 'invoices in Stripe');
+
+            // Sync each invoice to our database
+            for (const stripeInvoice of stripeInvoices.data) {
+              try {
+                await syncInvoiceFromStripe(stripeInvoice.id);
+              } catch (syncError: any) {
+                console.error('[BILLING] Error syncing invoice', stripeInvoice.id, ':', syncError.message);
+                // Continue with other invoices even if one fails
+              }
+            }
+          }
+        } catch (stripeError: any) {
+          console.error('[BILLING] Error fetching invoices from Stripe:', stripeError.message);
+          // Continue to return local invoices even if Stripe sync fails
+        }
+      }
+
+      // Get invoices from database
       const allInvoices = await storage.getInvoicesByCompany(companyId);
       // Filter out $0.00 invoices (trial invoices) from billing history
       const invoices = allInvoices.filter(invoice => invoice.total > 0);
