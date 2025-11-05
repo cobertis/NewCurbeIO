@@ -115,6 +115,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 
 // Types
 type LandingPage = {
@@ -589,18 +590,30 @@ function BlockPreview({
       );
 
     case "maps":
+      const mapAddress = block.content.address || "New York, NY";
+      const encodedAddress = encodeURIComponent(mapAddress);
+      const apiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY || "AIzaSyDummy";
       return (
-        <div className="relative rounded-lg overflow-hidden" data-testid={`preview-maps-${block.id}`}>
-          <div className="w-full h-32 bg-gray-200 flex items-center justify-center">
-            <MapPin className="h-6 w-6 text-gray-400" />
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Button 
-              className="rounded-lg shadow-lg"
-              style={{ backgroundColor: "#3B82F6", color: "#ffffff" }}
+        <div className="relative rounded-xl overflow-hidden shadow-lg border border-gray-200" data-testid={`preview-maps-${block.id}`}>
+          <iframe
+            width="100%"
+            height="200"
+            style={{ border: 0 }}
+            loading="lazy"
+            allowFullScreen
+            src={`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodedAddress}&zoom=${block.content.zoom || 14}`}
+            className="w-full"
+          />
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10">
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg text-sm font-medium transition-all"
             >
+              <MapPin className="w-4 h-4" />
               See Our Location
-            </Button>
+            </a>
           </div>
         </div>
       );
@@ -1379,12 +1392,15 @@ export default function LandingPageBuilder() {
     (type: string, customContent: Record<string, any> = {}) => {
       if (!selectedPageId) return;
 
+      // Get company address for maps default
+      const companyAddress = companyData?.company?.address || "";
+
       const defaultContentMap: Record<string, any> = {
         maps: {
-          address: "",
+          address: companyAddress,
           latitude: null,
           longitude: null,
-          zoom: 14,
+          zoom: 15,
           showMarker: true,
         },
         "lead-form": {
@@ -1441,7 +1457,7 @@ export default function LandingPageBuilder() {
         },
       });
     },
-    [selectedPageId, blocks.length]
+    [selectedPageId, blocks.length, companyData]
   );
 
   if (isPagesLoading) {
@@ -2771,6 +2787,67 @@ export default function LandingPageBuilder() {
                       }
                       placeholder="Description of image"
                     />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "maps" && (
+                <>
+                  <div>
+                    <Label className="mb-2 block">Address</Label>
+                    <GooglePlacesAddressAutocomplete
+                      value={editingBlock.content.address || ""}
+                      onChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            address: value,
+                          },
+                        })
+                      }
+                      onAddressSelect={(address) => {
+                        const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}`;
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            address: fullAddress,
+                          },
+                        });
+                      }}
+                      placeholder="Search for an address..."
+                      label=""
+                      testId="input-map-address"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Start typing to search for an address
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Zoom Level</Label>
+                    <Select
+                      value={String(editingBlock.content.zoom || 15)}
+                      onValueChange={(value) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            zoom: parseInt(value),
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="12">Far (City View)</SelectItem>
+                        <SelectItem value="14">Medium (Neighborhood)</SelectItem>
+                        <SelectItem value="15">Close (Street View)</SelectItem>
+                        <SelectItem value="17">Very Close (Building)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </>
               )}
