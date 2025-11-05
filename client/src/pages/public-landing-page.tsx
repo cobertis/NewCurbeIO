@@ -42,7 +42,6 @@ import {
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { MapBlockDisplay } from "@/components/map-block-display";
 import { AppointmentBookingDialog } from "@/components/appointment-booking-dialog";
-import { AppointmentBookingInline } from "@/components/appointment-booking-inline";
 import { useToast } from "@/hooks/use-toast";
 import { PublicBlock, LeadCaptureForm } from "@/components/public-block-renderer";
 
@@ -96,7 +95,6 @@ export default function PublicLandingPage() {
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
-  const [showAppointmentInline, setShowAppointmentInline] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -292,18 +290,6 @@ export default function PublicLandingPage() {
     (a, b) => a.position - b.position
   );
 
-  // Show inline appointment booking if activated
-  if (showAppointmentInline) {
-    return (
-      <AppointmentBookingInline
-        landingPageId={parseInt(landingPage.id, 10)}
-        agentName={landingPage.profileName || 'our team'}
-        onBack={() => setShowAppointmentInline(false)}
-        primaryColor={theme.primaryColor}
-      />
-    );
-  }
-
   return (
     <div
       className="min-h-screen bg-white"
@@ -480,7 +466,7 @@ export default function PublicLandingPage() {
                 theme={theme}
                 onTrackClick={trackClick}
                 landingPageId={landingPage.id}
-                onOpenAppointmentModal={() => setShowAppointmentInline(true)}
+                onOpenAppointmentModal={() => setAppointmentDialogOpen(true)}
               />
             ))}
         </div>
@@ -495,6 +481,13 @@ export default function PublicLandingPage() {
         </div>
       </div>
 
+      {/* Appointment Booking Dialog */}
+      <AppointmentBookingDialog
+        open={appointmentDialogOpen}
+        onOpenChange={setAppointmentDialogOpen}
+        landingPageId={parseInt(landingPage.id, 10)}
+        agentName={landingPage.profileName || 'Agent'}
+      />
     </div>
   );
 }

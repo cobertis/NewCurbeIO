@@ -7,7 +7,7 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format, addDays, startOfDay } from "date-fns";
-import { es } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 
@@ -106,7 +106,7 @@ export function AppointmentBookingDialog({
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo agendar la cita. Intenta de nuevo.",
+        description: "Could not schedule the appointment. Please try again.",
         duration: 3000,
       });
     },
@@ -152,7 +152,7 @@ export function AppointmentBookingDialog({
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Por favor completa todos los campos correctamente.",
+        description: "Please complete all fields correctly.",
         duration: 3000,
       });
       return;
@@ -161,7 +161,7 @@ export function AppointmentBookingDialog({
   };
 
   const availableSlots = slotsData?.filter(slot => slot.available) || [];
-  const selectedDayFormatted = selectedDate ? format(new Date(selectedDate + 'T00:00:00'), "EEEE, d 'de' MMMM", { locale: es }) : "";
+  const selectedDayFormatted = selectedDate ? format(new Date(selectedDate + 'T00:00:00'), "EEEE, MMMM d", { locale: enUS }) : "";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -170,17 +170,17 @@ export function AppointmentBookingDialog({
           <>
             <DialogHeader className="space-y-3 pb-4">
               <DialogTitle className="text-2xl font-semibold" data-testid="dialog-title">
-                Llamada de 30 minutos con {agentName}
+                30-minute call with {agentName}
               </DialogTitle>
               <p className="text-sm text-gray-600">
-                Agenda una llamada rápida para discutir tus necesidades. Te mostraremos cómo podemos ayudarte.
+                Schedule a quick call to discuss your needs. We'll show you how we can help.
               </p>
             </DialogHeader>
 
             {/* Month selector */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-lg">
-                {format(weekDates[0], "MMMM yyyy", { locale: es })}
+                {format(weekDates[0], "MMMM yyyy", { locale: enUS })}
               </h3>
               <div className="flex gap-2">
                 <Button
@@ -224,13 +224,13 @@ export function AppointmentBookingDialog({
                     data-testid={`date-${dateStr}`}
                   >
                     <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                      {format(date, "EEE", { locale: es })}
+                      {format(date, "EEE", { locale: enUS })}
                     </div>
                     <div className={`text-2xl font-semibold mb-1 ${isSelected ? "text-blue-600" : "text-gray-900 dark:text-white"}`}>
                       {format(date, "d")}
                     </div>
                     {isToday && (
-                      <div className="text-xs text-blue-600 font-medium">Hoy</div>
+                      <div className="text-xs text-blue-600 font-medium">Today</div>
                     )}
                   </button>
                 );
@@ -250,11 +250,11 @@ export function AppointmentBookingDialog({
 
                 {slotsLoading ? (
                   <div className="py-8">
-                    <LoadingSpinner message="Cargando horarios..." fullScreen={false} />
+                    <LoadingSpinner message="Loading time slots..." fullScreen={false} />
                   </div>
                 ) : availableSlots.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No hay horarios disponibles para este día.
+                    No time slots available for this day.
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
@@ -286,40 +286,40 @@ export function AppointmentBookingDialog({
                 className="w-fit mb-2"
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Volver
+                Back
               </Button>
               <DialogTitle className="text-xl font-semibold" data-testid="dialog-title">
-                Ingresa tus datos
+                Enter Your Details
               </DialogTitle>
               <p className="text-sm text-gray-600">
-                {selectedDayFormatted} a las {selectedTime}
+                {selectedDayFormatted} at {selectedTime}
               </p>
             </DialogHeader>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Nombre completo *</label>
+                <label className="text-sm font-medium mb-1 block">Full Name *</label>
                 <Input
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  placeholder="Juan Pérez"
+                  placeholder="John Doe"
                   data-testid="input-fullname"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Correo electrónico *</label>
+                <label className="text-sm font-medium mb-1 block">Email *</label>
                 <Input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="juan@ejemplo.com"
+                  placeholder="john@example.com"
                   data-testid="input-email"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Teléfono *</label>
+                <label className="text-sm font-medium mb-1 block">Phone *</label>
                 <Input
                   type="tel"
                   value={formData.phone}
@@ -330,11 +330,11 @@ export function AppointmentBookingDialog({
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Notas (opcional)</label>
+                <label className="text-sm font-medium mb-1 block">Notes (optional)</label>
                 <Textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="¿Algo que debamos saber?"
+                  placeholder="Anything we should know?"
                   rows={3}
                   data-testid="input-notes"
                 />
@@ -346,7 +346,7 @@ export function AppointmentBookingDialog({
                 className="w-full h-12 text-base font-semibold"
                 data-testid="button-confirm-booking"
               >
-                {bookingMutation.isPending ? "Agendando..." : "Agendar cita"}
+                {bookingMutation.isPending ? "Scheduling..." : "Schedule Appointment"}
               </Button>
             </div>
           </>
@@ -359,12 +359,12 @@ export function AppointmentBookingDialog({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-2xl font-semibold mb-2">¡Cita agendada!</h3>
+            <h3 className="text-2xl font-semibold mb-2">Appointment Scheduled!</h3>
             <p className="text-gray-600 mb-1">
-              {selectedDayFormatted} a las {selectedTime}
+              {selectedDayFormatted} at {selectedTime}
             </p>
             <p className="text-sm text-gray-500">
-              Te enviaremos una confirmación por email.
+              We'll send you a confirmation email.
             </p>
           </div>
         )}
