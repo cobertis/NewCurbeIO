@@ -12,12 +12,28 @@ interface MapBlockDisplayProps {
   buttonColor?: string;
 }
 
-// Simple Google Maps loader that actually works
+// Global flag to track if Google Maps is loaded
+let googleMapsLoaded = false;
+let googleMapsLoading = false;
+const loadCallbacks: (() => void)[] = [];
+
+// Global callback for Google Maps
 declare global {
   interface Window {
+    initGoogleMapsForLanding?: () => void;
     google?: any;
-    initGoogleMap?: () => void;
   }
+}
+
+// Initialize the global callback ONCE
+if (typeof window !== 'undefined' && !window.initGoogleMapsForLanding) {
+  window.initGoogleMapsForLanding = () => {
+    googleMapsLoaded = true;
+    googleMapsLoading = false;
+    // Execute all pending callbacks
+    loadCallbacks.forEach(cb => cb());
+    loadCallbacks.length = 0;
+  };
 }
 
 export function MapBlockDisplay({
@@ -39,51 +55,11 @@ export function MapBlockDisplay({
     // No coordinates? No map.
     if (!latitude || !longitude) {
       setIsLoading(false);
-      setError("Please select a location from the address field");
+      setError("Please select a location");
       return;
     }
 
-    // Load Google Maps script if not already loaded
-    const loadGoogleMaps = () => {
-      if (window.google?.maps) {
-        initializeMap();
-        return;
-      }
-
-      // Create callback function
-      const callbackName = `initGoogleMap_${Date.now()}`;
-      (window as any)[callbackName] = () => {
-        initializeMap();
-        delete (window as any)[callbackName];
-      };
-
-      // Check if script already exists
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existingScript) {
-        // Wait for it to load
-        const checkInterval = setInterval(() => {
-          if (window.google?.maps) {
-            clearInterval(checkInterval);
-            initializeMap();
-          }
-        }, 100);
-        return;
-      }
-
-      // Create and append script
-      const script = document.createElement('script');
-      script.src = `/api/google-maps-js-loader?callback=${callbackName}`;
-      script.async = true;
-      script.defer = true;
-      script.onerror = () => {
-        setError("Failed to load Google Maps");
-        setIsLoading(false);
-      };
-      document.head.appendChild(script);
-    };
-
-    // Initialize the map
-    const initializeMap = () => {
+    const initMap = () => {
       if (!mapRef.current || !window.google?.maps) {
         setError("Google Maps not available");
         setIsLoading(false);
@@ -93,7 +69,6 @@ export function MapBlockDisplay({
       try {
         const position = { lat: latitude, lng: longitude };
         
-        // Create map
         const map = new window.google.maps.Map(mapRef.current, {
           center: position,
           zoom: zoomLevel,
@@ -103,21 +78,16 @@ export function MapBlockDisplay({
           zoomControl: true,
         });
 
-        // Add marker
         const marker = new window.google.maps.Marker({
           position: position,
           map: map,
           title: formattedAddress || "Location",
         });
 
-        // Add info window if we have an address
         if (formattedAddress) {
           const infoWindow = new window.google.maps.InfoWindow({
-            content: `<div style="padding: 8px;">
-              <strong>${formattedAddress}</strong>
-            </div>`,
+            content: `<div style="padding: 8px;"><strong>${formattedAddress}</strong></div>`,
           });
-
           marker.addListener("click", () => {
             infoWindow.open(map, marker);
           });
@@ -127,16 +97,37 @@ export function MapBlockDisplay({
         setIsLoading(false);
         setError(null);
       } catch (err) {
-        console.error("Error initializing map:", err);
+        console.error("[MAP] Error initializing:", err);
         setError("Failed to initialize map");
         setIsLoading(false);
       }
     };
 
-    // Start loading
-    loadGoogleMaps();
+    // If Google Maps is already loaded, initialize immediately
+    if (googleMapsLoaded && window.google?.maps) {
+      initMap();
+      return;
+    }
 
-    // Cleanup
+    // Add callback to queue
+    loadCallbacks.push(initMap);
+
+    // If not loading yet, start loading
+    if (!googleMapsLoading && !googleMapsLoaded) {
+      googleMapsLoading = true;
+      
+      const script = document.createElement('script');
+      script.src = '/api/google-maps-js-loader?callback=initGoogleMapsForLanding';
+      script.async = true;
+      script.defer = true;
+      script.onerror = () => {
+        googleMapsLoading = false;
+        setError("Failed to load Google Maps");
+        setIsLoading(false);
+      };
+      document.head.appendChild(script);
+    }
+
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current = null;
@@ -144,7 +135,6 @@ export function MapBlockDisplay({
     };
   }, [latitude, longitude, formattedAddress, zoomLevel]);
 
-  // No coordinates provided
   if (!latitude || !longitude) {
     return (
       <div
@@ -153,15 +143,12 @@ export function MapBlockDisplay({
       >
         <div className="text-center px-4">
           <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">
-            Please select a location to display the map
-          </p>
+          <p className="text-sm text-gray-500">Select a location to display the map</p>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div
@@ -171,9 +158,6 @@ export function MapBlockDisplay({
         <div className="text-center px-4">
           <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          <p className="text-xs text-gray-500 mt-1">
-            Latitude: {latitude}, Longitude: {longitude}
-          </p>
         </div>
       </div>
     );
@@ -181,10 +165,8 @@ export function MapBlockDisplay({
 
   return (
     <div className="relative rounded-xl overflow-hidden shadow-lg" style={{ height }}>
-      {/* Map container */}
       <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
       
-      {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
           <div className="text-center">
@@ -194,13 +176,10 @@ export function MapBlockDisplay({
         </div>
       )}
       
-      {/* Button overlay */}
       {showButton && formattedAddress && !isLoading && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
           <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-              formattedAddress
-            )}`}
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formattedAddress)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 text-white rounded-lg shadow-lg text-sm font-medium transition-all hover:shadow-xl transform hover:scale-105"
