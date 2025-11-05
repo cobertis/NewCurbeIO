@@ -775,7 +775,7 @@ export default function PublicLandingPage() {
         className="relative"
         style={{
           background: (theme as any).backgroundGradient || "linear-gradient(180deg, #0f0b27 0%, #06010f 55%, #06010f 60%)",
-          minHeight: "280px",
+          minHeight: "220px",
           paddingBottom: "96px",
         }}
       >
