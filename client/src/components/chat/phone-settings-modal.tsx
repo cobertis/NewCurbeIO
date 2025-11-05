@@ -350,7 +350,7 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <span className="text-sm text-muted-foreground">Forward To</span>
                       <span className="font-medium" data-testid="call-forward-number-display">
-                        {phoneNumber.callForwardNumber}
+                        {formatPhoneNumber(phoneNumber.callForwardNumber)}
                       </span>
                     </div>
                   )}
