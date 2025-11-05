@@ -2098,6 +2098,22 @@ export default function LandingPageBuilder() {
                               .filter((b) => b.type === "social" && b.isVisible)
                               .filter((b) => SOCIAL_PLATFORMS.find((p) => p.value === b.content.platform)); // Only show blocks with valid icons
                             
+                            const getSocialLink = (platform: string, url: string) => {
+                              if (!url) return "#";
+                              
+                              if (platform === "email") {
+                                // For email, create mailto link
+                                return url.startsWith("mailto:") ? url : `mailto:${url}`;
+                              } else if (platform === "whatsapp") {
+                                // For WhatsApp, create wa.me link - remove all non-numeric characters
+                                const phoneNumber = url.replace(/[^0-9]/g, "");
+                                return `https://wa.me/${phoneNumber}`;
+                              }
+                              
+                              // For other platforms, use URL as-is
+                              return url;
+                            };
+                            
                             if (socialBlocks.length > 0) {
                               return (
                                 <div className="flex items-center justify-center gap-2 mb-4">
@@ -2105,12 +2121,13 @@ export default function LandingPageBuilder() {
                                     const platform = SOCIAL_PLATFORMS.find((p) => p.value === block.content.platform);
                                     if (!platform) return null; // Skip if no platform found
                                     const SocialIcon = platform.icon;
+                                    const href = getSocialLink(block.content.platform, block.content.url || "");
                                     
                                     return (
                                       <a
                                         key={block.id}
-                                        href={block.content.url || "#"}
-                                        target="_blank"
+                                        href={href}
+                                        target={block.content.platform === "email" ? "_self" : "_blank"}
                                         rel="noopener noreferrer"
                                         className="w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
                                         style={{ backgroundColor: selectedPage.landingPage.theme?.primaryColor ?? '#000000' }}

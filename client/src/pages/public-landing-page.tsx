@@ -8,6 +8,7 @@ import {
   SiLinkedin,
   SiYoutube,
   SiTiktok,
+  SiWhatsapp,
 } from "react-icons/si";
 import { 
   Phone, 
@@ -847,6 +848,23 @@ export default function PublicLandingPage() {
         {/* Social Media Icons - COMPACT like SmartBio */}
         {(() => {
           const socialBlocks = sortedBlocks.filter((b) => b.type === "social" && b.isVisible);
+          
+          const getSocialLink = (platform: string, url: string) => {
+            if (!url) return "#";
+            
+            if (platform === "email") {
+              // For email, create mailto link
+              return url.startsWith("mailto:") ? url : `mailto:${url}`;
+            } else if (platform === "whatsapp") {
+              // For WhatsApp, create wa.me link - remove all non-numeric characters
+              const phoneNumber = url.replace(/[^0-9]/g, "");
+              return `https://wa.me/${phoneNumber}`;
+            }
+            
+            // For other platforms, use URL as-is
+            return url;
+          };
+          
           if (socialBlocks.length > 0) {
             const SOCIAL_ICONS: Record<string, any> = {
               instagram: SiInstagram,
@@ -855,16 +873,20 @@ export default function PublicLandingPage() {
               linkedin: SiLinkedin,
               youtube: SiYoutube,
               tiktok: SiTiktok,
+              whatsapp: SiWhatsapp,
+              email: Mail,
             };
             return (
               <div className="flex items-center justify-center gap-2 mb-4 max-w-2xl mx-auto">
                 {socialBlocks.map((block) => {
                   const SocialIcon = SOCIAL_ICONS[block.content.platform] || SiInstagram;
+                  const href = getSocialLink(block.content.platform, block.content.url || "");
+                  
                   return (
                     <a
                       key={block.id}
-                      href={block.content.url || "#"}
-                      target="_blank"
+                      href={href}
+                      target={block.content.platform === "email" ? "_self" : "_blank"}
                       rel="noopener noreferrer"
                       onClick={() => trackClick(block.id)}
                       className="w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
