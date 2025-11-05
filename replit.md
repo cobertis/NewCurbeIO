@@ -61,7 +61,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **Architecture:** Dual messaging system - Twilio for system notifications, BulkVS for individual user chat with dedicated phone numbers.
     -   **UI:** 3-column desktop layout (thread list, message panel, contact details), responsive mobile design.
     -   **Features:** SMS/MMS with file upload (5MB limit), emoji picker, message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket.
-    -   **Number Provisioning:** Simplified area code search, 3-step wizard. Each user can only provision one phone number.
+    -   **Number Provisioning:** Simplified area code search, 3-step wizard. Each user can only provision one phone number. Toll-free numbers (800, 833, 844, 855, 866, 877, 888) are prohibited.
     -   **Billing System:** Automatic Stripe subscription creation ($10/month per number), recurring every 30 days. Allows reactivation of cancelled numbers.
     -   **Phone Number Reactivation:** Cancelled numbers preserved with inactive status. Reactivation available via:
         - **Billing Page:** "Reactivate" button next to cancelled numbers (greyed-out styling, crossed-out price)

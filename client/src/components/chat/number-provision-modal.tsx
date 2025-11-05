@@ -94,6 +94,9 @@ interface NumberProvisionModalProps {
 
 type Step = "search" | "select" | "confirm";
 
+// Toll-free area codes that are NOT allowed
+const TOLL_FREE_AREA_CODES = ['800', '833', '844', '855', '866', '877', '888'];
+
 export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModalProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("search");
@@ -103,6 +106,9 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
   const [selectedDID, setSelectedDID] = useState<string | null>(null);
 
   const selectedNumber = availableNumbers.find((num) => num.did === selectedDID);
+  
+  // Check if current area code is toll-free
+  const isTollFree = areaCode.length === 3 && TOLL_FREE_AREA_CODES.includes(areaCode);
 
   const searchMutation = useMutation({
     mutationFn: async () => {
@@ -247,16 +253,24 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
                   maxLength={3}
                   value={areaCode}
                   onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, ""))}
+                  className={isTollFree ? "border-red-500 focus-visible:ring-red-500" : ""}
                   data-testid="input-area-code"
                 />
-                <p className="text-sm text-muted-foreground">
-                  Enter the 3-digit area code where you want a phone number
-                </p>
+                {isTollFree && (
+                  <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                    ⚠️ Toll-free numbers (800, 833, 844, 855, 866, 877, 888) are not allowed. Please use a local area code.
+                  </p>
+                )}
+                {!isTollFree && (
+                  <p className="text-sm text-muted-foreground">
+                    Enter the 3-digit area code where you want a phone number
+                  </p>
+                )}
               </div>
 
               <Button
                 onClick={handleSearch}
-                disabled={!areaCode || areaCode.length !== 3}
+                disabled={!areaCode || areaCode.length !== 3 || isTollFree}
                 className="w-full"
                 data-testid="button-search-numbers"
               >

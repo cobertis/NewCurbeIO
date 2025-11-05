@@ -18808,6 +18808,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Area code (npa) is required" });
       }
       
+      // CRITICAL: Prohibit toll-free area codes
+      // Toll-free numbers (800, 833, 844, 855, 866, 877, 888) are NOT allowed
+      const TOLL_FREE_AREA_CODES = ['800', '833', '844', '855', '866', '877', '888'];
+      const areaCode = (npa as string).trim();
+      
+      if (TOLL_FREE_AREA_CODES.includes(areaCode)) {
+        console.log(`[BulkVS] Rejected toll-free area code search: ${areaCode}`);
+        return res.status(400).json({ 
+          message: "Toll-free numbers are not allowed. Please use a local area code (e.g., 305, 212, 415).",
+          isTollFree: true,
+        });
+      }
+      
       const params: any = {
         npa: npa as string,
       };
