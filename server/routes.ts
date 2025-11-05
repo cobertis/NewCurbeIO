@@ -18759,6 +18759,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "DID (phone number) is required" });
       }
       
+      // Check if user already has a phone number (limit: one per user)
+      const userPhoneNumbers = await storage.getBulkvsPhoneNumbersByUser(user.id);
+      if (userPhoneNumbers && userPhoneNumbers.length > 0) {
+        return res.status(400).json({ message: "You already have a phone number. Each user can only have one phone number." });
+      }
+      
       // Check if number already exists
       const existing = await storage.getBulkvsPhoneNumberByDid(did);
       if (existing) {
