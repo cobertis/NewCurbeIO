@@ -371,6 +371,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(401).json({ message: "Not authenticated" });
     }
 
+    // Populate session.user for WebSocket compatibility if not already set
+    if (!req.session.user) {
+      req.session.user = {
+        id: user.id,
+        companyId: user.companyId ?? null,
+        role: user.role
+      };
+    }
+
     req.user = user;
     next();
   };
@@ -384,6 +393,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const user = await storage.getUser(req.session.userId);
     if (!user) {
       return res.status(401).json({ message: "User not found" });
+    }
+
+    // Populate session.user for WebSocket compatibility if not already set
+    if (!req.session.user) {
+      req.session.user = {
+        id: user.id,
+        companyId: user.companyId ?? null,
+        role: user.role
+      };
     }
 
     // Check if user's company is still active (for non-superadmin users)
@@ -936,6 +954,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // If 2FA is not enabled, allow direct login without OTP
       if (!has2FAEnabled) {
         req.session.userId = user.id;
+        req.session.user = {
+          id: user.id,
+          companyId: user.companyId ?? null,
+          role: user.role
+        };
         
         // Capture IP address
         const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
@@ -1029,6 +1052,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // If device is trusted for this user, skip OTP
         if (trustedUserId === user.id) {
           req.session.userId = user.id;
+          req.session.user = {
+            id: user.id,
+            companyId: user.companyId ?? null,
+            role: user.role
+          };
           
           // Capture IP address
           const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown IP';
@@ -1984,6 +2012,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Clear pending user and set authenticated user
       delete req.session.pendingUserId;
       req.session.userId = user.id;
+      req.session.user = {
+        id: user.id,
+        companyId: user.companyId ?? null,
+        role: user.role
+      };
 
       // Update last login time
       await storage.updateUser(user.id, { lastLoginAt: new Date() });
