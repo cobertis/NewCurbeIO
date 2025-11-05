@@ -198,8 +198,6 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
     setAreaCode("");
     setAvailableNumbers([]);
     setSelectedDID(null);
-    setCampaignId("");
-    setEnableSmsMms(true);
     onOpenChange(false);
   };
 
