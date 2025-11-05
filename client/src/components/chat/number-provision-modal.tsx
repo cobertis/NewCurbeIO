@@ -101,8 +101,6 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
   const [areaCode, setAreaCode] = useState<string>("");
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [selectedDID, setSelectedDID] = useState<string | null>(null);
-  const [campaignId, setCampaignId] = useState<string>("");
-  const [enableSmsMms, setEnableSmsMms] = useState<boolean>(true);
 
   const selectedNumber = availableNumbers.find((num) => num.did === selectedDID);
 
@@ -155,7 +153,6 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
 
       return apiRequest("POST", "/api/bulkvs/numbers/provision", {
         did: selectedDID,
-        campaignId: campaignId || undefined,
       });
     },
     onSuccess: () => {
@@ -368,33 +365,13 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="campaign-id" data-testid="label-campaign-id">
-                      10DLC Campaign ID (Optional)
-                    </Label>
-                    <Input
-                      id="campaign-id"
-                      type="text"
-                      placeholder="Enter campaign ID"
-                      value={campaignId}
-                      onChange={(e) => setCampaignId(e.target.value)}
-                      data-testid="input-campaign-id"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Assign this number to a 10DLC campaign for better deliverability
-                    </p>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="enable-sms-mms"
-                      checked={enableSmsMms}
-                      onCheckedChange={(checked) => setEnableSmsMms(checked === true)}
-                      data-testid="checkbox-enable-sms-mms"
-                    />
-                    <Label htmlFor="enable-sms-mms" className="cursor-pointer" data-testid="label-enable-sms-mms">
-                      Enable SMS/MMS (Recommended)
-                    </Label>
+                  <div className="bg-muted/50 p-4 rounded-md space-y-2">
+                    <p className="text-sm font-medium">Automatic Configuration:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>✓ SMS/MMS enabled</li>
+                      <li>✓ 10DLC Campaign assigned (C3JXHXH)</li>
+                      <li>✓ Webhook configured for messaging</li>
+                    </ul>
                   </div>
 
                   {selectedNumber?.price && (

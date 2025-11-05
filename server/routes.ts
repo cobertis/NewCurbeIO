@@ -18753,7 +18753,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(503).json({ message: "BulkVS service is not configured" });
       }
       
-      const { did, campaignId, displayName } = req.body;
+      const { did, displayName } = req.body;
       
       if (!did) {
         return res.status(400).json({ message: "DID (phone number) is required" });
@@ -18764,6 +18764,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (existing) {
         return res.status(400).json({ message: "This number is already provisioned" });
       }
+      
+      // Fixed campaign ID for all numbers
+      const FIXED_CAMPAIGN_ID = "C3JXHXH";
       
       // Purchase the DID from BulkVS
       console.log(`[BulkVS] Purchasing DID ${did}...`);
@@ -18778,11 +18781,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[BulkVS] Setting webhook URL for ${did}: ${webhookUrl}`);
       await bulkVSClient.setMessagingWebhook(did, webhookUrl);
       
-      // Assign to campaign if provided
-      if (campaignId) {
-        console.log(`[BulkVS] Assigning ${did} to campaign ${campaignId}...`);
-        await bulkVSClient.assignToCampaign(did, campaignId);
-      }
+      // Automatically assign to fixed campaign ID
+      console.log(`[BulkVS] Assigning ${did} to campaign ${FIXED_CAMPAIGN_ID}...`);
+      await bulkVSClient.assignToCampaign(did, FIXED_CAMPAIGN_ID);
       
       // Extract metadata from DID
       const areaCode = did.substring(2, 5); // E.164 format: +1NXXNXXXXXX
@@ -18861,10 +18862,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         userId: user.id,
         companyId: user.companyId,
         did,
-        displayName: displayName || `Phone ${areaCode}`,
+        displayName: displayName || company.name, // Use company name as default
         smsEnabled: true,
         mmsEnabled: true,
-        campaignId: campaignId || null,
+        campaignId: FIXED_CAMPAIGN_ID,
         webhookUrl,
         areaCode,
         status: "active",
