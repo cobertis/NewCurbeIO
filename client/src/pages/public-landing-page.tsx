@@ -836,18 +836,15 @@ export default function PublicLandingPage() {
       >
         {/* Profile Info - COMPACT and CLEAN */}
         {(landingPage.profileName || landingPage.profileBio) && (
-          <div className="relative z-50 text-center mb-4 -mt-2">
+          <div className="relative z-50 text-center mb-4 -mt-2 landing-profile-name">
             {landingPage.profileName && (
-              <div className="flex items-center justify-center gap-1.5 mb-1" style={{ border: "none", borderBottom: "none" }}>
+              <div className="flex items-center justify-center gap-1.5 mb-1">
                 <h1
-                  className="text-2xl font-bold mb-0 no-underline"
+                  className="text-2xl font-bold"
                   style={{ 
                     color: "#000000",
-                    textDecoration: "none",
-                    border: "none",
-                    borderBottom: "none",
-                    outline: "none",
-                    boxShadow: "none",
+                    margin: 0,
+                    padding: 0,
                   }}
                   data-testid="profile-name"
                 >
