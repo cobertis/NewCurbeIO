@@ -752,6 +752,10 @@ export interface IStorage {
   getLandingAppointments(landingPageId: string, options?: { limit?: number; offset?: number; status?: string }): Promise<LandingAppointment[]>;
   updateAppointmentStatus(id: string, status: string): Promise<LandingAppointment | undefined>;
   getAvailableSlots(blockId: string, date: string): Promise<string[]>;
+  getAppointmentById(id: string): Promise<LandingAppointment | undefined>;
+  getLandingAppointmentsByUser(userId: string, options?: { limit?: number; offset?: number; status?: string }): Promise<LandingAppointment[]>;
+  getLandingAppointmentsByCompany(companyId: string, options?: { limit?: number; offset?: number; status?: string; search?: string }): Promise<LandingAppointment[]>;
+  updateLandingAppointment(id: string, data: Partial<InsertLandingAppointment>): Promise<LandingAppointment | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -6099,6 +6103,129 @@ export class DbStorage implements IStorage {
     }
     
     return slots;
+  }
+
+  async getAppointmentById(id: string): Promise<LandingAppointment | undefined> {
+    const result = await db
+      .select()
+      .from(landingAppointments)
+      .where(eq(landingAppointments.id, id));
+    return result[0];
+  }
+
+  async getLandingAppointmentsByUser(
+    userId: string,
+    options?: { limit?: number; offset?: number; status?: string }
+  ): Promise<LandingAppointment[]> {
+    const whereConditions = options?.status
+      ? and(
+          eq(landingPages.userId, userId),
+          eq(landingAppointments.status, options.status)
+        )
+      : eq(landingPages.userId, userId);
+
+    const query = db
+      .select({
+        id: landingAppointments.id,
+        landingPageId: landingAppointments.landingPageId,
+        blockId: landingAppointments.blockId,
+        fullName: landingAppointments.fullName,
+        email: landingAppointments.email,
+        phone: landingAppointments.phone,
+        appointmentDate: landingAppointments.appointmentDate,
+        appointmentTime: landingAppointments.appointmentTime,
+        duration: landingAppointments.duration,
+        notes: landingAppointments.notes,
+        status: landingAppointments.status,
+        ipAddress: landingAppointments.ipAddress,
+        userAgent: landingAppointments.userAgent,
+        createdAt: landingAppointments.createdAt,
+        updatedAt: landingAppointments.updatedAt,
+      })
+      .from(landingAppointments)
+      .innerJoin(landingPages, eq(landingAppointments.landingPageId, landingPages.id))
+      .where(whereConditions)
+      .orderBy(desc(landingAppointments.createdAt));
+
+    if (options?.limit) {
+      query.limit(options.limit);
+    }
+
+    if (options?.offset) {
+      query.offset(options.offset);
+    }
+
+    return query;
+  }
+
+  async getLandingAppointmentsByCompany(
+    companyId: string,
+    options?: { limit?: number; offset?: number; status?: string; search?: string }
+  ): Promise<LandingAppointment[]> {
+    const conditions = [eq(landingPages.companyId, companyId)];
+
+    if (options?.status) {
+      conditions.push(eq(landingAppointments.status, options.status));
+    }
+
+    if (options?.search) {
+      const searchPattern = `%${options.search}%`;
+      conditions.push(
+        or(
+          like(landingAppointments.fullName, searchPattern),
+          like(landingAppointments.email, searchPattern),
+          like(landingAppointments.phone, searchPattern)
+        )!
+      );
+    }
+
+    const query = db
+      .select({
+        id: landingAppointments.id,
+        landingPageId: landingAppointments.landingPageId,
+        blockId: landingAppointments.blockId,
+        fullName: landingAppointments.fullName,
+        email: landingAppointments.email,
+        phone: landingAppointments.phone,
+        appointmentDate: landingAppointments.appointmentDate,
+        appointmentTime: landingAppointments.appointmentTime,
+        duration: landingAppointments.duration,
+        notes: landingAppointments.notes,
+        status: landingAppointments.status,
+        ipAddress: landingAppointments.ipAddress,
+        userAgent: landingAppointments.userAgent,
+        createdAt: landingAppointments.createdAt,
+        updatedAt: landingAppointments.updatedAt,
+      })
+      .from(landingAppointments)
+      .innerJoin(landingPages, eq(landingAppointments.landingPageId, landingPages.id))
+      .where(and(...conditions))
+      .orderBy(desc(landingAppointments.createdAt));
+
+    if (options?.limit) {
+      query.limit(options.limit);
+    }
+
+    if (options?.offset) {
+      query.offset(options.offset);
+    }
+
+    return query;
+  }
+
+  async updateLandingAppointment(
+    id: string,
+    data: Partial<InsertLandingAppointment>
+  ): Promise<LandingAppointment | undefined> {
+    const result = await db
+      .update(landingAppointments)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(landingAppointments.id, id))
+      .returning();
+    return result[0];
   }
 }
 

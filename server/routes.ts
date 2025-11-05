@@ -74,6 +74,7 @@ import multer from "multer";
 import "./types";
 import { fetchMarketplacePlans } from "./cms-marketplace";
 import { generateShortId } from "./id-generator";
+import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -11520,6 +11521,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
+      // ============== LANDING PAGE APPOINTMENTS ==============
+      // Fetch confirmed appointments for the current user
+      // Wrapped in try-catch to prevent breaking the calendar if appointments fail
+      try {
+        const appointments = await storage.getLandingAppointmentsByUser(currentUser.id, { status: 'confirmed' });
+        
+        for (const appointment of appointments) {
+          events.push({
+            type: 'appointment',
+            date: appointment.appointmentDate,
+            title: `Appointment with ${appointment.fullName}`,
+            description: appointment.notes || 'Scheduled appointment',
+            quoteId: '',
+            appointmentId: appointment.id,
+            appointmentTime: appointment.appointmentTime,
+            appointmentPhone: appointment.phone,
+            appointmentEmail: appointment.email,
+            status: appointment.status,
+          });
+        }
+      } catch (error: any) {
+        console.error("Error fetching landing appointments for calendar:", error);
+        // Continue without appointments - don't break the entire calendar
+      }
+
       res.json({ events });
     } catch (error: any) {
       console.error("Error fetching calendar events:", error);
@@ -17947,6 +17973,233 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ 
         date,
         availableSlots: slots 
+      });
+    } catch (error: any) {
+      console.error("Error fetching available slots:", error);
+      res.status(500).json({ message: "Failed to fetch available slots" });
+    }
+  });
+
+  // ==================== LANDING PAGE APPOINTMENTS API (NEW) ====================
+  
+  // POST /api/landing/appointments - Create new appointment (PUBLIC endpoint)
+  app.post("/api/landing/appointments", async (req: Request, res: Response) => {
+    try {
+      // Validate request body
+      const data = insertLandingAppointmentSchema.parse(req.body);
+      
+      // Check for duplicate appointment
+      const isDuplicate = await isDuplicateAppointment({
+        landingPageId: data.landingPageId,
+        email: data.email,
+        appointmentDate: data.appointmentDate,
+        appointmentTime: data.appointmentTime,
+      });
+      
+      if (isDuplicate) {
+        return res.status(409).json({ 
+          message: "Duplicate appointment - you already have an appointment at this time" 
+        });
+      }
+      
+      // Verify landing page exists to get userId and companyId
+      const landingPage = await storage.getLandingPageById(data.landingPageId);
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check slot availability
+      const slotAvailable = await isSlotAvailable({
+        date: data.appointmentDate,
+        time: data.appointmentTime,
+        userId: landingPage.userId,
+        companyId: landingPage.companyId,
+        duration: data.duration,
+      });
+      
+      if (!slotAvailable) {
+        return res.status(400).json({ 
+          message: "Selected time slot is not available" 
+        });
+      }
+      
+      // Create appointment
+      const appointment = await storage.createLandingAppointment(data);
+      
+      // Log activity
+      await logger.logActivity({
+        companyId: landingPage.companyId,
+        userId: landingPage.userId,
+        action: "landing_appointment_created",
+        entityType: "landing_appointment",
+        entityId: appointment.id,
+        description: `New appointment: ${data.fullName} on ${data.appointmentDate} at ${data.appointmentTime}`,
+        metadata: {
+          email: data.email,
+          phone: data.phone,
+          appointmentDate: data.appointmentDate,
+          appointmentTime: data.appointmentTime,
+        },
+      });
+      
+      // TODO: Send notification email to company admins
+      
+      res.status(201).json({ appointment });
+    } catch (error: any) {
+      console.error("Error creating landing appointment:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to create appointment" });
+    }
+  });
+  
+  // GET /api/landing/appointments - List user's appointments (PROTECTED endpoint)
+  app.get("/api/landing/appointments", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { status, limit, offset, search } = req.query;
+    
+    try {
+      let appointments;
+      
+      // Admin and superadmin can see all company appointments
+      if (currentUser.role === "admin" || currentUser.role === "superadmin") {
+        appointments = await storage.getLandingAppointmentsByCompany(currentUser.companyId!, {
+          status: status as string | undefined,
+          limit: limit ? parseInt(limit as string) : undefined,
+          offset: offset ? parseInt(offset as string) : undefined,
+          search: search as string | undefined,
+        });
+      } else {
+        // Regular users see only their appointments
+        appointments = await storage.getLandingAppointmentsByUser(currentUser.id, {
+          status: status as string | undefined,
+          limit: limit ? parseInt(limit as string) : undefined,
+          offset: offset ? parseInt(offset as string) : undefined,
+        });
+      }
+      
+      res.json({ appointments });
+    } catch (error: any) {
+      console.error("Error fetching landing appointments:", error);
+      res.status(500).json({ message: "Failed to fetch appointments" });
+    }
+  });
+  
+  // PATCH /api/landing/appointments/:id - Update appointment (PROTECTED endpoint)
+  app.patch("/api/landing/appointments/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Validate partial update
+      const validatedData = insertLandingAppointmentSchema.partial().parse(req.body);
+      
+      // Get existing appointment
+      const existingAppointment = await storage.getAppointmentById(id);
+      
+      if (!existingAppointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      // Verify landing page exists and check ownership
+      const landingPage = await storage.getLandingPageById(existingAppointment.landingPageId);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check authorization: user must own the landing page or be admin/superadmin
+      if (
+        currentUser.role !== "superadmin" && 
+        currentUser.role !== "admin" &&
+        landingPage.userId !== currentUser.id
+      ) {
+        return res.status(403).json({ message: "Forbidden - you don't have permission to update this appointment" });
+      }
+      
+      // Update appointment
+      const updatedAppointment = await storage.updateLandingAppointment(id, validatedData);
+      
+      if (!updatedAppointment) {
+        return res.status(500).json({ message: "Failed to update appointment" });
+      }
+      
+      // Log activity
+      await logger.logActivity({
+        companyId: landingPage.companyId,
+        userId: currentUser.id,
+        action: "landing_appointment_updated",
+        entityType: "landing_appointment",
+        entityId: id,
+        description: `Updated appointment for ${existingAppointment.fullName}`,
+        metadata: {
+          changes: validatedData,
+        },
+      });
+      
+      res.json({ appointment: updatedAppointment });
+    } catch (error: any) {
+      console.error("Error updating landing appointment:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to update appointment" });
+    }
+  });
+  
+  // GET /api/landing/appointments/slots - Get available time slots (PUBLIC endpoint)
+  app.get("/api/landing/appointments/slots", async (req: Request, res: Response) => {
+    const { date, userId, duration } = req.query;
+    
+    try {
+      // Validate required parameters
+      if (!date || typeof date !== 'string') {
+        return res.status(400).json({ message: "Date parameter is required (yyyy-MM-dd format)" });
+      }
+      
+      if (!userId || typeof userId !== 'string') {
+        return res.status(400).json({ message: "userId parameter is required" });
+      }
+      
+      // Validate date format
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        return res.status(400).json({ message: "Invalid date format. Use yyyy-MM-dd" });
+      }
+      
+      // Get user to determine companyId
+      const user = await storage.getUser(userId);
+      if (!user || !user.companyId) {
+        return res.status(404).json({ message: "User not found or not associated with a company" });
+      }
+      
+      // Parse duration (default to 30)
+      const appointmentDuration = duration ? parseInt(duration as string) : 30;
+      
+      // Validate duration
+      if (appointmentDuration !== 30 && appointmentDuration !== 60) {
+        return res.status(400).json({ message: "Duration must be 30 or 60 minutes" });
+      }
+      
+      // Get available slots
+      const slots = await getAvailableSlots({
+        date,
+        userId,
+        companyId: user.companyId,
+        duration: appointmentDuration,
+      });
+      
+      res.json({ 
+        date,
+        duration: appointmentDuration,
+        slots 
       });
     } catch (error: any) {
       console.error("Error fetching available slots:", error);

@@ -7,11 +7,12 @@ import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/loading-spinner";
 
 interface CalendarEvent {
-  type: 'birthday' | 'reminder';
+  type: 'birthday' | 'reminder' | 'appointment';
   date: string;
   title: string;
   description: string;
-  quoteId: string;
+  quoteId?: string;
+  policyId?: string;
   personName?: string;
   role?: string;
   reminderId?: string;
@@ -19,6 +20,11 @@ interface CalendarEvent {
   priority?: string;
   status?: string;
   dueTime?: string;
+  appointmentId?: string;
+  appointmentTime?: string;
+  appointmentPhone?: string;
+  appointmentEmail?: string;
+  clientName?: string;
 }
 
 export default function Calendar() {
