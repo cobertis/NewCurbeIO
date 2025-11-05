@@ -134,7 +134,9 @@ import {
   type LandingLead,
   type InsertLandingLead,
   type LandingAppointment,
-  type InsertLandingAppointment
+  type InsertLandingAppointment,
+  type AppointmentAvailability,
+  type InsertAppointmentAvailability
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -200,7 +202,8 @@ import {
   landingBlocks,
   landingAnalytics,
   landingLeads,
-  landingAppointments
+  landingAppointments,
+  appointmentAvailability
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -758,6 +761,11 @@ export interface IStorage {
   getLandingAppointmentsByUser(userId: string, options?: { limit?: number; offset?: number; status?: string }): Promise<LandingAppointment[]>;
   getLandingAppointmentsByCompany(companyId: string, options?: { limit?: number; offset?: number; status?: string; search?: string }): Promise<LandingAppointment[]>;
   updateLandingAppointment(id: string, data: Partial<InsertLandingAppointment>): Promise<LandingAppointment | undefined>;
+  
+  // Appointment Availability Configuration
+  getAppointmentAvailability(userId: string): Promise<AppointmentAvailability | undefined>;
+  createAppointmentAvailability(data: InsertAppointmentAvailability): Promise<AppointmentAvailability>;
+  updateAppointmentAvailability(userId: string, data: Partial<InsertAppointmentAvailability>): Promise<AppointmentAvailability | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -6328,6 +6336,44 @@ export class DbStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(landingAppointments.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  // ==================== APPOINTMENT AVAILABILITY ====================
+  
+  async getAppointmentAvailability(userId: string): Promise<AppointmentAvailability | undefined> {
+    const result = await db
+      .select()
+      .from(appointmentAvailability)
+      .where(eq(appointmentAvailability.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+  
+  async createAppointmentAvailability(data: InsertAppointmentAvailability): Promise<AppointmentAvailability> {
+    const result = await db
+      .insert(appointmentAvailability)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async updateAppointmentAvailability(
+    userId: string,
+    data: Partial<InsertAppointmentAvailability>
+  ): Promise<AppointmentAvailability | undefined> {
+    const result = await db
+      .update(appointmentAvailability)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(appointmentAvailability.userId, userId))
       .returning();
     return result[0];
   }

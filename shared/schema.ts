@@ -2768,6 +2768,38 @@ export const landingLeads = pgTable("landing_leads", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Landing page appointment availability settings
+export const appointmentAvailability = pgTable("appointment_availability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // General settings
+  appointmentDuration: integer("appointment_duration").notNull().default(30), // minutes
+  bufferTime: integer("buffer_time").notNull().default(0), // minutes between appointments
+  minAdvanceTime: integer("min_advance_time").notNull().default(60), // minutes before an appointment can be booked
+  maxAdvanceDays: integer("max_advance_days").notNull().default(30), // days in advance appointments can be booked
+  
+  // Timezone for availability
+  timezone: text("timezone").notNull().default("America/New_York"),
+  
+  // Weekly availability - JSON object with days and time ranges
+  weeklyAvailability: jsonb("weekly_availability").notNull().default({
+    monday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+    tuesday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+    wednesday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+    thursday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+    friday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+    saturday: { enabled: false, slots: [] },
+    sunday: { enabled: false, slots: [] },
+  }),
+  
+  // Date overrides (blocked dates, special availability)
+  dateOverrides: jsonb("date_overrides").notNull().default([]),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Landing page appointments
 export const landingAppointments = pgTable("landing_appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2808,6 +2840,28 @@ export const insertLandingLeadSchema = createInsertSchema(landingLeads).omit({
   userAgent: z.string().max(500).optional(),
 });
 
+export const insertAppointmentAvailabilitySchema = createInsertSchema(appointmentAvailability).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  appointmentDuration: z.number().int().min(15).max(240).default(30),
+  bufferTime: z.number().int().min(0).max(120).default(0),
+  minAdvanceTime: z.number().int().min(0).max(10080).default(60),
+  maxAdvanceDays: z.number().int().min(1).max(365).default(30),
+  timezone: z.string().default("America/New_York"),
+  weeklyAvailability: z.object({
+    monday: z.object({ enabled: z.boolean(), slots: z.array(z.object({ start: z.string(), end: z.string() })) }),
+    tuesday: z.object({ enabled: z.boolean(), slots: z.array(z.object({ start: z.string(), end: z.string() })) }),
+    wednesday: z.object({ enabled: z.boolean(), slots: z.array(z.object({ start: z.string(), end: z.string() })) }),
+    thursday: z.object({ enabled: z.boolean(), slots: z.array(z.object({ start: z.string(), end: z.string() })) }),
+    friday: z.object({ enabled: z.boolean(), slots: z.array(z.object({ start: z.string(), end: z.string() })) }),
+    saturday: z.object({ enabled: z.boolean(), slots: z.array(z.object({ start: z.string(), end: z.string() })) }),
+    sunday: z.object({ enabled: z.boolean(), slots: z.array(z.object({ start: z.string(), end: z.string() })) }),
+  }),
+  dateOverrides: z.array(z.any()).default([]),
+});
+
 export const insertLandingAppointmentSchema = createInsertSchema(landingAppointments).omit({
   id: true,
   createdAt: true,
@@ -2839,3 +2893,6 @@ export type InsertLandingLead = z.infer<typeof insertLandingLeadSchema>;
 
 export type LandingAppointment = typeof landingAppointments.$inferSelect;
 export type InsertLandingAppointment = z.infer<typeof insertLandingAppointmentSchema>;
+
+export type AppointmentAvailability = typeof appointmentAvailability.$inferSelect;
+export type InsertAppointmentAvailability = z.infer<typeof insertAppointmentAvailabilitySchema>;
