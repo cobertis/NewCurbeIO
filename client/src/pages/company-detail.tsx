@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, LayoutDashboard, FileText, Briefcase, UserCheck, Languages, DollarSign, Clock } from "lucide-react";
-import { formatPhoneDisplay } from "@/lib/phone-formatter";
+import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -18,7 +18,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
-import { formatPhoneInput, formatPhoneE164 } from "@/lib/phone-formatter";
 import { useState } from "react";
 import { CompanyBillingTab } from "@/components/company-billing-tab";
 import { useTabsState } from "@/hooks/use-tabs-state";
@@ -104,7 +103,7 @@ export default function CompanyDetail() {
 
   const createUserMutation = useMutation({
     mutationFn: async (data: UserForm) => {
-      const phoneE164 = data.phone ? formatPhoneE164(data.phone) : null;
+      const phoneE164 = data.phone ? formatE164(data.phone) : null;
       return apiRequest("POST", "/api/users", { ...data, phone: phoneE164 });
     },
     onSuccess: () => {
@@ -268,7 +267,7 @@ export default function CompanyDetail() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-muted-foreground">Phone</p>
                     <p className="text-sm">
-                      {company.phone ? formatPhoneDisplay(company.phone) : "Not provided"}
+                      {company.phone ? formatForDisplay(company.phone) : "Not provided"}
                     </p>
                   </div>
                 </div>
@@ -423,7 +422,7 @@ export default function CompanyDetail() {
                       <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                        <p className="text-sm">{formatPhoneDisplay(company.representativePhone)}</p>
+                        <p className="text-sm">{formatForDisplay(company.representativePhone)}</p>
                       </div>
                     </div>
                   )}
@@ -645,7 +644,7 @@ export default function CompanyDetail() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                          {user.phone ? formatPhoneDisplay(user.phone) : <span className="text-gray-400 italic">No phone</span>}
+                          {user.phone ? formatForDisplay(user.phone) : <span className="text-gray-400 italic">No phone</span>}
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadge.className}`}>

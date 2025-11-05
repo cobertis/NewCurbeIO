@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPhoneInput } from "@shared/phone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -270,21 +271,6 @@ const displaySSN = (ssn: string | null | undefined, isVisible: boolean): string 
 };
 
 // Format Phone Number with automatic formatting (XXX) XXX-XXXX
-const formatPhoneNumber = (value: string) => {
-  // Remove all non-digits
-  const digits = value.replace(/\D/g, '');
-  
-  // Apply formatting based on length
-  if (digits.length === 0) {
-    return '';
-  } else if (digits.length <= 3) {
-    return `(${digits}`;
-  } else if (digits.length <= 6) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  } else {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-  }
-};
 
 // Format file size from bytes to human-readable format
 const formatFileSize = (bytes: number): string => {

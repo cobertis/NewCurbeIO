@@ -3381,8 +3381,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       broadcastCompanyUpdate(updatedCompany.id);
       
       res.json({ company: updatedCompany });
-    } catch (error) {
-      res.status(400).json({ message: "Invalid request" });
+    } catch (error: any) {
+      console.error("Error updating company:", error);
+      res.status(400).json({ message: error.message || "Invalid request" });
     }
   });
 
@@ -18980,6 +18981,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
     } catch (error: any) {
       console.error("Error provisioning phone number:", error);
+      
+      // Check if this is a phone validation error (from formatForStorage)
+      if (error.message && (
+        error.message.includes("Invalid phone number") || 
+        error.message.includes("Phone number is required") ||
+        error.message.includes("must be 10 or 11 digits") ||
+        error.message.includes("must start with 1")
+      )) {
+        return res.status(400).json({ message: error.message });
+      }
+      
+      // Other errors are server errors
       res.status(500).json({ message: "Failed to provision phone number", error: error.message });
     }
   });

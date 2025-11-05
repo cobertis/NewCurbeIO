@@ -24,7 +24,7 @@ import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as Phone
 import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
-import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
+import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
@@ -481,7 +481,7 @@ export default function Settings() {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
-        phone: user.phone ? formatPhoneDisplay(user.phone) : "",
+        phone: user.phone ? formatForDisplay(user.phone) : "",
         dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
         preferredLanguage: user.preferredLanguage || "en",
       });
@@ -540,7 +540,7 @@ export default function Settings() {
         dataToSend.email = data.email;
       }
       if (data.phone && data.phone !== "") {
-        dataToSend.phone = formatPhoneE164(data.phone);
+        dataToSend.phone = formatE164(data.phone);
       }
       if (data.dateOfBirth && data.dateOfBirth !== "") {
         dataToSend.dateOfBirth = new Date(data.dateOfBirth).toISOString();
@@ -1173,7 +1173,7 @@ export default function Settings() {
                       {user?.phone && (
                         <div className="flex items-center gap-2">
                           <PhoneIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <p className="text-sm">{formatPhoneDisplay(user.phone)}</p>
+                          <p className="text-sm">{formatForDisplay(user.phone)}</p>
                         </div>
                       )}
                     </div>
@@ -1209,7 +1209,7 @@ export default function Settings() {
                             <PhoneIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-muted-foreground">Phone</p>
-                              <p className="text-sm font-medium">{formatPhoneDisplay(companyData.company.phone)}</p>
+                              <p className="text-sm font-medium">{formatForDisplay(companyData.company.phone)}</p>
                             </div>
                           </div>
                         )}
@@ -2721,7 +2721,7 @@ function TeamMembersTable() {
       const dataToSend = {
         ...data,
         companyId: currentUserCompanyId, // Automatically set to current user's company
-        phone: data.phone ? formatPhoneE164(data.phone) : undefined,
+        phone: data.phone ? formatE164(data.phone) : undefined,
       };
       
       console.log("[CREATE USER] Data to send:", dataToSend);
@@ -2968,7 +2968,7 @@ function TeamMembersTable() {
                       {user.phone && (
                         <div className="flex items-center gap-2 text-xs">
                           <PhoneIcon className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">{formatPhoneDisplay(user.phone)}</span>
+                          <span className="text-muted-foreground">{formatForDisplay(user.phone)}</span>
                         </div>
                       )}
                     </div>
@@ -3237,7 +3237,7 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
       if (data.firstName !== user.firstName) updateData.firstName = data.firstName;
       if (data.lastName !== user.lastName) updateData.lastName = data.lastName;
       if (data.phone !== user.phone && data.phone) {
-        updateData.phone = formatPhoneE164(data.phone);
+        updateData.phone = formatE164(data.phone);
       }
       if (data.role !== user.role) updateData.role = data.role;
       if (data.timezone !== user.timezone) updateData.timezone = data.timezone;
@@ -3405,7 +3405,7 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
                 <Label htmlFor="phone">Phone</Label>
                 <Input
                   id="phone"
-                  value={isEditing ? formatPhoneInput(formData.phone || "") : formatPhoneDisplay(user.phone || "")}
+                  value={isEditing ? formatPhoneInput(formData.phone || "") : formatForDisplay(user.phone || "")}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   disabled={!isEditing}
                   data-testid="input-phone"

@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Building2, Loader2, MapPin, Phone, Globe, Check, ChevronLeft } from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
-import { formatPhoneInput, formatPhoneDisplay } from "@/lib/phone-formatter";
+import { formatForDisplay, formatPhoneInput } from "@shared/phone";
 
 const registerSchema = z.object({
   company: z.object({
@@ -165,7 +165,7 @@ export default function Register() {
     setSearchQuery(business.name);
     
     // Format phone number if it exists using system standard
-    const formattedPhone = business.phone ? formatPhoneDisplay(business.phone) : "";
+    const formattedPhone = business.phone ? formatForDisplay(business.phone) : "";
     
     form.setValue("company.name", business.name);
     form.setValue("company.slug", generateSlug(business.name));

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhoneInput } from "@shared/phone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,14 +23,6 @@ interface TimeSlot {
   available: boolean;
 }
 
-function formatPhoneInput(value: string): string {
-  const cleaned = value.replace(/\D/g, "");
-  
-  if (cleaned.length === 0) return "";
-  if (cleaned.length <= 3) return `(${cleaned}`;
-  if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-  return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
-}
 
 function stripPhoneFormatting(value: string): string {
   return value.replace(/\D/g, "");

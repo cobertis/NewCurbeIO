@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatPhoneInput } from "@shared/phone";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,14 +29,6 @@ interface DaySlots {
   totalSlots: number;
 }
 
-function formatPhoneInput(value: string): string {
-  const cleaned = value.replace(/\D/g, "");
-  
-  if (cleaned.length === 0) return "";
-  if (cleaned.length <= 3) return `(${cleaned}`;
-  if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-  return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
-}
 
 function stripPhoneFormatting(value: string): string {
   return value.replace(/\D/g, "");

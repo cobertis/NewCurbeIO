@@ -29,7 +29,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { formatPhoneDisplay, formatPhoneInput, formatPhoneE164 } from "@/lib/phone-formatter";
+import { formatForDisplay, formatPhoneInput, formatE164 } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -484,14 +484,14 @@ export default function IncomingSms() {
                         <AvatarFallback>
                           {conv.userName
                             ? conv.userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                            : formatPhoneDisplay(conv.phoneNumber).slice(0, 2)}
+                            : formatForDisplay(conv.phoneNumber).slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
                       
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="font-medium truncate">
-                            {conv.userName || formatPhoneDisplay(conv.phoneNumber)}
+                            {conv.userName || formatForDisplay(conv.phoneNumber)}
                           </span>
                           <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
                             {formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: true })}
@@ -549,17 +549,17 @@ export default function IncomingSms() {
                           ? `${contactInfo.firstName[0]}${contactInfo.lastName[0]}`.toUpperCase()
                           : selectedConv?.userName
                           ? selectedConv.userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                          : formatPhoneDisplay(selectedConversation).slice(0, 2)}
+                          : formatForDisplay(selectedConversation).slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <h3 className="font-semibold">
                         {contactInfo?.firstName && contactInfo?.lastName
                           ? `${contactInfo.firstName} ${contactInfo.lastName}`
-                          : selectedConv?.userName || formatPhoneDisplay(selectedConversation)}
+                          : selectedConv?.userName || formatForDisplay(selectedConversation)}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {formatPhoneDisplay(selectedConversation)}
+                        {formatForDisplay(selectedConversation)}
                       </p>
                     </div>
                   </div>
@@ -687,7 +687,7 @@ export default function IncomingSms() {
                     {contactInfo.phone && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Phone</p>
-                        <p className="text-sm">{formatPhoneDisplay(contactInfo.phone)}</p>
+                        <p className="text-sm">{formatForDisplay(contactInfo.phone)}</p>
                       </div>
                     )}
                     
@@ -919,7 +919,7 @@ export default function IncomingSms() {
               onChange={(e) => setNewChatPhone(formatPhoneInput(e.target.value))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && newChatPhone.trim()) {
-                  const e164Phone = formatPhoneE164(newChatPhone);
+                  const e164Phone = formatE164(newChatPhone);
                   setSelectedConversation(e164Phone);
                   setNewChatDialogOpen(false);
                   setNewChatPhone("");
@@ -941,7 +941,7 @@ export default function IncomingSms() {
               data-testid="button-start-chat"
               onClick={() => {
                 if (newChatPhone.trim()) {
-                  const e164Phone = formatPhoneE164(newChatPhone);
+                  const e164Phone = formatE164(newChatPhone);
                   setSelectedConversation(e164Phone);
                   setNewChatDialogOpen(false);
                   setNewChatPhone("");

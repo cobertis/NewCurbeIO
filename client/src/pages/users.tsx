@@ -14,7 +14,7 @@ import { insertUserSchema, updateUserSchema, type User, type Company } from "@sh
 import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
+import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import { formatDateWithTimezone } from "@/lib/date-formatter";
 import { useParams, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -93,7 +93,7 @@ export default function Users() {
       // Convert phone to E.164 format before sending
       const dataToSend = {
         ...data,
-        phone: data.phone ? formatPhoneE164(data.phone) : undefined,
+        phone: data.phone ? formatE164(data.phone) : undefined,
       };
       console.log("Creating user with data:", dataToSend);
       return apiRequest("POST", "/api/users", dataToSend);
@@ -140,7 +140,7 @@ export default function Users() {
       // Convert phone to E.164 format before sending
       const dataToSend = {
         ...data,
-        phone: data.phone ? formatPhoneE164(data.phone) : undefined,
+        phone: data.phone ? formatE164(data.phone) : undefined,
       };
       return apiRequest("PATCH", `/api/users/${id}`, dataToSend);
     },
@@ -286,7 +286,7 @@ export default function Users() {
       email: user.email,
       firstName: user.firstName || "",
       lastName: user.lastName || "",
-      phone: user.phone ? formatPhoneDisplay(user.phone) : "",
+      phone: user.phone ? formatForDisplay(user.phone) : "",
       dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
       preferredLanguage: user.preferredLanguage || "en",
       role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
@@ -396,7 +396,7 @@ export default function Users() {
                     <div>
                       <p className="text-muted-foreground mb-1">Cellphone:</p>
                       <p className="font-medium">
-                        {profileUser.phone ? formatPhoneDisplay(profileUser.phone) : "-"}
+                        {profileUser.phone ? formatForDisplay(profileUser.phone) : "-"}
                       </p>
                     </div>
                     <div>
@@ -1331,7 +1331,7 @@ export default function Users() {
                           </td>
                         )}
                         <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" data-testid={`text-phone-${user.id}`}>
-                          {user.phone ? formatPhoneDisplay(user.phone) : <span className="text-gray-400 italic">No phone</span>}
+                          {user.phone ? formatForDisplay(user.phone) : <span className="text-gray-400 italic">No phone</span>}
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadge.className}`} data-testid={`badge-role-${user.id}`}>

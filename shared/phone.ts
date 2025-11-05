@@ -30,19 +30,70 @@ export function parseToDigits(phone: string | null | undefined): string {
 }
 
 /**
+ * Validate if a phone number is a valid US phone number
+ * Returns true only for US numbers (country code +1)
+ * 
+ * @param phone - Phone number in any format
+ * @returns true if valid US number, false otherwise
+ * 
+ * @example
+ * isValidUSPhoneNumber("3054883848") // true
+ * isValidUSPhoneNumber("13054883848") // true
+ * isValidUSPhoneNumber("+13054883848") // true
+ * isValidUSPhoneNumber("123") // false (too short)
+ * isValidUSPhoneNumber("+44...") // false (non-US country code)
+ */
+export function isValidUSPhoneNumber(phone: string | null | undefined): boolean {
+  if (!phone) return false;
+  
+  const digits = parseToDigits(phone);
+  
+  // Valid if 10 digits (US number without country code)
+  if (digits.length === 10) {
+    return true;
+  }
+  
+  // Valid if 11 digits and starts with 1 (US country code)
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return true;
+  }
+  
+  // Everything else is invalid (too short, too long, or non-US country code)
+  return false;
+}
+
+/**
  * Format phone number for database storage
  * Returns 10 digits without country code
+ * THROWS ERROR if phone number is invalid
  * 
  * @param phone - Phone number in any format
  * @returns 10-digit phone number (e.g., "3054883848")
+ * @throws Error if phone number is not a valid US number
  * 
  * @example
  * formatForStorage("+1 (305) 488-3848") // "3054883848"
  * formatForStorage("13054883848") // "3054883848"
  * formatForStorage("305-488-3848") // "3054883848"
+ * formatForStorage("5551234") // throws Error (too short)
+ * formatForStorage("+44...") // throws Error (non-US)
  */
 export function formatForStorage(phone: string | null | undefined): string {
+  if (!phone) {
+    throw new Error("Phone number is required");
+  }
+  
   const digits = parseToDigits(phone);
+  
+  // Validate length: must be exactly 10 or 11 digits
+  if (digits.length !== 10 && digits.length !== 11) {
+    throw new Error(`Invalid phone number: must be 10 or 11 digits, got ${digits.length} digits`);
+  }
+  
+  // If it has 11 digits, must start with 1 (US country code)
+  if (digits.length === 11 && !digits.startsWith("1")) {
+    throw new Error(`Invalid phone number: 11-digit numbers must start with 1 (US country code), got ${digits.charAt(0)}`);
+  }
   
   // If it has 11 digits and starts with 1, remove the 1
   if (digits.length === 11 && digits.startsWith("1")) {
@@ -50,11 +101,6 @@ export function formatForStorage(phone: string | null | undefined): string {
   }
   
   // If it has 10 digits, return as-is
-  if (digits.length === 10) {
-    return digits;
-  }
-  
-  // Otherwise return the original digits (might be invalid)
   return digits;
 }
 
@@ -179,4 +225,67 @@ export function isValidPhoneNumber(phone: string | null | undefined): boolean {
   }
   
   return false;
+}
+
+/**
+ * Format phone input for real-time user typing
+ * Formats as user types in input field: "+1 (XXX) XXX-XXXX"
+ * For display only during typing - NEVER throws exceptions
+ * Returns original input unchanged for non-US country codes
+ * Validation happens at submit time (formatForStorage), not during typing
+ * 
+ * @param value - Current input value
+ * @returns Formatted phone string for display in input field
+ * 
+ * @example
+ * formatPhoneInput("3") // "+1 (3"
+ * formatPhoneInput("305") // "+1 (305"
+ * formatPhoneInput("3054883848") // "+1 (305) 488-3848"
+ * formatPhoneInput("+44123") // "+44123" (returns unchanged, validation happens at submit)
+ */
+export function formatPhoneInput(value: string): string {
+  if (!value) return "";
+  
+  // Remove all non-digits except leading +
+  let cleaned = value.replace(/[^\d+]/g, "");
+  
+  // Check for non-US country codes
+  if (cleaned.startsWith("+") && !cleaned.startsWith("+1")) {
+    // Extract the country code (first 1-3 digits after +)
+    const countryCodeMatch = cleaned.match(/^\+(\d{1,3})/);
+    if (countryCodeMatch) {
+      const countryCode = countryCodeMatch[1];
+      // Only allow country code 1 (US/Canada)
+      if (countryCode !== "1" && countryCode.length >= 2) {
+        // Return original input unchanged for non-US country codes
+        // Don't throw - validation happens at submit time, not during typing
+        return value;
+      }
+    }
+  }
+  
+  // Ensure it starts with +1
+  if (!cleaned.startsWith("+")) {
+    cleaned = "+1" + cleaned.replace(/^1/, "");
+  } else if (cleaned.startsWith("+") && !cleaned.startsWith("+1")) {
+    // Force +1 for any other country code attempts
+    cleaned = "+1" + cleaned.substring(1).replace(/^1/, "");
+  }
+  
+  // Extract digits after +1
+  const digits = cleaned.substring(2);
+  
+  // Limit to 10 digits max (US phone number)
+  const limitedDigits = digits.slice(0, 10);
+  
+  // Format as: +1 (XXX) XXX-XXXX
+  if (limitedDigits.length === 0) {
+    return "+1 ";
+  } else if (limitedDigits.length <= 3) {
+    return `+1 (${limitedDigits}`;
+  } else if (limitedDigits.length <= 6) {
+    return `+1 (${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3)}`;
+  } else {
+    return `+1 (${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3, 6)}-${limitedDigits.slice(6, 10)}`;
+  }
 }

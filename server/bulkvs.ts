@@ -159,7 +159,16 @@ class BulkVSClient {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
-      const response = await this.client.post("/messageSend", payload);
+      // Normalize phone numbers to 11-digit format (1NXXNXXXXXX) for BulkVS API
+      const normalizedPayload = {
+        ...payload,
+        from: formatForBulkVS(payload.from),
+        to: formatForBulkVS(payload.to),
+      };
+      
+      console.log(`[BulkVS] Sending message from ${normalizedPayload.from} to ${normalizedPayload.to}`);
+      
+      const response = await this.client.post("/messageSend", normalizedPayload);
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] messageSend error:", error.response?.data || error.message);

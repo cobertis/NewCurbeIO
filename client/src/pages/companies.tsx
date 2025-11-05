@@ -16,7 +16,7 @@ import { createCompanyWithAdminSchema, type Company, type Feature } from "@share
 import { useState, useRef } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { formatPhoneInput, formatPhoneDisplay } from "@/lib/phone-formatter";
+import { formatForDisplay, formatPhoneInput } from "@shared/phone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { BusinessAutocomplete } from "@/components/business-autocomplete";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -345,7 +345,7 @@ export default function Companies() {
                             {company.email}
                           </p>
                           <p className="text-gray-500 dark:text-gray-400" data-testid={`text-company-phone-${company.id}`}>
-                            {company.phone ? formatPhoneDisplay(company.phone) : '-'}
+                            {company.phone ? formatForDisplay(company.phone) : '-'}
                           </p>
                         </div>
                         <div className="text-sm" data-testid={`text-company-address-${company.id}`}>

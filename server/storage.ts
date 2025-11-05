@@ -225,6 +225,7 @@ import {
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { formatForStorage } from "@shared/phone";
 
 export interface IStorage {
   // Users
@@ -843,7 +844,12 @@ export class DbStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(insertUser as any).returning();
+    // Normalize phone number to 10-digit format before storage
+    const normalizedUser = {
+      ...insertUser,
+      phone: insertUser.phone ? formatForStorage(insertUser.phone) : insertUser.phone,
+    };
+    const result = await db.insert(users).values(normalizedUser as any).returning();
     return result[0];
   }
 
@@ -864,8 +870,10 @@ export class DbStorage implements IStorage {
     if (data.lastName !== undefined) mappedData.lastName = data.lastName;
     // Convert empty string to null for avatar removal
     if (data.avatar !== undefined) mappedData.avatar = data.avatar === "" ? null : data.avatar;
-    // Convert empty string to null for phone removal
-    if (data.phone !== undefined) mappedData.phone = data.phone === "" ? null : data.phone;
+    // Convert empty string to null for phone removal, normalize to 10-digit format before storage
+    if (data.phone !== undefined) {
+      mappedData.phone = data.phone === "" ? null : formatForStorage(data.phone);
+    }
     // Convert string date to Date object for dateOfBirth (Drizzle expects Date for timestamp columns)
     if (data.dateOfBirth !== undefined) {
       if (data.dateOfBirth === "") {
@@ -931,12 +939,24 @@ export class DbStorage implements IStorage {
   }
 
   async createCompany(insertCompany: InsertCompany): Promise<Company> {
-    const result = await db.insert(companies).values(insertCompany).returning();
+    // Normalize phone numbers to 10-digit format before storage
+    const normalizedCompany = {
+      ...insertCompany,
+      phone: insertCompany.phone ? formatForStorage(insertCompany.phone) : insertCompany.phone,
+      representativePhone: insertCompany.representativePhone ? formatForStorage(insertCompany.representativePhone) : insertCompany.representativePhone,
+    };
+    const result = await db.insert(companies).values(normalizedCompany).returning();
     return result[0];
   }
 
   async updateCompany(id: string, data: Partial<InsertCompany>): Promise<Company | undefined> {
-    const result = await db.update(companies).set(data).where(eq(companies.id, id)).returning();
+    // Normalize phone numbers to 10-digit format before storage
+    const normalizedData = {
+      ...data,
+      phone: data.phone !== undefined ? (data.phone ? formatForStorage(data.phone) : data.phone) : undefined,
+      representativePhone: data.representativePhone !== undefined ? (data.representativePhone ? formatForStorage(data.representativePhone) : data.representativePhone) : undefined,
+    };
+    const result = await db.update(companies).set(normalizedData).where(eq(companies.id, id)).returning();
     return result[0];
   }
 
@@ -6562,24 +6582,30 @@ export class DbStorage implements IStorage {
   }
   
   async createBulkvsPhoneNumber(data: InsertBulkvsPhoneNumber): Promise<BulkvsPhoneNumber> {
+    // Normalize DID to 10-digit format before storage
+    const normalizedData = {
+      ...data,
+      did: formatForStorage(data.did),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
     const result = await db
       .insert(bulkvsPhoneNumbers)
-      .values({
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .values(normalizedData)
       .returning();
     return result[0];
   }
   
   async updateBulkvsPhoneNumber(id: string, data: Partial<InsertBulkvsPhoneNumber>): Promise<BulkvsPhoneNumber | undefined> {
+    // Normalize DID to 10-digit format before storage if provided
+    const normalizedData = {
+      ...data,
+      did: data.did ? formatForStorage(data.did) : undefined,
+      updatedAt: new Date(),
+    };
     const result = await db
       .update(bulkvsPhoneNumbers)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
+      .set(normalizedData)
       .where(eq(bulkvsPhoneNumbers.id, id))
       .returning();
     return result[0];

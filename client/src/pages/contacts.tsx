@@ -7,7 +7,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type User } from "@shared/schema";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { formatPhoneDisplay } from "@/lib/phone-formatter";
+import { formatForDisplay } from "@shared/phone";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
@@ -57,7 +57,7 @@ export default function Contacts() {
     return (
       fullName.includes(query) ||
       email.includes(query) ||
-      (contact.phone && formatPhoneDisplay(contact.phone).includes(query))
+      (contact.phone && formatForDisplay(contact.phone).includes(query))
     );
   });
 
@@ -170,7 +170,7 @@ export default function Contacts() {
                           <div className="flex items-center gap-2">
                             <Phone className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm" data-testid={`text-contact-phone-${contact.id}`}>
-                              {formatPhoneDisplay(contact.phone)}
+                              {formatForDisplay(contact.phone)}
                             </span>
                           </div>
                         ) : (

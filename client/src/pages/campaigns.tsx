@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { HtmlEditor } from "@/components/html-editor";
-import { formatPhoneDisplay } from "@/lib/phone-formatter";
+import { formatForDisplay } from "@shared/phone";
 import { useTabsState } from "@/hooks/use-tabs-state";
 
 interface EmailCampaign {
@@ -600,7 +600,7 @@ export default function Campaigns() {
     return (
       fullName.includes(query) ||
       email.includes(query) ||
-      (contact.phone && formatPhoneDisplay(contact.phone).includes(query))
+      (contact.phone && formatForDisplay(contact.phone).includes(query))
     );
   });
 
@@ -620,7 +620,7 @@ export default function Campaigns() {
     const csvData = contacts.map(c => ({
       Name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.email,
       Email: c.email,
-      Phone: c.phone ? formatPhoneDisplay(c.phone) : '',
+      Phone: c.phone ? formatForDisplay(c.phone) : '',
       Company: getCompanyName(c),
       Status: c.emailSubscribed ? 'Subscribed' : 'Unsubscribed',
     }));
@@ -1565,7 +1565,7 @@ export default function Campaigns() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">{contact.email}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {contact.phone ? formatPhoneDisplay(contact.phone) : "-"}
+                          {contact.phone ? formatForDisplay(contact.phone) : "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{getCompanyName(contact)}</TableCell>
                         <TableCell>

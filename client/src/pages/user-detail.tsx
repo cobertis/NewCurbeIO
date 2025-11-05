@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ArrowLeft, User as UserIcon, MapPin, Building2, Bell, Loader2, Briefcase } from "lucide-react";
-import { formatPhoneDisplay, formatPhoneE164, formatPhoneInput } from "@/lib/phone-formatter";
+import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -153,7 +153,7 @@ export default function UserDetail() {
       });
 
       contactForm.reset({
-        phone: user.phone ? formatPhoneDisplay(user.phone) : "",
+        phone: user.phone ? formatForDisplay(user.phone) : "",
         timezone: user.timezone || "",
         preferredLanguage: user.preferredLanguage || "",
         dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
@@ -206,7 +206,7 @@ export default function UserDetail() {
   // Update Contact & Location Mutation
   const updateContactMutation = useMutation({
     mutationFn: async (data: z.infer<typeof contactInfoSchema>) => {
-      const phoneE164 = data.phone ? formatPhoneE164(data.phone) : "";
+      const phoneE164 = data.phone ? formatE164(data.phone) : "";
       return apiRequest("PATCH", `/api/users/${userId}`, { 
         ...data, 
         phone: phoneE164,
