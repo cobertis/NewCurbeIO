@@ -294,7 +294,7 @@ export default function PublicLandingPage() {
   if (showAppointmentInline) {
     return (
       <AppointmentBookingInline
-        landingPageId={parseInt(landingPage.id, 10)}
+        landingPageId={landingPage.id}
         agentName={landingPage.profileName || 'our team'}
         onBack={() => setShowAppointmentInline(false)}
         primaryColor={theme.primaryColor}

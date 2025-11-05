@@ -11,7 +11,7 @@ import { Clock, ChevronLeft, ChevronRight, Calendar, ArrowLeft } from "lucide-re
 import { queryClient } from "@/lib/queryClient";
 
 interface AppointmentBookingInlineProps {
-  landingPageId: number;
+  landingPageId: string;
   agentName: string;
   onBack?: () => void;
   primaryColor?: string;

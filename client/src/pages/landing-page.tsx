@@ -2201,7 +2201,7 @@ export default function LandingPageBuilder() {
                       {showAppointmentInline ? (
                         <div className="space-y-2">
                           <AppointmentBookingInline
-                            landingPageId={parseInt(selectedPage.landingPage.id)}
+                            landingPageId={selectedPage.landingPage.id}
                             agentName={selectedPage.landingPage.profileName || "Agent"}
                             onBack={() => setShowAppointmentInline(false)}
                             primaryColor={selectedPage.landingPage.theme?.primaryColor || "#3B82F6"}

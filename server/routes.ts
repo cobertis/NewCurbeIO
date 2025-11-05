@@ -18370,6 +18370,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/landing/appointments/slots", async (req: Request, res: Response) => {
     const { date, landingPageId, duration } = req.query;
     
+    console.log("[APPOINTMENT SLOTS] Request params:", { date, landingPageId, duration });
+    
     try {
       // Validate required parameters
       if (!date || typeof date !== 'string') {
@@ -18387,7 +18389,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Get landing page to find the user
+      console.log("[APPOINTMENT SLOTS] Looking for landing page with ID:", landingPageId);
       const landingPage = await storage.getLandingPageById(landingPageId);
+      console.log("[APPOINTMENT SLOTS] Found landing page:", landingPage ? "YES" : "NO");
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }

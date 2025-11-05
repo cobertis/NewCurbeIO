@@ -1,0 +1,36 @@
+injected.js:27 WebSocket error: Event
+(anonymous) @ injected.js:27Understand this error
+injected.js:27 WebSocket disconnected
+38af6d492d88a715.js:2 The data provided has been truncated as it is over the limit of 225280 characters: Object
+eh @ 38af6d492d88a715.js:2Understand this warning
+sp.replit.com/v1/t:1  Failed to load resource: the server responded with a status of 400 ()Understand this error
+injected.js:27 Reconnecting... (attempt 6)
+use-websocket.ts:38 WebSocket connection to 'wss://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/ws/chat' failed: 
+(anonymous) @ use-websocket.ts:38Understand this error
+injected.js:27 WebSocket error: Event
+(anonymous) @ injected.js:27Understand this error
+injected.js:27 WebSocket disconnected
+injected.js:27 Block clicked in preview: 309a69a6-9f58-4ca1-8e10-a5d2f96f78dc
+41 log entries are not shown.Understand this warning
+injected.js:204  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/landing/appointments/slots?landingPageId=45&date=2025-11-05&duration=30 404 (Not Found)
+apply @ injected.js:204
+queryFn @ appointment-booking-inline.tsx:64
+fetchFn @ @tanstack_react-query.js?v=f48e2822:840
+run @ @tanstack_react-query.js?v=f48e2822:494
+start @ @tanstack_react-query.js?v=f48e2822:536
+fetch @ @tanstack_react-query.js?v=f48e2822:926
+executeFetch_fn @ @tanstack_react-query.js?v=f48e2822:2211
+setOptions @ @tanstack_react-query.js?v=f48e2822:1955
+(anonymous) @ @tanstack_react-query.js?v=f48e2822:3032
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f48e2822:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f48e2822:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f48e2822:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f48e2822:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f48e2822:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f48e2822:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f48e2822:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=f48e2822:19416
+commitRoot @ chunk-RPCDYKBN.js?v=f48e2822:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f48e2822:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f48e2822:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f48e2822:18627Understand this error
