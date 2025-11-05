@@ -18714,8 +18714,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       };
       if (nxx) params.nxx = nxx as string;
       if (lca) params.lca = lca as string;
+      // No limit = return ALL available numbers from BulkVS
       if (limit) params.limit = parseInt(limit as string);
-      else params.limit = 100; // Default limit
       
       const availableDIDs = await bulkVSClient.listAvailableDIDs(params);
       
