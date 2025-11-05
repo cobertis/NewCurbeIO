@@ -426,40 +426,6 @@
     animation: pulse-glow 3s ease-in-out infinite;
   }
 
-  /* Avatar Ring Gradient Spin Animation */
-  @keyframes spin-gradient {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
-  .avatar-ring-animated {
-    position: relative;
-  }
-
-  .avatar-ring-animated::before {
-    content: "";
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    padding: 4px;
-    background: linear-gradient(45deg, 
-      #667eea 0%, 
-      #764ba2 25%, 
-      #f093fb 50%, 
-      #4facfe 75%, 
-      #667eea 100%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, 
-                  linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    animation: spin-gradient 3s linear infinite;
-    pointer-events: none;
-  }
-
   /* Remove any borders from landing page profile section - Override @tailwindcss/typography */
   .landing-profile-name h1,
   .landing-profile-name h2,
