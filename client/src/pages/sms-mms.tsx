@@ -9,8 +9,9 @@ import { ThreadList } from "@/components/chat/thread-list";
 import { MessagePanel } from "@/components/chat/message-panel";
 import { ContactDetails } from "@/components/chat/contact-details";
 import { NumberProvisionModal } from "@/components/chat/number-provision-modal";
+import { PhoneSettingsModal } from "@/components/chat/phone-settings-modal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Phone } from "lucide-react";
+import { Phone, Settings } from "lucide-react";
 import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber } from "@shared/schema";
 
 type MobileView = "threads" | "messages" | "details";
@@ -20,6 +21,7 @@ export default function SmsMmsPage() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>("threads");
   const [provisionModalOpen, setProvisionModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   useWebSocket((message) => {
     const msg = message as any; // BulkVS-specific message types
@@ -203,13 +205,15 @@ export default function SmsMmsPage() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-muted/30" data-testid="sms-mms-page">
-      <div className="hidden md:grid md:grid-cols-[25%_50%_25%] w-full h-full gap-0">
-        <ThreadList
-          threads={threads}
-          selectedThreadId={selectedThreadId}
-          onSelectThread={handleSelectThread}
-        />
+    <>
+      <div className="h-screen flex overflow-hidden bg-muted/30" data-testid="sms-mms-page">
+        <div className="hidden md:grid md:grid-cols-[25%_50%_25%] w-full h-full gap-0">
+          <ThreadList
+            threads={threads}
+            selectedThreadId={selectedThreadId}
+            onSelectThread={handleSelectThread}
+            onSettings={() => setSettingsModalOpen(true)}
+          />
 
         <MessagePanel
           thread={selectedThread}
@@ -233,6 +237,7 @@ export default function SmsMmsPage() {
               threads={threads}
               selectedThreadId={selectedThreadId}
               onSelectThread={handleSelectThread}
+              onSettings={() => setSettingsModalOpen(true)}
             />
           </div>
         )}
@@ -263,5 +268,14 @@ export default function SmsMmsPage() {
         )}
       </div>
     </div>
+    
+    {phoneNumbers && phoneNumbers.length > 0 && (
+      <PhoneSettingsModal
+        open={settingsModalOpen}
+        onOpenChange={setSettingsModalOpen}
+        phoneNumber={phoneNumbers[0]}
+      />
+    )}
+    </>
   );
 }

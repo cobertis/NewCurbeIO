@@ -18902,6 +18902,83 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // 3a. PATCH /api/bulkvs/numbers/:id - Update phone number settings
+  app.patch("/api/bulkvs/numbers/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      const { displayName } = req.body;
+
+      // Verify phone number belongs to user
+      const phoneNumber = await storage.getBulkvsPhoneNumber(id);
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+
+      if (phoneNumber.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Update phone number
+      const updated = await storage.updateBulkvsPhoneNumber(id, {
+        displayName: displayName || phoneNumber.displayName,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating phone number:", error);
+      res.status(500).json({ message: "Failed to update phone number" });
+    }
+  });
+
+  // 3b. DELETE /api/bulkvs/numbers/:id - Deactivate phone number and cancel billing
+  app.delete("/api/bulkvs/numbers/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+
+      // Verify phone number belongs to user
+      const phoneNumber = await storage.getBulkvsPhoneNumber(id);
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+
+      if (phoneNumber.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Cancel Stripe subscription if exists
+      if (phoneNumber.stripeSubscriptionId) {
+        try {
+          console.log(`[STRIPE] Canceling subscription ${phoneNumber.stripeSubscriptionId} for phone number ${phoneNumber.did}`);
+          await stripeClient.subscriptions.cancel(phoneNumber.stripeSubscriptionId);
+        } catch (stripeError: any) {
+          console.error(`[STRIPE] Error canceling subscription:`, stripeError);
+          // Continue with deactivation even if Stripe cancellation fails
+        }
+      }
+
+      // Update status to inactive
+      await storage.updateBulkvsPhoneNumber(id, {
+        status: "inactive",
+        billingStatus: "cancelled",
+      });
+
+      res.json({ message: "Phone number deactivated successfully" });
+    } catch (error: any) {
+      console.error("Error deactivating phone number:", error);
+      res.status(500).json({ message: "Failed to deactivate phone number" });
+    }
+  });
+
   // 4. POST /api/webhooks/bulkvs - Webhook for incoming messages and DLRs
   app.post("/api/webhooks/bulkvs", async (req: Request, res: Response) => {
     try {

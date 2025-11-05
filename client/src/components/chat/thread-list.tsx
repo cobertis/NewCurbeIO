@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, MessageSquarePlus, Pin, BellOff } from "lucide-react";
+import { Search, MessageSquarePlus, Pin, BellOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
 import type { BulkvsThread } from "@shared/schema";
@@ -16,6 +16,7 @@ interface ThreadListProps {
   selectedThreadId: string | null;
   onSelectThread: (threadId: string) => void;
   onNewMessage?: () => void;
+  onSettings?: () => void;
 }
 
 type FilterType = "all" | "unread" | "archived";
@@ -24,7 +25,8 @@ export function ThreadList({
   threads, 
   selectedThreadId, 
   onSelectThread,
-  onNewMessage 
+  onNewMessage,
+  onSettings 
 }: ThreadListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
@@ -87,16 +89,28 @@ export function ThreadList({
       <div className="p-4 border-b space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Chat</h2>
-          {onNewMessage && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onNewMessage}
-              data-testid="button-new-message"
-            >
-              <MessageSquarePlus className="h-5 w-5" />
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {onSettings && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onSettings}
+                data-testid="button-settings"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+            )}
+            {onNewMessage && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onNewMessage}
+                data-testid="button-new-message"
+              >
+                <MessageSquarePlus className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="relative">
