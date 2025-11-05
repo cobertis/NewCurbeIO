@@ -11,10 +11,32 @@ import { ContactDetails } from "@/components/chat/contact-details";
 import { NumberProvisionModal } from "@/components/chat/number-provision-modal";
 import { PhoneSettingsModal } from "@/components/chat/phone-settings-modal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Phone, Settings } from "lucide-react";
+import { Phone, Settings, RefreshCw, Plus } from "lucide-react";
 import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber } from "@shared/schema";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type MobileView = "threads" | "messages" | "details";
+
+// Format phone number to +1 (XXX) XXX-XXXX
+const formatPhoneNumber = (phone: string) => {
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 11 && cleaned.startsWith("1")) {
+    const match = cleaned.match(/^1(\d{3})(\d{3})(\d{4})$/);
+    if (match) {
+      return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
+    }
+  }
+  return phone;
+};
 
 export default function SmsMmsPage() {
   const { toast } = useToast();
@@ -22,6 +44,7 @@ export default function SmsMmsPage() {
   const [mobileView, setMobileView] = useState<MobileView>("threads");
   const [provisionModalOpen, setProvisionModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
 
   useWebSocket((message) => {
     const msg = message as any; // BulkVS-specific message types
@@ -52,9 +75,13 @@ export default function SmsMmsPage() {
     queryKey: ["/api/bulkvs/numbers"],
   });
 
+  // Separate active and cancelled numbers
+  const activeNumbers = phoneNumbers?.filter(p => p.status === 'active') || [];
+  const cancelledNumbers = phoneNumbers?.filter(p => p.status === 'inactive' && p.billingStatus === 'cancelled') || [];
+
   const { data: threads = [], isLoading: loadingThreads } = useQuery<BulkvsThread[]>({
     queryKey: ["/api/bulkvs/threads"],
-    enabled: (phoneNumbers?.length ?? 0) > 0,
+    enabled: activeNumbers.length > 0,
   });
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery<BulkvsMessage[]>({
@@ -66,11 +93,11 @@ export default function SmsMmsPage() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ message, mediaFile }: { message: string; mediaFile?: File }) => {
-      if (!selectedThread || !phoneNumbers || phoneNumbers.length === 0) {
+      if (!selectedThread || activeNumbers.length === 0) {
         throw new Error("No phone number available");
       }
 
-      const phoneNumber = phoneNumbers[0];
+      const phoneNumber = activeNumbers[0];
       let mediaUrl: string | undefined;
 
       if (mediaFile) {
@@ -143,6 +170,27 @@ export default function SmsMmsPage() {
     },
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: async (phoneNumberId: string) => {
+      return apiRequest("POST", `/api/bulkvs/numbers/${phoneNumberId}/reactivate`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/numbers"] });
+      toast({
+        title: "Number reactivated",
+        description: "Your phone number has been reactivated successfully. You can now start messaging.",
+      });
+      setReactivateConfirmOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Reactivation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSelectThread = (threadId: string) => {
     setSelectedThreadId(threadId);
     setMobileView("messages");
@@ -177,7 +225,76 @@ export default function SmsMmsPage() {
     return <LoadingSpinner message="Loading phone numbers..." />;
   }
 
-  if (!phoneNumbers || phoneNumbers.length === 0) {
+  // Show empty state if no active numbers
+  if (activeNumbers.length === 0) {
+    // If user has a cancelled number, show reactivation option
+    if (cancelledNumbers.length > 0) {
+      const cancelledNumber = cancelledNumbers[0];
+      return (
+        <>
+          <div className="flex items-center justify-center h-screen p-4">
+            <Card className="max-w-md w-full p-8 text-center" data-testid="empty-phone-state-cancelled">
+              <Phone className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <h2 className="text-2xl font-semibold mb-2">Reactivate Your Number</h2>
+              <p className="text-muted-foreground mb-2">
+                You previously had the number:
+              </p>
+              <p className="text-lg font-semibold mb-6">
+                {formatPhoneNumber(cancelledNumber.did)}
+              </p>
+              <p className="text-sm text-muted-foreground mb-6">
+                You can reactivate this number or get a new one to start messaging
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button 
+                  onClick={() => setReactivateConfirmOpen(true)} 
+                  data-testid="button-reactivate-number"
+                  className="w-full"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reactivate {formatPhoneNumber(cancelledNumber.did)}
+                </Button>
+                <Button 
+                  onClick={() => setProvisionModalOpen(true)} 
+                  data-testid="button-get-new-number"
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Get a New Number
+                </Button>
+              </div>
+            </Card>
+          </div>
+          <NumberProvisionModal 
+            open={provisionModalOpen} 
+            onOpenChange={setProvisionModalOpen} 
+          />
+          <AlertDialog open={reactivateConfirmOpen} onOpenChange={setReactivateConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reactivate Phone Number?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will reactivate your phone number <strong>{formatPhoneNumber(cancelledNumber.did)}</strong> and create a new subscription at ${cancelledNumber.monthlyPrice}/month. Billing will start immediately.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => reactivateMutation.mutate(cancelledNumber.id)}
+                  disabled={reactivateMutation.isPending}
+                  data-testid="button-confirm-reactivate"
+                >
+                  {reactivateMutation.isPending ? "Reactivating..." : "Reactivate Number"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      );
+    }
+
+    // If no cancelled numbers, show regular empty state (get new number)
     return (
       <>
         <div className="flex items-center justify-center h-screen p-4">
@@ -269,11 +386,11 @@ export default function SmsMmsPage() {
       </div>
     </div>
     
-    {phoneNumbers && phoneNumbers.length > 0 && (
+    {activeNumbers.length > 0 && (
       <PhoneSettingsModal
         open={settingsModalOpen}
         onOpenChange={setSettingsModalOpen}
-        phoneNumber={phoneNumbers[0]}
+        phoneNumber={activeNumbers[0]}
       />
     )}
     </>

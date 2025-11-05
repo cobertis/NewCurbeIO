@@ -63,6 +63,10 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **Features:** SMS/MMS with file upload (5MB limit), emoji picker, message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket.
     -   **Number Provisioning:** Simplified area code search, 3-step wizard. Each user can only provision one phone number.
     -   **Billing System:** Automatic Stripe subscription creation ($10/month per number), recurring every 30 days. Allows reactivation of cancelled numbers.
+    -   **Phone Number Reactivation:** Cancelled numbers preserved with inactive status. Reactivation available via:
+        - **Billing Page:** "Reactivate" button next to cancelled numbers (greyed-out styling, crossed-out price)
+        - **Chat Page:** Special empty state when user has no active number but has cancelled number, showing previously cancelled number with "Reactivate" (primary) and "Get a New Number" (secondary) buttons
+        - Both methods create new Stripe subscription and restore service. One-number-per-user limit enforced.
     -   **Phone Settings:** View number, configuration, call forwarding, billing info, deactivation.
     -   **CNAM (Caller ID Name):** Automatically sanitized and updated to max 15 alphanumeric characters.
     -   **Call Forwarding:** Configurable via BulkVS API.
