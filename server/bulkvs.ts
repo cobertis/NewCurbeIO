@@ -95,9 +95,12 @@ class BulkVSClient {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
+      // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
+      const normalizedDid = this.normalizeDID(did);
+      
       const response = await this.client.post("/smsEnable", {
         accountId: this.accountId,
-        did,
+        did: normalizedDid,
         sms: true,
         mms: true,
       });
@@ -112,9 +115,12 @@ class BulkVSClient {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
+      // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
+      const normalizedDid = this.normalizeDID(did);
+      
       const response = await this.client.post("/smsSetWebhook", {
         accountId: this.accountId,
-        did,
+        did: normalizedDid,
         url: webhookUrl,
       });
       return response.data;
@@ -128,9 +134,12 @@ class BulkVSClient {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
+      // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
+      const normalizedDid = this.normalizeDID(did);
+      
       const response = await this.client.post("/smsAssignCampaign", {
         accountId: this.accountId,
-        did,
+        did: normalizedDid,
         campaignId,
       });
       return response.data;
@@ -185,11 +194,14 @@ class BulkVSClient {
     const sanitizedCnam = this.sanitizeCNAM(cnam);
     
     try {
-      console.log(`[BulkVS] Updating CNAM for ${did} to "${sanitizedCnam}"...`);
+      // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
+      const normalizedDid = this.normalizeDID(did);
+      
+      console.log(`[BulkVS] Updating CNAM for ${normalizedDid} to "${sanitizedCnam}"...`);
       
       // Try the /updateCnam endpoint
       const response = await this.client.post("/updateCnam", {
-        did,
+        did: normalizedDid,
         cnam: sanitizedCnam,
       });
       
@@ -210,6 +222,32 @@ class BulkVSClient {
       
       throw error;
     }
+  }
+
+  /**
+   * Normalize DID to BulkVS format (11 digits: 1NXXNXXXXXX)
+   * Handles various input formats:
+   * - 10 digits (3054883848) → add "1" prefix → 13054883848
+   * - 11 digits (13054883848) → already correct
+   * - +1 format (+13054883848) → remove "+" → 13054883848
+   */
+  private normalizeDID(did: string): string {
+    // Remove any non-digit characters (like +, spaces, dashes)
+    let cleaned = did.replace(/\D/g, '');
+    
+    // If 10 digits, add "1" prefix for North American format
+    if (cleaned.length === 10) {
+      cleaned = '1' + cleaned;
+    }
+    
+    // If 11 digits and starts with 1, it's already correct
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return cleaned;
+    }
+    
+    // If we get here, format is unexpected - log warning but return what we have
+    console.warn(`[BulkVS] Unexpected DID format: ${did} (cleaned: ${cleaned})`);
+    return cleaned;
   }
 
   /**
