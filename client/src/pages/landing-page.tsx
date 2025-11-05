@@ -259,6 +259,162 @@ const THEMES = [
       backgroundGradient: "linear-gradient(135deg, #000428 0%, #004e92 100%)",
     },
   },
+  {
+    name: "Lime Green",
+    gradient: "linear-gradient(135deg, #56ab2f 0%, #a8e063 100%)",
+    category: "light",
+    theme: {
+      primaryColor: "#56ab2f",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#56ab2f",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #56ab2f 0%, #a8e063 100%)",
+    },
+  },
+  {
+    name: "Fire Red",
+    gradient: "linear-gradient(135deg, #eb3349 0%, #f45c43 100%)",
+    category: "all",
+    theme: {
+      primaryColor: "#eb3349",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#eb3349",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #eb3349 0%, #f45c43 100%)",
+    },
+  },
+  {
+    name: "Sky Blue",
+    gradient: "linear-gradient(135deg, #2196F3 0%, #64B5F6 100%)",
+    category: "light",
+    theme: {
+      primaryColor: "#2196F3",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#2196F3",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #2196F3 0%, #64B5F6 100%)",
+    },
+  },
+  {
+    name: "Golden Hour",
+    gradient: "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)",
+    category: "light",
+    theme: {
+      primaryColor: "#f7971e",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#f7971e",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)",
+    },
+  },
+  {
+    name: "Midnight Blue",
+    gradient: "linear-gradient(135deg, #141E30 0%, #243B55 100%)",
+    category: "dark",
+    theme: {
+      primaryColor: "#3B82F6",
+      backgroundColor: "#141E30",
+      textColor: "#f8fafc",
+      buttonColor: "#3B82F6",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #141E30 0%, #243B55 100%)",
+    },
+  },
+  {
+    name: "Rose Pink",
+    gradient: "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)",
+    category: "light",
+    theme: {
+      primaryColor: "#ff9a9e",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#ff9a9e",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)",
+    },
+  },
+  {
+    name: "Emerald",
+    gradient: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+    category: "light",
+    theme: {
+      primaryColor: "#11998e",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#11998e",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+    },
+  },
+  {
+    name: "Grape Purple",
+    gradient: "linear-gradient(135deg, #5f2c82 0%, #49a09d 100%)",
+    category: "all",
+    theme: {
+      primaryColor: "#5f2c82",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#5f2c82",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #5f2c82 0%, #49a09d 100%)",
+    },
+  },
+  {
+    name: "Cherry Red",
+    gradient: "linear-gradient(135deg, #c31432 0%, #240b36 100%)",
+    category: "dark",
+    theme: {
+      primaryColor: "#c31432",
+      backgroundColor: "#240b36",
+      textColor: "#f8fafc",
+      buttonColor: "#c31432",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #c31432 0%, #240b36 100%)",
+    },
+  },
+  {
+    name: "Aqua Marine",
+    gradient: "linear-gradient(135deg, #1a2980 0%, #26d0ce 100%)",
+    category: "all",
+    theme: {
+      primaryColor: "#26d0ce",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#26d0ce",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #1a2980 0%, #26d0ce 100%)",
+    },
+  },
+  {
+    name: "Peach",
+    gradient: "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
+    category: "light",
+    theme: {
+      primaryColor: "#fcb69f",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#fcb69f",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
+    },
+  },
+  {
+    name: "Cosmic",
+    gradient: "linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%)",
+    category: "all",
+    theme: {
+      primaryColor: "#8e2de2",
+      backgroundColor: "#ffffff",
+      textColor: "#1a1a1a",
+      buttonColor: "#8e2de2",
+      buttonTextColor: "#ffffff",
+      backgroundGradient: "linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%)",
+    },
+  },
 ];
 
 // Social Media Platforms
@@ -2037,8 +2193,8 @@ export default function LandingPageBuilder() {
                         </Tabs>
 
                         {/* Theme Grid */}
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          {filteredThemes.slice(0, 4).map((themeData) => {
+                        <div className="grid grid-cols-2 gap-3">
+                          {filteredThemes.map((themeData) => {
                             const isSelected = selectedPage.landingPage.theme.primaryColor === themeData.theme.primaryColor;
                             return (
                               <button
@@ -2092,10 +2248,6 @@ export default function LandingPageBuilder() {
                             );
                           })}
                         </div>
-
-                        <Button variant="outline" className="w-full" size="sm" data-testid="button-see-all-themes">
-                          See All Themes
-                        </Button>
                       </div>
 
                       <Separator />
