@@ -83,6 +83,7 @@ import { fetchMarketplacePlans } from "./cms-marketplace";
 import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
 import { bulkVSClient } from "./bulkvs";
+import { formatForStorage, formatForDisplay } from "@shared/phone";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -18899,11 +18900,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Prepare webhook URL
       const webhookUrl = `${req.protocol}://${req.get('host')}/api/webhooks/bulkvs?secret=${process.env.WEBHOOK_SECRET || 'default-secret'}`;
       
+      // Normalize DID to 10-digit format for database storage
+      const normalizedDid = formatForStorage(did);
+      
       // Save to database with billing info (initially without full activation)
       let phoneNumber = await storage.createBulkvsPhoneNumber({
         userId: user.id,
         companyId: user.companyId,
-        did,
+        did: normalizedDid,
         displayName: displayName || company.name, // Use company name as default
         smsEnabled: false, // Will be updated by activateNumber
         mmsEnabled: false, // Will be updated by activateNumber
@@ -18989,7 +18993,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const phoneNumbers = await storage.getBulkvsPhoneNumbersByUser(user.id);
-      res.json(phoneNumbers);
+      
+      // Format phone numbers for display in the frontend
+      const formattedPhoneNumbers = phoneNumbers.map(phone => ({
+        ...phone,
+        didDisplay: formatForDisplay(phone.did),
+        callForwardNumberDisplay: phone.callForwardNumber ? formatForDisplay(phone.callForwardNumber) : null,
+      }));
+      
+      res.json(formattedPhoneNumbers);
     } catch (error: any) {
       console.error("Error fetching phone numbers:", error);
       res.status(500).json({ message: "Failed to fetch phone numbers" });

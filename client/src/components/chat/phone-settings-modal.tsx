@@ -28,6 +28,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Phone, Calendar, DollarSign, CheckCircle2, XCircle, Edit2, Save, X, PhoneForwarded, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { BulkvsPhoneNumber } from "@shared/schema";
+import { formatForDisplay } from "@shared/phone";
 
 interface PhoneSettingsModalProps {
   open: boolean;
@@ -43,17 +44,6 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
   const [callForwardNumber, setCallForwardNumber] = useState(phoneNumber.callForwardNumber || "");
   const [isEditingCallForward, setIsEditingCallForward] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
-
-  const formatPhoneNumber = (phone: string) => {
-    const cleaned = phone.replace(/\D/g, "");
-    if (cleaned.length === 11 && cleaned.startsWith("1")) {
-      const match = cleaned.match(/^1(\d{3})(\d{3})(\d{4})$/);
-      if (match) {
-        return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
-      }
-    }
-    return phone;
-  };
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return "N/A";
@@ -181,7 +171,7 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
               My Number
             </h1>
             <p className="text-2xl font-semibold" data-testid="phone-number">
-              {formatPhoneNumber(phoneNumber.did)}
+              {phoneNumber.didDisplay || formatForDisplay(phoneNumber.did)}
             </p>
           </div>
 
@@ -311,7 +301,7 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
                         <div className="flex items-center justify-between p-3 rounded-lg border">
                           <span className="text-sm text-muted-foreground">Forward To</span>
                           <span className="font-medium" data-testid="call-forward-number-display">
-                            {formatPhoneNumber(phoneNumber.callForwardNumber)}
+                            {phoneNumber.callForwardNumberDisplay || formatForDisplay(phoneNumber.callForwardNumber)}
                           </span>
                         </div>
                       )}

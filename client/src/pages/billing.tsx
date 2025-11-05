@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/date-formatter";
 import type { BulkvsPhoneNumber } from "@shared/schema";
+import { formatForDisplay } from "@shared/phone";
 import {
   Dialog,
   DialogContent,
@@ -61,18 +62,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-
-// Format phone number to +1 (XXX) XXX-XXXX
-const formatPhoneNumber = (phone: string) => {
-  const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.length === 11 && cleaned.startsWith("1")) {
-    const match = cleaned.match(/^1(\d{3})(\d{3})(\d{4})$/);
-    if (match) {
-      return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
-    }
-  }
-  return phone;
-};
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,7 +77,7 @@ import { ManagePaymentMethodsDialog } from "@/components/manage-payment-methods-
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 
 // Reactivate Phone Button Component
-function ReactivatePhoneButton({ phoneNumber }: { phoneNumber: BulkvsPhoneNumber }) {
+function ReactivatePhoneButton({ phoneNumber }: { phoneNumber: BulkvsPhoneNumberWithDisplay }) {
   const { toast } = useToast();
   const [showConfirm, setShowConfirm] = useState(false);
   
@@ -130,7 +119,7 @@ function ReactivatePhoneButton({ phoneNumber }: { phoneNumber: BulkvsPhoneNumber
           <AlertDialogHeader>
             <AlertDialogTitle>Reactivate Phone Number?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will reactivate your phone number <strong>{formatPhoneNumber(phoneNumber.did)}</strong> and create a new subscription at ${phoneNumber.monthlyPrice}/month. Billing will start immediately.
+              This will reactivate your phone number <strong>{phoneNumber.didDisplay || formatForDisplay(phoneNumber.did)}</strong> and create a new subscription at ${phoneNumber.monthlyPrice}/month. Billing will start immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -147,6 +136,12 @@ function ReactivatePhoneButton({ phoneNumber }: { phoneNumber: BulkvsPhoneNumber
       </AlertDialog>
     </>
   );
+}
+
+// Extended type for API responses that include display fields
+interface BulkvsPhoneNumberWithDisplay extends BulkvsPhoneNumber {
+  didDisplay?: string;
+  callForwardNumberDisplay?: string;
 }
 
 interface Subscription {
@@ -305,14 +300,14 @@ export default function Billing() {
   const [proposedSolution, setProposedSolution] = useState("");
 
   // Fetch session data to get user info
-  const { data: sessionData } = useQuery({
+  const { data: sessionData } = useQuery<{ user?: any }>({
     queryKey: ['/api/session'],
   });
 
   const user = sessionData?.user;
 
   // Fetch company data
-  const { data: companyData } = useQuery({
+  const { data: companyData } = useQuery<{ company?: any }>({
     queryKey: ['/api/companies', user?.companyId],
     enabled: !!user?.companyId,
   });
@@ -320,7 +315,7 @@ export default function Billing() {
   const company = companyData?.company;
 
   // Fetch subscription data with enhanced trial info
-  const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery({
+  const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery<{ subscription?: any }>({
     queryKey: ['/api/billing/subscription'],
   });
 
@@ -345,19 +340,19 @@ export default function Billing() {
   });
 
   // Fetch billing address
-  const { data: billingAddressData } = useQuery({
+  const { data: billingAddressData } = useQuery<{ billingAddress?: any }>({
     queryKey: ['/api/billing/address'],
   });
 
   const billingAddress = billingAddressData?.billingAddress;
 
   // Fetch active discount
-  const { data: discountData } = useQuery({
+  const { data: discountData } = useQuery<{ discount?: any }>({
     queryKey: ['/api/billing/active-discount'],
     enabled: !!subscriptionData?.subscription,
   });
 
-  const { data: bulkvsPhoneNumbers, isLoading: isLoadingBulkvsNumbers } = useQuery<BulkvsPhoneNumber[]>({
+  const { data: bulkvsPhoneNumbers, isLoading: isLoadingBulkvsNumbers } = useQuery<BulkvsPhoneNumberWithDisplay[]>({
     queryKey: ["/api/bulkvs/numbers"],
   });
 
@@ -925,7 +920,7 @@ export default function Billing() {
                         Free Trial Active - {trialDaysRemaining} {trialDaysRemaining === 1 ? 'Day' : 'Days'} Remaining
                       </p>
                       <p className="text-sm text-blue-700 dark:text-blue-300">
-                        Your trial ends on {formatDate(new Date(subscription.trialEnd))}. No payment required until then.
+                        Your trial ends on {subscription.trialEnd ? formatDate(new Date(subscription.trialEnd)) : 'N/A'}. No payment required until then.
                       </p>
                     </div>
                   </div>
@@ -1104,7 +1099,7 @@ export default function Billing() {
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-medium" data-testid={`addon-phone-number-${phoneNumber.id}`}>
-                                {formatPhoneNumber(phoneNumber.did)}
+                                {phoneNumber.didDisplay || formatForDisplay(phoneNumber.did)}
                               </p>
                               {phoneNumber.billingStatus === 'cancelled' && (
                                 <span className="text-xs text-muted-foreground">(Previous Number)</span>

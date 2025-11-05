@@ -13,6 +13,7 @@ import { PhoneSettingsModal } from "@/components/chat/phone-settings-modal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Phone, Settings, RefreshCw, Plus } from "lucide-react";
 import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber } from "@shared/schema";
+import { formatForDisplay } from "@shared/phone";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,18 +26,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 type MobileView = "threads" | "messages" | "details";
-
-// Format phone number to +1 (XXX) XXX-XXXX
-const formatPhoneNumber = (phone: string) => {
-  const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.length === 11 && cleaned.startsWith("1")) {
-    const match = cleaned.match(/^1(\d{3})(\d{3})(\d{4})$/);
-    if (match) {
-      return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
-    }
-  }
-  return phone;
-};
 
 export default function SmsMmsPage() {
   const { toast } = useToast();
@@ -240,7 +229,7 @@ export default function SmsMmsPage() {
                 You previously had the number:
               </p>
               <p className="text-lg font-semibold mb-6">
-                {formatPhoneNumber(cancelledNumber.did)}
+                {cancelledNumber.didDisplay || formatForDisplay(cancelledNumber.did)}
               </p>
               <p className="text-sm text-muted-foreground mb-6">
                 You can reactivate this number or get a new one to start messaging
@@ -252,7 +241,7 @@ export default function SmsMmsPage() {
                   className="w-full"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Reactivate {formatPhoneNumber(cancelledNumber.did)}
+                  Reactivate {cancelledNumber.didDisplay || formatForDisplay(cancelledNumber.did)}
                 </Button>
                 <Button 
                   onClick={() => setProvisionModalOpen(true)} 
@@ -275,7 +264,7 @@ export default function SmsMmsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Reactivate Phone Number?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will reactivate your phone number <strong>{formatPhoneNumber(cancelledNumber.did)}</strong> and create a new subscription at ${cancelledNumber.monthlyPrice}/month. Billing will start immediately.
+                  This will reactivate your phone number <strong>{cancelledNumber.didDisplay || formatForDisplay(cancelledNumber.did)}</strong> and create a new subscription at ${cancelledNumber.monthlyPrice}/month. Billing will start immediately.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
