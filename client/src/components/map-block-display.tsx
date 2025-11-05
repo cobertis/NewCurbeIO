@@ -15,77 +15,106 @@ interface MapBlockDisplayProps {
 // Global types for Google Maps
 declare global {
   interface Window {
-    google?: {
-      maps?: {
-        importLibrary?: (library: string) => Promise<any>;
-        Map?: any;
-        Marker?: any;
-        marker?: {
-          AdvancedMarkerElement?: any;
-        };
-        InfoWindow?: any;
-      };
-    };
+    google?: any;
   }
 }
 
-// Loader state management
-let loaderPromise: Promise<void> | null = null;
-let isLoaded = false;
+// Loader state
+let scriptLoaded = false;
+let scriptLoading = false;
+const loadCallbacks: Array<() => void> = [];
 
-// Load Google Maps using the modern importLibrary method
-async function loadGoogleMaps(): Promise<void> {
-  // Already loaded
-  if (isLoaded && window.google?.maps?.Map) {
-    return;
-  }
-
-  // Already loading
-  if (loaderPromise) {
-    return loaderPromise;
-  }
-
-  loaderPromise = new Promise((resolve, reject) => {
-    // Check if already exists
-    if (window.google?.maps?.importLibrary) {
-      isLoaded = true;
+// Load Google Maps script
+function loadGoogleMapsScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Already loaded
+    if (scriptLoaded && window.google?.maps?.Map) {
       resolve();
       return;
     }
 
-    // Create bootstrap loader script
+    // Add to queue
+    loadCallbacks.push(() => resolve());
+
+    // Already loading
+    if (scriptLoading) {
+      return;
+    }
+
+    scriptLoading = true;
+
+    // Check if script already exists
+    const existing = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (existing) {
+      // Wait for it to load
+      waitForGoogleMaps().then(() => {
+        scriptLoaded = true;
+        scriptLoading = false;
+        loadCallbacks.forEach(cb => cb());
+        loadCallbacks.length = 0;
+      }).catch(reject);
+      return;
+    }
+
+    // Load our loader script
     const script = document.createElement('script');
     script.src = '/api/google-maps-js-loader';
     script.async = true;
     script.defer = true;
 
     script.onload = () => {
-      // Wait a bit for Google to initialize
-      const checkGoogle = setInterval(() => {
-        if (window.google?.maps) {
-          clearInterval(checkGoogle);
-          isLoaded = true;
-          resolve();
-        }
-      }, 50);
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        clearInterval(checkGoogle);
-        if (!window.google?.maps) {
-          reject(new Error('Google Maps failed to initialize'));
-        }
-      }, 5000);
+      waitForGoogleMaps()
+        .then(() => {
+          scriptLoaded = true;
+          scriptLoading = false;
+          loadCallbacks.forEach(cb => cb());
+          loadCallbacks.length = 0;
+        })
+        .catch(reject);
     };
 
     script.onerror = () => {
-      reject(new Error('Failed to load Google Maps script'));
+      scriptLoading = false;
+      reject(new Error('Failed to load Google Maps'));
     };
 
     document.head.appendChild(script);
   });
+}
 
-  return loaderPromise;
+// Wait for Google Maps to be fully loaded
+function waitForGoogleMaps(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const maxAttempts = 100; // 10 seconds max
+
+    const check = () => {
+      attempts++;
+
+      // Check if google.maps.Map is a constructor
+      if (window.google?.maps?.Map && typeof window.google.maps.Map === 'function') {
+        try {
+          // Try to instantiate to verify it works
+          const test = window.google.maps.Map.toString();
+          if (test.includes('function') || test.includes('class')) {
+            resolve();
+            return;
+          }
+        } catch (e) {
+          // Not ready yet
+        }
+      }
+
+      if (attempts >= maxAttempts) {
+        reject(new Error('Timeout waiting for Google Maps'));
+        return;
+      }
+
+      setTimeout(check, 100);
+    };
+
+    check();
+  });
 }
 
 export function MapBlockDisplay({
@@ -117,19 +146,27 @@ export function MapBlockDisplay({
       if (!mapRef.current) return;
 
       try {
+        setIsLoading(true);
+        setError(null);
+
         // Load Google Maps
-        await loadGoogleMaps();
+        await loadGoogleMapsScript();
 
         if (!mounted) return;
 
-        // Check if Google Maps is available
-        if (!window.google?.maps) {
+        // Double check
+        if (!window.google?.maps?.Map) {
           throw new Error('Google Maps not available');
         }
 
-        // Use traditional API (no importLibrary needed for basic maps)
+        // Verify Map is a constructor
+        if (typeof window.google.maps.Map !== 'function') {
+          throw new Error('Google Maps not fully initialized');
+        }
+
         const position = { lat: latitude, lng: longitude };
 
+        // Create map
         const map = new window.google.maps.Map(mapRef.current, {
           center: position,
           zoom: zoomLevel,
@@ -137,7 +174,6 @@ export function MapBlockDisplay({
           streetViewControl: false,
           fullscreenControl: false,
           zoomControl: true,
-          mapId: 'DEMO_MAP_ID', // Required for some features
         });
 
         // Create marker
@@ -168,11 +204,12 @@ export function MapBlockDisplay({
       } catch (err: any) {
         console.error("[MAP] Error:", err);
         if (mounted) {
-          // Check for specific API errors
-          if (err.message?.includes('ApiNotActivatedMapError') || err.code === 'API_NOT_ACTIVATED') {
-            setError('Maps API not enabled. Please activate "Maps JavaScript API" in Google Cloud Console');
-          } else if (err.message?.includes('API key')) {
-            setError('Invalid API key');
+          if (err.message?.includes('ApiNotActivatedMapError')) {
+            setError('Maps API not enabled in Google Cloud Console');
+          } else if (err.message?.includes('ApiTargetBlockedMapError')) {
+            setError('API key restriction error');
+          } else if (err.message?.includes('not a constructor')) {
+            setError('Google Maps still loading, please wait...');
           } else {
             setError(err.message || 'Failed to load map');
           }
@@ -214,9 +251,9 @@ export function MapBlockDisplay({
         <div className="text-center px-4">
           <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
           <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
-          {error.includes('Maps JavaScript API') && (
+          {error.includes('Google Cloud Console') && (
             <p className="text-xs text-gray-500 mt-2">
-              Go to Google Cloud Console → APIs & Services → Enable "Maps JavaScript API"
+              Enable "Maps JavaScript API" in Google Cloud Console
             </p>
           )}
         </div>
