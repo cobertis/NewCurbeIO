@@ -18185,6 +18185,52 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('Failed to send appointment notification:', notificationError);
       }
       
+      // Send SMS confirmation to the customer
+      if (data.phone && twilioService.isInitialized()) {
+        try {
+          // Get agent and company information
+          const agent = await storage.getUserById(landingPage.userId);
+          const company = await storage.getCompanyById(landingPage.companyId);
+          
+          if (agent && company) {
+            // Format phone number for SMS (ensure it has +1 prefix for USA)
+            let formattedPhone = data.phone;
+            if (!formattedPhone.startsWith('+')) {
+              formattedPhone = `+1${formattedPhone}`;
+            }
+            
+            // Format date in Spanish (e.g., "jueves 5 de noviembre")
+            const appointmentDateObj = new Date(data.appointmentDate);
+            const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+            const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            const dayName = days[appointmentDateObj.getDay()];
+            const dayNumber = appointmentDateObj.getDate();
+            const monthName = months[appointmentDateObj.getMonth()];
+            const formattedDate = `${dayName} ${dayNumber} de ${monthName}`;
+            
+            // Format time (e.g., "11:00 AM")
+            const formattedTime = data.appointmentTime;
+            
+            // Build agent name (first name + last name)
+            const agentName = [agent.firstName, agent.lastName].filter(Boolean).join(' ') || agent.email;
+            
+            await twilioService.sendAppointmentConfirmationSMS(
+              formattedPhone,
+              data.fullName,
+              agentName,
+              company.name,
+              formattedDate,
+              formattedTime
+            );
+            
+            console.log(`SMS confirmation sent to ${formattedPhone}`);
+          }
+        } catch (smsError) {
+          // Log but don't fail the request if SMS fails
+          console.error('Failed to send SMS confirmation:', smsError);
+        }
+      }
+      
       res.status(201).json({ appointment });
     } catch (error: any) {
       console.error("Error creating landing appointment:", error);

@@ -70,6 +70,25 @@ class TwilioService {
     }
   }
 
+  async sendAppointmentConfirmationSMS(
+    phoneNumber: string,
+    customerName: string,
+    agentName: string,
+    companyName: string,
+    appointmentDate: string,
+    appointmentTime: string
+  ): Promise<boolean> {
+    const message = `Hola ${customerName}\n\nSoy ${agentName} y quiero darte las gracias por programar una llamada conmigo el ${appointmentDate} a las ${appointmentTime}.\n\nEspero con ansias nuestra llamada.\n\nQue tengas un lindo dia.\n\n${agentName} - ${companyName}`;
+    
+    try {
+      await this.sendSMS(phoneNumber, message);
+      return true;
+    } catch (error) {
+      console.error("Failed to send appointment confirmation SMS:", error);
+      return false;
+    }
+  }
+
   isInitialized(): boolean {
     return this.initialized;
   }
