@@ -164,6 +164,16 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* My Number */}
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight" data-testid="my-number-title">
+              My Number
+            </h1>
+            <p className="text-2xl font-semibold" data-testid="phone-number">
+              {formatPhoneNumber(phoneNumber.did)}
+            </p>
+          </div>
+
           {/* Configuration */}
           <Card>
             <CardHeader>
