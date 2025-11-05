@@ -57,7 +57,17 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **Audit Logging:** Centralized action tracking.
 -   **Campaign System:** Unified Email/SMS Campaign and Contact List management.
 -   **Real-Time Notifications:** WebSocket-based updates.
--   **SMS Chat Application:** Bidirectional, real-time chat.
+-   **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging platform with dedicated phone numbers per user, real-time updates, and full privacy isolation (each user sees only their own conversations).
+    -   **Architecture:** Dual messaging system - Twilio for system notifications, BulkVS for individual user chat with dedicated phone numbers.
+    -   **UI:** 3-column desktop layout (thread list, message panel, contact details), responsive mobile design with single-column navigation.
+    -   **Database:** 4 tables - bulkvs_phone_numbers (user phone provisioning), bulkvs_campaigns (10DLC campaigns), bulkvs_threads (conversations), bulkvs_messages (SMS/MMS with status tracking).
+    -   **Backend:** BulkVS API client (axios-based), 10 REST endpoints, 16 storage functions, webhook handler with secret validation.
+    -   **Features:** SMS/MMS with file upload (5MB limit), emoji picker, message status (sent/delivered/read), read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket.
+    -   **Number Provisioning:** 3-step wizard for searching and purchasing dedicated phone numbers by state/area code, with optional 10DLC campaign assignment.
+    -   **Security:** User-scoped data isolation (each user accesses only their own phone numbers and conversations), webhook signature validation, E.164 phone number normalization.
+    -   **WebSocket Integration:** 3 broadcast functions (message, thread update, status) with tenant-scoped listeners, automatic reconnection with exponential backoff.
+    -   **Components:** 7 specialized components - ThreadList, MessagePanel, ContactDetails, MessageBubble, MessageInput, EmojiPicker, NumberProvisionModal.
+    -   **Note:** Vite HMR WebSocket errors (`wss://localhost:undefined`) visible in browser console are from development tooling and do not affect chat functionality.
 -   **Billing & Stripe Integration:** Automated customer/subscription management.
 -   **Quotes Management System:** 3-step wizard for 11 product types, Google Places Autocomplete, CMS Marketplace API integration (HHS Poverty Guidelines for APTC), plan comparison, credit card validation, notes, document management, universal search, blocking, and manual plan entry.
 -   **Policies Management System:** Converts quotes to policies, maintaining similar functionality to Quotes, including status management, agent assignment, universal search, and blocking. Payment methods shared by client (SSN/email). Canonical client identification (SSN or email) prevents double-counting renewed policies and duplicate birthday events.
@@ -91,16 +101,17 @@ Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security inclu
 
 ### Security Architecture
 -   **Session Security:** `SESSION_SECRET` environment variable mandatory.
--   **Webhook Validation:** Twilio webhook signature validation.
+-   **Webhook Validation:** Twilio and BulkVS webhook signature validation.
 -   **Input Validation:** Zod schema validation on all public-facing endpoints.
 -   **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 -   **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
+-   **BulkVS Security:** User-scoped data isolation, BULKVS_WEBHOOK_SECRET validation, E.164 phone normalization, 5MB file upload limit.
 
 ## External Dependencies
 
 -   **Database:** Neon PostgreSQL, Drizzle ORM.
 -   **Email:** Nodemailer.
--   **SMS:** Twilio.
+-   **SMS/MMS:** Twilio (system notifications), BulkVS (individual user chat).
 -   **Payments:** Stripe.
 -   **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 -   **Drag & Drop:** @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities.

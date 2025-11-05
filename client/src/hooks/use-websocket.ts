@@ -1,3 +1,11 @@
+/**
+ * Custom WebSocket hook for real-time chat functionality.
+ * 
+ * NOTE: If you see `wss://localhost:undefined` errors in browser console,
+ * these are from Vite HMR (Hot Module Replacement) client and do NOT affect
+ * this chat WebSocket. This hook correctly derives ws(s)://{host}/ws/chat
+ * from window.location.
+ */
 import { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
