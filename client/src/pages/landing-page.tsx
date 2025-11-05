@@ -2254,21 +2254,6 @@ export default function LandingPageBuilder() {
                             data-testid="input-profile-phone"
                           />
                         </div>
-
-                        <div>
-                          <Label htmlFor="profileEmail" className="text-xs mb-2 block">
-                            Email
-                          </Label>
-                          <Input
-                            id="profileEmail"
-                            type="email"
-                            value={profileEmail}
-                            onChange={(e) => setProfileEmail(e.target.value)}
-                            onBlur={handleProfileEmailSave}
-                            placeholder="your.email@example.com"
-                            data-testid="input-profile-email"
-                          />
-                        </div>
                       </div>
 
                       <Separator />
