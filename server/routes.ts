@@ -18788,7 +18788,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const areaCode = did.substring(2, 5); // E.164 format: +1NXXNXXXXXX
       
       // Get company info for Stripe billing
-      const company = await storage.getCompanyById(user.companyId);
+      const company = await storage.getCompany(user.companyId);
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
