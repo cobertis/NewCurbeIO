@@ -1474,7 +1474,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // Google Maps JavaScript API loader endpoint
   app.get("/api/google-maps-js-loader", async (req: Request, res: Response) => {
-    const callback = req.query.callback || 'initMap';
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
     
     if (!apiKey) {
@@ -1482,21 +1481,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).send('console.error("Google Maps API key not configured");');
     }
 
-    // Build the Google Maps URL
-    const googleMapsUrl = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=${callback}&libraries=places,marker`;
-    
-    // Create a simple loader script that dynamically adds the Google Maps script
+    // Simple loader script that loads Google Maps without callback
+    // Modern approach - let the app handle initialization
     const loaderScript = `
 (function() {
+  // Only load once
+  if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+    return;
+  }
+  
   var script = document.createElement('script');
-  script.src = '${googleMapsUrl}';
+  script.src = 'https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&loading=async';
   script.async = true;
   script.defer = true;
   script.onerror = function() {
-    console.error('Failed to load Google Maps');
-    if (typeof ${callback} === 'function') {
-      ${callback}();
-    }
+    console.error('[GOOGLE_MAPS] Failed to load Google Maps JavaScript API');
   };
   document.head.appendChild(script);
 })();
