@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Search, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -47,6 +48,8 @@ export default function Leads() {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [editedNotes, setEditedNotes] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   
   // Get tab from URL query parameter
   const urlParams = new URLSearchParams(window.location.search);
@@ -79,6 +82,28 @@ export default function Leads() {
       queryClient.invalidateQueries({ queryKey: ["/api/landing/appointments"] });
       toast({ title: "Notes updated successfully" });
       setAppointmentDialogOpen(false);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/landing/appointments/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/landing/appointments"] });
+      toast({ 
+        title: "Cita eliminada",
+        description: "La cita ha sido eliminada correctamente"
+      });
+      setDeleteDialogOpen(false);
+      setAppointmentToDelete(null);
+    },
+    onError: () => {
+      toast({ 
+        title: "Error",
+        description: "No se pudo eliminar la cita",
+        variant: "destructive"
+      });
     },
   });
 
@@ -129,58 +154,77 @@ export default function Leads() {
   };
 
   const getActionButtons = (appointment: Appointment) => {
+    const buttons = [];
+    
     if (appointment.status === "pending") {
-      return (
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleStatusUpdate(appointment.id, "confirmed")}
-            disabled={updateMutation.isPending}
-            data-testid={`button-confirm-${appointment.id}`}
-          >
-            <CheckCircle className="h-4 w-4 mr-1" />
-            Confirmar
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleStatusUpdate(appointment.id, "cancelled")}
-            disabled={updateMutation.isPending}
-            data-testid={`button-cancel-${appointment.id}`}
-          >
-            <XCircle className="h-4 w-4 mr-1" />
-            Cancelar
-          </Button>
-        </>
+      buttons.push(
+        <Button
+          key="confirm"
+          size="sm"
+          variant="outline"
+          onClick={() => handleStatusUpdate(appointment.id, "confirmed")}
+          disabled={updateMutation.isPending}
+          data-testid={`button-confirm-${appointment.id}`}
+        >
+          <CheckCircle className="h-4 w-4 mr-1" />
+          Confirmar
+        </Button>,
+        <Button
+          key="cancel"
+          size="sm"
+          variant="outline"
+          onClick={() => handleStatusUpdate(appointment.id, "cancelled")}
+          disabled={updateMutation.isPending}
+          data-testid={`button-cancel-${appointment.id}`}
+        >
+          <XCircle className="h-4 w-4 mr-1" />
+          Cancelar
+        </Button>
       );
     } else if (appointment.status === "confirmed") {
-      return (
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleStatusUpdate(appointment.id, "completed")}
-            disabled={updateMutation.isPending}
-            data-testid={`button-complete-${appointment.id}`}
-          >
-            <CheckCircle className="h-4 w-4 mr-1" />
-            Completar
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleStatusUpdate(appointment.id, "cancelled")}
-            disabled={updateMutation.isPending}
-            data-testid={`button-cancel-${appointment.id}`}
-          >
-            <XCircle className="h-4 w-4 mr-1" />
-            Cancelar
-          </Button>
-        </>
+      buttons.push(
+        <Button
+          key="complete"
+          size="sm"
+          variant="outline"
+          onClick={() => handleStatusUpdate(appointment.id, "completed")}
+          disabled={updateMutation.isPending}
+          data-testid={`button-complete-${appointment.id}`}
+        >
+          <CheckCircle className="h-4 w-4 mr-1" />
+          Completar
+        </Button>,
+        <Button
+          key="cancel"
+          size="sm"
+          variant="outline"
+          onClick={() => handleStatusUpdate(appointment.id, "cancelled")}
+          disabled={updateMutation.isPending}
+          data-testid={`button-cancel-${appointment.id}`}
+        >
+          <XCircle className="h-4 w-4 mr-1" />
+          Cancelar
+        </Button>
       );
     }
-    return null;
+    
+    // Add delete button for all appointments
+    buttons.push(
+      <Button
+        key="delete"
+        size="sm"
+        variant="outline"
+        onClick={() => handleDeleteClick(appointment)}
+        disabled={deleteMutation.isPending}
+        data-testid={`button-delete-${appointment.id}`}
+        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+      >
+        <Trash2 className="h-4 w-4 mr-1" />
+        Eliminar
+      </Button>
+    );
+    
+    return <>{buttons}</>;
   };
 
   const formatDate = (dateString: string) => {
@@ -226,6 +270,17 @@ export default function Leads() {
         id: selectedAppointment.id,
         notes: editedNotes,
       });
+    }
+  };
+
+  const handleDeleteClick = (appointment: Appointment) => {
+    setAppointmentToDelete(appointment);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (appointmentToDelete) {
+      deleteMutation.mutate(appointmentToDelete.id);
     }
   };
 
@@ -493,6 +548,38 @@ export default function Leads() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cita?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {appointmentToDelete && (
+                <>
+                  Esta acción no se puede deshacer. Se eliminará permanentemente la cita de{" "}
+                  <strong>{appointmentToDelete.fullName}</strong> programada para el{" "}
+                  <strong>{formatDate(appointmentToDelete.appointmentDate)}</strong> a las{" "}
+                  <strong>{formatTime(appointmentToDelete.appointmentTime)}</strong>.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

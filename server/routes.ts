@@ -18378,6 +18378,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to update appointment" });
     }
   });
+
+  // DELETE /api/landing/appointments/:id - Delete appointment (PROTECTED endpoint)
+  app.delete("/api/landing/appointments/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      // Get existing appointment
+      const existingAppointment = await storage.getLandingAppointmentById(id);
+      
+      if (!existingAppointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      // Verify landing page exists and check ownership
+      const landingPage = await storage.getLandingPageById(existingAppointment.landingPageId);
+      
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
+      // Check authorization: user must own the landing page or be admin/superadmin
+      if (
+        currentUser.role !== "superadmin" && 
+        currentUser.role !== "admin" &&
+        landingPage.userId !== currentUser.id
+      ) {
+        return res.status(403).json({ message: "Forbidden - you don't have permission to delete this appointment" });
+      }
+      
+      // Delete the appointment
+      await storage.deleteLandingAppointment(id);
+      
+      res.json({ message: "Appointment deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting landing appointment:", error);
+      res.status(500).json({ message: "Failed to delete appointment" });
+    }
+  });
   
   // GET /api/landing/appointments/slots - Get available time slots (PUBLIC endpoint)
   app.get("/api/landing/appointments/slots", async (req: Request, res: Response) => {
