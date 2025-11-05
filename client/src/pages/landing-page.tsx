@@ -1800,15 +1800,94 @@ export default function LandingPageBuilder() {
                     );
                   })}
                 </div>
-                
-                <Button 
-                  variant="default" 
-                  className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
-                  data-testid="button-see-more-blocks"
-                >
-                  See Another Blocks
-                </Button>
               </div>
+
+              {/* Social Media Section */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm">Social Media</h3>
+                  <button className="text-gray-400 hover:text-gray-600">
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {SOCIAL_BLOCK_TYPES.map((socialBlock) => {
+                    const Icon = socialBlock.icon;
+                    return (
+                      <button
+                        key={socialBlock.platform}
+                        onClick={() => {
+                          setNewSocialPlatform(socialBlock.platform);
+                          setIsAddSocialOpen(true);
+                        }}
+                        className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:shadow-md transition-all group"
+                        data-testid={`button-add-social-${socialBlock.platform}`}
+                      >
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform"
+                          style={{ backgroundColor: socialBlock.color }}
+                        >
+                          <Icon className="w-4 h-4 text-white" />
+                        </div>
+                        <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium text-center">{socialBlock.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* My Socials - List of added social media */}
+              {blocks.filter(b => b.type === "social").length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-sm">My Socials</h3>
+                    <span className="text-xs text-gray-500">{blocks.filter(b => b.type === "social").length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {blocks.filter(b => b.type === "social").map((block) => {
+                      const platform = SOCIAL_PLATFORMS.find(
+                        (p) => p.value === block.content.platform
+                      );
+                      if (!platform) return null;
+                      const Icon = platform.icon;
+
+                      return (
+                        <div
+                          key={block.id}
+                          className="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 group hover:border-blue-400 transition-all"
+                        >
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: platform.color }}
+                          >
+                            <Icon className="w-3.5 h-3.5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-medium text-gray-900 dark:text-gray-100 truncate">{platform.label}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEditingBlock(block);
+                              setIsBlockEditorOpen(true);
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`button-edit-social-${block.id}`}
+                          >
+                            <Edit className="w-3 h-3 text-blue-500" />
+                          </button>
+                          <button
+                            onClick={() => deleteBlockMutation.mutate(block.id)}
+                            className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`button-delete-social-${block.id}`}
+                          >
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </div>
