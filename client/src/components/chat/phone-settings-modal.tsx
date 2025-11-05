@@ -6,6 +6,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +42,7 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
   const [callForwardEnabled, setCallForwardEnabled] = useState(phoneNumber.callForwardEnabled || false);
   const [callForwardNumber, setCallForwardNumber] = useState(phoneNumber.callForwardNumber || "");
   const [isEditingCallForward, setIsEditingCallForward] = useState(false);
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
 
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
@@ -369,11 +380,7 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
             <CardContent>
               <Button
                 variant="destructive"
-                onClick={() => {
-                  if (confirm("Are you sure you want to deactivate this number? All conversations will be lost.")) {
-                    deactivateNumberMutation.mutate();
-                  }
-                }}
+                onClick={() => setShowDeactivateDialog(true)}
                 disabled={deactivateNumberMutation.isPending}
                 data-testid="button-deactivate"
               >
@@ -383,6 +390,35 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
           </Card>
         </div>
       </DialogContent>
+
+      <AlertDialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Deactivating this phone number will:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Cancel your subscription immediately</li>
+                <li>Delete all conversations and message history</li>
+                <li>Release the phone number permanently</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-deactivate">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                deactivateNumberMutation.mutate();
+                setShowDeactivateDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-deactivate"
+            >
+              Deactivate Number
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
