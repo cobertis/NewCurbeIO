@@ -58,6 +58,7 @@ import MarketplacePlans from "@/pages/marketplace-plans";
 import PolicyPrintPage from "@/pages/policy-print";
 import PublicConsentPage from "@/pages/public-consent";
 import Calendar from "@/pages/calendar";
+import AppointmentSettings from "@/pages/appointment-settings";
 import Referrals from "@/pages/referrals";
 import LandingPageBuilder from "@/pages/landing-page";
 import PublicLandingPage from "@/pages/public-landing-page";
@@ -82,6 +83,7 @@ const getPageTitle = (path: string): string => {
     '/policies': 'Policies',
     '/policies/new': 'New Policy',
     '/calendar': 'Calendar',
+    '/appointment-settings': 'Appointment Settings',
     '/leads': 'Leads',
     '/invoices': 'Invoices',
     '/settings': 'Settings',
@@ -1019,6 +1021,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Calendar />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/appointment-settings">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <AppointmentSettings />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
