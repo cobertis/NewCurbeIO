@@ -48,9 +48,11 @@ import {
   Building2,
   Pencil,
   MapPin,
-  Plus
+  Plus,
+  Phone
 } from "lucide-react";
 import { formatDate } from "@/lib/date-formatter";
+import type { BulkvsPhoneNumber } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -279,6 +281,10 @@ export default function Billing() {
   const { data: discountData } = useQuery({
     queryKey: ['/api/billing/active-discount'],
     enabled: !!subscriptionData?.subscription,
+  });
+
+  const { data: bulkvsPhoneNumbers, isLoading: isLoadingBulkvsNumbers } = useQuery<BulkvsPhoneNumber[]>({
+    queryKey: ["/api/bulkvs/numbers"],
   });
 
   const activeDiscount = discountData?.discount;
@@ -981,6 +987,126 @@ export default function Billing() {
             </CardContent>
               </Card>
             ) : null}
+
+            {/* BulkVS Phone Numbers Addons */}
+            {isLoadingBulkvsNumbers ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Phone className="h-5 w-5" />
+                    Phone Number Addons
+                  </CardTitle>
+                  <CardDescription>Dedicated phone numbers for SMS/MMS messaging</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </CardContent>
+              </Card>
+            ) : bulkvsPhoneNumbers && bulkvsPhoneNumbers.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Phone className="h-5 w-5" />
+                    Phone Number Addons
+                  </CardTitle>
+                  <CardDescription>Dedicated phone numbers for SMS/MMS messaging</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Phone Numbers List */}
+                  <div className="space-y-3">
+                    {bulkvsPhoneNumbers.map((phoneNumber) => (
+                      <div
+                        key={phoneNumber.id}
+                        className="flex items-center justify-between p-4 rounded-lg border"
+                        data-testid={`addon-phone-${phoneNumber.id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <Phone className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium" data-testid={`addon-phone-number-${phoneNumber.id}`}>
+                              {phoneNumber.did.replace(/(\d{1})(\d{3})(\d{3})(\d{4})/, '+$1 ($2) $3-$4')}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {phoneNumber.displayName}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold" data-testid={`addon-phone-price-${phoneNumber.id}`}>
+                            ${phoneNumber.monthlyPrice}/mo
+                          </p>
+                          <Badge
+                            variant={phoneNumber.billingStatus === 'active' ? 'default' : 'secondary'}
+                            className="mt-1"
+                            data-testid={`addon-phone-status-${phoneNumber.id}`}
+                          >
+                            {phoneNumber.billingStatus}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Separator />
+
+                  {/* Total Addons Cost */}
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="font-medium">Total Addons Cost</p>
+                      <p className="text-sm text-muted-foreground">
+                        {bulkvsPhoneNumbers.length} phone {bulkvsPhoneNumbers.length === 1 ? 'number' : 'numbers'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold" data-testid="total-addons-cost">
+                        ${bulkvsPhoneNumbers
+                          .reduce((sum, phone) => sum + parseFloat(phone.monthlyPrice || '0'), 0)
+                          .toFixed(2)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">per month</p>
+                    </div>
+                  </div>
+
+                  {/* Get More Numbers */}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => window.location.href = '/chat'}
+                    data-testid="button-get-phone-number"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Get Another Phone Number
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Phone className="h-5 w-5" />
+                    Phone Number Addons
+                  </CardTitle>
+                  <CardDescription>Add dedicated phone numbers for SMS/MMS messaging</CardDescription>
+                </CardHeader>
+                <CardContent className="text-center py-8">
+                  <Phone className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Phone Numbers Yet</h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Get a dedicated phone number to start messaging with your clients
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = '/chat'}
+                    data-testid="button-get-first-phone"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Get Your First Phone Number
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
