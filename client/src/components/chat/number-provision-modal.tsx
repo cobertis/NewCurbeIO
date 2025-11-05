@@ -223,8 +223,8 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="number-provision-modal">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2" data-testid="modal-title">
+        <DialogHeader className="text-center">
+          <DialogTitle className="flex items-center justify-center gap-2" data-testid="modal-title">
             <Phone className="h-5 w-5" />
             Get Your Phone Number
           </DialogTitle>
@@ -233,7 +233,7 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 text-left">
           {step === "search" && !searchMutation.isPending && (
             <div className="space-y-4" data-testid="step-search">
               <div className="space-y-2">
