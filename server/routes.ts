@@ -17918,20 +17918,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Create lead
       const lead = await storage.createLandingLead(validatedData);
       
-      // Log activity
-      await logger.logActivity({
-        companyId: landingPage.companyId,
-        userId: landingPage.userId,
-        action: "landing_page_lead_captured",
-        entityType: "landing_page",
-        entityId: id,
-        description: `Lead captured: ${validatedData.fullName} (${validatedData.email})`,
-        metadata: {
-          leadId: lead.id,
-          blockId: validatedData.blockId,
-        },
-      });
-      
       res.status(201).json({ 
         message: "Lead captured successfully",
         leadId: lead.id 
@@ -18008,20 +17994,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Create appointment
       const appointment = await storage.createLandingAppointment(validatedData);
-      
-      // Log activity
-      await logger.logActivity({
-        companyId: landingPage.companyId,
-        userId: landingPage.userId,
-        action: "landing_page_appointment_created",
-        entityType: "landing_page",
-        entityId: id,
-        description: `Appointment created: ${validatedData.fullName} on ${validatedData.appointmentDate} at ${validatedData.appointmentTime}`,
-        metadata: {
-          appointmentId: appointment.id,
-          blockId: validatedData.blockId,
-        },
-      });
       
       res.status(201).json({ 
         message: "Appointment created successfully",
@@ -18101,20 +18073,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-      
-      // Log activity
-      await logger.logActivity({
-        companyId: landingPage.companyId,
-        userId: currentUser.id,
-        action: "appointment_status_updated",
-        entityType: "appointment",
-        entityId: id,
-        description: `Appointment status updated to: ${validatedStatus}`,
-        metadata: {
-          previousStatus: appointment.status,
-          newStatus: validatedStatus,
-        },
-      });
       
       res.json({ 
         message: "Appointment status updated successfully",
@@ -18206,22 +18164,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Create appointment
       const appointment = await storage.createLandingAppointment(data);
-      
-      // Log activity
-      await logger.logActivity({
-        companyId: landingPage.companyId,
-        userId: landingPage.userId,
-        action: "landing_appointment_created",
-        entityType: "landing_appointment",
-        entityId: appointment.id,
-        description: `New appointment: ${data.fullName} on ${data.appointmentDate} at ${data.appointmentTime}`,
-        metadata: {
-          email: data.email,
-          phone: data.phone,
-          appointmentDate: data.appointmentDate,
-          appointmentTime: data.appointmentTime,
-        },
-      });
       
       // TODO: Send notification email to company admins
       
@@ -18339,19 +18281,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedAppointment) {
         return res.status(500).json({ message: "Failed to update appointment" });
       }
-      
-      // Log activity
-      await logger.logActivity({
-        companyId: landingPage.companyId,
-        userId: currentUser.id,
-        action: "landing_appointment_updated",
-        entityType: "landing_appointment",
-        entityId: id,
-        description: `Updated appointment for ${existingAppointment.fullName}`,
-        metadata: {
-          changes: validatedData,
-        },
-      });
       
       res.json({ appointment: updatedAppointment });
     } catch (error: any) {
