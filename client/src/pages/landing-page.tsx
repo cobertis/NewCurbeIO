@@ -62,6 +62,7 @@ import {
   Pencil,
   Loader2,
   Menu,
+  Upload,
 } from "lucide-react";
 import { SiTiktok, SiWhatsapp } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -3041,23 +3042,86 @@ export default function LandingPageBuilder() {
               {editingBlock.type === "image" && (
                 <>
                   <div>
-                    <Label>Image URL</Label>
-                    <Input
-                      value={editingBlock.content.url || ""}
-                      onChange={(e) =>
-                        setEditingBlock({
-                          ...editingBlock,
-                          content: {
-                            ...editingBlock.content,
-                            url: e.target.value,
-                          },
-                        })
-                      }
-                      placeholder="https://example.com/image.jpg"
-                    />
+                    <Label className="mb-2">Image</Label>
+                    {editingBlock.content.url ? (
+                      <div className="space-y-3">
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                          <img
+                            src={editingBlock.content.url}
+                            alt={editingBlock.content.alt || "Preview"}
+                            className="w-full h-auto"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/*';
+                            input.onchange = (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  setEditingBlock({
+                                    ...editingBlock,
+                                    content: {
+                                      ...editingBlock.content,
+                                      url: reader.result as string,
+                                    },
+                                  });
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            };
+                            input.click();
+                          }}
+                          className="w-full"
+                          data-testid="button-change-image"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Change Image
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    url: reader.result as string,
+                                  },
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          };
+                          input.click();
+                        }}
+                        className="w-full h-32 border-dashed"
+                        data-testid="button-select-image"
+                      >
+                        <div className="text-center">
+                          <ImageIcon className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm text-gray-600">Click to select image</p>
+                        </div>
+                      </Button>
+                    )}
                   </div>
                   <div>
-                    <Label>Alt Text</Label>
+                    <Label>Alt Text (Optional)</Label>
                     <Input
                       value={editingBlock.content.alt || ""}
                       onChange={(e) =>
@@ -3070,6 +3134,7 @@ export default function LandingPageBuilder() {
                         })
                       }
                       placeholder="Description of image"
+                      data-testid="input-image-alt"
                     />
                   </div>
                 </>
