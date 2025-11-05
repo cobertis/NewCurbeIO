@@ -642,11 +642,20 @@ class NotificationService {
     notes: string | null,
     userId: string
   ) {
+    // Format phone number to USA format (XXX) XXX-XXXX
+    const formatPhone = (phone: string) => {
+      const cleaned = phone.replace(/\D/g, "");
+      if (cleaned.length === 10) {
+        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+      }
+      return phone;
+    };
+
     // Build detailed message with all appointment information
     let message = `${clientName} has scheduled an appointment for ${appointmentDate} at ${appointmentTime}. `;
     message += `Contact: ${clientEmail}`;
     if (clientPhone) {
-      message += `, ${clientPhone}`;
+      message += `, ${formatPhone(clientPhone)}`;
     }
     if (notes) {
       message += `. Notes: ${notes.substring(0, 100)}${notes.length > 100 ? '...' : ''}`;

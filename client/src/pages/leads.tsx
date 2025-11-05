@@ -184,6 +184,15 @@ export default function Leads() {
     }
   };
 
+  const formatPhone = (phone: string | null) => {
+    if (!phone) return "-";
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone;
+  };
+
   return (
     <div className="flex flex-col h-screen w-full bg-background">
       <div className="flex items-center justify-between px-6 py-4 border-b">
@@ -248,7 +257,7 @@ export default function Leads() {
                           {lead.fullName}
                         </TableCell>
                         <TableCell data-testid={`cell-email-${lead.id}`}>{lead.email}</TableCell>
-                        <TableCell data-testid={`cell-phone-${lead.id}`}>{lead.phone || "-"}</TableCell>
+                        <TableCell data-testid={`cell-phone-${lead.id}`}>{formatPhone(lead.phone)}</TableCell>
                         <TableCell 
                           className="max-w-xs truncate" 
                           title={lead.message}
@@ -336,7 +345,7 @@ export default function Leads() {
                           {appointment.email}
                         </TableCell>
                         <TableCell data-testid={`cell-phone-${appointment.id}`}>
-                          {appointment.phone || "-"}
+                          {formatPhone(appointment.phone)}
                         </TableCell>
                         <TableCell data-testid={`cell-date-${appointment.id}`}>
                           {formatDate(appointment.appointmentDate)}
