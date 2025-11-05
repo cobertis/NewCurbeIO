@@ -63,6 +63,7 @@ import {
   Loader2,
   Menu,
   Upload,
+  Quote,
 } from "lucide-react";
 import { SiTiktok, SiWhatsapp } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -797,17 +798,19 @@ function BlockPreview({
 
     case "calendar":
       return (
-        <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 bg-white">
+        <div className="flex items-center justify-between gap-4 p-4 rounded-[18px] bg-white shadow-md hover:shadow-lg transition-all">
           <div className="flex-1">
-            <h3 className="font-semibold text-sm">{block.content.title || "Programar llamada"}</h3>
-            {block.content.subtitle && (
-              <p className="text-xs text-muted-foreground mt-0.5">{block.content.subtitle}</p>
+            <h3 className="text-base font-semibold text-gray-900">{block.content.title || "Programar llamada"}</h3>
+            {block.content.description && (
+              <p className="text-sm text-gray-600 mt-1">{block.content.description}</p>
             )}
           </div>
-          <Button 
-            size="sm"
-            className="text-xs h-8 whitespace-nowrap"
-            style={{ backgroundColor: theme.primaryColor }}
+          <Button
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90 whitespace-nowrap flex-shrink-0"
+            style={{
+              backgroundColor: theme.buttonColor || theme.primaryColor,
+              color: theme.buttonTextColor || '#ffffff',
+            }}
           >
             Agendar →
           </Button>
@@ -816,20 +819,29 @@ function BlockPreview({
 
     case "testimonials":
       return (
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+        <Card className="p-6 rounded-[18px] shadow-lg transition-all duration-300 hover:shadow-xl">
+          <div className="flex items-start gap-4">
+            <Quote className="h-8 w-8 text-gray-300 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-xs">{block.content.reviews?.[0]?.name || "Name"}</p>
-              <p className="text-xs text-muted-foreground">{block.content.reviews?.[0]?.role || "Role"}</p>
+              <p className="text-lg italic mb-4" style={{ color: theme.textColor }}>
+                "{block.content.quote || "¡Excelente servicio!"}"
+              </p>
+              <div className="flex items-center gap-3">
+                {block.content.avatar && (
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={block.content.avatar} />
+                    <AvatarFallback>{block.content.name?.[0] || "U"}</AvatarFallback>
+                  </Avatar>
+                )}
+                <div>
+                  <p className="font-semibold">{block.content.name || "Anónimo"}</p>
+                  {block.content.role && (
+                    <p className="text-sm text-gray-600">{block.content.role}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex gap-0.5 mb-1">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            ))}
-          </div>
-          <p className="text-xs">{block.content.reviews?.[0]?.text || "Review text"}</p>
         </Card>
       );
 
@@ -1600,7 +1612,7 @@ export default function LandingPageBuilder() {
         },
         calendar: {
           title: "Programar llamada",
-          subtitle: "Elige un horario que te funcione",
+          description: "Elige un horario que te funcione",
           availableDays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
           availableHours: { start: "09:00", end: "17:00" },
           duration: 30,
@@ -1608,10 +1620,10 @@ export default function LandingPageBuilder() {
           successMessage: "¡Tu cita ha sido agendada!",
         },
         testimonials: {
-          reviews: [
-            { name: "Juan Pérez", role: "CEO", photo: "", rating: 5, text: "¡Excelente servicio!" },
-          ],
-          layout: "carousel",
+          quote: "¡Excelente servicio!",
+          name: "Juan Pérez",
+          role: "CEO",
+          avatar: "",
         },
         faq: {
           items: [
@@ -3454,13 +3466,13 @@ export default function LandingPageBuilder() {
                   <div>
                     <Label>Description</Label>
                     <Textarea
-                      value={editingBlock.content.subtitle || ""}
+                      value={editingBlock.content.description || ""}
                       onChange={(e) =>
                         setEditingBlock({
                           ...editingBlock,
                           content: {
                             ...editingBlock.content,
-                            subtitle: e.target.value,
+                            description: e.target.value,
                           },
                         })
                       }
@@ -3492,64 +3504,55 @@ export default function LandingPageBuilder() {
               {editingBlock.type === "testimonials" && (
                 <>
                   <div>
-                    <Label>Reviewer Name</Label>
+                    <Label>Nombre del Revisor</Label>
                     <Input
-                      value={editingBlock.content.reviews?.[0]?.name || ""}
+                      value={editingBlock.content.name || ""}
                       onChange={(e) =>
                         setEditingBlock({
                           ...editingBlock,
                           content: {
                             ...editingBlock.content,
-                            reviews: [{
-                              ...(editingBlock.content.reviews?.[0] || {}),
-                              name: e.target.value,
-                            }],
+                            name: e.target.value,
                           },
                         })
                       }
-                      placeholder="John Doe"
+                      placeholder="Juan Pérez"
                       data-testid="input-testimonial-name"
                     />
                   </div>
                   <div>
-                    <Label>Role/Title</Label>
+                    <Label>Cargo/Título</Label>
                     <Input
-                      value={editingBlock.content.reviews?.[0]?.role || ""}
+                      value={editingBlock.content.role || ""}
                       onChange={(e) =>
                         setEditingBlock({
                           ...editingBlock,
                           content: {
                             ...editingBlock.content,
-                            reviews: [{
-                              ...(editingBlock.content.reviews?.[0] || {}),
-                              role: e.target.value,
-                            }],
+                            role: e.target.value,
                           },
                         })
                       }
-                      placeholder="CEO, Company"
+                      placeholder="CEO, Empresa"
                       data-testid="input-testimonial-role"
                     />
                   </div>
                   <div>
-                    <Label>Review Text</Label>
+                    <Label>Testimonio</Label>
                     <Textarea
-                      value={editingBlock.content.reviews?.[0]?.text || ""}
+                      value={editingBlock.content.quote || ""}
                       onChange={(e) =>
                         setEditingBlock({
                           ...editingBlock,
                           content: {
                             ...editingBlock.content,
-                            reviews: [{
-                              ...(editingBlock.content.reviews?.[0] || {}),
-                              text: e.target.value,
-                            }],
+                            quote: e.target.value,
                           },
                         })
                       }
-                      placeholder="This service was excellent!"
+                      placeholder="¡Excelente servicio!"
                       rows={3}
-                      data-testid="input-testimonial-text"
+                      data-testid="input-testimonial-quote"
                     />
                   </div>
                 </>
