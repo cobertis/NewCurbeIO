@@ -16,6 +16,22 @@ import {
   addMinutes
 } from "date-fns";
 
+// Type for weekly availability
+interface DayAvailability {
+  enabled: boolean;
+  slots: Array<{ start: string; end: string }>;
+}
+
+interface WeeklyAvailability {
+  monday: DayAvailability;
+  tuesday: DayAvailability;
+  wednesday: DayAvailability;
+  thursday: DayAvailability;
+  friday: DayAvailability;
+  saturday: DayAvailability;
+  sunday: DayAvailability;
+}
+
 /**
  * Configuration
  */
@@ -102,44 +118,68 @@ function calculateEndTime(startTime: string, durationMinutes: number): string {
 }
 
 /**
- * Generate all possible time slots for a day in the company's timezone
+ * Interface for time range
+ */
+interface TimeRange {
+  start: string; // HH:mm
+  end: string;   // HH:mm
+}
+
+/**
+ * Generate all possible time slots based on user's availability configuration
  * 
- * TIMEZONE HANDLING FIX:
- * This function generates simple HH:mm time strings directly without timezone conversion.
- * Since all appointments are stored as HH:mm strings representing company local time,
- * we don't need to convert to/from Date objects during generation.
- * 
- * This avoids the bug where date strings like "${date}T09:00:00" were parsed as
- * server-local time before timezone conversion, causing incorrect availability windows
- * (e.g., 9 AM in New York becoming 5 AM when server is in UTC).
- * 
- * @param date Date in yyyy-MM-dd format (not used in current implementation, kept for signature compatibility)
+ * @param date Date in yyyy-MM-dd format
  * @param slotDuration Duration of each slot in minutes
- * @param timezone Company timezone (not used in current implementation, kept for signature compatibility)
+ * @param availableRanges Array of time ranges when user is available
  * @returns Array of time strings in HH:mm format (in company timezone)
  */
-function generateTimeSlots(
+function generateTimeSlotsFromRanges(
   date: string,
   slotDuration: number,
-  timezone: string
+  availableRanges: TimeRange[]
 ): string[] {
   const slots: string[] = [];
-  const startHour = DEFAULT_BUSINESS_START;
-  const endHour = DEFAULT_BUSINESS_END;
   
-  // Simply generate time strings from 9:00 to 17:00
-  // All times represent company local time (no timezone conversion needed)
-  for (let hour = startHour; hour < endHour; hour++) {
-    for (let minute = 0; minute < 60; minute += slotDuration) {
-      // Check if this slot would end after business hours
-      if (hour * 60 + minute + slotDuration > endHour * 60) break;
+  // Generate slots for each available time range
+  for (const range of availableRanges) {
+    const { hours: startHour, minutes: startMinute } = parseTime(range.start);
+    const { hours: endHour, minutes: endMinute } = parseTime(range.end);
+    
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    
+    // Generate slots within this range
+    for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += slotDuration) {
+      // Check if this slot would end after the range end
+      if (currentMinutes + slotDuration > endMinutes) break;
       
+      const hour = Math.floor(currentMinutes / 60);
+      const minute = currentMinutes % 60;
       const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       slots.push(timeString);
     }
   }
   
   return slots;
+}
+
+/**
+ * Generate all possible time slots for a day using default business hours
+ * (fallback when user has no availability configuration)
+ * 
+ * @param date Date in yyyy-MM-dd format
+ * @param slotDuration Duration of each slot in minutes
+ * @param timezone Company timezone
+ * @returns Array of time strings in HH:mm format (in company timezone)
+ */
+function generateDefaultTimeSlots(
+  date: string,
+  slotDuration: number,
+  timezone: string
+): string[] {
+  return generateTimeSlotsFromRanges(date, slotDuration, [
+    { start: '09:00', end: '17:00' }
+  ]);
 }
 
 /**
@@ -230,32 +270,39 @@ export async function getAvailableSlots(params: {
     
     const timezone = company?.timezone || DEFAULT_TIMEZONE;
     
-    /**
-     * TIMEZONE HANDLING:
-     * All times in this system are stored and compared as HH:mm strings (e.g., "09:00", "17:00")
-     * in the company's local timezone.
-     * 
-     * - Business hours (9 AM - 5 PM) are generated as simple HH:mm strings
-     * - Appointment times (stored as HH:mm) represent times in the company's timezone
-     * - Calendar event times (stored as HH:mm) represent times in the company's timezone
-     * 
-     * All time string comparisons (via timeRangesOverlap) happen in the same timezone context
-     * (the company's timezone), ensuring accurate conflict detection regardless of server timezone.
-     * 
-     * This approach:
-     * - Avoids the bug where date strings are parsed as server-local time before conversion
-     * - Ensures 9 AM means 9 AM in the company's timezone, not server timezone
-     * - Works correctly for companies in different timezones
-     * - Maintains server timezone independence (all calculations use company timezone)
-     * 
-     * If future requirements include supporting users in different timezones, we would need to:
-     * 1. Store timezone information with each appointment
-     * 2. Convert display times to user's timezone
-     * 3. Convert back to company timezone for storage and conflict checking
-     */
+    // Get user's availability configuration
+    const { storage } = await import("../storage");
+    const availability = await storage.getAppointmentAvailability(userId);
     
-    // Generate all possible time slots in company timezone
-    const allSlots = generateTimeSlots(date, duration, timezone);
+    let allSlots: string[];
+    
+    if (availability) {
+      // Determine the day of week for the requested date
+      const dateObj = new Date(date + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      
+      // Map day of week to day key
+      const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayKey = dayKeys[dayOfWeek] as keyof WeeklyAvailability;
+      
+      // Cast weeklyAvailability to the correct type
+      const weeklyAvailability = availability.weeklyAvailability as WeeklyAvailability;
+      const dayConfig = weeklyAvailability[dayKey];
+      
+      // If day is disabled, return empty array (no slots available)
+      if (!dayConfig || !dayConfig.enabled || !dayConfig.slots || dayConfig.slots.length === 0) {
+        return [];
+      }
+      
+      // Use the configured availability duration instead of the passed duration
+      const slotDuration = availability.appointmentDuration as number || duration;
+      
+      // Generate slots from user's configured time ranges
+      allSlots = generateTimeSlotsFromRanges(date, slotDuration, dayConfig.slots);
+    } else {
+      // No availability configuration, use default business hours
+      allSlots = generateDefaultTimeSlots(date, duration, timezone);
+    }
     
     // Get all landing pages for this company
     const companyLandingPages = await db.query.landingPages.findMany({

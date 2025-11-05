@@ -18368,7 +18368,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   
   // GET /api/landing/appointments/slots - Get available time slots (PUBLIC endpoint)
   app.get("/api/landing/appointments/slots", async (req: Request, res: Response) => {
-    const { date, userId, duration } = req.query;
+    const { date, landingPageId, duration } = req.query;
     
     try {
       // Validate required parameters
@@ -18376,8 +18376,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Date parameter is required (yyyy-MM-dd format)" });
       }
       
-      if (!userId || typeof userId !== 'string') {
-        return res.status(400).json({ message: "userId parameter is required" });
+      if (!landingPageId || typeof landingPageId !== 'string') {
+        return res.status(400).json({ message: "landingPageId parameter is required" });
       }
       
       // Validate date format
@@ -18386,8 +18386,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Invalid date format. Use yyyy-MM-dd" });
       }
       
+      // Get landing page to find the user
+      const landingPage = await storage.getLandingPageById(landingPageId);
+      if (!landingPage) {
+        return res.status(404).json({ message: "Landing page not found" });
+      }
+      
       // Get user to determine companyId
-      const user = await storage.getUser(userId);
+      const user = await storage.getUser(landingPage.userId);
       if (!user || !user.companyId) {
         return res.status(404).json({ message: "User not found or not associated with a company" });
       }
@@ -18403,16 +18409,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get available slots
       const slots = await getAvailableSlots({
         date,
-        userId,
+        userId: landingPage.userId,
         companyId: user.companyId,
         duration: appointmentDuration,
       });
       
-      res.json({ 
-        date,
-        duration: appointmentDuration,
-        slots 
-      });
+      res.json(slots);
     } catch (error: any) {
       console.error("Error fetching available slots:", error);
       res.status(500).json({ message: "Failed to fetch available slots" });
