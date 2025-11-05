@@ -25,6 +25,7 @@ import {
   BarChart3,
   ChevronDown,
   Menu,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -782,6 +783,16 @@ export default function PublicLandingPage() {
           paddingBottom: "96px",
         }}
       >
+        {/* Home Button - Top Left */}
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all duration-200 group"
+          aria-label="Ir al inicio"
+          data-testid="button-home"
+        >
+          <Home className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+        </button>
+
         {/* Curved White Background - ADJUSTED for perfect transition */}
         <div className="absolute bottom-0 left-0 right-0 h-24 overflow-hidden">
           <svg viewBox="0 0 430 96" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
