@@ -42,6 +42,7 @@ import {
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { MapBlockDisplay } from "@/components/map-block-display";
 import { AppointmentBookingDialog } from "@/components/appointment-booking-dialog";
+import { AppointmentBookingInline } from "@/components/appointment-booking-inline";
 import { useToast } from "@/hooks/use-toast";
 
 type LandingPage = {
@@ -467,28 +468,21 @@ function PublicBlock({
               )}
             </div>
             
-            <Button
+            <button
               onClick={() => {
                 onTrackClick(block.id);
                 onOpenAppointmentModal?.();
               }}
               data-testid="button-schedule-appointment"
-              className="px-6 py-3 rounded-lg font-semibold text-base transition-all hover:opacity-90 whitespace-nowrap flex-shrink-0"
+              className="px-4 py-2 rounded-full bg-black/10 hover:bg-black/20 backdrop-blur-sm transition-all duration-200 group flex items-center gap-2 font-semibold"
               style={{
-                backgroundColor: theme.buttonColor || theme.primaryColor || '#3B82F6',
-                color: theme.buttonTextColor || '#ffffff',
+                backgroundColor: `${theme.primaryColor || '#000000'}15`,
+                color: theme.primaryColor || '#000000',
               }}
             >
-              Agendar
-              <svg 
-                className="w-4 h-4 ml-2 inline-block" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Button>
+              <CalendarIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span>Agendar</span>
+            </button>
           </div>
         </div>
       );
@@ -574,6 +568,7 @@ export default function PublicLandingPage() {
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
+  const [showAppointmentInline, setShowAppointmentInline] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -769,6 +764,18 @@ export default function PublicLandingPage() {
     (a, b) => a.position - b.position
   );
 
+  // Show inline appointment booking if activated
+  if (showAppointmentInline) {
+    return (
+      <AppointmentBookingInline
+        landingPageId={parseInt(landingPage.id, 10)}
+        agentName={landingPage.profileName || 'our team'}
+        onBack={() => setShowAppointmentInline(false)}
+        primaryColor={theme.primaryColor}
+      />
+    );
+  }
+
   return (
     <div
       className="min-h-screen bg-white"
@@ -945,7 +952,7 @@ export default function PublicLandingPage() {
                 theme={theme}
                 onTrackClick={trackClick}
                 landingPageId={landingPage.id}
-                onOpenAppointmentModal={() => setAppointmentDialogOpen(true)}
+                onOpenAppointmentModal={() => setShowAppointmentInline(true)}
               />
             ))}
         </div>
@@ -960,13 +967,6 @@ export default function PublicLandingPage() {
         </div>
       </div>
 
-      {/* Appointment Booking Modal */}
-      <AppointmentBookingDialog
-        open={appointmentDialogOpen}
-        onOpenChange={setAppointmentDialogOpen}
-        landingPageId={parseInt(landingPage.id, 10)}
-        agentName={landingPage.profileName || 'our team'}
-      />
     </div>
   );
 }
