@@ -192,6 +192,7 @@ class BulkVSClient {
 
   /**
    * Update CNAM (Caller ID Name) for a phone number
+   * Uses POST /tnRecord endpoint with "Lid" (Listed ID) field
    * CNAM rules:
    * - Max 15 characters
    * - Alphanumeric and spaces only
@@ -207,12 +208,12 @@ class BulkVSClient {
       // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
       const normalizedDid = formatForBulkVS(did);
       
-      console.log(`[BulkVS] Updating CNAM for ${normalizedDid} to "${sanitizedCnam}"...`);
+      console.log(`[BulkVS] Updating CNAM (Lid) for ${normalizedDid} to "${sanitizedCnam}"...`);
       
-      // Try the /updateCnam endpoint
-      const response = await this.client.post("/updateCnam", {
-        did: normalizedDid,
-        cnam: sanitizedCnam,
+      // Use /tnRecord endpoint with "Lid" field (Listed ID = Caller ID Name)
+      const response = await this.client.post("/tnRecord", {
+        TN: normalizedDid,
+        Lid: sanitizedCnam,
       });
       
       console.log("[BulkVS] updateCNAM response:", response.data);
