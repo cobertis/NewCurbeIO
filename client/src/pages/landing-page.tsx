@@ -708,6 +708,11 @@ export default function LandingPageBuilder() {
   const [history, setHistory] = useState<LandingBlock[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
+  // Social Media Dialog
+  const [isAddSocialOpen, setIsAddSocialOpen] = useState(false);
+  const [newSocialPlatform, setNewSocialPlatform] = useState("instagram");
+  const [newSocialUsername, setNewSocialUsername] = useState("");
+
   // Fetch current user
   const { data: sessionData } = useQuery<{ user: any }>({
     queryKey: ["/api/session"],
@@ -906,6 +911,52 @@ export default function LandingPageBuilder() {
       return area.length === 3 ? `(${area})` : area;
     }
     return '';
+  };
+
+  // Build social media URL based on platform and username
+  const buildSocialUrl = (platform: string, username: string): string => {
+    const cleanUsername = username.trim().replace('@', '');
+    
+    switch (platform) {
+      case 'instagram':
+        return `https://instagram.com/${cleanUsername}`;
+      case 'facebook':
+        return `https://facebook.com/${cleanUsername}`;
+      case 'twitter':
+        return `https://twitter.com/${cleanUsername}`;
+      case 'linkedin':
+        return `https://linkedin.com/in/${cleanUsername}`;
+      case 'youtube':
+        return `https://youtube.com/@${cleanUsername}`;
+      case 'tiktok':
+        return `https://tiktok.com/@${cleanUsername}`;
+      default:
+        return cleanUsername;
+    }
+  };
+
+  // Add social media block with formatted URL
+  const handleAddSocial = () => {
+    if (!newSocialUsername.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a username",
+      });
+      return;
+    }
+
+    const url = buildSocialUrl(newSocialPlatform, newSocialUsername);
+    
+    addBlock("social", { 
+      platform: newSocialPlatform,
+      url: url,
+    });
+
+    // Reset and close
+    setNewSocialUsername("");
+    setNewSocialPlatform("instagram");
+    setIsAddSocialOpen(false);
   };
 
   const handlePageTitleSave = () => {
@@ -1574,63 +1625,6 @@ export default function LandingPageBuilder() {
                   See Another Blocks
                 </Button>
               </div>
-
-              <Separator />
-
-              {/* Social Media Section */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-sm">Social Media</h3>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <Minus className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {SOCIAL_PLATFORMS.map((platform) => {
-                    const Icon = platform.icon;
-                    // Find if there's already a social block for this platform
-                    const existingBlock = blocks.find(
-                      b => b.type === "social" && b.content.platform === platform.value
-                    );
-                    
-                    return (
-                      <div
-                        key={platform.value}
-                        className="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 transition-all group"
-                      >
-                        <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: platform.color }}
-                        >
-                          <Icon className="w-3.5 h-3.5 text-white" />
-                        </div>
-                        <span className="flex-1 text-xs text-gray-600 dark:text-gray-300">{platform.label}</span>
-                        {existingBlock ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteBlockMutation.mutate(existingBlock.id)}
-                            className="h-7 w-7 p-0 text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                            data-testid={`button-delete-social-${platform.value}`}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => addBlock("social", { platform: platform.value })}
-                            className="h-7 w-7 p-0 text-green-400 hover:text-green-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                            data-testid={`button-add-social-${platform.value}`}
-                          >
-                            <Plus className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </ScrollArea>
         </div>
@@ -2274,6 +2268,66 @@ export default function LandingPageBuilder() {
                             placeholder="your.email@example.com"
                             data-testid="input-profile-email"
                           />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Social Media Section */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold">Social Media</h3>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsAddSocialOpen(true)}
+                            className="h-7 w-7 p-0"
+                            data-testid="button-add-social-media"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2">
+                          {blocks.filter(b => b.type === "social").map((block) => {
+                            const platform = SOCIAL_PLATFORMS.find(
+                              (p) => p.value === block.content.platform
+                            );
+                            if (!platform) return null;
+                            const Icon = platform.icon;
+
+                            return (
+                              <div
+                                key={block.id}
+                                className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200 group hover:border-blue-400 transition-all"
+                              >
+                                <div
+                                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                                  style={{ backgroundColor: platform.color }}
+                                >
+                                  <Icon className="w-4 h-4 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-gray-900">{platform.label}</p>
+                                  <p className="text-xs text-gray-500 truncate">{block.content.url}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteBlockMutation.mutate(block.id)}
+                                  className="h-7 w-7 p-0 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  data-testid={`button-delete-social-${block.id}`}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                          {blocks.filter(b => b.type === "social").length === 0 && (
+                            <p className="text-xs text-gray-500 text-center py-4">
+                              No social media added yet
+                            </p>
+                          )}
                         </div>
                       </div>
                     </>
@@ -2939,6 +2993,101 @@ export default function LandingPageBuilder() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Social Media Dialog */}
+      <Dialog open={isAddSocialOpen} onOpenChange={setIsAddSocialOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Social Media</DialogTitle>
+            <DialogDescription>
+              Choose a platform and enter your username
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="social-platform" className="text-sm mb-2 block">
+                Platform
+              </Label>
+              <Select
+                value={newSocialPlatform}
+                onValueChange={setNewSocialPlatform}
+              >
+                <SelectTrigger id="social-platform" data-testid="select-social-platform">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOCIAL_PLATFORMS.map((platform) => {
+                    const Icon = platform.icon;
+                    return (
+                      <SelectItem key={platform.value} value={platform.value}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: platform.color }}
+                          >
+                            <Icon className="w-3 h-3 text-white" />
+                          </div>
+                          {platform.label}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="social-username" className="text-sm mb-2 block">
+                Username
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  {newSocialPlatform === 'linkedin' ? 'in/' : 
+                   newSocialPlatform === 'youtube' || newSocialPlatform === 'tiktok' ? '@' : ''}
+                </span>
+                <Input
+                  id="social-username"
+                  value={newSocialUsername}
+                  onChange={(e) => setNewSocialUsername(e.target.value)}
+                  placeholder="yourusername"
+                  className={newSocialPlatform === 'linkedin' ? 'pl-10' : 
+                            (newSocialPlatform === 'youtube' || newSocialPlatform === 'tiktok') ? 'pl-7' : ''}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddSocial();
+                    }
+                  }}
+                  data-testid="input-social-username"
+                  autoFocus
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                URL: {buildSocialUrl(newSocialPlatform, newSocialUsername || 'yourusername')}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddSocialOpen(false);
+                setNewSocialUsername("");
+                setNewSocialPlatform("instagram");
+              }}
+              data-testid="button-cancel-social"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddSocial}
+              disabled={!newSocialUsername.trim()}
+              data-testid="button-save-social"
+            >
+              Add Social Media
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
