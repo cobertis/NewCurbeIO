@@ -18189,8 +18189,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (data.phone && twilioService.isInitialized()) {
         try {
           // Get agent and company information
-          const agent = await storage.getUserById(landingPage.userId);
-          const company = await storage.getCompanyById(landingPage.companyId);
+          const agent = await storage.getUser(landingPage.userId);
+          const company = await storage.getCompany(landingPage.companyId);
           
           if (agent && company) {
             // Normalize phone number to E.164 format for Twilio
