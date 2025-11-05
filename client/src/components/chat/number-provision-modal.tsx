@@ -99,23 +99,12 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
   const [step, setStep] = useState<Step>("search");
   const [selectedState, setSelectedState] = useState<string>("");
   const [areaCode, setAreaCode] = useState<string>("");
-  const [exchangeCode, setExchangeCode] = useState<string>(""); // NXX - middle 3 digits
-  const [resultLimit, setResultLimit] = useState<string>("100");
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [selectedDID, setSelectedDID] = useState<string | null>(null);
   const [campaignId, setCampaignId] = useState<string>("");
   const [enableSmsMms, setEnableSmsMms] = useState<boolean>(true);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const resultsPerPage = 20;
 
   const selectedNumber = availableNumbers.find((num) => num.did === selectedDID);
-
-  // Paginate results
-  const totalPages = Math.ceil(availableNumbers.length / resultsPerPage);
-  const paginatedNumbers = availableNumbers.slice(
-    (currentPage - 1) * resultsPerPage,
-    currentPage * resultsPerPage
-  );
 
   const searchMutation = useMutation({
     mutationFn: async () => {
@@ -125,16 +114,6 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
 
       const params = new URLSearchParams();
       params.append("npa", areaCode); // BulkVS requires area code (npa)
-      
-      // Optional: search for specific exchange code (middle 3 digits)
-      if (exchangeCode && exchangeCode.length === 3) {
-        params.append("nxx", exchangeCode);
-      }
-      
-      // Set limit for API results
-      if (resultLimit) {
-        params.append("limit", resultLimit);
-      }
 
       const response = await fetch(`/api/bulkvs/numbers/available?${params}`, {
         credentials: "include",
@@ -150,12 +129,11 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
     onSuccess: (data) => {
       if (Array.isArray(data) && data.length > 0) {
         setAvailableNumbers(data);
-        setCurrentPage(1); // Reset to first page
         setStep("select");
       } else {
         toast({
           title: "No numbers available",
-          description: "No numbers available for this search. Try different criteria.",
+          description: "No numbers available for this area code. Try a different area code.",
           variant: "destructive",
         });
       }
@@ -263,57 +241,22 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
         <div className="space-y-6">
           {step === "search" && (
             <div className="space-y-4" data-testid="step-search">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="area-code" data-testid="label-area-code">
-                    Area Code (NPA) *
-                  </Label>
-                  <Input
-                    id="area-code"
-                    type="text"
-                    placeholder="e.g., 305"
-                    maxLength={3}
-                    value={areaCode}
-                    onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, ""))}
-                    data-testid="input-area-code"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="exchange-code" data-testid="label-exchange-code">
-                    Exchange Code (NXX)
-                  </Label>
-                  <Input
-                    id="exchange-code"
-                    type="text"
-                    placeholder="e.g., 123"
-                    maxLength={3}
-                    value={exchangeCode}
-                    onChange={(e) => setExchangeCode(e.target.value.replace(/\D/g, ""))}
-                    data-testid="input-exchange-code"
-                  />
-                </div>
-              </div>
-
-              <p className="text-sm text-muted-foreground">
-                Format: (NPA) NXX-XXXX. Area code is required, exchange code is optional to find specific number patterns.
-              </p>
-
               <div className="space-y-2">
-                <Label htmlFor="result-limit" data-testid="label-result-limit">
-                  Maximum Results
+                <Label htmlFor="area-code" data-testid="label-area-code">
+                  Area Code *
                 </Label>
-                <Select value={resultLimit} onValueChange={setResultLimit}>
-                  <SelectTrigger id="result-limit" data-testid="select-result-limit">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="50">50 numbers</SelectItem>
-                    <SelectItem value="100">100 numbers</SelectItem>
-                    <SelectItem value="200">200 numbers</SelectItem>
-                    <SelectItem value="500">500 numbers</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="area-code"
+                  type="text"
+                  placeholder="e.g., 305 for Miami, 212 for New York"
+                  maxLength={3}
+                  value={areaCode}
+                  onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, ""))}
+                  data-testid="input-area-code"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Enter the 3-digit area code where you want a phone number
+                </p>
               </div>
 
               <Button
@@ -349,17 +292,14 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Back to Search
                 </Button>
-                <div className="text-sm text-muted-foreground">
-                  <p>{availableNumbers.length} numbers found</p>
-                  {totalPages > 1 && (
-                    <p>Page {currentPage} of {totalPages}</p>
-                  )}
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  {availableNumbers.length} numbers found
+                </p>
               </div>
 
               <RadioGroup value={selectedDID || ""} onValueChange={setSelectedDID}>
                 <div className="space-y-2 max-h-96 overflow-y-auto" data-testid="numbers-list">
-                  {paginatedNumbers.map((number) => (
+                  {availableNumbers.map((number) => (
                     <Card
                       key={number.did}
                       className={`cursor-pointer transition-colors ${
@@ -396,32 +336,6 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
                   ))}
                 </div>
               </RadioGroup>
-
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    data-testid="button-prev-page"
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    data-testid="button-next-page"
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
 
               <Button
                 onClick={handleNext}
