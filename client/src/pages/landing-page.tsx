@@ -3208,7 +3208,312 @@ export default function LandingPageBuilder() {
                 </>
               )}
 
-              {/* Add other block type editors (maps, lead-form, calendar, testimonials, faq, stats) with same pattern */}
+              {editingBlock.type === "lead-form" && (
+                <>
+                  <div>
+                    <Label>Title</Label>
+                    <Input
+                      value={editingBlock.content.title || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            title: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Get Started"
+                      data-testid="input-leadform-title"
+                    />
+                  </div>
+                  <div>
+                    <Label>Subtitle</Label>
+                    <Textarea
+                      value={editingBlock.content.subtitle || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            subtitle: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Fill out this form to get in touch"
+                      rows={2}
+                      data-testid="input-leadform-subtitle"
+                    />
+                  </div>
+                  <div>
+                    <Label>Submit Button Text</Label>
+                    <Input
+                      value={editingBlock.content.submitText || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            submitText: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Submit"
+                      data-testid="input-leadform-submit"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "calendar" && (
+                <>
+                  <div>
+                    <Label>Title</Label>
+                    <Input
+                      value={editingBlock.content.title || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            title: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Schedule a Meeting"
+                      data-testid="input-calendar-title"
+                    />
+                  </div>
+                  <div>
+                    <Label>Description</Label>
+                    <Textarea
+                      value={editingBlock.content.subtitle || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            subtitle: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Book a time that works for you"
+                      rows={2}
+                      data-testid="input-calendar-description"
+                    />
+                  </div>
+                  <div>
+                    <Label>Booking URL (Calendly, Cal.com, etc.)</Label>
+                    <Input
+                      value={editingBlock.content.url || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            url: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="https://calendly.com/yourname"
+                      data-testid="input-calendar-url"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "testimonials" && (
+                <>
+                  <div>
+                    <Label>Reviewer Name</Label>
+                    <Input
+                      value={editingBlock.content.reviews?.[0]?.name || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            reviews: [{
+                              ...(editingBlock.content.reviews?.[0] || {}),
+                              name: e.target.value,
+                            }],
+                          },
+                        })
+                      }
+                      placeholder="John Doe"
+                      data-testid="input-testimonial-name"
+                    />
+                  </div>
+                  <div>
+                    <Label>Role/Title</Label>
+                    <Input
+                      value={editingBlock.content.reviews?.[0]?.role || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            reviews: [{
+                              ...(editingBlock.content.reviews?.[0] || {}),
+                              role: e.target.value,
+                            }],
+                          },
+                        })
+                      }
+                      placeholder="CEO, Company"
+                      data-testid="input-testimonial-role"
+                    />
+                  </div>
+                  <div>
+                    <Label>Review Text</Label>
+                    <Textarea
+                      value={editingBlock.content.reviews?.[0]?.text || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            reviews: [{
+                              ...(editingBlock.content.reviews?.[0] || {}),
+                              text: e.target.value,
+                            }],
+                          },
+                        })
+                      }
+                      placeholder="This service was excellent!"
+                      rows={3}
+                      data-testid="input-testimonial-text"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "faq" && (
+                <>
+                  <div>
+                    <Label>Question</Label>
+                    <Input
+                      value={editingBlock.content.items?.[0]?.question || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            items: [{
+                              ...(editingBlock.content.items?.[0] || {}),
+                              question: e.target.value,
+                            }],
+                          },
+                        })
+                      }
+                      placeholder="What is your question?"
+                      data-testid="input-faq-question"
+                    />
+                  </div>
+                  <div>
+                    <Label>Answer</Label>
+                    <Textarea
+                      value={editingBlock.content.items?.[0]?.answer || ""}
+                      onChange={(e) =>
+                        setEditingBlock({
+                          ...editingBlock,
+                          content: {
+                            ...editingBlock.content,
+                            items: [{
+                              ...(editingBlock.content.items?.[0] || {}),
+                              answer: e.target.value,
+                            }],
+                          },
+                        })
+                      }
+                      placeholder="Here is the answer to your question."
+                      rows={4}
+                      data-testid="input-faq-answer"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingBlock.type === "stats" && (
+                <>
+                  <div className="space-y-4">
+                    <Label>Add Stats (up to 4)</Label>
+                    {[0, 1].map((idx) => (
+                      <div key={idx} className="p-3 border rounded-lg space-y-2">
+                        <Label className="text-xs">Stat {idx + 1}</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Value</Label>
+                            <Input
+                              value={editingBlock.content.stats?.[idx]?.value || ""}
+                              onChange={(e) => {
+                                const newStats = editingBlock.content.stats || [];
+                                newStats[idx] = {
+                                  ...(newStats[idx] || {}),
+                                  value: e.target.value,
+                                };
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    stats: newStats,
+                                  },
+                                });
+                              }}
+                              placeholder="100"
+                              data-testid={`input-stat-${idx}-value`}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Suffix</Label>
+                            <Input
+                              value={editingBlock.content.stats?.[idx]?.suffix || ""}
+                              onChange={(e) => {
+                                const newStats = editingBlock.content.stats || [];
+                                newStats[idx] = {
+                                  ...(newStats[idx] || {}),
+                                  suffix: e.target.value,
+                                };
+                                setEditingBlock({
+                                  ...editingBlock,
+                                  content: {
+                                    ...editingBlock.content,
+                                    stats: newStats,
+                                  },
+                                });
+                              }}
+                              placeholder="+"
+                              data-testid={`input-stat-${idx}-suffix`}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Label</Label>
+                          <Input
+                            value={editingBlock.content.stats?.[idx]?.label || ""}
+                            onChange={(e) => {
+                              const newStats = editingBlock.content.stats || [];
+                              newStats[idx] = {
+                                ...(newStats[idx] || {}),
+                                label: e.target.value,
+                              };
+                              setEditingBlock({
+                                ...editingBlock,
+                                content: {
+                                  ...editingBlock.content,
+                                  stats: newStats,
+                                },
+                              });
+                            }}
+                            placeholder="Clients Served"
+                            data-testid={`input-stat-${idx}-label`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
           <SheetFooter>
