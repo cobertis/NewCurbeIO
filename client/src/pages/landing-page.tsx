@@ -63,6 +63,7 @@ import {
   Loader2,
   Menu,
 } from "lucide-react";
+import { SiTiktok, SiWhatsapp } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -429,7 +430,9 @@ const SOCIAL_PLATFORMS = [
   { value: "twitter", label: "Twitter", icon: Twitter, color: "#1DA1F2" },
   { value: "linkedin", label: "LinkedIn", icon: Linkedin, color: "#0A66C2" },
   { value: "youtube", label: "YouTube", icon: Youtube, color: "#FF0000" },
-  { value: "tiktok", label: "TikTok", icon: Video, color: "#000000" },
+  { value: "tiktok", label: "TikTok", icon: SiTiktok, color: "#000000" },
+  { value: "whatsapp", label: "WhatsApp", icon: SiWhatsapp, color: "#25D366" },
+  { value: "email", label: "Email", icon: Mail, color: "#EA4335" },
 ];
 
 // Block types for the sidebar
