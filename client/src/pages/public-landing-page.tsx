@@ -38,6 +38,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { MapBlockDisplay } from "@/components/map-block-display";
 import { useToast } from "@/hooks/use-toast";
 
 type LandingPage = {
@@ -427,56 +428,19 @@ function PublicBlock({
       );
 
     case "maps":
-      const mapsApiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
-      const mapZoom = block.content.zoom || 14;
-      
-      let mapEmbedUrl: string;
-      if (mapsApiKey) {
-        // Use Google Maps Embed API with API key
-        if (block.content.latitude && block.content.longitude) {
-          // If coordinates are provided, use them directly
-          mapEmbedUrl = `https://www.google.com/maps/embed/v1/view?key=${mapsApiKey}&center=${block.content.latitude},${block.content.longitude}&zoom=${mapZoom}`;
-        } else {
-          // Fall back to address-based embed
-          const encodedAddress = encodeURIComponent(block.content.address || "New York, NY");
-          mapEmbedUrl = `https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodedAddress}&zoom=${mapZoom}`;
-        }
-      } else {
-        // Fallback without API key (less reliable)
-        if (block.content.latitude && block.content.longitude) {
-          mapEmbedUrl = `https://www.google.com/maps?q=${block.content.latitude},${block.content.longitude}&z=${mapZoom}&output=embed`;
-        } else {
-          mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(block.content.address || '')}&output=embed`;
-        }
-      }
-      
       return (
-        <Card className="overflow-hidden rounded-[18px] shadow-lg transition-all duration-300 hover:shadow-xl relative" data-testid={`maps-block-${block.id}`}>
-          <iframe
-            src={mapEmbedUrl}
-            width="100%"
-            height="300"
-            style={{ border: 0 }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
+        <div onClick={() => onTrackClick(block.id)}>
+          <MapBlockDisplay
+            placeId={block.content.placeId}
+            latitude={block.content.latitude}
+            longitude={block.content.longitude}
+            formattedAddress={block.content.formattedAddress || block.content.address}
+            zoomLevel={block.content.zoom || 15}
+            height="300px"
+            showButton={true}
+            buttonColor={theme?.buttonColor || theme?.primaryColor || "#3B82F6"}
           />
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <Button 
-              className="rounded-lg shadow-xl pointer-events-auto"
-              style={{ backgroundColor: "#3B82F6", color: "#ffffff" }}
-              onClick={(e) => {
-                e.preventDefault();
-                onTrackClick(block.id);
-                const url = block.content.latitude && block.content.longitude
-                  ? `https://www.google.com/maps?q=${block.content.latitude},${block.content.longitude}`
-                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(block.content.address || '')}`;
-                window.open(url, '_blank');
-              }}
-            >
-              See Our Location
-            </Button>
-          </div>
-        </Card>
+        </div>
       );
 
     case "lead-form":
