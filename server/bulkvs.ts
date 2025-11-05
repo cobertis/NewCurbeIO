@@ -47,19 +47,29 @@ class BulkVSClient {
   }
 
   async listAvailableDIDs(params: {
-    npa?: string;
-    ratecenter?: string;
-    state?: string;
+    npa: string; // Required by BulkVS API
+    nxx?: string;
+    lca?: string;
     limit?: number;
   }) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
-      console.log("[BulkVS] Searching for available DIDs with params:", params);
-      const response = await this.client.get("/didAvailableList", { params });
+      // BulkVS API uses capital first letter for params
+      const apiParams: any = {
+        Npa: params.npa,
+      };
+      
+      if (params.nxx) apiParams.Nxx = params.nxx;
+      if (params.lca) apiParams.Lca = params.lca;
+      if (params.limit) apiParams.Limit = params.limit;
+      
+      console.log("[BulkVS] Searching for available DIDs with params:", apiParams);
+      const response = await this.client.get("/orderTn", { params: apiParams });
       console.log("[BulkVS] API Response status:", response.status);
-      console.log("[BulkVS] API Response data type:", typeof response.data);
       console.log("[BulkVS] API Response data:", JSON.stringify(response.data).substring(0, 500));
+      
+      // API returns array with TN, Rate Center, State, Tier, Per Minute Rate, Mrc, Nrc
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] listAvailableDIDs error:", error.response?.data || error.message);
@@ -67,13 +77,12 @@ class BulkVSClient {
     }
   }
 
-  async buyDID(did: string) {
+  async buyDID(tn: string) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
-      const response = await this.client.post("/didPurchase", {
-        accountId: this.accountId,
-        did,
+      const response = await this.client.post("/orderTn", {
+        TN: tn, // BulkVS API uses capital TN
       });
       return response.data;
     } catch (error: any) {

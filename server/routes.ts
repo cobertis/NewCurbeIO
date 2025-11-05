@@ -18699,20 +18699,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // 1. GET /api/bulkvs/numbers/available - Search available phone numbers
   app.get("/api/bulkvs/numbers/available", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const { state, npa, ratecenter, limit } = req.query;
+      const { npa, nxx, lca, limit } = req.query;
       
       if (!bulkVSClient.isConfigured()) {
         return res.status(503).json({ message: "BulkVS service is not configured" });
       }
       
-      const params: any = {};
-      if (state) params.state = state as string;
-      if (npa) params.npa = npa as string;
-      if (ratecenter) params.ratecenter = ratecenter as string;
+      if (!npa) {
+        return res.status(400).json({ message: "Area code (npa) is required" });
+      }
+      
+      const params: any = {
+        npa: npa as string,
+      };
+      if (nxx) params.nxx = nxx as string;
+      if (lca) params.lca = lca as string;
       if (limit) params.limit = parseInt(limit as string);
+      else params.limit = 100; // Default limit
       
       const availableDIDs = await bulkVSClient.listAvailableDIDs(params);
-      res.json(availableDIDs);
+      
+      // Transform BulkVS response to our format
+      // BulkVS returns: TN, Rate Center, State, Tier, Per Minute Rate, Mrc, Nrc
+      const formattedResults = Array.isArray(availableDIDs) ? availableDIDs.map((item: any) => ({
+        did: item.TN,
+        npa: item.TN?.substring(1, 4), // Extract area code from phone number
+        state: item.State,
+        ratecenter: item["Rate Center"],
+        price: parseFloat(item.Mrc || "0"), // Monthly recurring cost
+      })) : [];
+      
+      res.json(formattedResults);
     } catch (error: any) {
       console.error("Error fetching available numbers:", error);
       res.status(500).json({ message: "Failed to fetch available numbers", error: error.message });

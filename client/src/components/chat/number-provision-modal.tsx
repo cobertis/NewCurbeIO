@@ -108,15 +108,12 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
 
   const searchMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedState) {
-        throw new Error("Please select a state");
+      if (!areaCode || areaCode.length !== 3) {
+        throw new Error("Please enter a valid 3-digit area code");
       }
 
       const params = new URLSearchParams();
-      params.append("state", selectedState);
-      if (areaCode && areaCode.length === 3) {
-        params.append("npa", areaCode);
-      }
+      params.append("npa", areaCode); // BulkVS requires area code (npa)
 
       const response = await fetch(`/api/bulkvs/numbers/available?${params}`, {
         credentials: "include",
@@ -130,13 +127,13 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.numbers && data.numbers.length > 0) {
-        setAvailableNumbers(data.numbers);
+      if (Array.isArray(data) && data.length > 0) {
+        setAvailableNumbers(data);
         setStep("select");
       } else {
         toast({
           title: "No numbers available",
-          description: "No numbers available for this area. Try different search criteria.",
+          description: "No numbers available for this area code. Try a different area code.",
           variant: "destructive",
         });
       }
@@ -244,48 +241,27 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
         <div className="space-y-6">
           {step === "search" && (
             <div className="space-y-4" data-testid="step-search">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="state" data-testid="label-state">
-                    State *
-                  </Label>
-                  <Select value={selectedState} onValueChange={setSelectedState}>
-                    <SelectTrigger id="state" data-testid="select-state">
-                      <SelectValue placeholder="Select a state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {US_STATES.map((state) => (
-                        <SelectItem key={state.value} value={state.value} data-testid={`state-option-${state.value}`}>
-                          {state.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="area-code" data-testid="label-area-code">
-                    Area Code (Optional)
-                  </Label>
-                  <Input
-                    id="area-code"
-                    type="text"
-                    placeholder="e.g., 305"
-                    maxLength={3}
-                    value={areaCode}
-                    onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, ""))}
-                    data-testid="input-area-code"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="area-code" data-testid="label-area-code">
+                  Area Code *
+                </Label>
+                <Input
+                  id="area-code"
+                  type="text"
+                  placeholder="e.g., 305 for Miami, 212 for New York"
+                  maxLength={3}
+                  value={areaCode}
+                  onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, ""))}
+                  data-testid="input-area-code"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Enter the 3-digit area code where you want a phone number
+                </p>
               </div>
-
-              <p className="text-sm text-muted-foreground">
-                Enter 3 digits to search for numbers in a specific area code
-              </p>
 
               <Button
                 onClick={handleSearch}
-                disabled={!selectedState || searchMutation.isPending}
+                disabled={!areaCode || areaCode.length !== 3 || searchMutation.isPending}
                 className="w-full"
                 data-testid="button-search-numbers"
               >
