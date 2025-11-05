@@ -233,6 +233,53 @@ class BulkVSClient {
     
     return sanitized;
   }
+
+  /**
+   * Update Call Forwarding for a phone number
+   * Uses POST /tnRecord endpoint to update routing configuration
+   * @param did - Phone number in E.164 format (e.g., +13109060901)
+   * @param forwardNumber - Destination number to forward calls to (E.164 format), or null to disable
+   */
+  async updateCallForwarding(did: string, forwardNumber: string | null) {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    try {
+      // Remove + prefix if present for BulkVS API (they expect 1NXXNXXXXXX format)
+      const tn = did.replace(/^\+/, '');
+      const callForward = forwardNumber ? forwardNumber.replace(/^\+/, '') : "";
+      
+      console.log(`[BulkVS] Updating call forwarding for ${tn}...`);
+      console.log(`[BulkVS] Forward to: ${callForward || "DISABLED"}`);
+      
+      // BulkVS API: POST /tnRecord to update telephone number record
+      const response = await this.client.post("/tnRecord", {
+        TN: tn,
+        "Call Forward": callForward, // Empty string disables call forwarding
+      });
+      
+      console.log("[BulkVS] Call forwarding updated successfully:", response.data);
+      return { 
+        success: true, 
+        forwardNumber: callForward,
+        message: callForward 
+          ? `Call forwarding enabled to ${forwardNumber}` 
+          : "Call forwarding disabled"
+      };
+    } catch (error: any) {
+      console.error("[BulkVS] updateCallForwarding error:", error.response?.data || error.message);
+      
+      // Provide helpful error message
+      if (error.response?.status === 404) {
+        throw new Error("Phone number not found in BulkVS");
+      } else if (error.response?.status === 403) {
+        throw new Error("Insufficient permissions or service not enabled");
+      } else if (error.response?.status === 400) {
+        throw new Error("Invalid phone number format or parameters");
+      }
+      
+      throw new Error(`Failed to update call forwarding: ${error.response?.data?.message || error.message}`);
+    }
+  }
 }
 
 export const bulkVSClient = new BulkVSClient();

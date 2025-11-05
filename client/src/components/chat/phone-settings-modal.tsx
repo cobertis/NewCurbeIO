@@ -243,7 +243,7 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-sm">
-                  Call forwarding must also be configured in the BulkVS portal under Trunk Groups. This setting stores your preference but requires portal configuration to activate.
+                  Call forwarding will be automatically configured via BulkVS API. Changes may take a few moments to propagate.
                 </AlertDescription>
               </Alert>
 

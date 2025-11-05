@@ -18958,6 +18958,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         updateData.callForwardNumber = callForwardNumber;
       }
 
+      // Update Call Forwarding in BulkVS API when settings change
+      if (callForwardEnabled !== undefined || callForwardNumber !== undefined) {
+        try {
+          const forwardTo = updateData.callForwardEnabled === false ? null : (updateData.callForwardNumber || phoneNumber.callForwardNumber);
+          
+          if (updateData.callForwardEnabled || (callForwardEnabled === undefined && phoneNumber.callForwardEnabled)) {
+            const forwardResult = await bulkVSClient.updateCallForwarding(phoneNumber.did, forwardTo);
+            console.log(`[BulkVS] Call forwarding updated successfully for ${phoneNumber.did}:`, forwardResult.message);
+          } else {
+            // Disable call forwarding
+            const forwardResult = await bulkVSClient.updateCallForwarding(phoneNumber.did, null);
+            console.log(`[BulkVS] Call forwarding disabled for ${phoneNumber.did}`);
+          }
+        } catch (error: any) {
+          console.error(`[BulkVS] Failed to update call forwarding for ${phoneNumber.did}:`, error.message);
+          // Return error to user since call forwarding is a critical feature
+          return res.status(500).json({ 
+            message: `Settings saved locally but failed to activate in BulkVS: ${error.message}` 
+          });
+        }
+      }
+
       // Update phone number
       const updated = await storage.updateBulkvsPhoneNumber(id, updateData);
 
