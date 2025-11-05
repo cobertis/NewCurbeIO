@@ -3014,3 +3014,160 @@ export type InsertLandingAppointment = z.infer<typeof insertLandingAppointmentSc
 
 export type AppointmentAvailability = typeof appointmentAvailability.$inferSelect;
 export type InsertAppointmentAvailability = z.infer<typeof insertAppointmentAvailabilitySchema>;
+
+// =====================================================
+// BULKVS CHAT SYSTEM (Individual user SMS/MMS messaging)
+// =====================================================
+
+// BulkVS Phone Numbers - cada usuario tiene su propio número
+export const bulkvsPhoneNumbers = pgTable("bulkvs_phone_numbers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  did: text("did").notNull().unique(), // E.164 format number (e.g., +17865551234)
+  displayName: text("display_name"), // Friendly name for the number
+  
+  smsEnabled: boolean("sms_enabled").notNull().default(false),
+  mmsEnabled: boolean("mms_enabled").notNull().default(false),
+  
+  campaignId: text("campaign_id"), // 10DLC campaign ID
+  webhookUrl: text("webhook_url"),
+  
+  // Metadata
+  areaCode: text("area_code"), // NPA (e.g., "786")
+  rateCenter: text("rate_center"),
+  state: text("state"),
+  
+  status: text("status").notNull().default("active"), // active, suspended, cancelled
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// BulkVS Campaigns - 10DLC campaigns
+export const bulkvsCampaigns = pgTable("bulkvs_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  name: text("name").notNull(),
+  providerId: text("provider_id"), // Campaign ID in BulkVS/TCR
+  brandId: text("brand_id"), // TCR Brand ID
+  useCase: text("use_case"), // Campaign use case description
+  status: text("status").notNull().default("pending"), // pending, active, suspended
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// BulkVS Threads - conversaciones con contactos externos
+export const bulkvsThreads = pgTable("bulkvs_threads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phoneNumberId: varchar("phone_number_id").notNull().references(() => bulkvsPhoneNumbers.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  externalPhone: text("external_phone").notNull(), // E.164 contact phone
+  displayName: text("display_name"), // Contact name
+  
+  labels: text("labels").array().default([]), // Tags tipo WhatsApp ["client", "hot_lead", etc]
+  isPinned: boolean("is_pinned").notNull().default(false),
+  isArchived: boolean("is_archived").notNull().default(false),
+  isMuted: boolean("is_muted").notNull().default(false),
+  
+  unreadCount: integer("unread_count").notNull().default(0),
+  lastMessageAt: timestamp("last_message_at"),
+  lastMessagePreview: text("last_message_preview"), // First 100 chars of last message
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// BulkVS Messages - mensajes SMS/MMS
+export const bulkvsMessages = pgTable("bulkvs_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  threadId: varchar("thread_id").notNull().references(() => bulkvsThreads.id, { onDelete: "cascade" }),
+  
+  direction: text("direction").notNull(), // "inbound" | "outbound"
+  status: text("status").notNull().default("queued"), // queued, sent, delivered, failed, read
+  
+  from: text("from").notNull(), // E.164 sender
+  to: text("to").notNull(), // E.164 recipient
+  
+  body: text("body"), // Message text
+  mediaUrl: text("media_url"), // MMS attachment URL
+  mediaType: text("media_type"), // image/jpeg, image/png, video/mp4, etc
+  
+  providerMsgId: text("provider_msg_id"), // BulkVS message ID
+  errorCode: text("error_code"),
+  errorMessage: text("error_message"),
+  
+  readAt: timestamp("read_at"),
+  deliveredAt: timestamp("delivered_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Create unique index for thread lookup
+export const bulkvsThreadsIndex = unique("bulkvs_threads_unique_idx").on(
+  bulkvsThreads.phoneNumberId,
+  bulkvsThreads.externalPhone
+);
+
+// Insert schemas
+export const insertBulkvsPhoneNumberSchema = createInsertSchema(bulkvsPhoneNumbers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  did: z.string().regex(/^\+[1-9]\d{1,14}$/, "Must be E.164 format (e.g., +17865551234)"),
+  smsEnabled: z.boolean().default(false),
+  mmsEnabled: z.boolean().default(false),
+  status: z.enum(["active", "suspended", "cancelled"]).default("active"),
+});
+
+export const insertBulkvsCampaignSchema = createInsertSchema(bulkvsCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(1).max(200),
+  status: z.enum(["pending", "active", "suspended"]).default("pending"),
+});
+
+export const insertBulkvsThreadSchema = createInsertSchema(bulkvsThreads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  externalPhone: z.string().regex(/^\+[1-9]\d{1,14}$/, "Must be E.164 format"),
+  unreadCount: z.number().int().min(0).default(0),
+});
+
+export const insertBulkvsMessageSchema = createInsertSchema(bulkvsMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  readAt: true,
+  deliveredAt: true,
+}).extend({
+  direction: z.enum(["inbound", "outbound"]),
+  status: z.enum(["queued", "sent", "delivered", "failed", "read"]).default("queued"),
+  from: z.string().regex(/^\+[1-9]\d{1,14}$/, "Must be E.164 format"),
+  to: z.string().regex(/^\+[1-9]\d{1,14}$/, "Must be E.164 format"),
+  body: z.string().max(1600).optional(), // SMS limit
+});
+
+// Types
+export type BulkvsPhoneNumber = typeof bulkvsPhoneNumbers.$inferSelect;
+export type InsertBulkvsPhoneNumber = z.infer<typeof insertBulkvsPhoneNumberSchema>;
+
+export type BulkvsCampaign = typeof bulkvsCampaigns.$inferSelect;
+export type InsertBulkvsCampaign = z.infer<typeof insertBulkvsCampaignSchema>;
+
+export type BulkvsThread = typeof bulkvsThreads.$inferSelect;
+export type InsertBulkvsThread = z.infer<typeof insertBulkvsThreadSchema>;
+
+export type BulkvsMessage = typeof bulkvsMessages.$inferSelect;
+export type InsertBulkvsMessage = z.infer<typeof insertBulkvsMessageSchema>;
