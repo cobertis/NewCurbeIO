@@ -175,9 +175,6 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
                 <p className="text-2xl font-bold" data-testid="phone-number">
                   {formatPhoneNumber(phoneNumber.did)}
                 </p>
-                <p className="text-sm text-muted-foreground" data-testid="area-code">
-                  Area Code: {phoneNumber.areaCode}
-                </p>
               </div>
 
               <Separator />
