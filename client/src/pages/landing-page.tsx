@@ -1586,42 +1586,42 @@ export default function LandingPageBuilder() {
           showMarker: true,
         },
         "lead-form": {
-          title: "Request a Free Quote",
-          subtitle: "Get your personalized insurance quote in minutes",
+          title: "Solicita una Cotización Gratis",
+          subtitle: "Obtén tu cotización personalizada en minutos",
           fields: [
-            { name: "fullName", type: "text", required: true, placeholder: "Full Name" },
-            { name: "email", type: "email", required: true, placeholder: "Email Address" },
-            { name: "phone", type: "tel", required: true, placeholder: "Phone Number" },
-            { name: "message", type: "textarea", required: false, placeholder: "Tell us about your insurance needs" },
+            { name: "fullName", type: "text", required: true, placeholder: "Nombre Completo" },
+            { name: "email", type: "email", required: true, placeholder: "Correo Electrónico" },
+            { name: "phone", type: "tel", required: true, placeholder: "Número de Teléfono" },
+            { name: "message", type: "textarea", required: false, placeholder: "Cuéntanos sobre tus necesidades de seguro" },
           ],
-          submitText: "Get My Free Quote",
-          successMessage: "Thank you! We'll contact you within 24 hours with your personalized quote.",
+          submitText: "Obtener Cotización Gratis",
+          successMessage: "¡Gracias! Te contactaremos en 24 horas con tu cotización personalizada.",
           sendNotification: true,
         },
         calendar: {
-          title: "Schedule a Meeting",
-          subtitle: "Pick a time that works for you",
+          title: "Programar llamada",
+          subtitle: "Elige un horario que te funcione",
           availableDays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
           availableHours: { start: "09:00", end: "17:00" },
           duration: 30,
           timezone: "America/New_York",
-          successMessage: "Your appointment has been scheduled!",
+          successMessage: "¡Tu cita ha sido agendada!",
         },
         testimonials: {
           reviews: [
-            { name: "John Doe", role: "CEO", photo: "", rating: 5, text: "Great service!" },
+            { name: "Juan Pérez", role: "CEO", photo: "", rating: 5, text: "¡Excelente servicio!" },
           ],
           layout: "carousel",
         },
         faq: {
           items: [
-            { question: "How can I help you?", answer: "We're here to assist with any questions." },
+            { question: "¿Cómo puedo ayudarte?", answer: "Estamos aquí para asistirte con cualquier pregunta." },
           ],
         },
         stats: {
           stats: [
-            { label: "Happy Clients", value: "500", suffix: "+", icon: "users" },
-            { label: "Projects", value: "100", suffix: "+", icon: "briefcase" },
+            { label: "Clientes Felices", value: "500", suffix: "+", icon: "users" },
+            { label: "Proyectos", value: "100", suffix: "+", icon: "briefcase" },
           ],
         },
       };
@@ -3447,7 +3447,7 @@ export default function LandingPageBuilder() {
                           },
                         })
                       }
-                      placeholder="Schedule a Meeting"
+                      placeholder="Programar llamada"
                       data-testid="input-calendar-title"
                     />
                   </div>
@@ -3464,7 +3464,7 @@ export default function LandingPageBuilder() {
                           },
                         })
                       }
-                      placeholder="Book a time that works for you"
+                      placeholder="Elige un horario que te funcione"
                       rows={2}
                       data-testid="input-calendar-description"
                     />
