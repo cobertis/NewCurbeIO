@@ -164,7 +164,10 @@ export default function Leads() {
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), "d 'de' MMM, yyyy", { locale: es });
+      // Parse date as YYYY-MM-DD without timezone conversion
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return format(date, "MMM d, yyyy");
     } catch {
       return dateString;
     }
