@@ -134,6 +134,10 @@ type LandingPage = {
     textColor: string;
     buttonColor?: string;
     buttonTextColor?: string;
+    fontFamily?: string;
+    font?: string;
+    fontWeight?: string;
+    backgroundGradient?: string;
   };
   seo: {
     title?: string;
@@ -1988,18 +1992,16 @@ export default function LandingPageBuilder() {
                           }}
                         >
                           {/* Profile Info - COMPACT and CLEAN */}
-                          <div className="relative z-50 text-center mb-4 -mt-2">
+                          <div className="relative z-50 text-center -mt-2" style={{ marginBottom: "16px", border: "none" }}>
                             {selectedPage.landingPage.profileName && (
-                              <div className="flex items-center justify-center gap-1.5" style={{ border: "none", borderBottom: "none" }}>
+                              <div className="flex items-center justify-center gap-1.5 mb-1">
                                 <h1
-                                  className="text-2xl font-bold mb-0 no-underline"
+                                  className="text-2xl font-bold"
                                   style={{ 
                                     color: "#000000",
-                                    textDecoration: "none",
+                                    margin: 0,
+                                    padding: 0,
                                     border: "none",
-                                    borderBottom: "none",
-                                    outline: "none",
-                                    boxShadow: "none",
                                   }}
                                 >
                                   {selectedPage.landingPage.profileName}
@@ -2012,6 +2014,7 @@ export default function LandingPageBuilder() {
                             {selectedPage.landingPage.profileBio && (
                               <p
                                 className="text-sm leading-relaxed text-gray-600"
+                                style={{ margin: 0, padding: 0, border: "none" }}
                               >
                                 {selectedPage.landingPage.profileBio}
                               </p>
