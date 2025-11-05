@@ -303,7 +303,15 @@ export default function Calendar() {
                                   {event.appointmentPhone && (
                                     <>
                                       <span>•</span>
-                                      <span className="truncate">{event.appointmentPhone}</span>
+                                      <span className="truncate">
+                                        {(() => {
+                                          const cleaned = event.appointmentPhone.replace(/\D/g, "");
+                                          if (cleaned.length === 10) {
+                                            return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+                                          }
+                                          return event.appointmentPhone;
+                                        })()}
+                                      </span>
                                     </>
                                   )}
                                 </div>
