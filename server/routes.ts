@@ -18811,20 +18811,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Purchase the DID from BulkVS
       console.log(`[BulkVS] Purchasing DID ${did}...`);
-      await bulkVSClient.buyDID(did);
-      
-      // Enable SMS/MMS
-      console.log(`[BulkVS] Enabling SMS/MMS for ${did}...`);
-      await bulkVSClient.enableSmsMms(did);
-      
-      // Set webhook URL
-      const webhookUrl = `${req.protocol}://${req.get('host')}/api/webhooks/bulkvs?secret=${process.env.WEBHOOK_SECRET || 'default-secret'}`;
-      console.log(`[BulkVS] Setting webhook URL for ${did}: ${webhookUrl}`);
-      await bulkVSClient.setMessagingWebhook(did, webhookUrl);
-      
-      // Automatically assign to fixed campaign ID
-      console.log(`[BulkVS] Assigning ${did} to campaign ${FIXED_CAMPAIGN_ID}...`);
-      await bulkVSClient.assignToCampaign(did, FIXED_CAMPAIGN_ID);
+      try {
+        await bulkVSClient.buyDID(did);
+      } catch (error: any) {
+        console.error(`[BulkVS] Failed to purchase DID:`, error.message);
+        return res.status(500).json({ message: `Failed to purchase phone number: ${error.message}` });
+      }
       
       // Extract metadata from DID
       const areaCode = did.substring(2, 5); // E.164 format: +1NXXNXXXXXX
@@ -18898,14 +18890,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const nextBillingDate = new Date();
       nextBillingDate.setDate(nextBillingDate.getDate() + 30);
       
-      // Save to database with billing info
-      const phoneNumber = await storage.createBulkvsPhoneNumber({
+      // Prepare webhook URL
+      const webhookUrl = `${req.protocol}://${req.get('host')}/api/webhooks/bulkvs?secret=${process.env.WEBHOOK_SECRET || 'default-secret'}`;
+      
+      // Save to database with billing info (initially without full activation)
+      let phoneNumber = await storage.createBulkvsPhoneNumber({
         userId: user.id,
         companyId: user.companyId,
         did,
         displayName: displayName || company.name, // Use company name as default
-        smsEnabled: true,
-        mmsEnabled: true,
+        smsEnabled: false, // Will be updated by activateNumber
+        mmsEnabled: false, // Will be updated by activateNumber
         campaignId: FIXED_CAMPAIGN_ID,
         webhookUrl,
         areaCode,
@@ -18918,9 +18913,61 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         billingStatus: "active",
       });
       
-      console.log(`[BulkVS] Phone number ${did} provisioned with Stripe subscription ${subscription.id}`);
+      console.log(`[BulkVS] Phone number ${did} created in database, starting activation...`);
       
-      res.json(phoneNumber);
+      // Activate number: SMS/MMS, webhook, CNAM, campaign, call forwarding
+      try {
+        const activationResult = await bulkVSClient.activateNumber({
+          did,
+          companyName: company.name,
+          webhookUrl,
+          callForwardNumber: null, // No call forwarding by default
+        });
+        
+        // Update database with activation results
+        phoneNumber = await storage.updateBulkvsPhoneNumber(phoneNumber.id, {
+          smsEnabled: activationResult.smsEnabled,
+          mmsEnabled: activationResult.smsEnabled, // MMS enabled with SMS
+          cnam: company.name.substring(0, 15), // Store sanitized CNAM
+        }) || phoneNumber;
+        
+        console.log(`[BulkVS] Phone number ${did} fully activated. Subscription: ${subscription.id}`);
+        
+        // Include activation warnings in response if any
+        if (activationResult.warnings.length > 0) {
+          return res.json({
+            ...phoneNumber,
+            activationWarnings: activationResult.warnings,
+            message: "Phone number provisioned successfully with some warnings. Check activationWarnings for details.",
+          });
+        }
+        
+        res.json(phoneNumber);
+      } catch (activationError: any) {
+        // Activation failed critically (SMS/MMS or webhook setup)
+        console.error(`[BulkVS] Critical activation error for ${did}:`, activationError.message);
+        
+        // Mark number as requiring manual setup
+        await storage.updateBulkvsPhoneNumber(phoneNumber.id, {
+          status: "inactive",
+          smsEnabled: false,
+          mmsEnabled: false,
+        });
+        
+        // Cancel Stripe subscription since number is not functional
+        try {
+          await stripe.subscriptions.cancel(subscription.id);
+          console.log(`[BulkVS] Cancelled Stripe subscription ${subscription.id} due to activation failure`);
+        } catch (cancelError: any) {
+          console.error(`[BulkVS] Failed to cancel subscription:`, cancelError.message);
+        }
+        
+        return res.status(500).json({
+          message: "Phone number purchased but activation failed. No charges will be applied.",
+          error: activationError.message,
+          phoneNumber: { ...phoneNumber, status: "inactive" },
+        });
+      }
     } catch (error: any) {
       console.error("Error provisioning phone number:", error);
       res.status(500).json({ message: "Failed to provision phone number", error: error.message });
