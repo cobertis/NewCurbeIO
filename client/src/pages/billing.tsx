@@ -61,6 +61,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+
+// Format phone number to +1 (XXX) XXX-XXXX
+const formatPhoneNumber = (phone: string) => {
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 11 && cleaned.startsWith("1")) {
+    const match = cleaned.match(/^1(\d{3})(\d{3})(\d{4})$/);
+    if (match) {
+      return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
+    }
+  }
+  return phone;
+};
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1027,7 +1039,7 @@ export default function Billing() {
                           </div>
                           <div>
                             <p className="font-medium" data-testid={`addon-phone-number-${phoneNumber.id}`}>
-                              {phoneNumber.did.replace(/(\d{1})(\d{3})(\d{3})(\d{4})/, '+$1 ($2) $3-$4')}
+                              {formatPhoneNumber(phoneNumber.did)}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {phoneNumber.displayName}
