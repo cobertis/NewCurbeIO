@@ -150,7 +150,7 @@ export function MapBlockDisplay({
 
         const position = { lat: latitude, lng: longitude };
 
-        // Ultra clean map - minimal controls
+        // Clean map - minimal controls
         const map = new window.google.maps.Map(mapRef.current, {
           center: position,
           zoom: zoomLevel,
@@ -162,11 +162,20 @@ export function MapBlockDisplay({
           disableDefaultUI: true,
         });
 
-        // Simple marker - default Google style
+        // Custom marker with your theme color
         new window.google.maps.Marker({
           position: position,
           map: map,
           title: formattedAddress || "Location",
+          icon: {
+            path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+            scale: 5,
+            fillColor: buttonColor,
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 2,
+            rotation: 180, // Point down
+          },
         });
 
         mapInstanceRef.current = map;
@@ -192,7 +201,7 @@ export function MapBlockDisplay({
         mapInstanceRef.current = null;
       }
     };
-  }, [latitude, longitude, formattedAddress, zoomLevel]);
+  }, [latitude, longitude, formattedAddress, zoomLevel, buttonColor]);
 
   if (!latitude || !longitude) {
     return (
@@ -240,7 +249,8 @@ export function MapBlockDisplay({
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formattedAddress)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: buttonColor }}
             data-testid="button-see-location"
           >
             Get Directions →
