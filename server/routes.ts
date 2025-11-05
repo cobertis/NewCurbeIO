@@ -1535,8 +1535,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const body = {
         input: q,
         languageCode: "en",
-        regionCode: "us", // Restrict to US addresses
-        includedPrimaryTypes: ["street_address", "premise"], // Only addresses
+        regionCode: "us", // Restrict to US
+        // Allow addresses AND businesses - no type restriction for Maps block
         includeQueryPredictions: false
       };
 
