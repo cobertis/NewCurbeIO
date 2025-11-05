@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { MapBlockDisplay } from "@/components/map-block-display";
+import { AppointmentBookingDialog } from "@/components/appointment-booking-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 type LandingPage = {
@@ -200,11 +201,13 @@ function PublicBlock({
   theme,
   onTrackClick,
   landingPageId,
+  onOpenAppointmentModal,
 }: {
   block: LandingBlock;
   theme: any;
   onTrackClick: (blockId: string) => void;
   landingPageId: string;
+  onOpenAppointmentModal?: () => void;
 }) {
   const [emailValue, setEmailValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -454,11 +457,12 @@ function PublicBlock({
               <p className="text-sm text-gray-600 mt-1">{block.content.description}</p>
             )}
           </div>
-          <a
-            href={block.content.url || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => onTrackClick(block.id)}
+          <Button
+            onClick={() => {
+              onTrackClick(block.id);
+              onOpenAppointmentModal?.();
+            }}
+            data-testid="button-schedule-appointment"
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90 whitespace-nowrap flex-shrink-0"
             style={{
               backgroundColor: theme.buttonColor || theme.primaryColor,
@@ -466,7 +470,7 @@ function PublicBlock({
             }}
           >
             Agendar →
-          </a>
+          </Button>
         </div>
       );
 
@@ -550,6 +554,7 @@ export default function PublicLandingPage() {
   const slug = matchL ? paramsL?.slug : paramsDirect?.slug;
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -911,6 +916,7 @@ export default function PublicLandingPage() {
                 theme={theme}
                 onTrackClick={trackClick}
                 landingPageId={landingPage.id}
+                onOpenAppointmentModal={() => setAppointmentDialogOpen(true)}
               />
             ))}
         </div>
@@ -924,6 +930,14 @@ export default function PublicLandingPage() {
           <p className="text-sm">Created with Curbe Landing Pages</p>
         </div>
       </div>
+
+      {/* Appointment Booking Modal */}
+      <AppointmentBookingDialog
+        open={appointmentDialogOpen}
+        onOpenChange={setAppointmentDialogOpen}
+        landingPageId={parseInt(landingPage.id, 10)}
+        agentName={landingPage.profileName || 'our team'}
+      />
     </div>
   );
 }

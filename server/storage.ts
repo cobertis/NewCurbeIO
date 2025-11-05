@@ -746,6 +746,8 @@ export interface IStorage {
   // Landing Leads
   createLandingLead(data: InsertLandingLead): Promise<LandingLead>;
   getLandingLeads(landingPageId: string, options?: { limit?: number; offset?: number }): Promise<LandingLead[]>;
+  getLandingLeadsByUser(userId: string, options?: { limit?: number; offset?: number; search?: string }): Promise<LandingLead[]>;
+  getLandingLeadsByCompany(companyId: string, options?: { limit?: number; offset?: number; search?: string }): Promise<LandingLead[]>;
   
   // Landing Appointments
   createLandingAppointment(data: InsertLandingAppointment): Promise<LandingAppointment>;
@@ -5981,6 +5983,108 @@ export class DbStorage implements IStorage {
     }
     
     return await query;
+  }
+  
+  async getLandingLeadsByUser(
+    userId: string,
+    options?: { limit?: number; offset?: number; search?: string }
+  ): Promise<LandingLead[]> {
+    const conditions = [eq(landingPages.userId, userId)];
+
+    if (options?.search) {
+      const searchPattern = `%${options.search}%`;
+      conditions.push(
+        or(
+          like(landingLeads.fullName, searchPattern),
+          like(landingLeads.email, searchPattern),
+          like(landingLeads.phone, searchPattern)
+        )!
+      );
+    }
+
+    const query = db
+      .select({
+        id: landingLeads.id,
+        landingPageId: landingLeads.landingPageId,
+        blockId: landingLeads.blockId,
+        fullName: landingLeads.fullName,
+        email: landingLeads.email,
+        phone: landingLeads.phone,
+        message: landingLeads.message,
+        formData: landingLeads.formData,
+        source: landingLeads.source,
+        ipAddress: landingLeads.ipAddress,
+        userAgent: landingLeads.userAgent,
+        createdAt: landingLeads.createdAt,
+        landingPage: {
+          title: landingPages.title,
+        },
+      })
+      .from(landingLeads)
+      .innerJoin(landingPages, eq(landingLeads.landingPageId, landingPages.id))
+      .where(and(...conditions))
+      .orderBy(desc(landingLeads.createdAt));
+
+    if (options?.offset) {
+      query.offset(options.offset);
+    }
+
+    if (options?.limit) {
+      query.limit(options.limit);
+    }
+
+    return await query as any;
+  }
+  
+  async getLandingLeadsByCompany(
+    companyId: string,
+    options?: { limit?: number; offset?: number; search?: string }
+  ): Promise<LandingLead[]> {
+    const conditions = [eq(landingPages.companyId, companyId)];
+
+    if (options?.search) {
+      const searchPattern = `%${options.search}%`;
+      conditions.push(
+        or(
+          like(landingLeads.fullName, searchPattern),
+          like(landingLeads.email, searchPattern),
+          like(landingLeads.phone, searchPattern)
+        )!
+      );
+    }
+
+    const query = db
+      .select({
+        id: landingLeads.id,
+        landingPageId: landingLeads.landingPageId,
+        blockId: landingLeads.blockId,
+        fullName: landingLeads.fullName,
+        email: landingLeads.email,
+        phone: landingLeads.phone,
+        message: landingLeads.message,
+        formData: landingLeads.formData,
+        source: landingLeads.source,
+        ipAddress: landingLeads.ipAddress,
+        userAgent: landingLeads.userAgent,
+        createdAt: landingLeads.createdAt,
+        landingPage: {
+          title: landingPages.title,
+        },
+      })
+      .from(landingLeads)
+      .innerJoin(landingPages, eq(landingLeads.landingPageId, landingPages.id))
+      .where(and(...conditions))
+      .orderBy(desc(landingLeads.createdAt));
+
+    if (options?.offset) {
+      query.offset(options.offset);
+    }
+
+    if (options?.limit) {
+      query.limit(options.limit);
+    }
+
+    return await query as any;
   }
   
   // ==================== LANDING APPOINTMENTS ====================

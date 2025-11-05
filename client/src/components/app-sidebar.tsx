@@ -27,7 +27,8 @@ import {
   Globe,
   Send,
   Inbox,
-  Workflow
+  Workflow,
+  Contact
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -180,6 +181,11 @@ const myAgencyMenuItems = [
     title: "Quotes",
     url: "/quotes",
     icon: ClipboardList,
+  },
+  {
+    title: "Leads",
+    url: "/leads",
+    icon: Contact,
   },
 ];
 

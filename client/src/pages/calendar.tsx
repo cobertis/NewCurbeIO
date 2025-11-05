@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Cake, Bell } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Cake, Bell, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -27,9 +29,22 @@ interface CalendarEvent {
   clientName?: string;
 }
 
+interface AppointmentDetails {
+  id?: string;
+  date: string;
+  time?: string;
+  clientName: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  status?: string;
+}
+
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [, setLocation] = useLocation();
+  const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
 
   // Fetch calendar events
   const { data: eventsData, isLoading } = useQuery<{ events: CalendarEvent[] }>({
@@ -60,6 +75,43 @@ export default function Calendar() {
   // Navigate to today
   const goToToday = () => {
     setCurrentDate(new Date());
+  };
+
+  // Helper function for status badge variants
+  const getStatusVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+      case 'pending': return 'default';
+      case 'confirmed': return 'outline';
+      case 'cancelled': return 'destructive';
+      case 'completed': return 'secondary';
+      default: return 'default';
+    }
+  };
+
+  // Helper function for status labels
+  const getStatusLabel = (status?: string): string => {
+    switch (status) {
+      case 'pending': return 'Pendiente';
+      case 'confirmed': return 'Confirmada';
+      case 'cancelled': return 'Cancelada';
+      case 'completed': return 'Completada';
+      default: return status || 'Pendiente';
+    }
+  };
+
+  // Handle appointment click
+  const handleAppointmentClick = (event: CalendarEvent) => {
+    setSelectedAppointment({
+      id: event.appointmentId?.toString(),
+      date: event.date,
+      time: event.appointmentTime,
+      clientName: event.title.replace('Appointment with ', ''),
+      phone: event.appointmentPhone,
+      email: event.appointmentEmail,
+      notes: event.description,
+      status: event.status,
+    });
+    setAppointmentDialogOpen(true);
   };
 
   // Group events by date
@@ -214,6 +266,42 @@ export default function Calendar() {
                           <span className="truncate flex-1">{event.title}</span>
                         </div>
                       );
+                    } else if (event.type === 'appointment') {
+                      // Appointment - color based on status
+                      const statusColors = {
+                        pending: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-900/50 border-l-2 border-yellow-500',
+                        confirmed: 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-900/50 border-l-2 border-green-500',
+                        cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-900/50 border-l-2 border-red-500',
+                        completed: 'bg-gray-100 dark:bg-gray-800/30 text-gray-900 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-800/50 border-l-2 border-gray-500',
+                      };
+                      const colorClass = statusColors[event.status as keyof typeof statusColors] || statusColors.pending;
+                      
+                      return (
+                        <div
+                          key={`${event.appointmentId}-${eventIndex}`}
+                          className={`appointment-event px-2 py-1.5 rounded text-xs cursor-pointer transition-colors ${colorClass}`}
+                          onClick={() => handleAppointmentClick(event)}
+                          data-testid={`event-appointment-${event.appointmentId}`}
+                        >
+                          <div className="flex items-start gap-1">
+                            <CalendarIcon className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{event.title}</div>
+                              {event.appointmentTime && (
+                                <div className="text-[10px] mt-0.5 flex items-center gap-1">
+                                  <span className="font-semibold">{event.appointmentTime}</span>
+                                  {event.appointmentPhone && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="truncate">{event.appointmentPhone}</span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
                     } else {
                       // Reminder - color based on priority
                       const priorityColors = {
@@ -261,6 +349,69 @@ export default function Calendar() {
           })}
         </div>
       </div>
+
+      {/* Appointment Details Dialog */}
+      <Dialog open={appointmentDialogOpen} onOpenChange={setAppointmentDialogOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-appointment-details">
+          <DialogHeader>
+            <DialogTitle>Appointment Details</DialogTitle>
+            <DialogDescription>
+              View appointment information
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-lg" data-testid="text-appointment-client">
+                    {selectedAppointment.clientName}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(selectedAppointment.date), "MMMM d, yyyy")}
+                    {selectedAppointment.time && ` at ${selectedAppointment.time}`}
+                  </p>
+                </div>
+                <Badge variant={getStatusVariant(selectedAppointment.status)} data-testid="badge-appointment-status">
+                  {getStatusLabel(selectedAppointment.status)}
+                </Badge>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                {selectedAppointment.phone && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                    <p className="text-sm" data-testid="text-appointment-phone">{selectedAppointment.phone}</p>
+                  </div>
+                )}
+                
+                {selectedAppointment.email && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Email</label>
+                    <p className="text-sm" data-testid="text-appointment-email">{selectedAppointment.email}</p>
+                  </div>
+                )}
+
+                {selectedAppointment.notes && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Notes</label>
+                    <p className="text-sm" data-testid="text-appointment-notes">{selectedAppointment.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setAppointmentDialogOpen(false)}
+                  data-testid="button-close-appointment"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

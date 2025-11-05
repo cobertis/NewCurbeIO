@@ -64,6 +64,7 @@ import PublicLandingPage from "@/pages/public-landing-page";
 import SmsMmsPage from "@/pages/sms-mms";
 import EmailMarketingPage from "@/pages/email-marketing";
 import IntegrationsPage from "@/pages/integrations";
+import Leads from "@/pages/leads";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -81,6 +82,7 @@ const getPageTitle = (path: string): string => {
     '/policies': 'Policies',
     '/policies/new': 'New Policy',
     '/calendar': 'Calendar',
+    '/leads': 'Leads',
     '/invoices': 'Invoices',
     '/settings': 'Settings',
     '/settings/profile': 'Settings - Profile',
@@ -1064,6 +1066,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Policies />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/leads">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Leads />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
