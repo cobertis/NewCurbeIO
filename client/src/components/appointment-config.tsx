@@ -92,10 +92,7 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
   // Update availability mutation
   const updateMutation = useMutation({
     mutationFn: async (updatedAvailability: AppointmentAvailability) => {
-      return apiRequest("/api/appointment-availability", {
-        method: "PUT",
-        body: JSON.stringify(updatedAvailability),
-      });
+      return apiRequest("PUT", "/api/appointment-availability", updatedAvailability);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointment-availability"] });
