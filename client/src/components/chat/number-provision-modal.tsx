@@ -244,7 +244,7 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
         <div className="space-y-6">
           {step === "search" && (
             <div className="space-y-4" data-testid="step-search">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="state" data-testid="label-state">
                     State *
