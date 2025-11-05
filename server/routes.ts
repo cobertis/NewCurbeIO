@@ -18721,9 +18721,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Transform BulkVS response to our format
       // BulkVS returns: TN, Rate Center, State, Tier, Per Minute Rate, Mrc, Nrc
+      // TN format is 10 digits without +1 prefix (e.g., "3053804935")
       const formattedResults = Array.isArray(availableDIDs) ? availableDIDs.map((item: any) => ({
         did: item.TN,
-        npa: item.TN?.substring(1, 4), // Extract area code from phone number
+        npa: item.TN?.substring(0, 3), // Extract first 3 digits (area code)
         state: item.State,
         ratecenter: item["Rate Center"],
         price: parseFloat(item.Mrc || "0"), // Monthly recurring cost
