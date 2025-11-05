@@ -278,10 +278,18 @@ const BLOCK_TYPES = [
   { type: "link", label: "Button", icon: LinkIcon, color: "#3B82F6" },
   { type: "image", label: "Image", icon: ImageIcon, color: "#EC4899" },
   { type: "video", label: "Video", icon: Video, color: "#EF4444" },
-  { type: "social", label: "Link", icon: Share2, color: "#10B981" },
   { type: "maps", label: "Map", icon: MapPin, color: "#F97316" },
   { type: "email", label: "Newsletter", icon: Mail, color: "#6366F1" },
 ];
+
+// Social media block types for sidebar
+const SOCIAL_BLOCK_TYPES = SOCIAL_PLATFORMS.map(platform => ({
+  type: "social",
+  platform: platform.value,
+  label: platform.label,
+  icon: platform.icon,
+  color: platform.color,
+}));
 
 // SortableBlock Component - renders inside the device preview
 function SortableBlock({
@@ -1649,6 +1657,32 @@ export default function LandingPageBuilder() {
                 >
                   See Another Blocks
                 </Button>
+              </div>
+
+              {/* Social Media Section */}
+              <div>
+                <h3 className="font-semibold text-sm mb-3">Social Media</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {SOCIAL_BLOCK_TYPES.map((socialType) => {
+                    const Icon = socialType.icon;
+                    return (
+                      <button
+                        key={socialType.platform}
+                        onClick={() => addBlock("social", { platform: socialType.platform })}
+                        className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:shadow-md transition-all group"
+                        data-testid={`button-add-social-${socialType.platform}`}
+                      >
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform"
+                          style={{ backgroundColor: `${socialType.color}20` }}
+                        >
+                          <Icon className="w-4 h-4" style={{ color: socialType.color }} />
+                        </div>
+                        <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium text-center">{socialType.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </ScrollArea>
