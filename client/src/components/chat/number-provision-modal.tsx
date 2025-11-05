@@ -239,7 +239,7 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
         </DialogHeader>
 
         <div className="space-y-6">
-          {step === "search" && (
+          {step === "search" && !searchMutation.isPending && (
             <div className="space-y-4" data-testid="step-search">
               <div className="space-y-2">
                 <Label htmlFor="area-code" data-testid="label-area-code">
@@ -261,23 +261,18 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
 
               <Button
                 onClick={handleSearch}
-                disabled={!areaCode || areaCode.length !== 3 || searchMutation.isPending}
+                disabled={!areaCode || areaCode.length !== 3}
                 className="w-full"
                 data-testid="button-search-numbers"
               >
-                {searchMutation.isPending ? (
-                  <>
-                    <LoadingSpinner />
-                    Searching...
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-4 w-4 mr-2" />
-                    Search Numbers
-                  </>
-                )}
+                <Search className="h-4 w-4 mr-2" />
+                Search Numbers
               </Button>
             </div>
+          )}
+
+          {step === "search" && searchMutation.isPending && (
+            <LoadingSpinner message="Searching for available numbers..." fullScreen={false} />
           )}
 
           {step === "select" && (
