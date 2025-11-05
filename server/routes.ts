@@ -1482,22 +1482,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).send('console.error("Google Maps API key not configured");');
     }
 
-    // Fetch and proxy the Google Maps JavaScript API script
+    // Build the Google Maps URL
     const googleMapsUrl = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=${callback}&libraries=places,marker`;
     
-    try {
-      const response = await fetch(googleMapsUrl);
-      const script = await response.text();
-      
-      // Set correct headers for JavaScript
-      res.setHeader('Content-Type', 'application/javascript');
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
-      
-      res.send(script);
-    } catch (error) {
-      console.error("[GOOGLE_MAPS] Failed to fetch Google Maps script:", error);
-      res.status(500).send('console.error("Failed to load Google Maps");');
+    // Create a simple loader script that dynamically adds the Google Maps script
+    const loaderScript = `
+(function() {
+  var script = document.createElement('script');
+  script.src = '${googleMapsUrl}';
+  script.async = true;
+  script.defer = true;
+  script.onerror = function() {
+    console.error('Failed to load Google Maps');
+    if (typeof ${callback} === 'function') {
+      ${callback}();
     }
+  };
+  document.head.appendChild(script);
+})();
+`;
+    
+    // Set correct headers for JavaScript
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    
+    res.send(loaderScript);
   });
 
   // Autocomplete address using Google Places API
