@@ -1,0 +1,715 @@
+Perfecto, Javi. Aquí tienes un plan **paso a paso, con comandos y estructura de código**, para que en Replit montemos un chat “estilo WhatsApp” (lista de chats + panel de conversación + estados de mensaje + adjuntos + búsqueda + emojis + recibos de lectura) **integrado con la API de BulkVS**: elegir un número, habilitarlo para SMS/MMS, asignarlo a un campaign 10DLC, ponerle el webhook y dejarlo enviando/recibiendo mensajes.
+
+Voy sin asumir nada: te doy flujo, comandos, archivos y endpoints que tu dev puede copiar/pegar. Donde la API de BulkVS exige ver el portal, lo señalo con referencias y te explico las variantes.
+
+---
+
+# 0) Contexto técnico (por qué así)
+
+* **BulkVS** expone endpoints REST para cuenta, números, envío de mensajes y configuración de webhooks. El doc público está en su portal (requiere login). Ejemplos del endpoint de envío: `.../api/v1.0/messageSend` (usado en guías de 3CX) y existe `GET /accountDetail` para info de cuenta. ([Bulk Solutions][1])
+* **Webhook de mensajes entrantes:** en el portal de BulkVS puedes fijar un “Messaging Webhook” por número; así llegan a tu backend los SMS/MMS entrantes. ([textable.co][2])
+* **10DLC / Campaigns:** para tráfico A2P en EE. UU. hay que **asignar el número a un campaign**. BulkVS puede registrar/gestionar campañas; si es bajo volumen te pueden registrar en un **Bulk Solutions Campaign**. Si ya tienes campaña TCR, hay procesos para asociar números. ([Bulk Solutions][3])
+
+---
+
+# 1) Estructura del proyecto en Replit
+
+Vamos a usar **Node.js + Express** (backend) y **React + Vite + Tailwind** (frontend), con **Socket.IO** para tiempo real y **Prisma + SQLite** (o Postgres si prefieres). En Replit funciona bien.
+
+### 1.1 Crear proyecto base
+
+```bash
+# 1) Crea el Repl "curbe-chat" con Node.js (blank). Luego:
+npm init -y
+
+# 2) Instala dependencias backend
+npm i express cors dotenv socket.io jsonwebtoken axios multer mime-types
+npm i -D nodemon typescript ts-node @types/node @types/express @types/cors @types/jsonwebtoken @types/multer
+
+# 3) Crea frontend con Vite dentro de /client
+npm create vite@latest client -- --template react-ts
+cd client
+npm i
+npm i socket.io-client axios dayjs react-router-dom
+npm i -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+cd ..
+
+# 4) ORM (elige uno)
+npm i prisma @prisma/client
+npx prisma init
+```
+
+### 1.2 Scripts en `package.json`
+
+```json
+{
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon --watch src --exec ts-node src/server.ts",
+    "build": "tsc -p . && cd client && npm run build",
+    "start": "node dist/server.js",
+    "client": "cd client && npm run dev"
+  }
+}
+```
+
+### 1.3 TypeScript básico
+
+```bash
+npx tsc --init
+```
+
+Ajusta `"module": "ESNext"`, `"target": "ES2020"`, `"outDir": "dist"`.
+
+---
+
+# 2) Variables de entorno (.env)
+
+Crea `.env` (no lo subas a git):
+
+```
+PORT=3000
+PUBLIC_BASE_URL=https://<tu-url-de-replit>      # URL pública del backend (para webhook)
+WEBHOOK_SECRET=algun_token_largo                # para verificar llamadas entrantes
+
+# BulkVS
+BULKVS_API_BASE=https://portal.bulkvs.com/api/v1.0
+BULKVS_API_KEY=tu_api_key
+BULKVS_API_SECRET=tu_api_secret
+BULKVS_ACCOUNT_ID=tu_account_id
+
+# 10DLC
+TCR_BRAND_ID=opcional_si_aplica
+TCR_CAMPAIGN_ID=opcional_si_aplica
+
+# DB (usa SQLite por simpleza en Replit o un Postgres externo)
+DATABASE_URL="file:./dev.db"
+```
+
+---
+
+# 3) Modelo de datos (Prisma)
+
+`prisma/schema.prisma`
+
+```prisma
+datasource db {
+  provider = "sqlite" // O "postgresql" si usas Postgres
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model PhoneNumber {
+  id           String   @id @default(cuid())
+  did          String   @unique          // E164 del número comprado (ej. +17865551234)
+  smsEnabled   Boolean  @default(false)
+  mmsEnabled   Boolean  @default(false)
+  campaignId   String?               // ID de campaña 10DLC asignada
+  webhookUrl   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  threads      Thread[]
+}
+
+model Thread {
+  id           String   @id @default(cuid())
+  phoneNumber  PhoneNumber @relation(fields: [phoneNumberId], references: [id])
+  phoneNumberId String
+  external     String   // número del contacto (E164) con quien se conversa
+  displayName  String?
+  lastMessageAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  messages     Message[]
+  labels       String[] @default([]) // tags tipo WhatsApp
+}
+
+model Message {
+  id           String   @id @default(cuid())
+  thread       Thread   @relation(fields: [threadId], references: [id])
+  threadId     String
+  direction    String   // "outbound" | "inbound"
+  status       String   // "queued" | "sent" | "delivered" | "failed" | "read"
+  from         String
+  to           String
+  body         String?
+  mediaUrl     String?
+  providerMsgId String?
+  errorCode    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  readAt       DateTime?
+}
+
+model Campaign {
+  id           String   @id @default(cuid())
+  name         String
+  providerId   String?  // ID de campaign en BulkVS/TCR
+  brandId      String?
+  useCase      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  numbers      PhoneNumber[]
+}
+```
+
+Migra:
+
+```bash
+npx prisma migrate dev --name init
+```
+
+---
+
+# 4) Backend: estructura básica
+
+```
+/src
+  server.ts
+  bulkvs.ts        # cliente API BulkVS
+  webhook.ts       # endpoint inbound (SMS/MMS, DLR)
+  routes/
+    numbers.ts     # comprar/activar número, set webhook, asignar a campaign
+    messages.ts    # enviar mensajes, adjuntos
+    threads.ts     # listar/conversaciones
+  sockets.ts       # Socket.IO (eventos de chat)
+  auth.ts          # si quieres JWT
+```
+
+### 4.1 Cliente BulkVS (`src/bulkvs.ts`)
+
+> Ojo: el portal muestra endpoints como `GET /accountDetail` y `POST /messageSend` (confirmado en su guía para 3CX). Otros endpoints (lista de DIDs, activar SMS/MMS, set webhook, asignar a campaign) están en el portal con login; la nomenclatura exacta puede variar. Dejo funciones con *paths* parametrizables y documentados para que solo cambies el `.path`. ([Bulk Solutions][1])
+
+```ts
+import axios from "axios";
+
+const base = process.env.BULKVS_API_BASE!;
+const key = process.env.BULKVS_API_KEY!;
+const secret = process.env.BULKVS_API_SECRET!;
+const accountId = process.env.BULKVS_ACCOUNT_ID!;
+
+const client = axios.create({
+  baseURL: base,
+  auth: { username: key, password: secret },
+  timeout: 15000
+});
+
+// Helpers con paths configurables
+export const BulkVS = {
+  accountDetail: () => client.get("/accountDetail"),
+
+  // Lista DIDs disponibles (ajusta path según doc de tu cuenta)
+  listAvailableDIDs: (params: { npa?: string; ratecenter?: string; state?: string }) =>
+    client.get("/didAvailableList", { params }),
+
+  // Compra DID
+  buyDID: (did: string) =>
+    client.post("/didPurchase", { accountId, did }),
+
+  // Habilitar SMS/MMS en DID
+  enableSmsMms: (did: string) =>
+    client.post("/smsEnable", { accountId, did, sms: true, mms: true }),
+
+  // Setear webhook de mensajería en ese DID
+  setMessagingWebhook: (did: string, url: string) =>
+    client.post("/smsSetWebhook", { accountId, did, url }),
+
+  // Asignar número a campaign 10DLC
+  assignToCampaign: (did: string, campaignId: string) =>
+    client.post("/smsAssignCampaign", { accountId, did, campaignId }),
+
+  // Enviar mensaje (SMS/MMS) — este endpoint sí está documentado públicamente en guías
+  messageSend: (payload: {
+    from: string; to: string; body?: string; mediaUrl?: string;
+  }) => client.post("/messageSend", payload),
+
+  // (Opcional) consultar estados DLR
+  messageStatus: (providerMsgId: string) =>
+    client.get("/messageStatus", { params: { id: providerMsgId } }),
+};
+```
+
+> **Nota:** Los nombres de endpoints distintos a `messageSend` son placeholders basados en convenciones típicas de proveedores SIP; si tu portal muestra otros (por ejemplo `GET /numbers`, `POST /numbers/{did}/webhook`), **ajusta los paths exactos** tras iniciar sesión en la doc. El punto crítico es que BulkVS sí permite **enviar mensajes** y **configurar el webhook por número** (confirmado por sus guías). ([Bulk Solutions][1])
+
+### 4.2 Servidor + Socket.IO (`src/server.ts`)
+
+```ts
+import "dotenv/config";
+import express from "express";
+import http from "http";
+import cors from "cors";
+import { Server as IOServer } from "socket.io";
+import { registerWebhook } from "./webhook.js";
+import numbersRoutes from "./routes/numbers.js";
+import messagesRoutes from "./routes/messages.js";
+import threadsRoutes from "./routes/threads.js";
+
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+// API REST
+app.use("/api/numbers", numbersRoutes);
+app.use("/api/messages", messagesRoutes);
+app.use("/api/threads", threadsRoutes);
+
+// Webhook (inbound SMS/MMS + DLR)
+registerWebhook(app);
+
+const server = http.createServer(app);
+export const io = new IOServer(server, { cors: { origin: "*" } });
+
+io.on("connection", (socket) => {
+  // Puedes usar rooms por threadId
+  socket.on("joinThread", (threadId: string) => socket.join(`thread:${threadId}`));
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`API listening on ${PORT}`));
+```
+
+### 4.3 Webhook de BulkVS (`src/webhook.ts`)
+
+```ts
+import { Express, Request, Response } from "express";
+import { PrismaClient } from "@prisma/client";
+import { io } from "./server.js";
+
+const prisma = new PrismaClient();
+
+export function registerWebhook(app: Express) {
+  app.post("/webhooks/bulkvs", async (req: Request, res: Response) => {
+    // Si BulkVS firma, valida; si no, valida IP o un token secreto en la URL.
+    // Ej: /webhooks/bulkvs?token=WEBHOOK_SECRET
+    const token = req.query.token as string;
+    if (token !== process.env.WEBHOOK_SECRET) return res.status(401).end();
+
+    // Estructura típica de inbound: adapta a payload real de BulkVS
+    const { from, to, body, mediaUrl, messageId, eventType, status } = req.body;
+
+    if (eventType === "dlr") {
+      // Delivery Receipt
+      const msg = await prisma.message.findFirst({ where: { providerMsgId: messageId }});
+      if (msg) {
+        await prisma.message.update({
+          where: { id: msg.id },
+          data: { status, updatedAt: new Date() }
+        });
+        io.emit("messageStatus", { messageId: msg.id, status });
+      }
+      return res.json({ ok: true });
+    }
+
+    // Mensaje entrante
+    // Localiza/crea thread por (to DID) + (from externo)
+    let phone = await prisma.phoneNumber.findFirst({ where: { did: to }});
+    if (!phone) {
+      phone = await prisma.phoneNumber.create({ data: { did: to, smsEnabled: true }});
+    }
+    let thread = await prisma.thread.findFirst({
+      where: { phoneNumberId: phone.id, external: from }
+    });
+    if (!thread) {
+      thread = await prisma.thread.create({
+        data: { phoneNumberId: phone.id, external: from }
+      });
+    }
+    const saved = await prisma.message.create({
+      data: {
+        threadId: thread.id,
+        direction: "inbound",
+        status: "delivered",
+        from, to, body, mediaUrl,
+        providerMsgId: messageId
+      }
+    });
+    await prisma.thread.update({
+      where: { id: thread.id },
+      data: { lastMessageAt: new Date() }
+    });
+
+    io.to(`thread:${thread.id}`).emit("newMessage", { threadId: thread.id, message: saved });
+    res.json({ ok: true });
+  });
+}
+```
+
+### 4.4 Rutas: números (`src/routes/numbers.ts`)
+
+```ts
+import { Router } from "express";
+import { PrismaClient } from "@prisma/client";
+import { BulkVS } from "../bulkvs.js";
+
+const prisma = new PrismaClient();
+const r = Router();
+
+// 1) Buscar DIDs disponibles
+r.get("/available", async (req, res) => {
+  const { state, npa, ratecenter } = req.query as any;
+  const { data } = await BulkVS.listAvailableDIDs({ state, npa, ratecenter });
+  res.json(data);
+});
+
+// 2) Comprar DID + habilitar SMS/MMS + setear webhook + asignar a campaign
+r.post("/provision", async (req, res) => {
+  const { did, campaignId } = req.body;
+  await BulkVS.buyDID(did);
+  await BulkVS.enableSmsMms(did);
+
+  const webhookUrl = `${process.env.PUBLIC_BASE_URL}/webhooks/bulkvs?token=${process.env.WEBHOOK_SECRET}`;
+  await BulkVS.setMessagingWebhook(did, webhookUrl);
+
+  if (campaignId) {
+    await BulkVS.assignToCampaign(did, campaignId);
+  }
+
+  const phone = await prisma.phoneNumber.upsert({
+    where: { did },
+    update: { smsEnabled: true, mmsEnabled: true, webhookUrl, campaignId },
+    create: { did, smsEnabled: true, mmsEnabled: true, webhookUrl, campaignId }
+  });
+
+  res.json({ ok: true, phone });
+});
+
+export default r;
+```
+
+### 4.5 Rutas: mensajes (`src/routes/messages.ts`)
+
+```ts
+import { Router } from "express";
+import { PrismaClient } from "@prisma/client";
+import { BulkVS } from "../bulkvs.js";
+
+const prisma = new PrismaClient();
+const r = Router();
+
+// Enviar mensaje (con o sin media)
+r.post("/send", async (req, res) => {
+  const { from, to, body, mediaUrl } = req.body;
+
+  // Ubicar/crear thread
+  const phone = await prisma.phoneNumber.findFirst({ where: { did: from }});
+  if (!phone) return res.status(400).json({ error: "DID no provisionado" });
+
+  let thread = await prisma.thread.findFirst({ where: { phoneNumberId: phone.id, external: to }});
+  if (!thread) {
+    thread = await prisma.thread.create({
+      data: { phoneNumberId: phone.id, external: to }
+    });
+  }
+
+  const queued = await prisma.message.create({
+    data: { threadId: thread.id, direction: "outbound", status: "queued", from, to, body, mediaUrl }
+  });
+
+  // Llamar a BulkVS
+  const { data } = await BulkVS.messageSend({ from, to, body, mediaUrl });
+  // Asume data.id y data.status
+  await prisma.message.update({
+    where: { id: queued.id },
+    data: { status: data.status || "sent", providerMsgId: data.id || null }
+  });
+
+  res.json({ ok: true, id: queued.id });
+});
+
+export default r;
+```
+
+### 4.6 Rutas: threads (`src/routes/threads.ts`)
+
+```ts
+import { Router } from "express";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+const r = Router();
+
+r.get("/", async (_req, res) => {
+  const threads = await prisma.thread.findMany({
+    orderBy: { updatedAt: "desc" },
+    include: { messages: { take: 1, orderBy: { createdAt: "desc" }}, phoneNumber: true }
+  });
+  res.json(threads);
+});
+
+r.get("/:id/messages", async (req, res) => {
+  const { id } = req.params;
+  const messages = await prisma.message.findMany({
+    where: { threadId: id },
+    orderBy: { createdAt: "asc" }
+  });
+  res.json(messages);
+});
+
+export default r;
+```
+
+---
+
+# 5) Frontend: UI tipo WhatsApp (React + Tailwind)
+
+### 5.1 Tailwind (`client/tailwind.config.js`)
+
+```js
+export default { content: ["./index.html","./src/**/*.{ts,tsx}"], theme: { extend: {} }, plugins: [] }
+```
+
+### 5.2 Estilos base (`client/src/index.css`)
+
+Incluye las directivas de Tailwind:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+### 5.3 App de chat mínima
+
+* **Sidebar** con lista de conversaciones (foto/placeholder, nombre, último mensaje, hora, badge de no leídos).
+* **Header** de conversación (nombre/contacto, estado “escribiendo…”).
+* **Timeline** de mensajes con burbujas y estados (✓ enviado, ✓✓ entregado; “leído” si marcamos readAt).
+* **Composer** con input, botón enviar, botón adjuntar, emojis.
+
+`client/src/main.tsx` y `client/src/App.tsx` tipo:
+
+```tsx
+// main.tsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import "./index.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <BrowserRouter><App /></BrowserRouter>
+);
+```
+
+`client/src/App.tsx` (esqueleto muy resumido):
+
+```tsx
+import { useEffect, useState } from "react";
+import { io, Socket } from "socket.io-client";
+import axios from "axios";
+
+const API = import.meta.env.VITE_API_URL || ""; // opcional
+
+export default function App() {
+  const [threads, setThreads] = useState<any[]>([]);
+  const [current, setCurrent] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    axios.get(`${API}/api/threads`).then(r => setThreads(r.data));
+    const s = io(API || window.location.origin);
+    setSocket(s);
+    return () => { s.close(); };
+  }, []);
+
+  useEffect(() => {
+    if (!current || !socket) return;
+    socket.emit("joinThread", current.id);
+    const handler = (evt: any) => {
+      if (evt.threadId === current.id) {
+        setMessages(prev => [...prev, evt.message]);
+      }
+    };
+    socket.on("newMessage", handler);
+    return () => { socket.off("newMessage", handler); };
+  }, [current, socket]);
+
+  const openThread = async (t: any) => {
+    setCurrent(t);
+    const { data } = await axios.get(`${API}/api/threads/${t.id}/messages`);
+    setMessages(data);
+  };
+
+  const send = async () => {
+    if (!current || !text.trim()) return;
+    const from = current.phoneNumber.did;
+    const to = current.external;
+    const { data } = await axios.post(`${API}/api/messages/send`, { from, to, body: text });
+    setText("");
+  };
+
+  return (
+    <div className="h-screen w-screen flex">
+      <aside className="w-96 border-r overflow-y-auto">
+        <div className="p-4 font-bold">Chats</div>
+        {threads.map((t) => (
+          <div key={t.id} className={`p-4 cursor-pointer hover:bg-gray-50 ${current?.id===t.id?"bg-gray-100":""}`}
+               onClick={() => openThread(t)}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gray-300" />
+              <div className="flex-1">
+                <div className="font-medium">{t.displayName || t.external}</div>
+                <div className="text-sm text-gray-500">{t.messages?.[0]?.body || "…"}</div>
+              </div>
+              <div className="text-xs text-gray-400">{/* hora */}</div>
+            </div>
+          </div>
+        ))}
+      </aside>
+      <main className="flex-1 flex flex-col">
+        <header className="h-16 border-b flex items-center px-4">
+          {current ? <div className="font-semibold">{current.displayName || current.external}</div> : "Selecciona un chat"}
+        </header>
+        <section className="flex-1 overflow-y-auto p-4 space-y-2">
+          {messages.map(m => (
+            <div key={m.id} className={`max-w-[70%] p-3 rounded-2xl ${m.direction==="outbound"?"ml-auto bg-green-100":"bg-white border"}`}>
+              {m.body}
+              {m.mediaUrl && <img src={m.mediaUrl} className="mt-2 rounded" />}
+              <div className="text-[10px] text-gray-500 mt-1">{m.status}</div>
+            </div>
+          ))}
+        </section>
+        {current && (
+          <footer className="h-16 border-t flex items-center gap-2 px-3">
+            {/* botones de adjunto/emoji aquí */}
+            <input className="flex-1 border rounded-full px-4 h-10" value={text} onChange={e=>setText(e.target.value)} placeholder="Escribe un mensaje" />
+            <button onClick={send} className="px-4 py-2 bg-black text-white rounded-full">Enviar</button>
+          </footer>
+        )}
+      </main>
+    </div>
+  );
+}
+```
+
+> Con esto ya tienes el **esqueleto WhatsApp-like**. Luego sumas: buscador, emojis (por ejemplo `emoji-mart`), previews de media, borradores por chat, “escribiendo…”, etc.
+
+---
+
+# 6) Flujo para **provisionar** un número en BulkVS (end-to-end)
+
+> Objetivo: que desde tu UI el usuario elija un número, lo compres, habilites SMS/MMS, le pongas **webhook** y lo **asignes a campaña 10DLC**.
+> Nota: la asignación a campaign depende de cómo tengas registrada la marca/campaign con BulkVS/TCR. Si usas “Bulk Solutions Campaign” de bajo volumen, puede que BulkVS lo resuelva automático o vía soporte; si ya tienes **TCR_CAMPAIGN_ID**, usamos la ruta API correspondiente. ([Bulk Solutions][3])
+
+1. **Listar DIDs disponibles**
+
+   * Frontend llama `GET /api/numbers/available?state=FL&npa=786`
+   * Renderiza resultados (precio, localidad).
+   * Elige uno (E164).
+
+2. **Comprar y activar**
+
+   * Frontend `POST /api/numbers/provision` con `{ did, campaignId }`
+   * Backend:
+
+     * `BulkVS.buyDID(did)`
+     * `BulkVS.enableSmsMms(did)`  (activar SMS/MMS)
+     * `BulkVS.setMessagingWebhook(did, PUBLIC_BASE_URL/webhooks/bulkvs?token=WEBHOOK_SECRET)`
+     * Si tienes `campaignId`: `BulkVS.assignToCampaign(did, campaignId)`
+     * Guarda en DB.
+
+3. **Probar inbound**
+
+   * Envía un SMS de prueba al DID desde tu móvil.
+   * Debe llegar al endpoint `/webhooks/bulkvs` y aparecer instantáneo en el chat gracias a Socket.IO.
+   * En el portal de BulkVS, en el número, verifica que “**Messaging Webhook**” apunte a tu URL (su doc y guías externas lo muestran como configuración por número). ([textable.co][2])
+
+4. **Probar outbound**
+
+   * Desde el panel, envía un mensaje a tu móvil.
+   * El backend llama `POST /messageSend` (endpoint documentado en guías de 3CX). Espera `id` y `status`. ([Bulk Solutions][1])
+   * Cuando llegue el DLR (delivery receipt) al webhook, actualiza `status` a “delivered”.
+
+---
+
+# 7) Funciones “como WhatsApp” que incluimos
+
+* Lista de chats con último mensaje y **orden por actividad**.
+* **Estados de mensaje** (queued/sent/delivered/failed; “read” si implementas un **/read** cuando un usuario abre el chat).
+* **Adjuntos** (MMS): subir archivo al storage (S3/Cloudflare R2) y pasar `mediaUrl` a BulkVS.
+* **Emojis, búsqueda, etiquetas**, borradores, typing indicator (evento Socket.IO “typing”).
+* **Multiples DIDs** por cuenta y **asignación por campaña** (10DLC).
+* **Roles** (opcional): agente/manager.
+* **Filtros** (no leídos, con etiqueta, por DID).
+
+---
+
+# 8) QA: pruebas de punta a punta
+
+### 8.1 Comandos de arranque
+
+```bash
+# migrar DB
+npx prisma migrate dev
+# levantar backend
+npm run dev
+# otra terminal: levantar frontend
+npm run client
+```
+
+En Replit, expón el puerto del backend (3000). `PUBLIC_BASE_URL` debe ser tu URL pública del repl.
+
+### 8.2 cURL de envío (sanity check)
+
+```bash
+curl -X POST "$PUBLIC_BASE_URL/api/messages/send" \
+  -H "Content-Type: application/json" \
+  -d '{"from":"+17865551234","to":"+13053302277","body":"Prueba BulkVS via API"}'
+```
+
+### 8.3 Simular webhook inbound (si aún no te llega)
+
+```bash
+curl -X POST "$PUBLIC_BASE_URL/webhooks/bulkvs?token=$WEBHOOK_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"from":"+13053302277","to":"+17865551234","body":"Hola!","messageId":"test123"}'
+```
+
+---
+
+# 9) 10DLC / Campaigns (qué debes tener claro)
+
+* Para **A2P 10DLC** necesitas **Brand** + **Campaign** (The Campaign Registry). BulkVS ofrece opciones y en bajo volumen puede registrarte en su propio campaign y asignar tu DID. ([Bulk Solutions][3])
+* Si ya tienes **campaignId** aprobado, usa el endpoint de asignación por DID (en tu portal). Si no lo ves, abre **ticket con BulkVS** para que te habiliten la asociación automática o te indiquen el path exacto.
+* La lógica de nuestra ruta `/api/numbers/provision` te permite **pasar `campaignId`** y dejarlo asociado de inmediato.
+
+---
+
+# 10) Seguridad y fiabilidad
+
+* **Webhook secreto** en query o firma HMAC si el portal lo soporta.
+* **Rate limiting** de tus endpoints públicos.
+* **Validación** del `from/to` en formato E164.
+* **Colas** para reintentos de envío (si lo quieres robusto: Redis + worker).
+* **Almacenamiento de media** externo y firmado.
+* **Backups** de DB (export en Prisma o usa Postgres gestionado).
+
+---
+
+# 11) Entregables que tu dev puede tomar hoy
+
+1. **Backend Express** con rutas `numbers`, `messages`, `threads`, `webhook`, y **cliente BulkVS** listo para ajustar paths exactos.
+2. **Frontend React** con panel de chat estilo WhatsApp, Socket.IO en tiempo real y envío básico.
+3. **Script de provisionamiento** `/api/numbers/provision` que hace: comprar DID → habilitar SMS/MMS → set webhook → asignar campaign.
+4. **Webhook** `/webhooks/bulkvs` que guarda entrantes y procesa DLRs.
+5. **DB** con Prisma para mensajes, hilos, DIDs y campañas.
+
+---
+
+## Notas finales sobre la API
+
+* La documentación completa de BulkVS está tras login; **el endpoint de envío `messageSend` está referenciado públicamente** y el **webhook por número** también se menciona en guías de terceros (Textable/3CX). Úsalo como referencia y **ajusta los paths** de `listAvailableDIDs`, `didPurchase`, `smsEnable`, `smsSetWebhook`, `smsAssignCampaign` con lo que veas en tu portal. ([Bulk Solutions][1])
+
+---
+
+¿Siguiente paso útil? Te preparo los **archivos iniciales** (server.ts, bulkvs.ts, rutas y App.tsx) completos para copiar/pegar en Replit, y si quieres, una versión con **Postgres** en vez de SQLite. También puedo añadir **subida de adjuntos (MMS)** y “read receipts” reales.
+
+[1]: https://www.bulkvs.com/blogs/3cx-sms-mms-messaging.php?utm_source=chatgpt.com "3CX SMS / MMS Messaging Support"
+[2]: https://www.textable.co/docs/bulkvs-setup-guide/?utm_source=chatgpt.com "BulkVS Setup Guide"
+[3]: https://www.bulkvs.com/blogs/t-mobile-10dlc.php?utm_source=chatgpt.com "T-Mobile 10DLC | Bulk Solutions"
