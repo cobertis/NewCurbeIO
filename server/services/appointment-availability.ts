@@ -275,6 +275,7 @@ export async function getAvailableSlots(params: {
     const availability = await storage.getAppointmentAvailability(userId);
     
     let allSlots: string[];
+    let hasCustomAvailability = false;
     
     if (availability) {
       // Determine the day of week for the requested date
@@ -299,6 +300,7 @@ export async function getAvailableSlots(params: {
       
       // Generate slots from user's configured time ranges
       allSlots = generateTimeSlotsFromRanges(date, slotDuration, dayConfig.slots);
+      hasCustomAvailability = true;
     } else {
       // No availability configuration, use default business hours
       allSlots = generateDefaultTimeSlots(date, duration, timezone);
@@ -332,25 +334,28 @@ export async function getAvailableSlots(params: {
     const timeSlots: TimeSlot[] = allSlots.map((slotTime) => {
       const slotEndTime = calculateEndTime(slotTime, duration);
       
-      // Check if slot is outside business hours
-      const { hours: slotHour } = parseTime(slotTime);
-      const { hours: endHour, minutes: endMinutes } = parseTime(slotEndTime);
-      
-      if (slotHour < DEFAULT_BUSINESS_START || endHour > DEFAULT_BUSINESS_END) {
-        return {
-          time: slotTime,
-          available: false,
-          reason: "outside_hours",
-        };
-      }
-      
-      // Special case: if end time is exactly at business end and minutes are 0, it's okay
-      if (endHour === DEFAULT_BUSINESS_END && endMinutes > 0) {
-        return {
-          time: slotTime,
-          available: false,
-          reason: "outside_hours",
-        };
+      // Only check business hours when using default configuration
+      // If user has custom availability, their configured hours are already respected
+      if (!hasCustomAvailability) {
+        const { hours: slotHour } = parseTime(slotTime);
+        const { hours: endHour, minutes: endMinutes } = parseTime(slotEndTime);
+        
+        if (slotHour < DEFAULT_BUSINESS_START || endHour > DEFAULT_BUSINESS_END) {
+          return {
+            time: slotTime,
+            available: false,
+            reason: "outside_hours",
+          };
+        }
+        
+        // Special case: if end time is exactly at business end and minutes are 0, it's okay
+        if (endHour === DEFAULT_BUSINESS_END && endMinutes > 0) {
+          return {
+            time: slotTime,
+            available: false,
+            reason: "outside_hours",
+          };
+        }
       }
       
       // Check against existing appointments (including buffer time)
