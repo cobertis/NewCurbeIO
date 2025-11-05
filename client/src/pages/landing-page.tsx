@@ -2723,28 +2723,6 @@ export default function LandingPageBuilder() {
                             </p>
                           )}
                         </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label htmlFor="password-protection" className="text-sm font-medium">
-                              Password Protection
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              Require a password to view this page
-                            </p>
-                          </div>
-                          <Switch
-                            id="password-protection"
-                            checked={selectedPage.landingPage.isPasswordProtected || false}
-                            onCheckedChange={(checked) =>
-                              updatePageMutation.mutate({
-                                id: selectedPageId!,
-                                data: { isPasswordProtected: checked },
-                              })
-                            }
-                            data-testid="switch-password-protection"
-                          />
-                        </div>
                       </div>
 
                       <Separator />
