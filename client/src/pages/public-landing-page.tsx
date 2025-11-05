@@ -879,7 +879,8 @@ export default function PublicLandingPage() {
             return (
               <div className="flex items-center justify-center gap-2 mb-4 max-w-2xl mx-auto">
                 {socialBlocks.map((block) => {
-                  const SocialIcon = SOCIAL_ICONS[block.content.platform] || SiInstagram;
+                  const SocialIcon = SOCIAL_ICONS[block.content.platform];
+                  if (!SocialIcon) return null; // Skip if no valid icon found
                   const href = getSocialLink(block.content.platform, block.content.url || "");
                   
                   return (
