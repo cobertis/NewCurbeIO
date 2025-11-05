@@ -439,7 +439,7 @@ const SOCIAL_PLATFORMS = [
 // Block types for the sidebar
 const BLOCK_TYPES = [
   { type: "text", label: "Text", icon: Type, color: "#8B5CF6" },
-  { type: "calendar", label: "Calendar", icon: CalendarIcon, color: "#F59E0B" },
+  { type: "calendar", label: "Meetings", icon: CalendarIcon, color: "#F59E0B" },
   { type: "link", label: "Button", icon: LinkIcon, color: "#3B82F6" },
   { type: "image", label: "Image", icon: ImageIcon, color: "#EC4899" },
   { type: "video", label: "Video", icon: Video, color: "#EF4444" },
