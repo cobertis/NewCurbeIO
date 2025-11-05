@@ -764,11 +764,11 @@ function BlockPreview({
     case "maps":
       return (
         <MapBlockDisplay
-          placeId={block.content.placeId}
-          latitude={block.content.latitude}
-          longitude={block.content.longitude}
-          formattedAddress={block.content.formattedAddress || block.content.address}
-          zoomLevel={block.content.zoom || 15}
+          placeId={block.content?.placeId}
+          latitude={Number(block.content?.latitude)}
+          longitude={Number(block.content?.longitude)}
+          formattedAddress={block.content?.formattedAddress || block.content?.address}
+          zoomLevel={Number(block.content?.zoom) || 15}
           height="200px"
           showButton={true}
           buttonColor={theme?.primaryColor || "#2563EB"}
