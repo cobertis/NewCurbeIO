@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
@@ -42,6 +44,9 @@ export default function Leads() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
+  const [editedNotes, setEditedNotes] = useState("");
   
   // Get tab from URL query parameter
   const urlParams = new URLSearchParams(window.location.search);
@@ -62,7 +67,18 @@ export default function Leads() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/landing/appointments"] });
-      toast({ title: "Estado actualizado" });
+      toast({ title: "Status updated" });
+    },
+  });
+
+  const updateNotesMutation = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+      return await apiRequest("PATCH", `/api/landing/appointments/${id}`, { notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/landing/appointments"] });
+      toast({ title: "Notes updated successfully" });
+      setAppointmentDialogOpen(false);
     },
   });
 
@@ -196,6 +212,21 @@ export default function Leads() {
       return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
     }
     return phone;
+  };
+
+  const handleRowClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setEditedNotes(appointment.notes || "");
+    setAppointmentDialogOpen(true);
+  };
+
+  const handleSaveNotes = () => {
+    if (selectedAppointment) {
+      updateNotesMutation.mutate({
+        id: selectedAppointment.id,
+        notes: editedNotes,
+      });
+    }
   };
 
   return (
@@ -342,7 +373,12 @@ export default function Leads() {
                   </TableHeader>
                   <TableBody>
                     {filteredAppointments.map((appointment) => (
-                      <TableRow key={appointment.id} data-testid={`row-appointment-${appointment.id}`}>
+                      <TableRow 
+                        key={appointment.id} 
+                        data-testid={`row-appointment-${appointment.id}`}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleRowClick(appointment)}
+                      >
                         <TableCell className="font-medium" data-testid={`cell-name-${appointment.id}`}>
                           {appointment.fullName}
                         </TableCell>
@@ -368,7 +404,7 @@ export default function Leads() {
                         >
                           {appointment.notes || "-"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-2">
                             {getActionButtons(appointment)}
                           </div>
@@ -382,6 +418,81 @@ export default function Leads() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Appointment Details Dialog */}
+      <Dialog open={appointmentDialogOpen} onOpenChange={setAppointmentDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Appointment Details</DialogTitle>
+          </DialogHeader>
+          
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Client Name</label>
+                <p className="text-sm font-medium">{selectedAppointment.fullName}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Email</label>
+                <p className="text-sm">{selectedAppointment.email}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                <p className="text-sm">{formatPhone(selectedAppointment.phone)}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Date</label>
+                  <p className="text-sm">{formatDate(selectedAppointment.appointmentDate)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Time</label>
+                  <p className="text-sm">{formatTime(selectedAppointment.appointmentTime)}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <div className="mt-1">
+                  {getStatusBadge(selectedAppointment.status)}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Notes</label>
+                <Textarea
+                  value={editedNotes}
+                  onChange={(e) => setEditedNotes(e.target.value)}
+                  placeholder="Add notes about this appointment..."
+                  rows={4}
+                  className="mt-1"
+                  data-testid="textarea-appointment-notes"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setAppointmentDialogOpen(false)}
+                  data-testid="button-cancel-dialog"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveNotes}
+                  disabled={updateNotesMutation.isPending}
+                  data-testid="button-save-notes"
+                >
+                  {updateNotesMutation.isPending ? "Saving..." : "Save Notes"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
