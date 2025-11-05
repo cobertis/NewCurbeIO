@@ -60,7 +60,8 @@ import {
   insertLandingBlockSchema,
   insertLandingAnalyticsSchema,
   insertLandingLeadSchema,
-  insertLandingAppointmentSchema
+  insertLandingAppointmentSchema,
+  insertAppointmentAvailabilitySchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq } from "drizzle-orm";
@@ -18235,6 +18236,83 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error fetching available slots:", error);
       res.status(500).json({ message: "Failed to fetch available slots" });
+    }
+  });
+  
+  // ==================== APPOINTMENT AVAILABILITY CONFIGURATION API ====================
+  
+  // GET /api/appointment-availability - Get current user's availability settings
+  app.get("/api/appointment-availability", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      let availability = await storage.getAppointmentAvailability(currentUser.id);
+      
+      // If no availability settings exist, create default ones
+      if (!availability) {
+        availability = await storage.createAppointmentAvailability({
+          userId: currentUser.id,
+          appointmentDuration: 30,
+          bufferTime: 0,
+          minAdvanceTime: 60,
+          maxAdvanceDays: 30,
+          timezone: "America/New_York",
+          weeklyAvailability: {
+            monday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+            tuesday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+            wednesday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+            thursday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+            friday: { enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
+            saturday: { enabled: false, slots: [] },
+            sunday: { enabled: false, slots: [] },
+          },
+          dateOverrides: [],
+        });
+      }
+      
+      res.json({ availability });
+    } catch (error: any) {
+      console.error("Error fetching appointment availability:", error);
+      res.status(500).json({ message: "Failed to fetch appointment availability" });
+    }
+  });
+  
+  // PUT /api/appointment-availability - Update current user's availability settings
+  app.put("/api/appointment-availability", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      // Validate request body
+      const data = insertAppointmentAvailabilitySchema.parse(req.body);
+      
+      // Check if availability exists
+      const existing = await storage.getAppointmentAvailability(currentUser.id);
+      
+      let availability;
+      if (existing) {
+        // Update existing
+        availability = await storage.updateAppointmentAvailability(currentUser.id, data);
+      } else {
+        // Create new
+        availability = await storage.createAppointmentAvailability({
+          ...data,
+          userId: currentUser.id,
+        });
+      }
+      
+      res.json({ 
+        message: "Configuración de disponibilidad actualizada exitosamente",
+        availability 
+      });
+    } catch (error: any) {
+      console.error("Error updating appointment availability:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to update appointment availability" });
     }
   });
 
