@@ -4658,7 +4658,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get invoices from database
       const allInvoices = await storage.getInvoicesByCompany(companyId);
       // Filter out $0.00 invoices (trial invoices) from billing history
-      const invoices = allInvoices.filter(invoice => invoice.total > 0);
+      const filteredInvoices = allInvoices.filter(invoice => invoice.total > 0);
+      // Sort by date descending (most recent first)
+      const invoices = filteredInvoices.sort((a, b) => {
+        const dateA = new Date(a.invoiceDate || a.createdAt);
+        const dateB = new Date(b.invoiceDate || b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
       res.json({ invoices });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
