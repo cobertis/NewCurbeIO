@@ -17965,48 +17965,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /:slug - Public landing page route (MUST be last to avoid conflicts)
-  app.get("/:slug", async (req: Request, res: Response) => {
-    const { slug } = req.params;
-    
-    // Ignore API routes and files
-    if (slug.startsWith('api') || slug.includes('.')) {
-      return res.status(404).json({ message: "Not found" });
-    }
-    
-    try {
-      const landingPage = await storage.getLandingPageBySlug(slug);
-      
-      if (!landingPage || !landingPage.isPublished) {
-        return res.status(404).json({ message: "Landing page not found" });
-      }
-      
-      // Check password protection
-      if (landingPage.isPasswordProtected) {
-        const { password } = req.query;
-        if (!password || password !== landingPage.password) {
-          return res.status(401).json({ 
-            message: "Password required", 
-            passwordProtected: true 
-          });
-        }
-      }
-      
-      const allBlocks = await storage.getBlocksByLandingPage(landingPage.id);
-      const blocks = allBlocks.filter(block => block.isVisible);
-      const company = await storage.getCompany(landingPage.companyId);
-      
-      res.json({ 
-        landingPage, 
-        blocks,
-        company: company ? { logo: company.logo } : null
-      });
-    } catch (error: any) {
-      console.error("Error fetching public landing page:", error);
-      res.status(500).json({ message: "Failed to fetch landing page" });
-    }
-  });
-
   const httpServer = createServer(app);
 
   // Setup WebSocket for real-time chat updates with session validation
