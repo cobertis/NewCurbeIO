@@ -2630,6 +2630,8 @@ export const landingPages = pgTable("landing_pages", {
   profileName: text("profile_name"),
   profileBio: text("profile_bio"),
   profilePhoto: text("profile_photo"),
+  profilePhone: text("profile_phone"),
+  profileEmail: text("profile_email"),
   
   theme: jsonb("theme").default({
     layout: "list",

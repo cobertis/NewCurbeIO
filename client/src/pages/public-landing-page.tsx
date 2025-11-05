@@ -49,6 +49,8 @@ type LandingPage = {
   profileName?: string;
   profileBio?: string;
   profilePhoto?: string;
+  profilePhone?: string;
+  profileEmail?: string;
   theme: {
     primaryColor: string;
     backgroundColor: string;
@@ -828,6 +830,32 @@ export default function PublicLandingPage() {
               >
                 {landingPage.profileBio}
               </p>
+            )}
+
+            {/* Contact Info - Phone and Email */}
+            {(landingPage.profilePhone || landingPage.profileEmail) && (
+              <div className="flex items-center justify-center gap-4 mt-3">
+                {landingPage.profilePhone && (
+                  <a
+                    href={`tel:${landingPage.profilePhone}`}
+                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                    data-testid="public-phone"
+                  >
+                    <Phone className="w-4 h-4" />
+                    <span>{landingPage.profilePhone}</span>
+                  </a>
+                )}
+                {landingPage.profileEmail && (
+                  <a
+                    href={`mailto:${landingPage.profileEmail}`}
+                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                    data-testid="public-email"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>{landingPage.profileEmail}</span>
+                  </a>
+                )}
+              </div>
             )}
           </div>
         )}

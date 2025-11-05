@@ -125,6 +125,8 @@ type LandingPage = {
   profileName?: string;
   profileBio?: string;
   profilePhoto?: string;
+  profilePhone?: string;
+  profileEmail?: string;
   theme: {
     primaryColor: string;
     backgroundColor: string;
@@ -688,6 +690,8 @@ export default function LandingPageBuilder() {
   const [isBlockEditorOpen, setIsBlockEditorOpen] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileBio, setProfileBio] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [themeCategory, setThemeCategory] = useState<"all" | "light" | "dark">("all");
@@ -788,6 +792,8 @@ export default function LandingPageBuilder() {
       setSeoDescription(selectedPage.landingPage.seo.description || "");
       setProfileName(selectedPage.landingPage.profileName || "");
       setProfileBio(selectedPage.landingPage.profileBio || "");
+      setProfilePhone(selectedPage.landingPage.profilePhone || "");
+      setProfileEmail(selectedPage.landingPage.profileEmail || "");
     }
   }, [selectedPage?.landingPage?.id]); // Only sync when page changes, not on every update
 
@@ -863,6 +869,24 @@ export default function LandingPageBuilder() {
       updatePageMutation.mutate({
         id: selectedPageId,
         data: { profileBio },
+      });
+    }
+  };
+
+  const handleProfilePhoneSave = () => {
+    if (profilePhone !== selectedPage?.landingPage?.profilePhone && selectedPageId) {
+      updatePageMutation.mutate({
+        id: selectedPageId,
+        data: { profilePhone },
+      });
+    }
+  };
+
+  const handleProfileEmailSave = () => {
+    if (profileEmail !== selectedPage?.landingPage?.profileEmail && selectedPageId) {
+      updatePageMutation.mutate({
+        id: selectedPageId,
+        data: { profileEmail },
       });
     }
   };
@@ -1771,6 +1795,32 @@ export default function LandingPageBuilder() {
                                 {selectedPage.landingPage.profileBio}
                               </p>
                             )}
+
+                            {/* Contact Info - Phone and Email */}
+                            {(selectedPage.landingPage.profilePhone || selectedPage.landingPage.profileEmail) && (
+                              <div className="flex items-center justify-center gap-4 mt-3">
+                                {selectedPage.landingPage.profilePhone && (
+                                  <a
+                                    href={`tel:${selectedPage.landingPage.profilePhone}`}
+                                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                                    data-testid="preview-phone"
+                                  >
+                                    <Phone className="w-4 h-4" />
+                                    <span>{selectedPage.landingPage.profilePhone}</span>
+                                  </a>
+                                )}
+                                {selectedPage.landingPage.profileEmail && (
+                                  <a
+                                    href={`mailto:${selectedPage.landingPage.profileEmail}`}
+                                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                                    data-testid="preview-email"
+                                  >
+                                    <Mail className="w-4 h-4" />
+                                    <span>{selectedPage.landingPage.profileEmail}</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           {/* Social Media Icons - COMPACT like SmartBio */}
@@ -2167,6 +2217,36 @@ export default function LandingPageBuilder() {
                             placeholder="Your bio"
                             rows={3}
                             data-testid="input-profile-bio"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="profilePhone" className="text-xs mb-2 block">
+                            Phone Number
+                          </Label>
+                          <Input
+                            id="profilePhone"
+                            type="tel"
+                            value={profilePhone}
+                            onChange={(e) => setProfilePhone(e.target.value)}
+                            onBlur={handleProfilePhoneSave}
+                            placeholder="(555) 123-4567"
+                            data-testid="input-profile-phone"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="profileEmail" className="text-xs mb-2 block">
+                            Email
+                          </Label>
+                          <Input
+                            id="profileEmail"
+                            type="email"
+                            value={profileEmail}
+                            onChange={(e) => setProfileEmail(e.target.value)}
+                            onBlur={handleProfileEmailSave}
+                            placeholder="your.email@example.com"
+                            data-testid="input-profile-email"
                           />
                         </div>
                       </div>
