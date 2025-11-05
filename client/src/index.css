@@ -433,7 +433,11 @@
   .landing-profile-name h4,
   .landing-profile-name h5,
   .landing-profile-name h6,
-  .landing-profile-name {
+  .landing-profile-name,
+  .landing-profile-name *,
+  .landing-profile-name div,
+  .landing-profile-name > *,
+  .landing-profile-name > div > * {
     border: none !important;
     border-top: none !important;
     border-right: none !important;
@@ -442,6 +446,23 @@
     text-decoration: none !important;
     box-shadow: none !important;
     outline: none !important;
+  }
+  
+  /* Remove all pseudo-elements that could create lines */
+  .landing-profile-name::before,
+  .landing-profile-name::after,
+  .landing-profile-name h1::before,
+  .landing-profile-name h1::after,
+  .landing-profile-name div::before,
+  .landing-profile-name div::after,
+  .landing-profile-name *::before,
+  .landing-profile-name *::after {
+    display: none !important;
+    content: none !important;
+    border: none !important;
+    background: none !important;
+    height: 0 !important;
+    width: 0 !important;
   }
   
   /* Extra specific override for Typography plugin */
