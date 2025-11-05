@@ -122,6 +122,8 @@ import { useToast } from "@/hooks/use-toast";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { MapBlockDisplay } from "@/components/map-block-display";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { PublicBlock } from "@/components/public-block-renderer";
+import { AppointmentBookingInline } from "@/components/appointment-booking-inline";
 
 // Types
 type LandingPage = {
@@ -920,6 +922,9 @@ export default function LandingPageBuilder() {
   const [isAddSocialOpen, setIsAddSocialOpen] = useState(false);
   const [newSocialPlatform, setNewSocialPlatform] = useState("instagram");
   const [newSocialUsername, setNewSocialUsername] = useState("");
+  
+  // Appointment booking state for preview
+  const [showAppointmentInline, setShowAppointmentInline] = useState(false);
 
   // Fetch current user
   const { data: sessionData } = useQuery<{ user: any }>({
@@ -2192,58 +2197,77 @@ export default function LandingPageBuilder() {
                             return null;
                           })()}
 
-                      {/* All Blocks (EXCEPT Social) with Drag and Drop */}
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <SortableContext
-                          items={blocks.filter(b => b.type !== "social").map((b) => b.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-2">
-                            {blocks.filter(b => b.type !== "social").length === 0 ? (
-                              <Card className="border-dashed">
-                                <CardContent className="p-6 text-center">
-                                  <p className="text-gray-500 text-sm">
-                                    Add your first block from the left sidebar
-                                  </p>
-                                </CardContent>
-                              </Card>
-                            ) : (
-                              blocks.filter(b => b.type !== "social").map((block) => (
-                                <div key={block.id} className="space-y-1">
-                                  {/* Editable block item */}
-                                  <SortableBlock
-                                    block={block}
-                                    onEdit={() => {
-                                      setEditingBlock(block);
-                                      setIsBlockEditorOpen(true);
-                                    }}
-                                    onToggleVisibility={() => {
-                                      updateBlockMutation.mutate({
-                                        blockId: block.id,
-                                        data: { isVisible: !block.isVisible },
-                                      });
-                                    }}
-                                    onDelete={() => setBlockToDelete(block.id)}
-                                  />
-                                  {/* Visual preview - only for non-social blocks */}
-                                  {block.type !== "social" && (
-                                    <div className="pl-4">
-                                      <BlockPreview
+                      {/* Conditional rendering: Show appointment booking or normal blocks */}
+                      {showAppointmentInline ? (
+                        <div className="space-y-2">
+                          <AppointmentBookingInline
+                            landingPageId={parseInt(selectedPage.landingPage.id)}
+                            agentName={selectedPage.landingPage.profileName || "Agent"}
+                            onBack={() => setShowAppointmentInline(false)}
+                            primaryColor={selectedPage.landingPage.theme?.primaryColor || "#3B82F6"}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          {/* All Blocks (EXCEPT Social) with Drag and Drop */}
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <SortableContext
+                              items={blocks.filter(b => b.type !== "social").map((b) => b.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="space-y-2">
+                                {blocks.filter(b => b.type !== "social").length === 0 ? (
+                                  <Card className="border-dashed">
+                                    <CardContent className="p-6 text-center">
+                                      <p className="text-gray-500 text-sm">
+                                        Add your first block from the left sidebar
+                                      </p>
+                                    </CardContent>
+                                  </Card>
+                                ) : (
+                                  blocks.filter(b => b.type !== "social").map((block) => (
+                                    <div key={block.id} className="space-y-1">
+                                      {/* Editable block item */}
+                                      <SortableBlock
                                         block={block}
-                                        theme={selectedPage.landingPage.theme}
+                                        onEdit={() => {
+                                          setEditingBlock(block);
+                                          setIsBlockEditorOpen(true);
+                                        }}
+                                        onToggleVisibility={() => {
+                                          updateBlockMutation.mutate({
+                                            blockId: block.id,
+                                            data: { isVisible: !block.isVisible },
+                                          });
+                                        }}
+                                        onDelete={() => setBlockToDelete(block.id)}
                                       />
+                                      {/* Visual preview using PublicBlock for exact public page rendering */}
+                                      {block.type !== "social" && (
+                                        <div className="pl-4">
+                                          <PublicBlock
+                                            block={block}
+                                            theme={selectedPage.landingPage.theme}
+                                            onTrackClick={(blockId) => {
+                                              console.log('Block clicked in preview:', blockId);
+                                            }}
+                                            landingPageId={selectedPage.landingPage.id}
+                                            onOpenAppointmentModal={() => setShowAppointmentInline(true)}
+                                          />
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
+                                  ))
+                                )}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        </>
+                      )}
                         </div>
                       </div>
                     </ScrollArea>
