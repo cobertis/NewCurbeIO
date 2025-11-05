@@ -287,13 +287,13 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Back to Search
                 </Button>
-                <p className="text-sm text-muted-foreground">
-                  {availableNumbers.length} numbers found
+                <p className="text-sm text-muted-foreground font-medium">
+                  {availableNumbers.length.toLocaleString()} number{availableNumbers.length !== 1 ? 's' : ''} found
                 </p>
               </div>
 
               <RadioGroup value={selectedDID || ""} onValueChange={setSelectedDID}>
-                <div className="space-y-2 max-h-96 overflow-y-auto" data-testid="numbers-list">
+                <div className="space-y-2 max-h-[600px] overflow-y-auto" data-testid="numbers-list">
                   {availableNumbers.map((number) => (
                     <Card
                       key={number.did}

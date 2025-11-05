@@ -18732,6 +18732,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         bulkvsCost: parseFloat(item.Mrc || "0"), // Actual BulkVS cost for internal tracking
       })) : [];
       
+      console.log(`[BulkVS] Found ${formattedResults.length} available numbers for area code ${npa}`);
+      
       res.json(formattedResults);
     } catch (error: any) {
       console.error("Error fetching available numbers:", error);
