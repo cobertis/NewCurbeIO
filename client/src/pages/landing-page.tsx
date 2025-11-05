@@ -539,7 +539,7 @@ function SortableBlock({
       case "maps":
         return "Maps Block";
       case "lead-form":
-        return "Lead Form";
+        return "Request Quote";
       case "calendar":
         return "Scheduler";
       case "testimonials":
@@ -1575,16 +1575,16 @@ export default function LandingPageBuilder() {
           showMarker: true,
         },
         "lead-form": {
-          title: "Get in Touch",
-          subtitle: "We'll get back to you within 24 hours",
+          title: "Request a Free Quote",
+          subtitle: "Get your personalized insurance quote in minutes",
           fields: [
             { name: "fullName", type: "text", required: true, placeholder: "Full Name" },
             { name: "email", type: "email", required: true, placeholder: "Email Address" },
-            { name: "phone", type: "tel", required: false, placeholder: "Phone Number" },
-            { name: "message", type: "textarea", required: false, placeholder: "Your Message" },
+            { name: "phone", type: "tel", required: true, placeholder: "Phone Number" },
+            { name: "message", type: "textarea", required: false, placeholder: "Tell us about your insurance needs" },
           ],
-          submitText: "Submit",
-          successMessage: "Thank you! We'll be in touch soon.",
+          submitText: "Get My Free Quote",
+          successMessage: "Thank you! We'll contact you within 24 hours with your personalized quote.",
           sendNotification: true,
         },
         calendar: {
