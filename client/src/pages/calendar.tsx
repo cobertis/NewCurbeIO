@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Cake, Bell, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Cake, Bell, Calendar as CalendarIcon, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -7,6 +7,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isTod
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import AppointmentConfig from "@/components/appointment-config";
 
 interface CalendarEvent {
   type: 'birthday' | 'reminder' | 'appointment';
@@ -45,6 +46,7 @@ export default function Calendar() {
   const [, setLocation] = useLocation();
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
 
   // Fetch calendar events
   const { data: eventsData, isLoading } = useQuery<{ events: CalendarEvent[] }>({
@@ -195,6 +197,14 @@ export default function Calendar() {
           <h2 className="text-xl font-medium">
             {format(currentDate, "MMMM yyyy")}
           </h2>
+          <Button
+            variant="outline"
+            onClick={() => setConfigOpen(true)}
+            data-testid="button-appointment-config"
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Configurar Citas
+          </Button>
           <Button data-testid="button-new-event">
             <Plus className="h-4 w-4 mr-2" />
             New Event
@@ -412,6 +422,9 @@ export default function Calendar() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Appointment Configuration */}
+      <AppointmentConfig open={configOpen} onOpenChange={setConfigOpen} />
     </div>
   );
 }
