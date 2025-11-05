@@ -199,7 +199,7 @@ export default function Calendar() {
           </h2>
           <Button
             variant="outline"
-            onClick={() => setLocation("/appointment-settings")}
+            onClick={() => setLocation("/calendar/settings")}
             data-testid="button-appointment-config"
           >
             <Settings className="h-4 w-4 mr-2" />

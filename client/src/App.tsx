@@ -83,7 +83,7 @@ const getPageTitle = (path: string): string => {
     '/policies': 'Policies',
     '/policies/new': 'New Policy',
     '/calendar': 'Calendar',
-    '/appointment-settings': 'Appointment Settings',
+    '/calendar/settings': 'Appointment Settings',
     '/leads': 'Leads',
     '/invoices': 'Invoices',
     '/settings': 'Settings',
@@ -1024,7 +1024,7 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/appointment-settings">
+      <Route path="/calendar/settings">
         <ProtectedRoute>
           <DashboardLayout>
             <AppointmentSettings />
