@@ -460,13 +460,27 @@
     pointer-events: none;
   }
 
-  /* Remove any borders from landing page profile section */
+  /* Remove any borders from landing page profile section - Override @tailwindcss/typography */
   .landing-profile-name h1,
+  .landing-profile-name h2,
+  .landing-profile-name h3,
+  .landing-profile-name h4,
+  .landing-profile-name h5,
+  .landing-profile-name h6,
   .landing-profile-name {
     border: none !important;
+    border-top: none !important;
+    border-right: none !important;
     border-bottom: none !important;
+    border-left: none !important;
     text-decoration: none !important;
     box-shadow: none !important;
     outline: none !important;
+  }
+  
+  /* Extra specific override for Typography plugin */
+  .landing-profile-name h1.text-2xl.font-bold {
+    border: 0 !important;
+    border-bottom: 0 !important;
   }
 }
