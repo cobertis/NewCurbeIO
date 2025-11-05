@@ -1209,7 +1209,7 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/sms-mms">
+      <Route path="/chat">
         <ProtectedRoute>
           <DashboardLayout>
             <SmsMmsPage />

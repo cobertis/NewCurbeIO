@@ -206,8 +206,8 @@ const marketingMenuItems = [
     icon: Globe,
   },
   {
-    title: "SMS / MMS",
-    url: "/sms-mms",
+    title: "Chat",
+    url: "/chat",
     icon: Send,
   },
   {
