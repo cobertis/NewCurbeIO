@@ -18303,23 +18303,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { limit, offset, search } = req.query;
     
     try {
-      let leads;
-      
-      // Admin and superadmin can see all company leads
-      if (currentUser.role === "admin" || currentUser.role === "superadmin") {
-        leads = await storage.getLandingLeadsByCompany(currentUser.companyId!, {
-          limit: limit ? parseInt(limit as string) : undefined,
-          offset: offset ? parseInt(offset as string) : undefined,
-          search: search as string | undefined,
-        });
-      } else {
-        // Regular users see only their leads
-        leads = await storage.getLandingLeadsByUser(currentUser.id, {
-          limit: limit ? parseInt(limit as string) : undefined,
-          offset: offset ? parseInt(offset as string) : undefined,
-          search: search as string | undefined,
-        });
-      }
+      // All users see only their own leads
+      const leads = await storage.getLandingLeadsByUser(currentUser.id, {
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+        search: search as string | undefined,
+      });
       
       res.json({ leads });
     } catch (error: any) {
@@ -18334,24 +18323,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { status, limit, offset, search } = req.query;
     
     try {
-      let appointments;
-      
-      // Admin and superadmin can see all company appointments
-      if (currentUser.role === "admin" || currentUser.role === "superadmin") {
-        appointments = await storage.getLandingAppointmentsByCompany(currentUser.companyId!, {
-          status: status as string | undefined,
-          limit: limit ? parseInt(limit as string) : undefined,
-          offset: offset ? parseInt(offset as string) : undefined,
-          search: search as string | undefined,
-        });
-      } else {
-        // Regular users see only their appointments
-        appointments = await storage.getLandingAppointmentsByUser(currentUser.id, {
-          status: status as string | undefined,
-          limit: limit ? parseInt(limit as string) : undefined,
-          offset: offset ? parseInt(offset as string) : undefined,
-        });
-      }
+      // All users see only their own appointments
+      const appointments = await storage.getLandingAppointmentsByUser(currentUser.id, {
+        status: status as string | undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
       
       res.json({ appointments });
     } catch (error: any) {
