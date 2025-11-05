@@ -3032,13 +3032,17 @@ export default function LandingPageBuilder() {
                           },
                         })
                       }
-                      onAddressSelect={(address) => {
+                      onAddressSelect={(address, placeDetails) => {
                         const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}`;
                         setEditingBlock({
                           ...editingBlock,
                           content: {
                             ...editingBlock.content,
                             address: fullAddress,
+                            formattedAddress: placeDetails?.formattedAddress || fullAddress,
+                            placeId: placeDetails?.placeId,
+                            latitude: placeDetails?.latitude,
+                            longitude: placeDetails?.longitude,
                           },
                         });
                       }}
@@ -3049,6 +3053,11 @@ export default function LandingPageBuilder() {
                     <p className="text-xs text-muted-foreground mt-1">
                       Start typing to search for an address
                     </p>
+                    {editingBlock.content.latitude && editingBlock.content.longitude && (
+                      <p className="text-xs text-green-600 mt-1">
+                        ✓ Location selected ({editingBlock.content.latitude.toFixed(4)}, {editingBlock.content.longitude.toFixed(4)})
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Zoom Level</Label>

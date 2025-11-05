@@ -1584,7 +1584,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
-        "X-Goog-FieldMask": "id,formattedAddress,addressComponents"
+        "X-Goog-FieldMask": "id,formattedAddress,addressComponents,location"
       };
 
       console.log("[GOOGLE_PLACES] Fetching place details");
@@ -1655,8 +1655,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log("[GOOGLE_PLACES] Parsed address:", address);
       
+      // Extract location (latitude/longitude) and other details
+      const responseData: any = {
+        address,
+        placeId: place.id || placeId,
+        formattedAddress: place.formattedAddress || '',
+      };
+
+      // Add location if available
+      if (place.location) {
+        responseData.latitude = place.location.latitude;
+        responseData.longitude = place.location.longitude;
+      }
+      
       res.setHeader('Content-Type', 'application/json');
-      return res.json({ address });
+      return res.json(responseData);
     } catch (error) {
       console.error("[GOOGLE_PLACES] Place details error:", error);
       return res.status(500).json({ message: "Failed to fetch place details" });

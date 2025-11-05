@@ -21,6 +21,11 @@ interface GooglePlacesAddressAutocompleteProps {
     county?: string;
     postalCode: string;
     country: string;
+  }, placeDetails?: {
+    placeId?: string;
+    formattedAddress?: string;
+    latitude?: number;
+    longitude?: number;
   }) => void;
   label?: string;
   placeholder?: string;
@@ -115,7 +120,7 @@ export function GooglePlacesAddressAutocomplete({
         // Update the input field with the street address
         onChange(address.street);
         
-        // Call the callback with all address components
+        // Call the callback with all address components and place details
         onAddressSelect({
           street: address.street,
           city: address.city,
@@ -123,6 +128,11 @@ export function GooglePlacesAddressAutocomplete({
           county: address.county,
           postalCode: address.postalCode,
           country: address.country,
+        }, {
+          placeId: data.placeId,
+          formattedAddress: data.formattedAddress,
+          latitude: data.latitude,
+          longitude: data.longitude,
         });
       }
     } catch (error) {
