@@ -93,6 +93,14 @@ export function MapBlockDisplay({
 
     return () => {
       mounted = false;
+      
+      // Cleanup: remove marker and map instance
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+        markerRef.current = null;
+      }
+      
+      mapInstanceRef.current = null;
     };
   }, [latitude, longitude, formattedAddress, zoomLevel]);
 

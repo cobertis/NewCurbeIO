@@ -13,6 +13,7 @@ export async function loadGoogleMapsAPI(): Promise<any> {
 
   googleMapsPromise = new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
+      googleMapsPromise = null; // Reset on error
       reject(new Error('Google Maps can only be loaded in browser'));
       return;
     }
@@ -29,6 +30,7 @@ export async function loadGoogleMapsAPI(): Promise<any> {
         resolve(window.google);
         delete (window as any)[callbackName];
       } else {
+        googleMapsPromise = null; // Reset on error
         reject(new Error('Google Maps failed to load'));
       }
     };
@@ -38,6 +40,7 @@ export async function loadGoogleMapsAPI(): Promise<any> {
     script.async = true;
     script.defer = true;
     script.onerror = () => {
+      googleMapsPromise = null; // Reset on error to allow retry
       reject(new Error('Failed to load Google Maps script'));
       delete (window as any)[callbackName];
     };
