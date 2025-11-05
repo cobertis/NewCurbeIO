@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Clock, Calendar, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Clock, Calendar, Plus, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface TimeSlot {
@@ -231,36 +232,24 @@ export default function AppointmentSettings() {
   if (!availability) return null;
 
   return (
-    <div className="container mx-auto max-w-4xl py-8 px-4">
-      {/* Header */}
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocation("/calendar")}
-          className="mb-4"
-          data-testid="button-back-to-calendar"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Calendar
-        </Button>
-        
-        <div className="flex items-center gap-3 mb-2">
-          <Settings className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-bold">Appointment Settings</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Configure your availability and preferences for landing page appointments
-        </p>
-      </div>
-
-      <div className="space-y-8">
+    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+      <div className="space-y-6">
         {/* General Settings */}
-        <div className="bg-card border rounded-lg p-6 space-y-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-5 h-5" />
-            <h2 className="text-xl font-semibold">General Settings</h2>
-          </div>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  General Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure your availability and preferences for landing page appointments
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -404,14 +393,21 @@ export default function AppointmentSettings() {
               </SelectContent>
             </Select>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Weekly Availability */}
-        <div className="bg-card border rounded-lg p-6 space-y-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-5 h-5" />
-            <h2 className="text-xl font-semibold">Weekly Schedule</h2>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Weekly Schedule
+            </CardTitle>
+            <CardDescription>
+              Set your available hours for each day of the week
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
           
           <div className="space-y-4">
             {DAYS.map((day) => {
@@ -480,25 +476,24 @@ export default function AppointmentSettings() {
               );
             })}
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 sticky bottom-0 bg-background/95 backdrop-blur py-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => setLocation("/calendar")}
-            data-testid="button-cancel"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={updateMutation.isPending}
-            data-testid="button-save-settings"
-          >
-            {updateMutation.isPending ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
+          </CardContent>
+          <div className="flex justify-end gap-3 p-6 pt-0">
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/calendar")}
+              data-testid="button-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={updateMutation.isPending}
+              data-testid="button-save-settings"
+            >
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </Card>
       </div>
     </div>
   );
