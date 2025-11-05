@@ -12,9 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Phone, Calendar, DollarSign, CheckCircle2, XCircle, Edit2, Save, X } from "lucide-react";
+import { Phone, Calendar, DollarSign, CheckCircle2, XCircle, Edit2, Save, X, PhoneForwarded, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { BulkvsPhoneNumber } from "@shared/schema";
 
 interface PhoneSettingsModalProps {
@@ -27,6 +29,9 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(phoneNumber.displayName || "");
+  const [callForwardEnabled, setCallForwardEnabled] = useState(phoneNumber.callForwardEnabled || false);
+  const [callForwardNumber, setCallForwardNumber] = useState(phoneNumber.callForwardNumber || "");
+  const [isEditingCallForward, setIsEditingCallForward] = useState(false);
 
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
@@ -104,6 +109,48 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
   const handleCancelEdit = () => {
     setDisplayName(phoneNumber.displayName || "");
     setIsEditingName(false);
+  };
+
+  const updateCallForwardMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/bulkvs/numbers/${phoneNumber.id}`, {
+        callForwardEnabled,
+        callForwardNumber: callForwardEnabled ? callForwardNumber : null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/numbers"] });
+      toast({
+        title: "Call Forward updated",
+        description: "Call forwarding settings have been updated successfully.",
+      });
+      setIsEditingCallForward(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveCallForward = () => {
+    if (callForwardEnabled && !callForwardNumber.trim()) {
+      toast({
+        title: "Invalid number",
+        description: "Please enter a phone number for call forwarding.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateCallForwardMutation.mutate();
+  };
+
+  const handleCancelCallForward = () => {
+    setCallForwardEnabled(phoneNumber.callForwardEnabled || false);
+    setCallForwardNumber(phoneNumber.callForwardNumber || "");
+    setIsEditingCallForward(false);
   };
 
   return (
@@ -221,6 +268,104 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
                   {phoneNumber.status}
                 </Badge>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Call Forward Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <PhoneForwarded className="h-5 w-5" />
+                Call Forwarding
+              </CardTitle>
+              <CardDescription>
+                Forward incoming calls to another phone number
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  Call forwarding must also be configured in the BulkVS portal under Trunk Groups. This setting stores your preference but requires portal configuration to activate.
+                </AlertDescription>
+              </Alert>
+
+              {isEditingCallForward ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="call-forward-enabled">Enable Call Forwarding</Label>
+                    <Switch
+                      id="call-forward-enabled"
+                      checked={callForwardEnabled}
+                      onCheckedChange={setCallForwardEnabled}
+                      data-testid="switch-call-forward-enabled"
+                    />
+                  </div>
+
+                  {callForwardEnabled && (
+                    <div className="space-y-2">
+                      <Label htmlFor="call-forward-number">Forward To Number</Label>
+                      <Input
+                        id="call-forward-number"
+                        type="tel"
+                        placeholder="+1 (555) 123-4567"
+                        value={callForwardNumber}
+                        onChange={(e) => setCallForwardNumber(e.target.value)}
+                        data-testid="input-call-forward-number"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Enter the phone number where calls should be forwarded
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSaveCallForward}
+                      disabled={updateCallForwardMutation.isPending}
+                      data-testid="button-save-call-forward"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {updateCallForwardMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={handleCancelCallForward}
+                      data-testid="button-cancel-call-forward"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    <Badge variant={phoneNumber.callForwardEnabled ? "default" : "secondary"} data-testid="call-forward-status">
+                      {phoneNumber.callForwardEnabled ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </div>
+
+                  {phoneNumber.callForwardEnabled && phoneNumber.callForwardNumber && (
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <span className="text-sm text-muted-foreground">Forward To</span>
+                      <span className="font-medium" data-testid="call-forward-number-display">
+                        {phoneNumber.callForwardNumber}
+                      </span>
+                    </div>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditingCallForward(true)}
+                    className="w-full"
+                    data-testid="button-edit-call-forward"
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Configure Call Forwarding
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

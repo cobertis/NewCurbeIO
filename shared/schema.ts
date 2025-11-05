@@ -3034,6 +3034,10 @@ export const bulkvsPhoneNumbers = pgTable("bulkvs_phone_numbers", {
   campaignId: text("campaign_id"), // 10DLC campaign ID
   webhookUrl: text("webhook_url"),
   
+  // Call Forward Configuration
+  callForwardEnabled: boolean("call_forward_enabled").notNull().default(false),
+  callForwardNumber: text("call_forward_number"), // Phone number to forward calls to (E.164 format)
+  
   // Metadata
   areaCode: text("area_code"), // NPA (e.g., "786")
   rateCenter: text("rate_center"),

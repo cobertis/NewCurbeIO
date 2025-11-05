@@ -18911,7 +18911,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { id } = req.params;
-      const { displayName } = req.body;
+      const { displayName, callForwardEnabled, callForwardNumber } = req.body;
 
       // Verify phone number belongs to user
       const phoneNumber = await storage.getBulkvsPhoneNumber(id);
@@ -18923,10 +18923,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
 
+      // Build update object
+      const updateData: any = {};
+      if (displayName !== undefined) {
+        updateData.displayName = displayName || phoneNumber.displayName;
+      }
+      if (callForwardEnabled !== undefined) {
+        updateData.callForwardEnabled = callForwardEnabled;
+      }
+      if (callForwardNumber !== undefined) {
+        updateData.callForwardNumber = callForwardNumber;
+      }
+
       // Update phone number
-      const updated = await storage.updateBulkvsPhoneNumber(id, {
-        displayName: displayName || phoneNumber.displayName,
-      });
+      const updated = await storage.updateBulkvsPhoneNumber(id, updateData);
+
+      console.log(`[BulkVS] Phone number ${phoneNumber.did} settings updated:`, updateData);
 
       res.json(updated);
     } catch (error: any) {
