@@ -166,7 +166,7 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl" data-testid="phone-settings-modal">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" data-testid="phone-settings-modal">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2" data-testid="modal-title">
             <Phone className="h-5 w-5" />
@@ -175,8 +175,8 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* My Number */}
-          <div className="space-y-2">
+          {/* My Number - Full Width */}
+          <div className="space-y-2 text-center border-b pb-4">
             <h1 className="text-3xl font-bold tracking-tight" data-testid="my-number-title">
               My Number
             </h1>
@@ -185,8 +185,12 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
             </p>
           </div>
 
-          {/* Configuration */}
-          <Card>
+          {/* Two Column Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
+              {/* Configuration */}
+              <Card>
             <CardHeader>
               <CardTitle className="text-lg">Configuration</CardTitle>
             </CardHeader>
@@ -228,106 +232,109 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
             </CardContent>
           </Card>
 
-          {/* Call Forward Configuration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <PhoneForwarded className="h-5 w-5" />
-                Call Forwarding
-              </CardTitle>
-              <CardDescription>
-                Forward incoming calls to another phone number
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-sm">
-                  Call forwarding will be automatically configured via BulkVS API. Changes may take a few moments to propagate.
-                </AlertDescription>
-              </Alert>
+              {/* Call Forward Configuration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <PhoneForwarded className="h-5 w-5" />
+                    Call Forwarding
+                  </CardTitle>
+                  <CardDescription>
+                    Forward incoming calls to another phone number
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      Call forwarding will be automatically configured via BulkVS API. Changes may take a few moments to propagate.
+                    </AlertDescription>
+                  </Alert>
 
-              {isEditingCallForward ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="call-forward-enabled">Enable Call Forwarding</Label>
-                    <Switch
-                      id="call-forward-enabled"
-                      checked={callForwardEnabled}
-                      onCheckedChange={setCallForwardEnabled}
-                      data-testid="switch-call-forward-enabled"
-                    />
-                  </div>
+                  {isEditingCallForward ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="call-forward-enabled">Enable Call Forwarding</Label>
+                        <Switch
+                          id="call-forward-enabled"
+                          checked={callForwardEnabled}
+                          onCheckedChange={setCallForwardEnabled}
+                          data-testid="switch-call-forward-enabled"
+                        />
+                      </div>
 
-                  {callForwardEnabled && (
-                    <div className="space-y-2">
-                      <Label htmlFor="call-forward-number">Forward To Number</Label>
-                      <Input
-                        id="call-forward-number"
-                        type="tel"
-                        placeholder="+1 (555) 123-4567"
-                        value={callForwardNumber}
-                        onChange={(e) => setCallForwardNumber(e.target.value)}
-                        data-testid="input-call-forward-number"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Enter the phone number where calls should be forwarded
-                      </p>
+                      {callForwardEnabled && (
+                        <div className="space-y-2">
+                          <Label htmlFor="call-forward-number">Forward To Number</Label>
+                          <Input
+                            id="call-forward-number"
+                            type="tel"
+                            placeholder="+1 (555) 123-4567"
+                            value={callForwardNumber}
+                            onChange={(e) => setCallForwardNumber(e.target.value)}
+                            data-testid="input-call-forward-number"
+                          />
+                          <p className="text-sm text-muted-foreground">
+                            Enter the phone number where calls should be forwarded
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleSaveCallForward}
+                          disabled={updateCallForwardMutation.isPending}
+                          data-testid="button-save-call-forward"
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {updateCallForwardMutation.isPending ? "Saving..." : "Save Changes"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={handleCancelCallForward}
+                          data-testid="button-cancel-call-forward"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 rounded-lg border">
+                        <span className="text-sm text-muted-foreground">Status</span>
+                        <Badge variant={phoneNumber.callForwardEnabled ? "default" : "secondary"} data-testid="call-forward-status">
+                          {phoneNumber.callForwardEnabled ? "Enabled" : "Disabled"}
+                        </Badge>
+                      </div>
+
+                      {phoneNumber.callForwardEnabled && phoneNumber.callForwardNumber && (
+                        <div className="flex items-center justify-between p-3 rounded-lg border">
+                          <span className="text-sm text-muted-foreground">Forward To</span>
+                          <span className="font-medium" data-testid="call-forward-number-display">
+                            {formatPhoneNumber(phoneNumber.callForwardNumber)}
+                          </span>
+                        </div>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditingCallForward(true)}
+                        className="w-full"
+                        data-testid="button-edit-call-forward"
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Configure Call Forwarding
+                      </Button>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleSaveCallForward}
-                      disabled={updateCallForwardMutation.isPending}
-                      data-testid="button-save-call-forward"
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      {updateCallForwardMutation.isPending ? "Saving..." : "Save Changes"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={handleCancelCallForward}
-                      data-testid="button-cancel-call-forward"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg border">
-                    <span className="text-sm text-muted-foreground">Status</span>
-                    <Badge variant={phoneNumber.callForwardEnabled ? "default" : "secondary"} data-testid="call-forward-status">
-                      {phoneNumber.callForwardEnabled ? "Enabled" : "Disabled"}
-                    </Badge>
-                  </div>
-
-                  {phoneNumber.callForwardEnabled && phoneNumber.callForwardNumber && (
-                    <div className="flex items-center justify-between p-3 rounded-lg border">
-                      <span className="text-sm text-muted-foreground">Forward To</span>
-                      <span className="font-medium" data-testid="call-forward-number-display">
-                        {formatPhoneNumber(phoneNumber.callForwardNumber)}
-                      </span>
-                    </div>
-                  )}
-
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsEditingCallForward(true)}
-                    className="w-full"
-                    data-testid="button-edit-call-forward"
-                  >
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Configure Call Forwarding
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Billing Information */}
-          <Card>
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Billing Information */}
+              <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
@@ -369,25 +376,27 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
             </CardContent>
           </Card>
 
-          {/* Danger Zone */}
-          <Card className="border-destructive">
-            <CardHeader>
-              <CardTitle className="text-lg text-destructive">Danger Zone</CardTitle>
-              <CardDescription>
-                Deactivate this phone number and cancel the subscription. This action cannot be undone.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                variant="destructive"
-                onClick={() => setShowDeactivateDialog(true)}
-                disabled={deactivateNumberMutation.isPending}
-                data-testid="button-deactivate"
-              >
-                {deactivateNumberMutation.isPending ? "Deactivating..." : "Deactivate Number"}
-              </Button>
-            </CardContent>
-          </Card>
+              {/* Danger Zone */}
+              <Card className="border-destructive">
+                <CardHeader>
+                  <CardTitle className="text-lg text-destructive">Danger Zone</CardTitle>
+                  <CardDescription>
+                    Deactivate this phone number and cancel the subscription. This action cannot be undone.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowDeactivateDialog(true)}
+                    disabled={deactivateNumberMutation.isPending}
+                    data-testid="button-deactivate"
+                  >
+                    {deactivateNumberMutation.isPending ? "Deactivating..." : "Deactivate Number"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </DialogContent>
 
