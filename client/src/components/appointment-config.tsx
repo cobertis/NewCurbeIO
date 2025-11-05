@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -48,13 +48,13 @@ interface AppointmentAvailability {
 }
 
 const DAYS = [
-  { key: 'monday', label: 'Lunes' },
-  { key: 'tuesday', label: 'Martes' },
-  { key: 'wednesday', label: 'Miércoles' },
-  { key: 'thursday', label: 'Jueves' },
-  { key: 'friday', label: 'Viernes' },
-  { key: 'saturday', label: 'Sábado' },
-  { key: 'sunday', label: 'Domingo' },
+  { key: 'monday', label: 'Monday' },
+  { key: 'tuesday', label: 'Tuesday' },
+  { key: 'wednesday', label: 'Wednesday' },
+  { key: 'thursday', label: 'Thursday' },
+  { key: 'friday', label: 'Friday' },
+  { key: 'saturday', label: 'Saturday' },
+  { key: 'sunday', label: 'Sunday' },
 ];
 
 const TIMEZONES = [
@@ -80,10 +80,14 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
   const { data, isLoading } = useQuery<{ availability: AppointmentAvailability }>({
     queryKey: ["/api/appointment-availability"],
     enabled: open,
-    onSuccess: (data) => {
-      setAvailability(data.availability);
-    },
   });
+
+  // Sync availability state when data changes
+  useEffect(() => {
+    if (data?.availability) {
+      setAvailability(data.availability);
+    }
+  }, [data]);
 
   // Update availability mutation
   const updateMutation = useMutation({
@@ -96,7 +100,7 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointment-availability"] });
       toast({
-        description: "Configuración de disponibilidad actualizada exitosamente",
+        description: "Availability settings updated successfully",
         duration: 3000,
       });
       onOpenChange(false);
@@ -104,7 +108,7 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
     onError: () => {
       toast({
         variant: "destructive",
-        description: "Error al actualizar la configuración",
+        description: "Error updating availability settings",
         duration: 3000,
       });
     },
@@ -193,7 +197,7 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="max-w-2xl overflow-y-auto">
-          <LoadingSpinner message="Cargando configuración..." />
+          <LoadingSpinner message="Loading settings..." />
         </SheetContent>
       </Sheet>
     );
@@ -207,21 +211,21 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            Configuración de Citas
+            Appointment Settings
           </SheetTitle>
           <SheetDescription>
-            Configura tu disponibilidad y preferencias para las citas del landing page
+            Configure your availability and preferences for landing page appointments
           </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
           {/* General Settings */}
           <div className="space-y-4">
-            <h3 className="font-medium text-lg">Configuración General</h3>
+            <h3 className="font-medium text-lg">General Settings</h3>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="duration">Duración de cita</Label>
+                <Label htmlFor="duration">Appointment Duration</Label>
                 <Select
                   value={availability.appointmentDuration.toString()}
                   onValueChange={(value) => setAvailability({ ...availability, appointmentDuration: parseInt(value) })}
@@ -230,18 +234,18 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="15">15 minutos</SelectItem>
-                    <SelectItem value="30">30 minutos</SelectItem>
-                    <SelectItem value="45">45 minutos</SelectItem>
-                    <SelectItem value="60">1 hora</SelectItem>
-                    <SelectItem value="90">1.5 horas</SelectItem>
-                    <SelectItem value="120">2 horas</SelectItem>
+                    <SelectItem value="15">15 minutes</SelectItem>
+                    <SelectItem value="30">30 minutes</SelectItem>
+                    <SelectItem value="45">45 minutes</SelectItem>
+                    <SelectItem value="60">1 hour</SelectItem>
+                    <SelectItem value="90">1.5 hours</SelectItem>
+                    <SelectItem value="120">2 hours</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="buffer">Tiempo entre citas</Label>
+                <Label htmlFor="buffer">Buffer Time Between Appointments</Label>
                 <Select
                   value={availability.bufferTime.toString()}
                   onValueChange={(value) => setAvailability({ ...availability, bufferTime: parseInt(value) })}
@@ -250,17 +254,17 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0">Sin descanso</SelectItem>
-                    <SelectItem value="5">5 minutos</SelectItem>
-                    <SelectItem value="10">10 minutos</SelectItem>
-                    <SelectItem value="15">15 minutos</SelectItem>
-                    <SelectItem value="30">30 minutos</SelectItem>
+                    <SelectItem value="0">No break</SelectItem>
+                    <SelectItem value="5">5 minutes</SelectItem>
+                    <SelectItem value="10">10 minutes</SelectItem>
+                    <SelectItem value="15">15 minutes</SelectItem>
+                    <SelectItem value="30">30 minutes</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="advance">Tiempo mínimo de anticipación</Label>
+                <Label htmlFor="advance">Minimum Notice Time</Label>
                 <Select
                   value={availability.minAdvanceTime.toString()}
                   onValueChange={(value) => setAvailability({ ...availability, minAdvanceTime: parseInt(value) })}
@@ -269,18 +273,18 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0">Sin restricción</SelectItem>
-                    <SelectItem value="60">1 hora</SelectItem>
-                    <SelectItem value="120">2 horas</SelectItem>
-                    <SelectItem value="240">4 horas</SelectItem>
-                    <SelectItem value="1440">1 día</SelectItem>
-                    <SelectItem value="2880">2 días</SelectItem>
+                    <SelectItem value="0">No restriction</SelectItem>
+                    <SelectItem value="60">1 hour</SelectItem>
+                    <SelectItem value="120">2 hours</SelectItem>
+                    <SelectItem value="240">4 hours</SelectItem>
+                    <SelectItem value="1440">1 day</SelectItem>
+                    <SelectItem value="2880">2 days</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxDays">Días de anticipación máxima</Label>
+                <Label htmlFor="maxDays">Maximum Advance Booking Days</Label>
                 <Input
                   id="maxDays"
                   type="number"
@@ -293,7 +297,7 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="timezone">Zona horaria</Label>
+              <Label htmlFor="timezone">Timezone</Label>
               <Select
                 value={availability.timezone}
                 onValueChange={(value) => setAvailability({ ...availability, timezone: value })}
@@ -314,7 +318,7 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
 
           {/* Weekly Availability */}
           <div className="space-y-4">
-            <h3 className="font-medium text-lg">Disponibilidad Semanal</h3>
+            <h3 className="font-medium text-lg">Weekly Schedule</h3>
             
             <div className="space-y-3">
               {DAYS.map((day) => {
@@ -370,7 +374,7 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
                           className="mt-2"
                         >
                           <Plus className="w-4 h-4 mr-1" />
-                          Agregar horario
+                          Add time slot
                         </Button>
                       </div>
                     )}
@@ -386,13 +390,13 @@ export default function AppointmentConfig({ open, onOpenChange }: AppointmentCon
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancelar
+              Cancel
             </Button>
             <Button
               onClick={handleSave}
               disabled={updateMutation.isPending}
             >
-              {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </div>

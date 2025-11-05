@@ -203,7 +203,7 @@ export default function Calendar() {
             data-testid="button-appointment-config"
           >
             <Settings className="h-4 w-4 mr-2" />
-            Configurar Citas
+            Configure Availability
           </Button>
           <Button data-testid="button-new-event">
             <Plus className="h-4 w-4 mr-2" />
