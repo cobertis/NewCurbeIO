@@ -1992,16 +1992,18 @@ export default function LandingPageBuilder() {
                           }}
                         >
                           {/* Profile Info - COMPACT and CLEAN */}
-                          <div className="relative z-50 text-center -mt-2" style={{ marginBottom: "16px", border: "none" }}>
+                          <div className="relative z-50 text-center -mt-2 landing-profile-name" style={{ marginBottom: "16px", border: "none" }}>
                             {selectedPage.landingPage.profileName && (
-                              <div className="flex items-center justify-center gap-1.5 mb-1">
+                              <div className="flex items-center justify-center gap-1.5 mb-1" style={{ border: "none" }}>
                                 <h1
                                   className="text-2xl font-bold"
                                   style={{ 
                                     color: "#000000",
                                     margin: 0,
                                     padding: 0,
-                                    border: "none",
+                                    border: "none !important",
+                                    borderBottom: "none !important",
+                                    textDecoration: "none",
                                   }}
                                 >
                                   {selectedPage.landingPage.profileName}

@@ -459,4 +459,14 @@
     animation: spin-gradient 3s linear infinite;
     pointer-events: none;
   }
+
+  /* Remove any borders from landing page profile section */
+  .landing-profile-name h1,
+  .landing-profile-name {
+    border: none !important;
+    border-bottom: none !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
 }
