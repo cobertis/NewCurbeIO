@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon, Power, Camera } from "lucide-react";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -318,11 +319,7 @@ export default function Users() {
   // Profile view JSX
   const renderProfileView = () => {
     if (isLoadingSingleUser) {
-      return (
-        <div className="p-4 sm:p-6">
-          <div className="text-center">Loading user profile...</div>
-        </div>
-      );
+      return <LoadingSpinner message="Loading user profile..." />;
     }
 
     if (!profileUser) {

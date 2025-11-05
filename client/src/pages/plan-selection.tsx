@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Check, CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 interface User {
   id: string;
@@ -132,11 +133,7 @@ export default function PlanSelection() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading plans..." />;
   }
 
   return (

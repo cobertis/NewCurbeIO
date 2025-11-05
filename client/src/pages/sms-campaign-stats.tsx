@@ -11,6 +11,7 @@ import { ArrowLeft, MessageSquare, Users, CheckCircle, XCircle, BarChart, Search
 import { formatDistanceToNow } from "date-fns";
 import { formatPhoneDisplay } from "@/lib/phone-formatter";
 import type { SmsCampaign, CampaignSmsMessage } from "@shared/schema";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 interface SmsCampaignStats {
   campaign: SmsCampaign;
@@ -29,15 +30,7 @@ export default function SmsCampaignStats() {
   });
 
   if (isLoading || !stats) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-muted-foreground">Loading statistics...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <LoadingSpinner message="Loading SMS campaign statistics..." />;
   }
 
   const { campaign, messages } = stats;

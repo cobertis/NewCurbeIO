@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { User } from "@shared/schema";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 export default function EmailConfiguration() {
   const [, setLocation] = useLocation();
@@ -23,13 +23,7 @@ export default function EmailConfiguration() {
   }, [isLoadingUser, isSuperAdmin, setLocation]);
 
   if (isLoadingUser) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <Skeleton className="h-8 w-64 mb-2" />
-        <Skeleton className="h-4 w-96 mb-8" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+    return <LoadingSpinner message="Loading email configuration..." />;
   }
 
   if (!isSuperAdmin) {

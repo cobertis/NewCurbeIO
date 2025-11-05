@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import {
   Select,
   SelectContent,
@@ -481,16 +482,7 @@ export default function MarketplacePlansPage() {
 
   // Loading state
   if (isLoadingQuote || isLoadingPlans) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg text-muted-foreground">
-            {isLoadingQuote ? "Loading quote details..." : "Fetching marketplace plans..."}
-          </p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message={isLoadingQuote ? "Loading quote details..." : "Fetching marketplace plans..."} />;
   }
 
   const quote = (quoteData as any)?.[isPolicy ? 'policy' : 'quote'];

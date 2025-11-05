@@ -1,10 +1,11 @@
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Loader2, Shield, Phone, Mail, User, Calendar, IdCard, MapPin, FileText } from "lucide-react";
+import { Shield, Phone, Mail, User, Calendar, IdCard, MapPin, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 export default function PolicyPrintPage() {
   const [, params] = useRoute("/policies/:id/print");
@@ -49,14 +50,7 @@ export default function PolicyPrintPage() {
   };
 
   if (isLoading || !policy) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg text-muted-foreground">Loading policy information...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading policy information..." />;
   }
 
   // Parse effectiveDate as local time to avoid timezone issues
@@ -413,7 +407,7 @@ export default function PolicyPrintPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {allMembers.map((member, index) => (
+                    {allMembers.map((member: any, index: number) => (
                       <tr key={index} className="border-b border-neutral-200 last:border-b-0 hover:bg-neutral-50">
                         <td className="p-2 font-medium">
                           {[member.firstName, member.middleName, member.lastName, member.secondLastName].filter(Boolean).join(' ')}

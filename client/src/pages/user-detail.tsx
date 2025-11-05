@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 // Validation schemas for each form section
 const personalInfoSchema = z.object({
@@ -369,11 +370,7 @@ export default function UserDetail() {
   };
 
   if (isLoadingUser) {
-    return (
-      <div className="flex items-center justify-center h-screen" data-testid="loading-user">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading user..." />;
   }
 
   if (!user) {

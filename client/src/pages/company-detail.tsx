@@ -22,6 +22,7 @@ import { formatPhoneInput, formatPhoneE164 } from "@/lib/phone-formatter";
 import { useState } from "react";
 import { CompanyBillingTab } from "@/components/company-billing-tab";
 import { useTabsState } from "@/hooks/use-tabs-state";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 const userFormSchema = insertUserSchema.omit({ password: true }).extend({
   role: z.enum(["admin", "member", "viewer"]),
@@ -188,11 +189,7 @@ export default function CompanyDetail() {
   };
 
   if (isLoadingCompany) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading company..." />;
   }
 
   if (!company) {

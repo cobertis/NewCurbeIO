@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatPhoneInput, formatPhoneDisplay } from "@/lib/phone-formatter";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { BusinessAutocomplete } from "@/components/business-autocomplete";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 // Function to generate slug from company name
 function generateSlug(name: string): string {
@@ -279,14 +280,7 @@ export default function Companies() {
   );
 
   if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading companies..." />;
   }
 
   return (

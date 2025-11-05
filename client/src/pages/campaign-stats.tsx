@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Mail, MousePointer, Users, Eye, BarChart, ExternalLink, UserX, Search, Filter } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { EmailCampaign, EmailOpen, LinkClick, CampaignEmail } from "@shared/schema";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 interface CampaignStats {
   campaign: EmailCampaign;
@@ -50,15 +51,7 @@ export default function CampaignStats() {
   const emails = emailsData?.emails || [];
 
   if (isLoading || !stats) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-muted-foreground">Loading statistics...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <LoadingSpinner message="Loading campaign statistics..." />;
   }
 
   const { campaign, opens, clicks, uniqueOpeners, uniqueClickers, clicksByUrl, campaignUnsubscribes } = stats;
