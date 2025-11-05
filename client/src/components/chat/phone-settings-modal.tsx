@@ -30,10 +30,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { BulkvsPhoneNumber } from "@shared/schema";
 import { formatForDisplay } from "@shared/phone";
 
+// Extended type with display properties added by backend
+interface PhoneNumberWithDisplay extends BulkvsPhoneNumber {
+  didDisplay?: string;
+  callForwardNumberDisplay?: string | null;
+}
+
 interface PhoneSettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  phoneNumber: BulkvsPhoneNumber;
+  phoneNumber: PhoneNumberWithDisplay;
 }
 
 export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSettingsModalProps) {
@@ -44,6 +50,8 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
   const [callForwardNumber, setCallForwardNumber] = useState(phoneNumber.callForwardNumber || "");
   const [isEditingCallForward, setIsEditingCallForward] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [isEditingCNAM, setIsEditingCNAM] = useState(false);
+  const [cnamValue, setCnamValue] = useState(phoneNumber.cnam || "");
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return "N/A";
@@ -154,6 +162,57 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
     setIsEditingCallForward(false);
   };
 
+  // CNAM Validation: Max 15 alphanumeric characters
+  const sanitizeCNAM = (value: string): string => {
+    // Remove any non-alphanumeric characters and limit to 15 chars
+    return value.replace(/[^a-zA-Z0-9\s]/g, '').slice(0, 15);
+  };
+
+  const isCNAMValid = cnamValue.length > 0 && cnamValue.length <= 15;
+
+  const updateCNAMMutation = useMutation({
+    mutationFn: async () => {
+      if (!isCNAMValid) {
+        throw new Error("CNAM must be 1-15 alphanumeric characters");
+      }
+      return apiRequest("PATCH", `/api/bulkvs/numbers/${phoneNumber.id}/cnam`, {
+        cnam: cnamValue,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/numbers"] });
+      toast({
+        title: "CNAM updated",
+        description: "Caller ID name has been updated successfully.",
+      });
+      setIsEditingCNAM(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveCNAM = () => {
+    if (!isCNAMValid) {
+      toast({
+        title: "Invalid CNAM",
+        description: "CNAM must be 1-15 alphanumeric characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateCNAMMutation.mutate();
+  };
+
+  const handleCancelCNAM = () => {
+    setCnamValue(phoneNumber.cnam || "");
+    setIsEditingCNAM(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" data-testid="phone-settings-modal">
@@ -221,6 +280,89 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
               </div>
             </CardContent>
           </Card>
+
+              {/* CNAM (Caller ID Name) Configuration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Caller ID Name (CNAM)</CardTitle>
+                  <CardDescription>
+                    Set the caller ID name that appears when you call someone
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      CNAM must be 1-15 alphanumeric characters. Special characters will be removed automatically.
+                    </AlertDescription>
+                  </Alert>
+
+                  {isEditingCNAM ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cnam-value">Caller ID Name</Label>
+                        <Input
+                          id="cnam-value"
+                          type="text"
+                          placeholder="Your Company Name"
+                          maxLength={15}
+                          value={cnamValue}
+                          onChange={(e) => setCnamValue(sanitizeCNAM(e.target.value))}
+                          className={!isCNAMValid && cnamValue.length > 0 ? "border-red-500" : ""}
+                          data-testid="input-cnam"
+                        />
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">
+                            {cnamValue.length}/15 characters
+                          </p>
+                          {!isCNAMValid && cnamValue.length > 0 && (
+                            <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                              Must be 1-15 characters
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleSaveCNAM}
+                          disabled={updateCNAMMutation.isPending || !isCNAMValid}
+                          data-testid="button-save-cnam"
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {updateCNAMMutation.isPending ? "Updating..." : "Update CNAM"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={handleCancelCNAM}
+                          data-testid="button-cancel-cnam"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 rounded-lg border">
+                        <span className="text-sm text-muted-foreground">Current CNAM</span>
+                        <span className="font-medium" data-testid="cnam-display">
+                          {phoneNumber.cnam || "Not set"}
+                        </span>
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditingCNAM(true)}
+                        className="w-full"
+                        data-testid="button-edit-cnam"
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Update Caller ID Name
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Call Forward Configuration */}
               <Card>

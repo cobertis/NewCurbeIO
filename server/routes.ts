@@ -19174,6 +19174,70 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // 3a-1. PATCH /api/bulkvs/numbers/:id/cnam - Update CNAM (Caller ID Name) manually
+  app.patch("/api/bulkvs/numbers/:id/cnam", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      const { cnam } = req.body;
+
+      // Validate CNAM
+      if (!cnam || typeof cnam !== 'string') {
+        return res.status(400).json({ message: "CNAM is required and must be a string" });
+      }
+
+      // Sanitize CNAM: Max 15 alphanumeric characters
+      const sanitizedCNAM = cnam.replace(/[^a-zA-Z0-9\s]/g, '').slice(0, 15);
+      
+      if (sanitizedCNAM.length === 0) {
+        return res.status(400).json({ message: "CNAM must contain at least 1 alphanumeric character" });
+      }
+
+      // Verify phone number belongs to user
+      const phoneNumber = await storage.getBulkvsPhoneNumber(id);
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+
+      if (phoneNumber.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      console.log(`[BulkVS] Manually updating CNAM for ${phoneNumber.did} to "${sanitizedCNAM}"...`);
+
+      // Update CNAM via BulkVS API
+      try {
+        const cnamResult = await bulkVSClient.updateCNAM(phoneNumber.did, sanitizedCNAM);
+        
+        // Update database with sanitized CNAM
+        const updated = await storage.updateBulkvsPhoneNumber(id, {
+          cnam: cnamResult.cnam, // Use the CNAM returned from BulkVS (auto-sanitized)
+        });
+
+        console.log(`[BulkVS] ✓ CNAM updated successfully for ${phoneNumber.did}: "${cnamResult.cnam}"`);
+        
+        res.json({
+          ...updated,
+          message: cnamResult.success 
+            ? "CNAM updated successfully" 
+            : `CNAM saved but may not be visible in BulkVS portal: ${cnamResult.message}`,
+        });
+      } catch (bulkvsError: any) {
+        console.error(`[BulkVS] Failed to update CNAM for ${phoneNumber.did}:`, bulkvsError.message);
+        return res.status(500).json({ 
+          message: `Failed to update CNAM in BulkVS: ${bulkvsError.message}` 
+        });
+      }
+    } catch (error: any) {
+      console.error("Error updating CNAM:", error);
+      res.status(500).json({ message: "Failed to update CNAM" });
+    }
+  });
+
   // 3b. DELETE /api/bulkvs/numbers/:id - Deactivate phone number and cancel billing
   app.delete("/api/bulkvs/numbers/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
