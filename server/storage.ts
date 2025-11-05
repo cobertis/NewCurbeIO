@@ -767,9 +767,11 @@ export interface IStorage {
   updateAppointmentStatus(id: string, status: string): Promise<LandingAppointment | undefined>;
   getAvailableSlots(blockId: string, date: string): Promise<string[]>;
   getAppointmentById(id: string): Promise<LandingAppointment | undefined>;
+  getLandingAppointmentById(id: string): Promise<LandingAppointment | undefined>;
   getLandingAppointmentsByUser(userId: string, options?: { limit?: number; offset?: number; status?: string }): Promise<LandingAppointment[]>;
   getLandingAppointmentsByCompany(companyId: string, options?: { limit?: number; offset?: number; status?: string; search?: string }): Promise<LandingAppointment[]>;
   updateLandingAppointment(id: string, data: Partial<InsertLandingAppointment>): Promise<LandingAppointment | undefined>;
+  deleteLandingAppointment(id: string): Promise<boolean>;
   
   // Appointment Availability Configuration
   getAppointmentAvailability(userId: string): Promise<AppointmentAvailability | undefined>;
@@ -6360,6 +6362,21 @@ export class DbStorage implements IStorage {
       .where(eq(landingAppointments.id, id))
       .returning();
     return result[0];
+  }
+
+  async getLandingAppointmentById(id: string): Promise<LandingAppointment | undefined> {
+    const result = await db
+      .select()
+      .from(landingAppointments)
+      .where(eq(landingAppointments.id, id));
+    return result[0];
+  }
+
+  async deleteLandingAppointment(id: string): Promise<boolean> {
+    const result = await db
+      .delete(landingAppointments)
+      .where(eq(landingAppointments.id, id));
+    return true;
   }
   
   // ==================== APPOINTMENT AVAILABILITY ====================
