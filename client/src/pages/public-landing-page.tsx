@@ -490,7 +490,7 @@ function PublicBlock({
                 color: theme.buttonTextColor || '#ffffff',
               }}
             >
-              Continuar
+              Agendar
               <svg 
                 className="w-4 h-4 ml-2 inline-block" 
                 fill="none" 
