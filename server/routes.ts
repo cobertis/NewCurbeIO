@@ -18193,10 +18193,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const company = await storage.getCompanyById(landingPage.companyId);
           
           if (agent && company) {
-            // Format phone number for SMS (ensure it has +1 prefix for USA)
-            let formattedPhone = data.phone;
-            if (!formattedPhone.startsWith('+')) {
-              formattedPhone = `+1${formattedPhone}`;
+            // Normalize phone number to E.164 format for Twilio
+            // Input is 10 digits without formatting (e.g., "5551234567")
+            // Output should be E.164 format (e.g., "+15551234567")
+            const cleanPhone = data.phone.replace(/\D/g, '');
+            let e164Phone: string;
+            
+            if (cleanPhone.startsWith('1') && cleanPhone.length === 11) {
+              // Already has country code
+              e164Phone = `+${cleanPhone}`;
+            } else if (cleanPhone.length === 10) {
+              // USA number without country code
+              e164Phone = `+1${cleanPhone}`;
+            } else {
+              // Invalid format - log and skip
+              console.error(`Invalid phone number format: ${data.phone} (${cleanPhone})`);
+              throw new Error('Invalid phone number format');
             }
             
             // Format date in Spanish (e.g., "jueves 5 de noviembre")
@@ -18214,8 +18226,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             // Build agent name (first name + last name)
             const agentName = [agent.firstName, agent.lastName].filter(Boolean).join(' ') || agent.email;
             
-            await twilioService.sendAppointmentConfirmationSMS(
-              formattedPhone,
+            const smsResult = await twilioService.sendAppointmentConfirmationSMS(
+              e164Phone,
               data.fullName,
               agentName,
               company.name,
@@ -18223,11 +18235,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               formattedTime
             );
             
-            console.log(`SMS confirmation sent to ${formattedPhone}`);
+            if (smsResult) {
+              console.log(`✅ SMS confirmation sent successfully to ${e164Phone}`);
+            } else {
+              console.error(`❌ SMS confirmation failed for ${e164Phone}`);
+            }
           }
-        } catch (smsError) {
-          // Log but don't fail the request if SMS fails
-          console.error('Failed to send SMS confirmation:', smsError);
+        } catch (smsError: any) {
+          // Log the full error details but don't fail the request
+          console.error('Failed to send SMS confirmation:', {
+            error: smsError.message || smsError,
+            phone: data.phone,
+            appointmentId: appointment.id
+          });
         }
       }
       

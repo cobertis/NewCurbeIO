@@ -11,6 +11,11 @@ Design style: Extremely professional corporate design - NO bright colors, NO emo
 - All toast notifications auto-dismiss after 3 seconds
 - Users can still manually dismiss toasts before the timeout
 
+**SMS Notifications:**
+- Landing page appointment bookings send SMS confirmations to customers
+- Message format in Spanish includes agent name, company name, date/time of appointment
+- SMS sent via Twilio after successful appointment creation
+
 **Loading State Pattern (MANDATORY):**
 ALWAYS use the standardized `LoadingSpinner` component for all loading states across the application:
 ```tsx
@@ -63,7 +68,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **Appointment Availability Configuration:** User-specific scheduling preferences via a dedicated `/appointment-settings` page, including weekly schedule, buffer time, appointment duration, minimum notice, maximum advance booking, and timezone selection.
 -   **Agent Assignment System:** Flexible reassignment for quotes and policies with filtering and real-time notifications.
 -   **Policy Renewal System:** Automated renewal period activation (October 1 - February 1) with dynamic year calculation and OEP filter management.
--   **Landing Page Builder System:** Professional SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes. Each user gets one automatically created landing page supporting 14 block types (Basic: Link Button, Social Media, Video Embed, Text, Image, Divider, Contact; Advanced: Google Maps, Request Quote Form, Calendar/Appointment Scheduler, Testimonials/Reviews, FAQ Accordion, Stats/Metrics Counter).
+-   **Landing Page Builder System:** Professional SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes. Each user gets one automatically created landing page supporting 14 block types (Basic: Link Button, Social Media, Video Embed, Text, Image, Divider, Contact; Advanced: Google Maps, Request Quote Form, Calendar/Appointment Scheduler, Testimonials/Reviews, FAQ Accordion, Stats/Metrics Counter). Appointment bookings trigger SMS confirmations to customers with personalized messages in Spanish.
     -   **Multi-Tenancy & User Isolation:** Each user has a unique landing page, filtered by userId, with global slug uniqueness.
     -   **Editor Interface:** Fixed header, editable URL with real-time validation, Undo/Redo, Desktop/Mobile preview, Publish button. iPhone 16 Pro Max frame preview with Dynamic Island, status bar, zoom, and SmartBio-style layout (sticky header, gradient hero, curved SVG, large overlapping circular profile photo at `-mt-48` with animated spinning gradient ring, horizontal social icons). Right panel with Design (themes, typography, custom colors, profile editor, Social Media Manager), Analytics (coming soon), and Settings (URL slug, SEO meta tags) tabs.
     -   **Live Preview System:** Editor preview displays identical content to the published page with fully functional interactive elements.
