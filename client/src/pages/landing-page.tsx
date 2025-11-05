@@ -891,6 +891,23 @@ export default function LandingPageBuilder() {
     }
   };
 
+  // Format phone number as (XXX) XXX-XXXX
+  const formatPhoneNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
+    if (!match) return value;
+    
+    const [, area, prefix, line] = match;
+    if (line) {
+      return `(${area}) ${prefix}-${line}`;
+    } else if (prefix) {
+      return `(${area}) ${prefix}`;
+    } else if (area) {
+      return area.length === 3 ? `(${area})` : area;
+    }
+    return '';
+  };
+
   const handlePageTitleSave = () => {
     if (pageTitle !== selectedPage?.landingPage?.title && selectedPageId) {
       updatePageMutation.mutate({
@@ -2248,9 +2265,10 @@ export default function LandingPageBuilder() {
                             id="profilePhone"
                             type="tel"
                             value={profilePhone}
-                            onChange={(e) => setProfilePhone(e.target.value)}
+                            onChange={(e) => setProfilePhone(formatPhoneNumber(e.target.value))}
                             onBlur={handleProfilePhoneSave}
                             placeholder="(555) 123-4567"
+                            maxLength={14}
                             data-testid="input-profile-phone"
                           />
                         </div>
