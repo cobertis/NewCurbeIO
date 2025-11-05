@@ -18165,7 +18165,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Create appointment
       const appointment = await storage.createLandingAppointment(data);
       
-      // TODO: Send notification email to company admins
+      // Send notification to the landing page owner
+      try {
+        await notificationService.notifyAppointmentBooked(
+          appointment.id,
+          data.fullName,
+          data.email,
+          data.phone || 'Not provided',
+          data.appointmentDate,
+          data.appointmentTime,
+          data.notes || null,
+          landingPage.userId
+        );
+      } catch (notificationError) {
+        // Log but don't fail the request if notification fails
+        console.error('Failed to send appointment notification:', notificationError);
+      }
       
       res.status(201).json({ appointment });
     } catch (error: any) {

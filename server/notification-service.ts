@@ -630,6 +630,42 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for when a new appointment is booked on landing page
+   */
+  async notifyAppointmentBooked(
+    appointmentId: string,
+    clientName: string,
+    clientEmail: string,
+    clientPhone: string,
+    appointmentDate: string,
+    appointmentTime: string,
+    notes: string | null,
+    userId: string
+  ) {
+    // Build detailed message with all appointment information
+    let message = `${clientName} has scheduled an appointment for ${appointmentDate} at ${appointmentTime}. `;
+    message += `Contact: ${clientEmail}`;
+    if (clientPhone) {
+      message += `, ${clientPhone}`;
+    }
+    if (notes) {
+      message += `. Notes: ${notes.substring(0, 100)}${notes.length > 100 ? '...' : ''}`;
+    }
+
+    const notification: InsertNotification = {
+      userId,
+      type: "info",
+      title: "New Appointment Scheduled",
+      message,
+      link: `/landing-page`,
+      isRead: false,
+    };
+    const result = await storage.createNotification(notification);
+    broadcastNotificationUpdate();
+    return result;
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {
