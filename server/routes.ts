@@ -1472,6 +1472,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== GOOGLE PLACES API ====================
 
+  // Google Maps JavaScript API loader endpoint
+  app.get("/api/google-maps-js-loader", (req: Request, res: Response) => {
+    const callback = req.query.callback || 'initMap';
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    
+    if (!apiKey) {
+      console.error("[GOOGLE_MAPS] API KEY not configured");
+      return res.status(500).send('console.error("Google Maps API key not configured");');
+    }
+
+    // Redirect to Google Maps JavaScript API with proper callback
+    const googleMapsUrl = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=${callback}&libraries=places,marker`;
+    
+    res.redirect(googleMapsUrl);
+  });
+
   // Autocomplete address using Google Places API
   app.get("/api/google-places/autocomplete-address", async (req: Request, res: Response) => {
     try {
