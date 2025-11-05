@@ -451,40 +451,28 @@ function PublicBlock({
     case "calendar":
       return (
         <div 
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-6"
           data-testid={`calendar-block-${block.id}`}
         >
-          {/* Progress Steps */}
-          <div className="flex items-center gap-2 px-6 pt-5 pb-4 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-              <span className="text-sm text-gray-700 font-medium">Completa el formulario</span>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                {block.content.title || "Programar llamada"}
+              </h2>
+              {block.content.description && (
+                <p className="text-sm text-gray-600">
+                  {block.content.description}
+                </p>
+              )}
             </div>
-            <div className="flex items-center gap-2 opacity-40">
-              <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-              <span className="text-sm text-gray-400">Reserva tu cita</span>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="px-6 py-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              {block.content.title || "Programar llamada"}
-            </h2>
-            {block.content.description && (
-              <p className="text-sm text-gray-600 mb-6">
-                {block.content.description}
-              </p>
-            )}
-
-            {/* CTA Button */}
+            
             <Button
               onClick={() => {
                 onTrackClick(block.id);
                 onOpenAppointmentModal?.();
               }}
               data-testid="button-schedule-appointment"
-              className="w-full py-3 rounded-lg font-semibold text-base transition-all hover:opacity-90"
+              className="px-6 py-3 rounded-lg font-semibold text-base transition-all hover:opacity-90 whitespace-nowrap flex-shrink-0"
               style={{
                 backgroundColor: theme.buttonColor || theme.primaryColor || '#3B82F6',
                 color: theme.buttonTextColor || '#ffffff',
@@ -500,13 +488,6 @@ function PublicBlock({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Button>
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-3 bg-gray-50/50 border-t border-gray-100">
-            <p className="text-xs text-gray-500 text-center">
-              Powered by <span className="font-semibold">Curbe</span>
-            </p>
           </div>
         </div>
       );
