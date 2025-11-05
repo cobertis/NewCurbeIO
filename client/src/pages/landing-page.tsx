@@ -1802,47 +1802,37 @@ export default function LandingPageBuilder() {
                 </div>
               </div>
 
-              {/* Social Media Section */}
+              {/* My Socials - Always visible with Add button */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-sm">Social Media</h3>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <Share2 className="w-4 h-4" />
-                  </button>
+                  <h3 className="font-semibold text-sm">My Socials</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsAddSocialOpen(true)}
+                    className="h-7 px-2 text-xs"
+                    data-testid="button-add-social-sidebar"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add
+                  </Button>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {SOCIAL_BLOCK_TYPES.map((socialBlock) => {
-                    const Icon = socialBlock.icon;
-                    return (
-                      <button
-                        key={socialBlock.platform}
-                        onClick={() => {
-                          setNewSocialPlatform(socialBlock.platform);
-                          setIsAddSocialOpen(true);
-                        }}
-                        className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:shadow-md transition-all group"
-                        data-testid={`button-add-social-${socialBlock.platform}`}
-                      >
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform"
-                          style={{ backgroundColor: socialBlock.color }}
-                        >
-                          <Icon className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium text-center">{socialBlock.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* My Socials - List of added social media */}
-              {blocks.filter(b => b.type === "social").length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-sm">My Socials</h3>
-                    <span className="text-xs text-gray-500">{blocks.filter(b => b.type === "social").length}</span>
+                
+                {blocks.filter(b => b.type === "social").length === 0 ? (
+                  <div className="text-center py-6 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+                    <Share2 className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">No social media added yet</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsAddSocialOpen(true)}
+                      className="h-7 text-xs"
+                      data-testid="button-add-first-social"
+                    >
+                      Add Social Media
+                    </Button>
                   </div>
+                ) : (
                   <div className="space-y-2">
                     {blocks.filter(b => b.type === "social").map((block) => {
                       const platform = SOCIAL_PLATFORMS.find(
@@ -1886,8 +1876,8 @@ export default function LandingPageBuilder() {
                       );
                     })}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </ScrollArea>
         </div>
