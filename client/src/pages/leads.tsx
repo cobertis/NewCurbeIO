@@ -42,6 +42,11 @@ export default function Leads() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  
+  // Get tab from URL query parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabFromUrl = urlParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl === 'appointments' ? 'appointments' : 'leads');
 
   const { data: leadsData, isLoading: isLoadingLeads } = useQuery<{ leads: FormLead[] }>({
     queryKey: ["/api/landing/leads"],
@@ -200,7 +205,7 @@ export default function Leads() {
       </div>
 
       <div className="flex-1 p-6 overflow-auto">
-        <Tabs defaultValue="leads" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4" data-testid="tabs-list">
             <TabsTrigger value="leads" data-testid="tab-form-leads">
               Form Leads

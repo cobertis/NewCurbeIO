@@ -666,7 +666,7 @@ class NotificationService {
       type: "info",
       title: "New Appointment Scheduled",
       message,
-      link: `/leads`,
+      link: `/leads?tab=appointments`,
       isRead: false,
     };
     const result = await storage.createNotification(notification);
