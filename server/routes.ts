@@ -19245,19 +19245,78 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         nextBillingDate.setDate(nextBillingDate.getDate() + 30);
 
         // Update phone number with active status and new subscription info
-        await storage.updateBulkvsPhoneNumber(id, {
+        let updatedPhoneNumber = await storage.updateBulkvsPhoneNumber(id, {
           status: "active",
           billingStatus: "active",
           stripeSubscriptionId: subscription.id,
           stripeProductId: product.id,
           stripePriceId: price.id,
           nextBillingDate,
+          smsEnabled: false, // Will be updated by activateNumber
+          mmsEnabled: false, // Will be updated by activateNumber
         });
 
-        res.json({ 
-          message: "Phone number reactivated successfully",
-          phoneNumber: await storage.getBulkvsPhoneNumber(id)
-        });
+        console.log(`[BulkVS] Phone number ${phoneNumber.did} billing reactivated, starting full activation...`);
+
+        // Activate number: SMS/MMS, webhook, CNAM, campaign, call forwarding
+        try {
+          const webhookUrl = phoneNumber.webhookUrl || `${req.protocol}://${req.get('host')}/api/webhooks/bulkvs?secret=${process.env.WEBHOOK_SECRET || 'default-secret'}`;
+          
+          const activationResult = await bulkVSClient.activateNumber({
+            did: phoneNumber.did,
+            companyName: company.name,
+            webhookUrl,
+            callForwardNumber: phoneNumber.callForwardEnabled ? phoneNumber.callForwardNumber : null,
+          });
+
+          // Update database with activation results
+          updatedPhoneNumber = await storage.updateBulkvsPhoneNumber(id, {
+            smsEnabled: activationResult.smsEnabled,
+            mmsEnabled: activationResult.smsEnabled, // MMS enabled with SMS
+            cnam: company.name.substring(0, 15), // Store sanitized CNAM
+            webhookUrl,
+          }) || updatedPhoneNumber;
+
+          console.log(`[BulkVS] Phone number ${phoneNumber.did} fully reactivated. Subscription: ${subscription.id}`);
+
+          // Include activation warnings in response if any
+          if (activationResult.warnings.length > 0) {
+            return res.json({
+              message: "Phone number reactivated successfully with some warnings",
+              phoneNumber: updatedPhoneNumber,
+              activationWarnings: activationResult.warnings,
+            });
+          }
+
+          res.json({
+            message: "Phone number reactivated successfully",
+            phoneNumber: updatedPhoneNumber,
+          });
+        } catch (activationError: any) {
+          // Activation failed critically (SMS/MMS or webhook setup)
+          console.error(`[BulkVS] Critical activation error for ${phoneNumber.did}:`, activationError.message);
+
+          // Mark number as inactive
+          await storage.updateBulkvsPhoneNumber(id, {
+            status: "inactive",
+            billingStatus: "cancelled",
+            smsEnabled: false,
+            mmsEnabled: false,
+          });
+
+          // Cancel the just-created Stripe subscription
+          try {
+            await stripe.subscriptions.cancel(subscription.id);
+            console.log(`[BulkVS] Cancelled subscription ${subscription.id} due to activation failure`);
+          } catch (cancelError: any) {
+            console.error(`[BulkVS] Failed to cancel subscription:`, cancelError.message);
+          }
+
+          return res.status(500).json({
+            message: "Phone number could not be fully reactivated. Billing not started.",
+            error: activationError.message,
+          });
+        }
       } catch (stripeError: any) {
         console.error(`[STRIPE] Error creating subscription:`, stripeError);
         return res.status(500).json({ message: `Failed to create subscription: ${stripeError.message}` });
