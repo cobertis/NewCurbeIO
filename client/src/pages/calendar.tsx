@@ -390,7 +390,15 @@ export default function Calendar() {
                 {selectedAppointment.phone && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Phone</label>
-                    <p className="text-sm" data-testid="text-appointment-phone">{selectedAppointment.phone}</p>
+                    <p className="text-sm" data-testid="text-appointment-phone">
+                      {(() => {
+                        const cleaned = selectedAppointment.phone.replace(/\D/g, "");
+                        if (cleaned.length === 10) {
+                          return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+                        }
+                        return selectedAppointment.phone;
+                      })()}
+                    </p>
                   </div>
                 )}
                 
