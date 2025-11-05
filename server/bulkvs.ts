@@ -55,7 +55,11 @@ class BulkVSClient {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
+      console.log("[BulkVS] Searching for available DIDs with params:", params);
       const response = await this.client.get("/didAvailableList", { params });
+      console.log("[BulkVS] API Response status:", response.status);
+      console.log("[BulkVS] API Response data type:", typeof response.data);
+      console.log("[BulkVS] API Response data:", JSON.stringify(response.data).substring(0, 500));
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] listAvailableDIDs error:", error.response?.data || error.message);
