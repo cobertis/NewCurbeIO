@@ -1473,7 +1473,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ==================== GOOGLE PLACES API ====================
 
   // Google Maps JavaScript API loader endpoint
-  app.get("/api/google-maps-js-loader", (req: Request, res: Response) => {
+  app.get("/api/google-maps-js-loader", async (req: Request, res: Response) => {
     const callback = req.query.callback || 'initMap';
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
     
@@ -1482,10 +1482,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).send('console.error("Google Maps API key not configured");');
     }
 
-    // Redirect to Google Maps JavaScript API with proper callback
+    // Fetch and proxy the Google Maps JavaScript API script
     const googleMapsUrl = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=${callback}&libraries=places,marker`;
     
-    res.redirect(googleMapsUrl);
+    try {
+      const response = await fetch(googleMapsUrl);
+      const script = await response.text();
+      
+      // Set correct headers for JavaScript
+      res.setHeader('Content-Type', 'application/javascript');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      
+      res.send(script);
+    } catch (error) {
+      console.error("[GOOGLE_MAPS] Failed to fetch Google Maps script:", error);
+      res.status(500).send('console.error("Failed to load Google Maps");');
+    }
   });
 
   // Autocomplete address using Google Places API
