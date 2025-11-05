@@ -427,14 +427,33 @@ function PublicBlock({
       );
 
     case "maps":
-      const mapUrl = block.content.latitude && block.content.longitude
-        ? `https://www.google.com/maps?q=${block.content.latitude},${block.content.longitude}&z=${block.content.zoom || 14}&output=embed`
-        : `https://www.google.com/maps?q=${encodeURIComponent(block.content.address || '')}&output=embed`;
+      const mapsApiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
+      const mapZoom = block.content.zoom || 14;
+      
+      let mapEmbedUrl: string;
+      if (mapsApiKey) {
+        // Use Google Maps Embed API with API key
+        if (block.content.latitude && block.content.longitude) {
+          // If coordinates are provided, use them directly
+          mapEmbedUrl = `https://www.google.com/maps/embed/v1/view?key=${mapsApiKey}&center=${block.content.latitude},${block.content.longitude}&zoom=${mapZoom}`;
+        } else {
+          // Fall back to address-based embed
+          const encodedAddress = encodeURIComponent(block.content.address || "New York, NY");
+          mapEmbedUrl = `https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodedAddress}&zoom=${mapZoom}`;
+        }
+      } else {
+        // Fallback without API key (less reliable)
+        if (block.content.latitude && block.content.longitude) {
+          mapEmbedUrl = `https://www.google.com/maps?q=${block.content.latitude},${block.content.longitude}&z=${mapZoom}&output=embed`;
+        } else {
+          mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(block.content.address || '')}&output=embed`;
+        }
+      }
       
       return (
         <Card className="overflow-hidden rounded-[18px] shadow-lg transition-all duration-300 hover:shadow-xl relative" data-testid={`maps-block-${block.id}`}>
           <iframe
-            src={mapUrl}
+            src={mapEmbedUrl}
             width="100%"
             height="300"
             style={{ border: 0 }}
