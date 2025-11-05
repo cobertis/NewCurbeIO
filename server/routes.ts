@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -64,7 +64,10 @@ import {
   insertAppointmentAvailabilitySchema,
   insertManualBirthdaySchema,
   insertStandaloneReminderSchema,
-  insertAppointmentSchema
+  insertAppointmentSchema,
+  insertBulkvsPhoneNumberSchema,
+  insertBulkvsThreadSchema,
+  insertBulkvsMessageSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq } from "drizzle-orm";
@@ -79,6 +82,7 @@ import "./types";
 import { fetchMarketplacePlans } from "./cms-marketplace";
 import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
+import { bulkVSClient } from "./bulkvs";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -87,6 +91,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 // Security constants for note image uploads
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+// Security constants for BulkVS MMS media uploads
+const ALLOWED_MMS_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime'];
+const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize logging service
@@ -18621,6 +18629,534 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         message: error.message || "Failed to calculate poverty guideline percentages",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
+    }
+  });
+
+  // ==================== BULKVS CHAT SYSTEM ====================
+
+  // Multer configuration for BulkVS MMS media uploads
+  const bulkvsMediaDir = path.join(process.cwd(), 'uploads', 'bulkvs-media');
+  if (!fs.existsSync(bulkvsMediaDir)) {
+    fs.mkdirSync(bulkvsMediaDir, { recursive: true });
+  }
+
+  const bulkvsMediaStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, bulkvsMediaDir);
+    },
+    filename: (req, file, cb) => {
+      const user = (req as any).user;
+      const userId = user?.id || 'unknown';
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+      const ext = path.extname(file.originalname);
+      cb(null, `${userId}_${timestamp}_${random}${ext}`);
+    },
+  });
+
+  const bulkvsMediaUpload = multer({
+    storage: bulkvsMediaStorage,
+    limits: { fileSize: MAX_MMS_SIZE },
+    fileFilter: (req, file, cb) => {
+      if (!ALLOWED_MMS_MIME_TYPES.includes(file.mimetype)) {
+        return cb(new Error('Invalid file type. Only JPEG, PNG, GIF images and MP4, QuickTime videos are allowed.'));
+      }
+      cb(null, true);
+    },
+  });
+
+  // POST /api/bulkvs/media/upload - Upload media for MMS
+  app.post("/api/bulkvs/media/upload", requireActiveCompany, (req: Request, res: Response) => {
+    bulkvsMediaUpload.single('file')(req, res, (err: any) => {
+      if (err) {
+        console.error("[BulkVS Media Upload] Error:", err);
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ message: 'File size exceeds 5MB limit' });
+          }
+          return res.status(400).json({ message: `Upload error: ${err.message}` });
+        }
+        return res.status(400).json({ message: err.message || 'File upload failed' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      // Construct public URL for the uploaded file
+      const domain = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const mediaUrl = `${domain}/uploads/bulkvs-media/${req.file.filename}`;
+
+      console.log(`[BulkVS Media Upload] File uploaded: ${req.file.filename}, URL: ${mediaUrl}`);
+
+      res.json({
+        mediaUrl,
+        mediaType: req.file.mimetype,
+      });
+    });
+  });
+
+  // 1. GET /api/bulkvs/numbers/available - Search available phone numbers
+  app.get("/api/bulkvs/numbers/available", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { state, npa, ratecenter, limit } = req.query;
+      
+      if (!bulkVSClient.isConfigured()) {
+        return res.status(503).json({ message: "BulkVS service is not configured" });
+      }
+      
+      const params: any = {};
+      if (state) params.state = state as string;
+      if (npa) params.npa = npa as string;
+      if (ratecenter) params.ratecenter = ratecenter as string;
+      if (limit) params.limit = parseInt(limit as string);
+      
+      const availableDIDs = await bulkVSClient.listAvailableDIDs(params);
+      res.json(availableDIDs);
+    } catch (error: any) {
+      console.error("Error fetching available numbers:", error);
+      res.status(500).json({ message: "Failed to fetch available numbers", error: error.message });
+    }
+  });
+
+  // 2. POST /api/bulkvs/numbers/provision - Purchase and provision a phone number
+  app.post("/api/bulkvs/numbers/provision", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (!bulkVSClient.isConfigured()) {
+        return res.status(503).json({ message: "BulkVS service is not configured" });
+      }
+      
+      const { did, campaignId, displayName } = req.body;
+      
+      if (!did) {
+        return res.status(400).json({ message: "DID (phone number) is required" });
+      }
+      
+      // Check if number already exists
+      const existing = await storage.getBulkvsPhoneNumberByDid(did);
+      if (existing) {
+        return res.status(400).json({ message: "This number is already provisioned" });
+      }
+      
+      // Purchase the DID from BulkVS
+      console.log(`[BulkVS] Purchasing DID ${did}...`);
+      await bulkVSClient.buyDID(did);
+      
+      // Enable SMS/MMS
+      console.log(`[BulkVS] Enabling SMS/MMS for ${did}...`);
+      await bulkVSClient.enableSmsMms(did);
+      
+      // Set webhook URL
+      const webhookUrl = `${req.protocol}://${req.get('host')}/api/webhooks/bulkvs?secret=${process.env.WEBHOOK_SECRET || 'default-secret'}`;
+      console.log(`[BulkVS] Setting webhook URL for ${did}: ${webhookUrl}`);
+      await bulkVSClient.setMessagingWebhook(did, webhookUrl);
+      
+      // Assign to campaign if provided
+      if (campaignId) {
+        console.log(`[BulkVS] Assigning ${did} to campaign ${campaignId}...`);
+        await bulkVSClient.assignToCampaign(did, campaignId);
+      }
+      
+      // Extract metadata from DID
+      const areaCode = did.substring(2, 5); // E.164 format: +1NXXNXXXXXX
+      
+      // Save to database
+      const phoneNumber = await storage.createBulkvsPhoneNumber({
+        userId: user.id,
+        companyId: user.companyId,
+        did,
+        displayName: displayName || `Phone ${areaCode}`,
+        smsEnabled: true,
+        mmsEnabled: true,
+        campaignId: campaignId || null,
+        webhookUrl,
+        areaCode,
+        status: "active",
+      });
+      
+      res.json(phoneNumber);
+    } catch (error: any) {
+      console.error("Error provisioning phone number:", error);
+      res.status(500).json({ message: "Failed to provision phone number", error: error.message });
+    }
+  });
+
+  // 3. GET /api/bulkvs/numbers - List current user's phone numbers
+  app.get("/api/bulkvs/numbers", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const phoneNumbers = await storage.getBulkvsPhoneNumbersByUser(user.id);
+      res.json(phoneNumbers);
+    } catch (error: any) {
+      console.error("Error fetching phone numbers:", error);
+      res.status(500).json({ message: "Failed to fetch phone numbers" });
+    }
+  });
+
+  // 4. POST /api/webhooks/bulkvs - Webhook for incoming messages and DLRs
+  app.post("/api/webhooks/bulkvs", async (req: Request, res: Response) => {
+    try {
+      // Validate webhook secret
+      const secret = req.query.secret as string;
+      const expectedSecret = process.env.WEBHOOK_SECRET || 'default-secret';
+      
+      if (secret !== expectedSecret) {
+        console.error("[BulkVS Webhook] Invalid webhook secret");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const payload = req.body;
+      console.log("[BulkVS Webhook] Received:", JSON.stringify(payload, null, 2));
+      
+      // Handle incoming message
+      if (payload.direction === "inbound" || payload.type === "message.received") {
+        const { from, to, body, mediaUrl, mediaType, id: providerMsgId } = payload;
+        
+        // Find the phone number
+        const phoneNumber = await storage.getBulkvsPhoneNumberByDid(to);
+        if (!phoneNumber) {
+          console.error(`[BulkVS Webhook] Phone number not found: ${to}`);
+          return res.status(404).json({ message: "Phone number not found" });
+        }
+        
+        // Find or create thread
+        let thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, from);
+        if (!thread) {
+          thread = await storage.createBulkvsThread({
+            phoneNumberId: phoneNumber.id,
+            userId: phoneNumber.userId,
+            companyId: phoneNumber.companyId,
+            externalPhone: from,
+            displayName: from,
+            lastMessageAt: new Date(),
+            lastMessagePreview: body?.substring(0, 100) || "[Media]",
+          });
+        } else {
+          // Update thread with latest message info
+          await storage.updateBulkvsThread(thread.id, {
+            lastMessageAt: new Date(),
+            lastMessagePreview: body?.substring(0, 100) || "[Media]",
+          });
+        }
+        
+        // Create message
+        const message = await storage.createBulkvsMessage({
+          threadId: thread.id,
+          direction: "inbound",
+          status: "delivered",
+          from,
+          to,
+          body: body || null,
+          mediaUrl: mediaUrl || null,
+          mediaType: mediaType || null,
+          providerMsgId: providerMsgId || null,
+          deliveredAt: new Date(),
+        });
+        
+        // Increment unread count
+        await storage.incrementThreadUnread(thread.id);
+        
+        // Get updated thread
+        const updatedThread = await storage.getBulkvsThread(thread.id);
+        
+        // Broadcast via WebSocket for real-time updates
+        broadcastBulkvsMessage(thread.id, message, thread.userId);
+        broadcastBulkvsThreadUpdate(thread.userId, updatedThread);
+        console.log(`[BulkVS Webhook] Message saved: ${message.id}`);
+      }
+      
+      // Handle DLR (Delivery Receipt)
+      if (payload.type === "message.status" || payload.status) {
+        const { id: providerMsgId, status, deliveredAt, readAt } = payload;
+        
+        if (providerMsgId) {
+          // Find message by provider ID
+          const messages = await storage.searchBulkvsMessages("", ""); // TODO: Better query
+          const message = messages.find(m => m.providerMsgId === providerMsgId);
+          
+          if (message) {
+            await storage.updateBulkvsMessageStatus(
+              message.id,
+              status,
+              deliveredAt ? new Date(deliveredAt) : undefined,
+              readAt ? new Date(readAt) : undefined
+            );
+            console.log(`[BulkVS Webhook] DLR updated for message ${message.id}: ${status}`);
+          }
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[BulkVS Webhook] Error:", error);
+      res.status(500).json({ message: "Webhook processing failed", error: error.message });
+    }
+  });
+
+  // 5. GET /api/bulkvs/threads - List user's conversation threads
+  app.get("/api/bulkvs/threads", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { archived, search } = req.query;
+      
+      const options: any = {};
+      if (archived !== undefined) {
+        options.archived = archived === "true";
+      }
+      if (search) {
+        options.search = search as string;
+      }
+      
+      const threads = await storage.getBulkvsThreadsByUser(user.id, options);
+      res.json(threads);
+    } catch (error: any) {
+      console.error("Error fetching threads:", error);
+      res.status(500).json({ message: "Failed to fetch threads" });
+    }
+  });
+
+  // 6. GET /api/bulkvs/threads/:id/messages - Get messages for a thread
+  app.get("/api/bulkvs/threads/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      const { limit, offset } = req.query;
+      
+      // Verify thread belongs to user
+      const thread = await storage.getBulkvsThread(id);
+      if (!thread) {
+        return res.status(404).json({ message: "Thread not found" });
+      }
+      
+      if (thread.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const options: any = {};
+      if (limit) options.limit = parseInt(limit as string);
+      if (offset) options.offset = parseInt(offset as string);
+      
+      const messages = await storage.getBulkvsMessagesByThread(id, options);
+      res.json(messages);
+    } catch (error: any) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // 7. POST /api/bulkvs/messages/send - Send a message
+  app.post("/api/bulkvs/messages/send", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (!bulkVSClient.isConfigured()) {
+        return res.status(503).json({ message: "BulkVS service is not configured" });
+      }
+      
+      const { threadId, to, body, mediaUrl } = req.body;
+      
+      if (!threadId && !to) {
+        return res.status(400).json({ message: "Either threadId or to (phone number) is required" });
+      }
+      
+      if (!body && !mediaUrl) {
+        return res.status(400).json({ message: "Either body or mediaUrl is required" });
+      }
+      
+      let thread;
+      let phoneNumber;
+      
+      if (threadId) {
+        // Get existing thread
+        thread = await storage.getBulkvsThread(threadId);
+        if (!thread) {
+          return res.status(404).json({ message: "Thread not found" });
+        }
+        
+        if (thread.userId !== user.id) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+        
+        phoneNumber = await storage.getBulkvsPhoneNumber(thread.phoneNumberId);
+      } else {
+        // Create new thread - need to get user's phone number
+        const userPhones = await storage.getBulkvsPhoneNumbersByUser(user.id);
+        if (userPhones.length === 0) {
+          return res.status(400).json({ message: "No phone numbers available. Please provision a number first." });
+        }
+        
+        phoneNumber = userPhones[0]; // Use first available number
+        
+        // Check if thread exists
+        thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, to);
+        if (!thread) {
+          thread = await storage.createBulkvsThread({
+            phoneNumberId: phoneNumber.id,
+            userId: user.id,
+            companyId: user.companyId,
+            externalPhone: to,
+            displayName: to,
+            lastMessageAt: new Date(),
+            lastMessagePreview: body?.substring(0, 100) || "[Media]",
+          });
+        }
+      }
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number not found" });
+      }
+      
+      // Send via BulkVS
+      const sendResult = await bulkVSClient.messageSend({
+        from: phoneNumber.did,
+        to: thread!.externalPhone,
+        body: body || undefined,
+        mediaUrl: mediaUrl || undefined,
+      });
+      
+      console.log("[BulkVS] Message sent:", sendResult);
+      
+      // Save to database
+      const message = await storage.createBulkvsMessage({
+        threadId: thread!.id,
+        direction: "outbound",
+        status: "queued",
+        from: phoneNumber.did,
+        to: thread!.externalPhone,
+        body: body || null,
+        mediaUrl: mediaUrl || null,
+        providerMsgId: sendResult.id || null,
+      });
+      
+      // Update thread
+      const updatedThread = await storage.updateBulkvsThread(thread!.id, {
+        lastMessageAt: new Date(),
+        lastMessagePreview: body?.substring(0, 100) || "[Media]",
+      });
+      
+      // Broadcast via WebSocket
+      broadcastBulkvsMessage(thread!.id, message, user.id);
+      broadcastBulkvsThreadUpdate(user.id, updatedThread);
+      
+      res.json(message);
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message", error: error.message });
+    }
+  });
+
+  // 8. PATCH /api/bulkvs/threads/:id - Update thread properties
+  app.patch("/api/bulkvs/threads/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      const { labels, isPinned, isArchived, isMuted, displayName } = req.body;
+      
+      // Verify thread belongs to user
+      const thread = await storage.getBulkvsThread(id);
+      if (!thread) {
+        return res.status(404).json({ message: "Thread not found" });
+      }
+      
+      if (thread.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updateData: any = {};
+      if (labels !== undefined) updateData.labels = labels;
+      if (isPinned !== undefined) updateData.isPinned = isPinned;
+      if (isArchived !== undefined) updateData.isArchived = isArchived;
+      if (isMuted !== undefined) updateData.isMuted = isMuted;
+      if (displayName !== undefined) updateData.displayName = displayName;
+      
+      const updatedThread = await storage.updateBulkvsThread(id, updateData);
+      
+      // Broadcast via WebSocket
+      broadcastBulkvsThreadUpdate(user.id, updatedThread);
+      
+      res.json(updatedThread);
+    } catch (error: any) {
+      console.error("Error updating thread:", error);
+      res.status(500).json({ message: "Failed to update thread" });
+    }
+  });
+
+  // 9. POST /api/bulkvs/threads/:id/read - Mark thread as read
+  app.post("/api/bulkvs/threads/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify thread belongs to user
+      const thread = await storage.getBulkvsThread(id);
+      if (!thread) {
+        return res.status(404).json({ message: "Thread not found" });
+      }
+      
+      if (thread.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.markThreadAsRead(id);
+      
+      // Get updated thread and broadcast
+      const updatedThread = await storage.getBulkvsThread(id);
+      broadcastBulkvsThreadUpdate(user.id, updatedThread);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error marking thread as read:", error);
+      res.status(500).json({ message: "Failed to mark thread as read" });
+    }
+  });
+
+  // 10. GET /api/bulkvs/messages/search - Search messages
+  app.get("/api/bulkvs/messages/search", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { q } = req.query;
+      
+      if (!q) {
+        return res.status(400).json({ message: "Search query (q) is required" });
+      }
+      
+      const messages = await storage.searchBulkvsMessages(user.id, q as string);
+      res.json(messages);
+    } catch (error: any) {
+      console.error("Error searching messages:", error);
+      res.status(500).json({ message: "Failed to search messages" });
     }
   });
 

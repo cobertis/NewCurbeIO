@@ -1258,6 +1258,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/sms-mms">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsMmsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/system-alerts">
         <ProtectedRoute>
           <DashboardLayout>

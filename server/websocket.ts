@@ -428,3 +428,93 @@ export function broadcastDataInvalidation(queryKeys: string[], companyId?: strin
 
   console.log(`[WebSocket] Broadcasting data_invalidation for queries: ${queryKeys.join(', ')} to ${sentCount} authenticated clients${companyId ? ` (company: ${companyId})` : ''}`);
 }
+
+// Broadcast new BulkVS message
+export function broadcastBulkvsMessage(threadId: string, message: any, userId: string) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'bulkvs_message',
+    threadId,
+    message,
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    // Only send to the message owner
+    if (authClient.userId === userId) {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting bulkvs_message to ${sentCount} clients`);
+}
+
+// Broadcast thread update (new thread, pin, archive, labels, etc)
+export function broadcastBulkvsThreadUpdate(userId: string, thread: any) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'bulkvs_thread_update',
+    thread,
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.userId === userId) {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting bulkvs_thread_update to ${sentCount} clients`);
+}
+
+// Broadcast message status update (sent, delivered, read)
+export function broadcastBulkvsMessageStatus(messageId: string, status: string, userId: string) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'bulkvs_message_status',
+    messageId,
+    status,
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.userId === userId) {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting bulkvs_message_status to ${sentCount} clients`);
+}

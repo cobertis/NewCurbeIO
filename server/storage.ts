@@ -142,7 +142,13 @@ import {
   type StandaloneReminder,
   type InsertStandaloneReminder,
   type Appointment,
-  type InsertAppointment
+  type InsertAppointment,
+  type BulkvsPhoneNumber,
+  type InsertBulkvsPhoneNumber,
+  type BulkvsThread,
+  type InsertBulkvsThread,
+  type BulkvsMessage,
+  type InsertBulkvsMessage
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -212,7 +218,10 @@ import {
   appointmentAvailability,
   manualBirthdays,
   standaloneReminders,
-  appointments
+  appointments,
+  bulkvsPhoneNumbers,
+  bulkvsThreads,
+  bulkvsMessages
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -790,6 +799,29 @@ export interface IStorage {
   createAppointment(data: InsertAppointment): Promise<Appointment>;
   getAppointmentsByCompany(companyId: string): Promise<Appointment[]>;
   deleteAppointment(id: string, companyId: string): Promise<boolean>;
+  
+  // BulkVS Phone Numbers
+  getBulkvsPhoneNumber(id: string): Promise<BulkvsPhoneNumber | undefined>;
+  getBulkvsPhoneNumberByDid(did: string): Promise<BulkvsPhoneNumber | undefined>;
+  getBulkvsPhoneNumbersByUser(userId: string): Promise<BulkvsPhoneNumber[]>;
+  createBulkvsPhoneNumber(data: InsertBulkvsPhoneNumber): Promise<BulkvsPhoneNumber>;
+  updateBulkvsPhoneNumber(id: string, data: Partial<InsertBulkvsPhoneNumber>): Promise<BulkvsPhoneNumber | undefined>;
+  
+  // BulkVS Threads
+  getBulkvsThread(id: string): Promise<BulkvsThread | undefined>;
+  getBulkvsThreadsByUser(userId: string, options?: { archived?: boolean; search?: string }): Promise<BulkvsThread[]>;
+  getBulkvsThreadByPhoneAndExternal(phoneNumberId: string, externalPhone: string): Promise<BulkvsThread | undefined>;
+  createBulkvsThread(data: InsertBulkvsThread): Promise<BulkvsThread>;
+  updateBulkvsThread(id: string, data: Partial<InsertBulkvsThread>): Promise<BulkvsThread | undefined>;
+  incrementThreadUnread(threadId: string): Promise<void>;
+  markThreadAsRead(threadId: string): Promise<void>;
+  
+  // BulkVS Messages
+  getBulkvsMessage(id: string): Promise<BulkvsMessage | undefined>;
+  getBulkvsMessagesByThread(threadId: string, options?: { limit?: number; offset?: number }): Promise<BulkvsMessage[]>;
+  createBulkvsMessage(data: InsertBulkvsMessage): Promise<BulkvsMessage>;
+  updateBulkvsMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void>;
+  searchBulkvsMessages(userId: string, query: string): Promise<BulkvsMessage[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -6501,6 +6533,218 @@ export class DbStorage implements IStorage {
       .where(and(eq(appointments.id, id), eq(appointments.companyId, companyId)))
       .returning();
     return result.length > 0;
+  }
+  
+  // ==================== BULKVS PHONE NUMBERS ====================
+  
+  async getBulkvsPhoneNumber(id: string): Promise<BulkvsPhoneNumber | undefined> {
+    const result = await db
+      .select()
+      .from(bulkvsPhoneNumbers)
+      .where(eq(bulkvsPhoneNumbers.id, id));
+    return result[0];
+  }
+  
+  async getBulkvsPhoneNumberByDid(did: string): Promise<BulkvsPhoneNumber | undefined> {
+    const result = await db
+      .select()
+      .from(bulkvsPhoneNumbers)
+      .where(eq(bulkvsPhoneNumbers.did, did));
+    return result[0];
+  }
+  
+  async getBulkvsPhoneNumbersByUser(userId: string): Promise<BulkvsPhoneNumber[]> {
+    return db
+      .select()
+      .from(bulkvsPhoneNumbers)
+      .where(eq(bulkvsPhoneNumbers.userId, userId))
+      .orderBy(desc(bulkvsPhoneNumbers.createdAt));
+  }
+  
+  async createBulkvsPhoneNumber(data: InsertBulkvsPhoneNumber): Promise<BulkvsPhoneNumber> {
+    const result = await db
+      .insert(bulkvsPhoneNumbers)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async updateBulkvsPhoneNumber(id: string, data: Partial<InsertBulkvsPhoneNumber>): Promise<BulkvsPhoneNumber | undefined> {
+    const result = await db
+      .update(bulkvsPhoneNumbers)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(bulkvsPhoneNumbers.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  // ==================== BULKVS THREADS ====================
+  
+  async getBulkvsThread(id: string): Promise<BulkvsThread | undefined> {
+    const result = await db
+      .select()
+      .from(bulkvsThreads)
+      .where(eq(bulkvsThreads.id, id));
+    return result[0];
+  }
+  
+  async getBulkvsThreadsByUser(userId: string, options?: { archived?: boolean; search?: string }): Promise<BulkvsThread[]> {
+    let query = db
+      .select()
+      .from(bulkvsThreads)
+      .where(eq(bulkvsThreads.userId, userId));
+    
+    if (options?.archived !== undefined) {
+      query = query.where(eq(bulkvsThreads.isArchived, options.archived)) as any;
+    }
+    
+    if (options?.search) {
+      query = query.where(
+        or(
+          like(bulkvsThreads.displayName, `%${options.search}%`),
+          like(bulkvsThreads.externalPhone, `%${options.search}%`),
+          like(bulkvsThreads.lastMessagePreview, `%${options.search}%`)
+        )
+      ) as any;
+    }
+    
+    return query.orderBy(desc(bulkvsThreads.lastMessageAt));
+  }
+  
+  async getBulkvsThreadByPhoneAndExternal(phoneNumberId: string, externalPhone: string): Promise<BulkvsThread | undefined> {
+    const result = await db
+      .select()
+      .from(bulkvsThreads)
+      .where(
+        and(
+          eq(bulkvsThreads.phoneNumberId, phoneNumberId),
+          eq(bulkvsThreads.externalPhone, externalPhone)
+        )
+      );
+    return result[0];
+  }
+  
+  async createBulkvsThread(data: InsertBulkvsThread): Promise<BulkvsThread> {
+    const result = await db
+      .insert(bulkvsThreads)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async updateBulkvsThread(id: string, data: Partial<InsertBulkvsThread>): Promise<BulkvsThread | undefined> {
+    const result = await db
+      .update(bulkvsThreads)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(bulkvsThreads.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  async incrementThreadUnread(threadId: string): Promise<void> {
+    await db
+      .update(bulkvsThreads)
+      .set({
+        unreadCount: sql`${bulkvsThreads.unreadCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(bulkvsThreads.id, threadId));
+  }
+  
+  async markThreadAsRead(threadId: string): Promise<void> {
+    await db
+      .update(bulkvsThreads)
+      .set({
+        unreadCount: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(bulkvsThreads.id, threadId));
+  }
+  
+  // ==================== BULKVS MESSAGES ====================
+  
+  async getBulkvsMessage(id: string): Promise<BulkvsMessage | undefined> {
+    const result = await db
+      .select()
+      .from(bulkvsMessages)
+      .where(eq(bulkvsMessages.id, id));
+    return result[0];
+  }
+  
+  async getBulkvsMessagesByThread(threadId: string, options?: { limit?: number; offset?: number }): Promise<BulkvsMessage[]> {
+    const limit = options?.limit || 50;
+    const offset = options?.offset || 0;
+    
+    return db
+      .select()
+      .from(bulkvsMessages)
+      .where(eq(bulkvsMessages.threadId, threadId))
+      .orderBy(desc(bulkvsMessages.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+  
+  async createBulkvsMessage(data: InsertBulkvsMessage): Promise<BulkvsMessage> {
+    const result = await db
+      .insert(bulkvsMessages)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async updateBulkvsMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void> {
+    const updateData: any = {
+      status,
+      updatedAt: new Date(),
+    };
+    
+    if (deliveredAt) {
+      updateData.deliveredAt = deliveredAt;
+    }
+    
+    if (readAt) {
+      updateData.readAt = readAt;
+    }
+    
+    await db
+      .update(bulkvsMessages)
+      .set(updateData)
+      .where(eq(bulkvsMessages.id, id));
+  }
+  
+  async searchBulkvsMessages(userId: string, query: string): Promise<BulkvsMessage[]> {
+    return db
+      .select({
+        message: bulkvsMessages,
+      })
+      .from(bulkvsMessages)
+      .innerJoin(bulkvsThreads, eq(bulkvsMessages.threadId, bulkvsThreads.id))
+      .where(
+        and(
+          eq(bulkvsThreads.userId, userId),
+          like(bulkvsMessages.body, `%${query}%`)
+        )
+      )
+      .orderBy(desc(bulkvsMessages.createdAt))
+      .then(results => results.map(r => r.message));
   }
 }
 
