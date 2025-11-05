@@ -1818,29 +1818,17 @@ export default function LandingPageBuilder() {
                               </p>
                             )}
 
-                            {/* Contact Info - Phone and Email */}
-                            {(selectedPage.landingPage.profilePhone || selectedPage.landingPage.profileEmail) && (
-                              <div className="flex items-center justify-center gap-4 mt-3">
-                                {selectedPage.landingPage.profilePhone && (
-                                  <a
-                                    href={`tel:${selectedPage.landingPage.profilePhone}`}
-                                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
-                                    data-testid="preview-phone"
-                                  >
-                                    <Phone className="w-4 h-4" />
-                                    <span>{selectedPage.landingPage.profilePhone}</span>
-                                  </a>
-                                )}
-                                {selectedPage.landingPage.profileEmail && (
-                                  <a
-                                    href={`mailto:${selectedPage.landingPage.profileEmail}`}
-                                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
-                                    data-testid="preview-email"
-                                  >
-                                    <Mail className="w-4 h-4" />
-                                    <span>{selectedPage.landingPage.profileEmail}</span>
-                                  </a>
-                                )}
+                            {/* Contact Info - Phone Only */}
+                            {selectedPage.landingPage.profilePhone && (
+                              <div className="flex items-center justify-center mt-3">
+                                <a
+                                  href={`tel:${selectedPage.landingPage.profilePhone}`}
+                                  className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                                  data-testid="preview-phone"
+                                >
+                                  <Phone className="w-4 h-4" />
+                                  <span>{selectedPage.landingPage.profilePhone}</span>
+                                </a>
                               </div>
                             )}
                           </div>
