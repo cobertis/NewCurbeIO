@@ -709,6 +709,7 @@ export default function LandingPageBuilder() {
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [themeCategory, setThemeCategory] = useState<"all" | "light" | "dark">("all");
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
+  const [loadingTheme, setLoadingTheme] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Local state for Settings fields with debouncing
@@ -1062,9 +1063,11 @@ export default function LandingPageBuilder() {
     mutationFn: async ({
       id,
       data,
+      themeName,
     }: {
       id: string;
       data: Partial<LandingPage>;
+      themeName?: string;
     }) => {
       return await apiRequest("PATCH", `/api/landing-pages/${id}`, data);
     },
@@ -1077,6 +1080,12 @@ export default function LandingPageBuilder() {
         queryClient.invalidateQueries({
           queryKey: ["/l", selectedPage.landingPage.slug],
         });
+      }
+    },
+    onSettled: (data, error, variables) => {
+      // Clear theme loading state only if this specific theme update completed
+      if (variables.themeName && loadingTheme === variables.themeName) {
+        setLoadingTheme(null);
       }
     },
   });
@@ -2000,13 +2009,15 @@ export default function LandingPageBuilder() {
                             return (
                               <button
                                 key={themeData.name}
-                                onClick={() =>
+                                onClick={() => {
+                                  setLoadingTheme(themeData.name);
                                   updatePageMutation.mutate({
                                     id: selectedPageId!,
                                     data: { theme: themeData.theme },
-                                  })
-                                }
-                                disabled={updatePageMutation.isPending}
+                                    themeName: themeData.name,
+                                  });
+                                }}
+                                disabled={loadingTheme !== null}
                                 className={`group relative rounded-xl overflow-hidden border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                                   isSelected 
                                     ? "border-blue-500 shadow-lg" 
@@ -2020,7 +2031,7 @@ export default function LandingPageBuilder() {
                                   style={{ background: themeData.gradient }}
                                 >
                                   {/* Loading spinner overlay */}
-                                  {updatePageMutation.isPending && (
+                                  {loadingTheme === themeData.name && (
                                     <div className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-10">
                                       <Loader2 className="w-8 h-8 animate-spin text-white" />
                                     </div>
@@ -2038,7 +2049,7 @@ export default function LandingPageBuilder() {
                                     </div>
                                   </div>
                                 </div>
-                                {isSelected && !updatePageMutation.isPending && (
+                                {isSelected && loadingTheme !== themeData.name && (
                                   <div className="absolute top-1 right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                                     <Check className="w-3 h-3 text-white" />
                                   </div>
