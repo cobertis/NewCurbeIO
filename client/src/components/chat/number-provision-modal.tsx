@@ -244,41 +244,44 @@ export function NumberProvisionModal({ open, onOpenChange }: NumberProvisionModa
         <div className="space-y-6">
           {step === "search" && (
             <div className="space-y-4" data-testid="step-search">
-              <div className="space-y-2">
-                <Label htmlFor="state" data-testid="label-state">
-                  State *
-                </Label>
-                <Select value={selectedState} onValueChange={setSelectedState}>
-                  <SelectTrigger id="state" data-testid="select-state">
-                    <SelectValue placeholder="Select a state" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {US_STATES.map((state) => (
-                      <SelectItem key={state.value} value={state.value} data-testid={`state-option-${state.value}`}>
-                        {state.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="state" data-testid="label-state">
+                    State *
+                  </Label>
+                  <Select value={selectedState} onValueChange={setSelectedState}>
+                    <SelectTrigger id="state" data-testid="select-state">
+                      <SelectValue placeholder="Select a state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {US_STATES.map((state) => (
+                        <SelectItem key={state.value} value={state.value} data-testid={`state-option-${state.value}`}>
+                          {state.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="area-code" data-testid="label-area-code">
+                    Area Code (Optional)
+                  </Label>
+                  <Input
+                    id="area-code"
+                    type="text"
+                    placeholder="e.g., 305"
+                    maxLength={3}
+                    value={areaCode}
+                    onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, ""))}
+                    data-testid="input-area-code"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="area-code" data-testid="label-area-code">
-                  Area Code (Optional)
-                </Label>
-                <Input
-                  id="area-code"
-                  type="text"
-                  placeholder="e.g., 305"
-                  maxLength={3}
-                  value={areaCode}
-                  onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, ""))}
-                  data-testid="input-area-code"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Enter 3 digits to search for numbers in a specific area code
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Enter 3 digits to search for numbers in a specific area code
+              </p>
 
               <Button
                 onClick={handleSearch}
