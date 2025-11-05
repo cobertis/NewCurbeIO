@@ -375,7 +375,7 @@ export function AppointmentBookingInline({
                 {selectedDayFormatted} a las {selectedTime}
               </p>
               <p className="text-sm text-gray-500">
-                Te enviaremos una confirmación por email.
+                Te enviaremos una confirmación por SMS.
               </p>
             </div>
           )}
