@@ -136,7 +136,13 @@ import {
   type LandingAppointment,
   type InsertLandingAppointment,
   type AppointmentAvailability,
-  type InsertAppointmentAvailability
+  type InsertAppointmentAvailability,
+  type ManualBirthday,
+  type InsertManualBirthday,
+  type StandaloneReminder,
+  type InsertStandaloneReminder,
+  type Appointment,
+  type InsertAppointment
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -203,7 +209,10 @@ import {
   landingAnalytics,
   landingLeads,
   landingAppointments,
-  appointmentAvailability
+  appointmentAvailability,
+  manualBirthdays,
+  standaloneReminders,
+  appointments
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -766,6 +775,19 @@ export interface IStorage {
   getAppointmentAvailability(userId: string): Promise<AppointmentAvailability | undefined>;
   createAppointmentAvailability(data: InsertAppointmentAvailability): Promise<AppointmentAvailability>;
   updateAppointmentAvailability(userId: string, data: Partial<InsertAppointmentAvailability>): Promise<AppointmentAvailability | undefined>;
+  
+  // Manual Calendar Events
+  createManualBirthday(data: InsertManualBirthday): Promise<ManualBirthday>;
+  getManualBirthdaysByCompany(companyId: string): Promise<ManualBirthday[]>;
+  deleteManualBirthday(id: string, companyId: string): Promise<boolean>;
+  
+  createStandaloneReminder(data: InsertStandaloneReminder): Promise<StandaloneReminder>;
+  getStandaloneRemindersByCompany(companyId: string): Promise<StandaloneReminder[]>;
+  deleteStandaloneReminder(id: string, companyId: string): Promise<boolean>;
+  
+  createAppointment(data: InsertAppointment): Promise<Appointment>;
+  getAppointmentsByCompany(companyId: string): Promise<Appointment[]>;
+  deleteAppointment(id: string, companyId: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -6376,6 +6398,92 @@ export class DbStorage implements IStorage {
       .where(eq(appointmentAvailability.userId, userId))
       .returning();
     return result[0];
+  }
+  
+  // ==================== MANUAL CALENDAR EVENTS ====================
+  
+  async createManualBirthday(data: InsertManualBirthday): Promise<ManualBirthday> {
+    const result = await db
+      .insert(manualBirthdays)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async getManualBirthdaysByCompany(companyId: string): Promise<ManualBirthday[]> {
+    return db
+      .select()
+      .from(manualBirthdays)
+      .where(eq(manualBirthdays.companyId, companyId))
+      .orderBy(manualBirthdays.dateOfBirth);
+  }
+  
+  async deleteManualBirthday(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(manualBirthdays)
+      .where(and(eq(manualBirthdays.id, id), eq(manualBirthdays.companyId, companyId)))
+      .returning();
+    return result.length > 0;
+  }
+  
+  async createStandaloneReminder(data: InsertStandaloneReminder): Promise<StandaloneReminder> {
+    const result = await db
+      .insert(standaloneReminders)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async getStandaloneRemindersByCompany(companyId: string): Promise<StandaloneReminder[]> {
+    return db
+      .select()
+      .from(standaloneReminders)
+      .where(eq(standaloneReminders.companyId, companyId))
+      .orderBy(standaloneReminders.dueDate);
+  }
+  
+  async deleteStandaloneReminder(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(standaloneReminders)
+      .where(and(eq(standaloneReminders.id, id), eq(standaloneReminders.companyId, companyId)))
+      .returning();
+    return result.length > 0;
+  }
+  
+  async createAppointment(data: InsertAppointment): Promise<Appointment> {
+    const result = await db
+      .insert(appointments)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async getAppointmentsByCompany(companyId: string): Promise<Appointment[]> {
+    return db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.companyId, companyId))
+      .orderBy(appointments.appointmentDate);
+  }
+  
+  async deleteAppointment(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(appointments)
+      .where(and(eq(appointments.id, id), eq(appointments.companyId, companyId)))
+      .returning();
+    return result.length > 0;
   }
 }
 

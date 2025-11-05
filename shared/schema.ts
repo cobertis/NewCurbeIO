@@ -2826,6 +2826,124 @@ export const landingAppointments = pgTable("landing_appointments", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ==============================================
+// MANUAL CALENDAR EVENTS (Standalone)
+// ==============================================
+
+// Manual Birthdays (not tied to quotes/policies)
+export const manualBirthdays = pgTable("manual_birthdays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  clientName: text("client_name").notNull(),
+  dateOfBirth: date("date_of_birth").notNull(), // yyyy-MM-dd
+  role: text("role").notNull(), // Primary, Spouse, Dependent
+  
+  // Optional link to quote or policy
+  quoteId: varchar("quote_id", { length: 8 }).references(() => quotes.id, { onDelete: "cascade" }),
+  policyId: varchar("policy_id", { length: 8 }).references(() => policies.id, { onDelete: "cascade" }),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Standalone Reminders (not tied to quotes/policies)
+export const standaloneReminders = pgTable("standalone_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  title: text("title").notNull(),
+  description: text("description"),
+  dueDate: date("due_date").notNull(),
+  dueTime: text("due_time"), // HH:mm format (24-hour), optional
+  priority: text("priority").notNull().default("medium"), // low, medium, high, urgent
+  status: text("status").notNull().default("pending"), // pending, completed, snoozed
+  
+  // Optional link to quote or policy
+  quoteId: varchar("quote_id", { length: 8 }).references(() => quotes.id, { onDelete: "cascade" }),
+  policyId: varchar("policy_id", { length: 8 }).references(() => policies.id, { onDelete: "cascade" }),
+  
+  completedAt: timestamp("completed_at"),
+  completedBy: varchar("completed_by").references(() => users.id),
+  snoozedUntil: timestamp("snoozed_until"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Manual Appointments (created via calendar, not landing pages)
+export const appointments = pgTable("appointments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  clientName: text("client_name").notNull(),
+  appointmentDate: text("appointment_date").notNull(), // yyyy-MM-dd
+  appointmentTime: text("appointment_time").notNull(), // HH:mm
+  phone: text("phone"),
+  email: text("email"),
+  notes: text("notes"),
+  status: text("status").notNull().default("pending"), // pending, confirmed, cancelled, completed
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Insert schemas for manual events
+export const insertManualBirthdaySchema = createInsertSchema(manualBirthdays).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  clientName: z.string().min(1).max(100),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  role: z.enum(["Primary", "Spouse", "Dependent"]),
+  quoteId: z.string().optional(),
+  policyId: z.string().optional(),
+});
+
+export const insertStandaloneReminderSchema = createInsertSchema(standaloneReminders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  completedBy: true,
+}).extend({
+  title: z.string().min(1).max(200),
+  description: z.string().max(1000).optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  dueTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Time must be in HH:mm format (24-hour)").optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  status: z.enum(["pending", "completed", "snoozed"]).default("pending"),
+  quoteId: z.string().optional(),
+  policyId: z.string().optional(),
+});
+
+export const insertAppointmentSchema = createInsertSchema(appointments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  clientName: z.string().min(1).max(100),
+  appointmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  appointmentTime: z.string().regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+  phone: z.string().max(20).optional(),
+  email: z.string().email().optional(),
+  notes: z.string().max(1000).optional(),
+  status: z.enum(["pending", "confirmed", "cancelled", "completed"]).default("pending"),
+});
+
+export type ManualBirthday = typeof manualBirthdays.$inferSelect;
+export type InsertManualBirthday = z.infer<typeof insertManualBirthdaySchema>;
+
+export type StandaloneReminder = typeof standaloneReminders.$inferSelect;
+export type InsertStandaloneReminder = z.infer<typeof insertStandaloneReminderSchema>;
+
+export type Appointment = typeof appointments.$inferSelect;
+export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+
 export const insertLandingLeadSchema = createInsertSchema(landingLeads).omit({
   id: true,
   createdAt: true,

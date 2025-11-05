@@ -61,7 +61,10 @@ import {
   insertLandingAnalyticsSchema,
   insertLandingLeadSchema,
   insertLandingAppointmentSchema,
-  insertAppointmentAvailabilitySchema
+  insertAppointmentAvailabilitySchema,
+  insertManualBirthdaySchema,
+  insertStandaloneReminderSchema,
+  insertAppointmentSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq } from "drizzle-orm";
@@ -11546,11 +11549,188 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("Error fetching landing appointments for calendar:", error);
         // Continue without appointments - don't break the entire calendar
       }
+      
+      // ============== MANUAL BIRTHDAYS ==============
+      try {
+        const manualBirthdays = await storage.getManualBirthdaysByCompany(companyId);
+        for (const birthday of manualBirthdays) {
+          events.push({
+            type: 'birthday',
+            date: birthday.dateOfBirth,
+            title: birthday.clientName,
+            description: 'Birthday',
+            personName: birthday.clientName,
+            role: birthday.role,
+            quoteId: birthday.quoteId || undefined,
+            policyId: birthday.policyId || undefined,
+          });
+        }
+      } catch (error: any) {
+        console.error("Error fetching manual birthdays for calendar:", error);
+      }
+      
+      // ============== STANDALONE REMINDERS ==============
+      try {
+        const standaloneReminders = await storage.getStandaloneRemindersByCompany(companyId);
+        for (const reminder of standaloneReminders) {
+          if (reminder.status === 'pending' || reminder.status === 'snoozed') {
+            events.push({
+              type: 'reminder',
+              date: reminder.dueDate,
+              title: reminder.title,
+              description: reminder.description || '',
+              reminderId: reminder.id,
+              priority: reminder.priority,
+              status: reminder.status,
+              dueTime: reminder.dueTime || undefined,
+              quoteId: reminder.quoteId || undefined,
+              policyId: reminder.policyId || undefined,
+            });
+          }
+        }
+      } catch (error: any) {
+        console.error("Error fetching standalone reminders for calendar:", error);
+      }
+      
+      // ============== MANUAL APPOINTMENTS ==============
+      try {
+        const manualAppointments = await storage.getAppointmentsByCompany(companyId);
+        for (const appointment of manualAppointments) {
+          events.push({
+            type: 'appointment',
+            date: appointment.appointmentDate,
+            title: `Appointment with ${appointment.clientName}`,
+            description: appointment.notes || 'Scheduled appointment',
+            appointmentId: appointment.id,
+            appointmentTime: appointment.appointmentTime,
+            appointmentPhone: appointment.phone || undefined,
+            appointmentEmail: appointment.email || undefined,
+            clientName: appointment.clientName,
+            status: appointment.status,
+          });
+        }
+      } catch (error: any) {
+        console.error("Error fetching manual appointments for calendar:", error);
+      }
 
       res.json({ events });
     } catch (error: any) {
       console.error("Error fetching calendar events:", error);
       res.status(500).json({ message: "Failed to fetch calendar events" });
+    }
+  });
+  
+  // POST /api/calendar/events/birthday - Create manual birthday event
+  app.post("/api/calendar/events/birthday", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId!;
+    
+    try {
+      // Validate request body using Zod schema
+      const validatedData = insertManualBirthdaySchema.parse({
+        ...req.body,
+        companyId,
+        createdBy: currentUser.id,
+      });
+      
+      const birthday = await storage.createManualBirthday(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "manual_birthday",
+        entityId: birthday.id,
+        companyId,
+        metadata: {
+          clientName: birthday.clientName,
+          dateOfBirth: birthday.dateOfBirth,
+          role: birthday.role,
+        },
+      });
+      
+      res.json(birthday);
+    } catch (error: any) {
+      console.error("Error creating manual birthday:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid input data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create birthday event" });
+    }
+  });
+  
+  // POST /api/calendar/events/reminder - Create standalone reminder event
+  app.post("/api/calendar/events/reminder", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId!;
+    
+    try {
+      // Validate request body using Zod schema
+      const validatedData = insertStandaloneReminderSchema.parse({
+        ...req.body,
+        companyId,
+        createdBy: currentUser.id,
+      });
+      
+      const reminder = await storage.createStandaloneReminder(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "standalone_reminder",
+        entityId: reminder.id,
+        companyId,
+        metadata: {
+          title: reminder.title,
+          dueDate: reminder.dueDate,
+          priority: reminder.priority,
+        },
+      });
+      
+      res.json(reminder);
+    } catch (error: any) {
+      console.error("Error creating standalone reminder:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid input data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create reminder event" });
+    }
+  });
+  
+  // POST /api/calendar/events/appointment - Create manual appointment event
+  app.post("/api/calendar/events/appointment", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId!;
+    
+    try {
+      // Validate request body using Zod schema
+      const validatedData = insertAppointmentSchema.parse({
+        ...req.body,
+        companyId,
+        createdBy: currentUser.id,
+      });
+      
+      const appointment = await storage.createAppointment(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "appointment",
+        entityId: appointment.id,
+        companyId,
+        metadata: {
+          clientName: appointment.clientName,
+          appointmentDate: appointment.appointmentDate,
+          appointmentTime: appointment.appointmentTime,
+        },
+      });
+      
+      res.json(appointment);
+    } catch (error: any) {
+      console.error("Error creating appointment:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid input data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create appointment event" });
     }
   });
 

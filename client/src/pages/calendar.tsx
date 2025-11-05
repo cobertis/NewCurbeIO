@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import AppointmentConfig from "@/components/appointment-config";
+import { NewEventDialog } from "@/components/new-event-dialog";
 
 interface CalendarEvent {
   type: 'birthday' | 'reminder' | 'appointment';
@@ -47,6 +48,7 @@ export default function Calendar() {
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [newEventDialogOpen, setNewEventDialogOpen] = useState(false);
 
   // Fetch calendar events
   const { data: eventsData, isLoading } = useQuery<{ events: CalendarEvent[] }>({
@@ -205,7 +207,7 @@ export default function Calendar() {
             <Settings className="h-4 w-4 mr-2" />
             Configure Availability
           </Button>
-          <Button data-testid="button-new-event">
+          <Button onClick={() => setNewEventDialogOpen(true)} data-testid="button-new-event">
             <Plus className="h-4 w-4 mr-2" />
             New Event
           </Button>
@@ -425,6 +427,9 @@ export default function Calendar() {
 
       {/* Appointment Configuration */}
       <AppointmentConfig open={configOpen} onOpenChange={setConfigOpen} />
+      
+      {/* New Event Dialog */}
+      <NewEventDialog open={newEventDialogOpen} onOpenChange={setNewEventDialogOpen} />
     </div>
   );
 }
