@@ -435,7 +435,7 @@ function PublicBlock({
             longitude={block.content.longitude}
             formattedAddress={block.content.formattedAddress || block.content.address}
             zoomLevel={block.content.zoom || 15}
-            height="300px"
+            height="150px"
             showButton={true}
             buttonColor={theme?.buttonColor || theme?.primaryColor || "#3B82F6"}
           />
