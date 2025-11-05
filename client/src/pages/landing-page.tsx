@@ -116,6 +116,7 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
+import { MapBlockDisplay } from "@/components/map-block-display";
 
 // Types
 type LandingPage = {
@@ -758,32 +759,17 @@ function BlockPreview({
       );
 
     case "maps":
-      const mapAddress = block.content.address || "New York, NY";
-      const encodedAddress = encodeURIComponent(mapAddress);
-      const apiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY || "AIzaSyDummy";
       return (
-        <div className="relative rounded-xl overflow-hidden shadow-lg border border-gray-200" data-testid={`preview-maps-${block.id}`}>
-          <iframe
-            width="100%"
-            height="200"
-            style={{ border: 0 }}
-            loading="lazy"
-            allowFullScreen
-            src={`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodedAddress}&zoom=${block.content.zoom || 14}`}
-            className="w-full"
-          />
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10">
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg text-sm font-medium transition-all"
-            >
-              <MapPin className="w-4 h-4" />
-              See Our Location
-            </a>
-          </div>
-        </div>
+        <MapBlockDisplay
+          placeId={block.content.placeId}
+          latitude={block.content.latitude}
+          longitude={block.content.longitude}
+          formattedAddress={block.content.formattedAddress || block.content.address}
+          zoomLevel={block.content.zoom || 15}
+          height="200px"
+          showButton={true}
+          buttonColor={theme?.primaryColor || "#2563EB"}
+        />
       );
 
     case "lead-form":
