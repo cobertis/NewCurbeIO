@@ -803,7 +803,18 @@ export default function PublicLandingPage() {
       )}
 
       {/* Content Section - White Background COMPACT like SmartBio */}
-      <div className="bg-white px-4 pb-4">
+      <div 
+        className="bg-white px-4 pb-4"
+        style={{
+          fontFamily: (landingPage.theme as any)?.fontFamily || (landingPage.theme as any)?.font || "Inter, sans-serif",
+          fontWeight: (landingPage.theme as any)?.fontWeight === "light" ? 300 
+            : (landingPage.theme as any)?.fontWeight === "regular" ? 400 
+            : (landingPage.theme as any)?.fontWeight === "medium" ? 500 
+            : (landingPage.theme as any)?.fontWeight === "semibold" ? 600 
+            : (landingPage.theme as any)?.fontWeight === "bold" ? 700 
+            : 400,
+        }}
+      >
         {/* Profile Info - COMPACT and CLEAN */}
         {(landingPage.profileName || landingPage.profileBio) && (
           <div className="relative z-50 text-center mb-4 -mt-2">

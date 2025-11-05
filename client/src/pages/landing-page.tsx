@@ -869,6 +869,8 @@ export default function LandingPageBuilder() {
   const [profileBio, setProfileBio] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
+  const [fontFamily, setFontFamily] = useState("Inter");
+  const [fontWeight, setFontWeight] = useState("regular");
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [themeCategory, setThemeCategory] = useState<"all" | "light" | "dark">("all");
@@ -977,6 +979,8 @@ export default function LandingPageBuilder() {
       setProfileBio(selectedPage.landingPage.profileBio || "");
       setProfilePhone(selectedPage.landingPage.profilePhone || "");
       setProfileEmail(selectedPage.landingPage.profileEmail || "");
+      setFontFamily(selectedPage.landingPage.theme?.fontFamily || selectedPage.landingPage.theme?.font || "Inter");
+      setFontWeight(selectedPage.landingPage.theme?.fontWeight || "regular");
     }
   }, [selectedPage?.landingPage?.id]); // Only sync when page changes, not on every update
 
@@ -1996,7 +2000,18 @@ export default function LandingPageBuilder() {
                         </div>
 
                         {/* Content Section - White Background COMPACT like SmartBio */}
-                        <div className="bg-white px-4 pb-4">
+                        <div 
+                          className="bg-white px-4 pb-4"
+                          style={{
+                            fontFamily: selectedPage.landingPage.theme?.fontFamily || selectedPage.landingPage.theme?.font || "Inter, sans-serif",
+                            fontWeight: selectedPage.landingPage.theme?.fontWeight === "light" ? 300 
+                              : selectedPage.landingPage.theme?.fontWeight === "regular" ? 400 
+                              : selectedPage.landingPage.theme?.fontWeight === "medium" ? 500 
+                              : selectedPage.landingPage.theme?.fontWeight === "semibold" ? 600 
+                              : selectedPage.landingPage.theme?.fontWeight === "bold" ? 700 
+                              : 400,
+                          }}
+                        >
                           {/* Profile Info - COMPACT and CLEAN */}
                           <div className="relative z-50 text-center mb-4 -mt-2">
                             {selectedPage.landingPage.profileName && (
@@ -2258,7 +2273,21 @@ export default function LandingPageBuilder() {
                         
                         <div>
                           <Label className="text-xs mb-2 block">Font Weight</Label>
-                          <Select defaultValue="regular">
+                          <Select 
+                            value={fontWeight} 
+                            onValueChange={(value) => {
+                              setFontWeight(value);
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: {
+                                  theme: {
+                                    ...selectedPage.landingPage.theme,
+                                    fontWeight: value,
+                                  },
+                                },
+                              });
+                            }}
+                          >
                             <SelectTrigger data-testid="select-font-weight">
                               <SelectValue />
                             </SelectTrigger>
@@ -2274,15 +2303,29 @@ export default function LandingPageBuilder() {
 
                         <div>
                           <Label className="text-xs mb-2 block">Font Style</Label>
-                          <Select defaultValue="inter">
+                          <Select 
+                            value={fontFamily} 
+                            onValueChange={(value) => {
+                              setFontFamily(value);
+                              updatePageMutation.mutate({
+                                id: selectedPageId!,
+                                data: {
+                                  theme: {
+                                    ...selectedPage.landingPage.theme,
+                                    fontFamily: value,
+                                  },
+                                },
+                              });
+                            }}
+                          >
                             <SelectTrigger data-testid="select-font-style">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="inter">Inter</SelectItem>
-                              <SelectItem value="roboto">Roboto</SelectItem>
-                              <SelectItem value="poppins">Poppins</SelectItem>
-                              <SelectItem value="montserrat">Montserrat</SelectItem>
+                              <SelectItem value="Inter">Inter</SelectItem>
+                              <SelectItem value="Roboto">Roboto</SelectItem>
+                              <SelectItem value="Poppins">Poppins</SelectItem>
+                              <SelectItem value="Montserrat">Montserrat</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
