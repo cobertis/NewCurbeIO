@@ -2034,6 +2034,34 @@ export default function LandingPageBuilder() {
                             )}
                           </div>
 
+                          {/* Social Media Icons - COMPACT like SmartBio */}
+                          {(() => {
+                            const socialBlocks = blocks.filter((b) => b.type === "social" && b.isVisible);
+                            if (socialBlocks.length > 0) {
+                              return (
+                                <div className="flex items-center justify-center gap-2 mb-4">
+                                  {socialBlocks.map((block) => {
+                                    const SocialIcon = SOCIAL_PLATFORMS.find((p) => p.value === block.content.platform)?.icon || Share2;
+                                    return (
+                                      <a
+                                        key={block.id}
+                                        href={block.content.url || "#"}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
+                                        style={{ backgroundColor: selectedPage.landingPage.theme?.primaryColor ?? '#000000' }}
+                                        data-testid={`preview-social-${block.id}`}
+                                      >
+                                        <SocialIcon className="w-5 h-5 text-white" />
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+
                       {/* All Blocks (EXCEPT Social) with Drag and Drop */}
                       <DndContext
                         sensors={sensors}
