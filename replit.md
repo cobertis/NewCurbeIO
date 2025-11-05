@@ -60,10 +60,11 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging platform with dedicated phone numbers per user, real-time updates, and full privacy isolation (each user sees only their own conversations).
     -   **Architecture:** Dual messaging system - Twilio for system notifications, BulkVS for individual user chat with dedicated phone numbers.
     -   **UI:** 3-column desktop layout (thread list, message panel, contact details), responsive mobile design with single-column navigation.
-    -   **Database:** 4 tables - bulkvs_phone_numbers (user phone provisioning), bulkvs_campaigns (10DLC campaigns), bulkvs_threads (conversations), bulkvs_messages (SMS/MMS with status tracking).
+    -   **Database:** 4 tables - bulkvs_phone_numbers (user phone provisioning with billing info), bulkvs_campaigns (10DLC campaigns), bulkvs_threads (conversations), bulkvs_messages (SMS/MMS with status tracking).
     -   **Backend:** BulkVS API client (axios-based), 10 REST endpoints, 16 storage functions, webhook handler with secret validation.
     -   **Features:** SMS/MMS with file upload (5MB limit), emoji picker, message status (sent/delivered/read), read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket.
-    -   **Number Provisioning:** 3-step wizard for searching and purchasing dedicated phone numbers by state/area code, with optional 10DLC campaign assignment.
+    -   **Number Provisioning:** Simplified area code search using BulkVS `/orderTn` endpoint (GET for search, POST for purchase). 3-step wizard with improved loading states.
+    -   **Billing System:** Automatic Stripe subscription creation at $10/month for each provisioned number. Creates "BulkVS Phone Number" product and recurring price in Stripe. Billing recurs every 30 days. Subscription IDs, product IDs, and next billing dates stored in bulkvs_phone_numbers table.
     -   **Security:** User-scoped data isolation (each user accesses only their own phone numbers and conversations), webhook signature validation, E.164 phone number normalization.
     -   **WebSocket Integration:** 3 broadcast functions (message, thread update, status) with tenant-scoped listeners, automatic reconnection with exponential backoff.
     -   **Components:** 7 specialized components - ThreadList, MessagePanel, ContactDetails, MessageBubble, MessageInput, EmojiPicker, NumberProvisionModal.

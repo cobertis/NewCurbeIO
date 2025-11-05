@@ -18722,12 +18722,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Transform BulkVS response to our format
       // BulkVS returns: TN, Rate Center, State, Tier, Per Minute Rate, Mrc, Nrc
       // TN format is 10 digits without +1 prefix (e.g., "3053804935")
+      // Note: We charge users $10/month regardless of BulkVS actual cost
       const formattedResults = Array.isArray(availableDIDs) ? availableDIDs.map((item: any) => ({
         did: item.TN,
         npa: item.TN?.substring(0, 3), // Extract first 3 digits (area code)
         state: item.State,
         ratecenter: item["Rate Center"],
-        price: parseFloat(item.Mrc || "0"), // Monthly recurring cost
+        price: 10.00, // Fixed monthly cost charged to users
+        bulkvsCost: parseFloat(item.Mrc || "0"), // Actual BulkVS cost for internal tracking
       })) : [];
       
       res.json(formattedResults);
@@ -18783,7 +18785,76 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Extract metadata from DID
       const areaCode = did.substring(2, 5); // E.164 format: +1NXXNXXXXXX
       
-      // Save to database
+      // Get company info for Stripe billing
+      const company = await storage.getCompanyById(user.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Create Stripe subscription for $10/month recurring billing
+      const { stripe } = await import("./stripe");
+      
+      // Ensure company has a Stripe customer ID
+      let stripeCustomerId = company.stripeCustomerId;
+      if (!stripeCustomerId) {
+        const { createStripeCustomer } = await import("./stripe");
+        const admin = await storage.getUsersByCompany(user.companyId).then(users => users.find(u => u.role === 'admin'));
+        const stripeCustomer = await createStripeCustomer({
+          ...company,
+          representativeFirstName: admin?.firstName || null,
+          representativeLastName: admin?.lastName || null,
+          representativeEmail: admin?.email || company.email,
+        });
+        stripeCustomerId = stripeCustomer.id;
+        await storage.updateCompany(company.id, { stripeCustomerId });
+      }
+      
+      // Create or get BulkVS Phone Number product
+      const products = await stripe.products.search({
+        query: 'name:"BulkVS Phone Number"',
+      });
+      let product = products.data[0];
+      if (!product) {
+        product = await stripe.products.create({
+          name: 'BulkVS Phone Number',
+          description: 'Dedicated phone number for SMS/MMS messaging',
+        });
+      }
+      
+      // Create or get $10/month price
+      const prices = await stripe.prices.list({
+        product: product.id,
+        active: true,
+      });
+      let price = prices.data.find(p => p.unit_amount === 1000 && p.recurring?.interval === 'month');
+      if (!price) {
+        price = await stripe.prices.create({
+          product: product.id,
+          unit_amount: 1000, // $10.00 in cents
+          currency: 'usd',
+          recurring: {
+            interval: 'month',
+            interval_count: 1,
+          },
+        });
+      }
+      
+      // Create subscription
+      const subscription = await stripe.subscriptions.create({
+        customer: stripeCustomerId,
+        items: [{ price: price.id }],
+        metadata: {
+          phoneNumber: did,
+          userId: user.id,
+          companyId: user.companyId,
+        },
+      });
+      
+      // Calculate next billing date (30 days from now)
+      const nextBillingDate = new Date();
+      nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+      
+      // Save to database with billing info
       const phoneNumber = await storage.createBulkvsPhoneNumber({
         userId: user.id,
         companyId: user.companyId,
@@ -18795,7 +18866,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         webhookUrl,
         areaCode,
         status: "active",
+        monthlyPrice: "10.00",
+        stripeSubscriptionId: subscription.id,
+        stripeProductId: product.id,
+        stripePriceId: price.id,
+        nextBillingDate,
+        billingStatus: "active",
       });
+      
+      console.log(`[BulkVS] Phone number ${did} provisioned with Stripe subscription ${subscription.id}`);
       
       res.json(phoneNumber);
     } catch (error: any) {

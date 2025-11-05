@@ -3041,6 +3041,14 @@ export const bulkvsPhoneNumbers = pgTable("bulkvs_phone_numbers", {
   
   status: text("status").notNull().default("active"), // active, suspended, cancelled
   
+  // Billing Information (charged to user monthly)
+  monthlyPrice: text("monthly_price").notNull().default("10.00"), // Fixed $10/month charged to user
+  stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for recurring billing
+  stripeProductId: text("stripe_product_id"), // Stripe product ID
+  stripePriceId: text("stripe_price_id"), // Stripe price ID
+  nextBillingDate: timestamp("next_billing_date"), // Next billing date (30 days from purchase)
+  billingStatus: text("billing_status").default("active"), // active, cancelled, past_due, etc.
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
