@@ -327,18 +327,16 @@ function PublicBlock({
       );
 
     case "text":
-      const alignment = block.content.alignment || "left";
       const size = block.content.size || "md";
       const textSize =
         size === "sm" ? "text-sm" : size === "lg" ? "text-xl" : "text-base";
       return (
         <div
-          className={`text-${alignment} ${textSize} leading-relaxed`}
+          className={`prose prose-sm max-w-none ${textSize} leading-relaxed`}
           style={{ color: theme.textColor }}
+          dangerouslySetInnerHTML={{ __html: block.content.content || "<p>Your text here</p>" }}
           data-testid={`text-block-${block.id}`}
-        >
-          {block.content.content || "Your text here"}
-        </div>
+        />
       );
 
     case "image":

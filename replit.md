@@ -71,6 +71,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **Theme System:** 8 modern gradient themes with visual previews and filters.
     -   **Slug & Input Management:** User-based slug generation (firstName or email prefix) with debounced local state, real-time validation, and regex enforcement for slug format. Real-time slug availability checking with visual feedback (green checkmark if available, red X if taken) and error messages. Slug validation API endpoint prevents duplicate slugs across all users.
     -   **Block Styling:** SmartBio aesthetic with solid black circular social media blocks, blue "See Our Location" button for maps, globe icons for link buttons, and gray bio text.
+    -   **Rich Text Editor:** Text blocks feature a comprehensive TipTap-based rich text editor with full formatting capabilities: bold, italic, underline, bullet/numbered lists, text alignment (left/center/right), hyperlinks, and color picker. Content stored as HTML in JSONB and rendered with proper sanitization in both editor preview and public pages.
     -   **Interactive Google Maps:** Map blocks use Google Maps JavaScript API (dynamically loaded via backend proxy) for interactive, zoomable maps with markers. Integration with existing Google Places API infrastructure. Users select addresses via GooglePlacesAddressAutocomplete component, which fetches location coordinates (latitude/longitude) and placeId. Map data stored in block content (JSONB): placeId, formattedAddress, latitude, longitude, zoomLevel. Shared MapBlockDisplay component renders maps in both editor preview and public pages with graceful error handling, loading states, and automatic cleanup on unmount. Backend endpoint `/api/google-maps-js-loader` proxies Maps JS API script to keep GOOGLE_PLACES_API_KEY secure.
     -   **Visual Design:** Fixed dark indigo/black gradient for both preview and public pages, specific avatar positioning (`-mt-48` with 220px header), compact spacing, and pure black profile name text to match SmartBio.
     -   **Public Pages:** Accessible at `/:slug` and `/l/:slug` without authentication, featuring identical SmartBio layout as the editor preview, theme customization, password protection, SEO meta tags, and analytics tracking. Auto-creation on first visit, auto-save, slug uniqueness validation, multi-tenant isolation, and dedicated database tables for leads/appointments with security logging. All confirmation dialogs and messages are in English.
@@ -102,6 +103,7 @@ Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security inclu
 -   **Payments:** Stripe.
 -   **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 -   **Drag & Drop:** @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities.
+-   **Rich Text Editing:** TipTap (React, StarterKit, Underline, TextAlign, Link, Color, TextStyle extensions).
 -   **Form Management & Validation:** React Hook Form, Zod.
 -   **Session Management:** `express-session`, `connect-pg-simple`.
 -   **Security:** Bcrypt.

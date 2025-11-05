@@ -118,6 +118,7 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { MapBlockDisplay } from "@/components/map-block-display";
+import { RichTextEditor } from "@/components/rich-text-editor";
 
 // Types
 type LandingPage = {
@@ -681,7 +682,7 @@ function BlockPreview({
     case "text":
       return (
         <div
-          className={`text-${block.content.alignment || "left"} ${
+          className={`prose prose-sm max-w-none ${
             block.content.size === "sm"
               ? "text-xs"
               : block.content.size === "lg"
@@ -689,10 +690,9 @@ function BlockPreview({
               : "text-sm"
           }`}
           style={{ color: theme.textColor }}
+          dangerouslySetInnerHTML={{ __html: block.content.content || "<p>Your text here</p>" }}
           data-testid={`preview-text-${block.id}`}
-        >
-          {block.content.content || "Your text here"}
-        </div>
+        />
       );
 
     case "image":
@@ -2994,32 +2994,31 @@ export default function LandingPageBuilder() {
               {editingBlock.type === "text" && (
                 <>
                   <div>
-                    <Label>Content</Label>
-                    <Textarea
-                      value={editingBlock.content.content || ""}
-                      onChange={(e) =>
+                    <Label className="mb-2 block">Content</Label>
+                    <RichTextEditor
+                      content={editingBlock.content.content || ""}
+                      onChange={(html) =>
                         setEditingBlock({
                           ...editingBlock,
                           content: {
                             ...editingBlock.content,
-                            content: e.target.value,
+                            content: html,
                           },
                         })
                       }
-                      placeholder="Your text here"
-                      rows={4}
+                      placeholder="Start typing your text..."
                     />
                   </div>
                   <div>
-                    <Label>Alignment</Label>
+                    <Label>Text Size</Label>
                     <Select
-                      value={editingBlock.content.alignment || "left"}
+                      value={editingBlock.content.size || "md"}
                       onValueChange={(value) =>
                         setEditingBlock({
                           ...editingBlock,
                           content: {
                             ...editingBlock.content,
-                            alignment: value,
+                            size: value,
                           },
                         })
                       }
@@ -3028,9 +3027,9 @@ export default function LandingPageBuilder() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="left">Left</SelectItem>
-                        <SelectItem value="center">Center</SelectItem>
-                        <SelectItem value="right">Right</SelectItem>
+                        <SelectItem value="sm">Small</SelectItem>
+                        <SelectItem value="md">Medium</SelectItem>
+                        <SelectItem value="lg">Large</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
