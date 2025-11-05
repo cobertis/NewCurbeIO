@@ -1774,11 +1774,16 @@ export default function LandingPageBuilder() {
                           {/* Profile Info - COMPACT and CLEAN */}
                           <div className="relative z-50 text-center mb-4 -mt-2">
                             {selectedPage.landingPage.profileName && (
-                              <div className="flex items-center justify-center gap-1.5">
+                              <div className="flex items-center justify-center gap-1.5" style={{ border: "none", borderBottom: "none" }}>
                                 <h1
                                   className="text-2xl font-bold mb-0 no-underline"
                                   style={{ 
                                     color: "#000000",
+                                    textDecoration: "none",
+                                    border: "none",
+                                    borderBottom: "none",
+                                    outline: "none",
+                                    boxShadow: "none",
                                   }}
                                 >
                                   {selectedPage.landingPage.profileName}
