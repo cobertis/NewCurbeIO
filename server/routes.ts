@@ -19080,10 +19080,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       try {
         console.log(`[STRIPE] Creating subscription for reactivated phone number ${phoneNumber.did}`);
 
+        // Import Stripe
+        const { stripe } = await import("./stripe");
+        if (!stripe) {
+          throw new Error("Stripe is not initialized");
+        }
+
         // Get or create Stripe customer
         let stripeCustomerId = company.stripeCustomerId;
         if (!stripeCustomerId) {
-          const customer = await stripeClient.customers.create({
+          const customer = await stripe.customers.create({
             email: user.email,
             name: company.name,
             metadata: {
@@ -19096,7 +19102,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
         // Get or create product for BulkVS Phone Numbers
-        const products = await stripeClient.products.search({
+        const products = await stripe.products.search({
           query: `name:"BulkVS Phone Number" AND metadata["companyId"]:"${company.id}"`,
         });
 
@@ -19104,7 +19110,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (products.data.length > 0) {
           product = products.data[0];
         } else {
-          product = await stripeClient.products.create({
+          product = await stripe.products.create({
             name: "BulkVS Phone Number",
             description: "Dedicated phone number for SMS/MMS messaging",
             metadata: {
@@ -19115,7 +19121,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
         // Get or create price
-        const prices = await stripeClient.prices.list({
+        const prices = await stripe.prices.list({
           product: product.id,
           active: true,
           type: "recurring",
@@ -19125,7 +19131,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (prices.data.length > 0) {
           price = prices.data[0];
         } else {
-          price = await stripeClient.prices.create({
+          price = await stripe.prices.create({
             product: product.id,
             unit_amount: Math.round(monthlyPrice * 100),
             currency: "usd",
@@ -19137,7 +19143,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
         // Create subscription
-        subscription = await stripeClient.subscriptions.create({
+        subscription = await stripe.subscriptions.create({
           customer: stripeCustomerId,
           items: [{
             price: price.id,
