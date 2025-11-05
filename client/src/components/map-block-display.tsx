@@ -105,6 +105,30 @@ function waitForGoogleMaps(): Promise<void> {
   });
 }
 
+// Create custom SVG marker with theme color
+function createCustomMarker(color: string): string {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+    <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g filter="url(#shadow)">
+        <path d="M16 0C9.373 0 4 5.373 4 12C4 21 16 38 16 38C16 38 28 21 28 12C28 5.373 22.627 0 16 0Z" fill="${color}"/>
+        <circle cx="16" cy="12" r="5" fill="white"/>
+      </g>
+      <defs>
+        <filter id="shadow" x="0" y="0" width="32" height="42" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+          <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+          <feOffset dy="2"/>
+          <feGaussianBlur stdDeviation="2"/>
+          <feComposite in2="hardAlpha" operator="out"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+        </filter>
+      </defs>
+    </svg>
+  `)}`;
+}
+
 export function MapBlockDisplay({
   placeId,
   latitude,
@@ -162,19 +186,16 @@ export function MapBlockDisplay({
           disableDefaultUI: true,
         });
 
-        // Custom marker with your theme color
+        // Animated marker with bounce - custom color pin
         new window.google.maps.Marker({
           position: position,
           map: map,
           title: formattedAddress || "Location",
+          animation: window.google.maps.Animation.BOUNCE,
           icon: {
-            path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-            scale: 5,
-            fillColor: buttonColor,
-            fillOpacity: 1,
-            strokeColor: '#FFFFFF',
-            strokeWeight: 2,
-            rotation: 180, // Point down
+            url: createCustomMarker(buttonColor),
+            scaledSize: new window.google.maps.Size(32, 42),
+            anchor: new window.google.maps.Point(16, 42),
           },
         });
 
