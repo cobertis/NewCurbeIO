@@ -19728,11 +19728,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // PRIORITY 2: Decode URL-encoded body and check for delivery receipt patterns
         // Messages come URL-encoded: "stat%3ADELIVRD" instead of "stat:DELIVRD"
+        // Also, spaces are encoded as "+" signs: "submit+date:" instead of "submit date:"
         if (body) {
           try {
-            body = decodeURIComponent(body);
+            // First replace + with spaces, then decode
+            body = decodeURIComponent(body.replace(/\+/g, ' '));
           } catch (e) {
-            // If decoding fails, use original body
+            // If decoding fails, try just replacing +
+            try {
+              body = body.replace(/\+/g, ' ');
+            } catch (e2) {
+              // Use original body
+            }
           }
         }
         
@@ -19742,7 +19749,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           body.includes('stat:DELIVRD') ||
           body.includes('stat:UNDELIV') ||
           (body.includes('submit date:') && body.includes('done date:')) ||
-          body.includes('dlvrd:')
+          body.includes('dlvrd:') ||
+          body.includes('sub:') // Additional check for delivery receipt pattern
         );
         
         if (isDeliveryReceipt) {
