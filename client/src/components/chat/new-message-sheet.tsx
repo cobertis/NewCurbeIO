@@ -112,8 +112,9 @@ export function NewMessageSheet({
 
   const phoneAlreadyExists = useMemo(() => {
     if (!searchedPhoneNormalized) return true;
-    return threads.some((t) => t.externalPhone === searchedPhoneNormalized);
-  }, [searchedPhoneNormalized, threads]);
+    // Verificar si el número ya existe en TODOS los contactos (no solo threads)
+    return allContacts.some((c) => c.phone === searchedPhoneNormalized);
+  }, [searchedPhoneNormalized, allContacts]);
 
   const handleSelectContact = (contact: { phone: string; hasThread: boolean; threadId: string | null }) => {
     if (contact.hasThread && contact.threadId) {
