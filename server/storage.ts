@@ -6728,11 +6728,12 @@ export class DbStorage implements IStorage {
     const limit = options?.limit || 50;
     const offset = options?.offset || 0;
     
+    // Order by createdAt ASC (oldest first) for WhatsApp-style chronological display
     return db
       .select()
       .from(bulkvsMessages)
       .where(eq(bulkvsMessages.threadId, threadId))
-      .orderBy(desc(bulkvsMessages.createdAt))
+      .orderBy(bulkvsMessages.createdAt)
       .limit(limit)
       .offset(offset);
   }
