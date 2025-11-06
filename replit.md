@@ -82,6 +82,8 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 ### System Design Choices
 Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities (`shared/phone.ts`) standardize phone number formatting across the application - ALL numbers stored in 11-digit format (with "1" prefix) for consistency with BulkVS API.
 
+**Timezone Handling**: All message timestamps are normalized using `parseISO()` to explicitly parse as UTC before converting to user's local timezone with `toZonedTime()`. This prevents double timezone shifts that would cause today's messages to incorrectly show as "Yesterday".
+
 ### Security Architecture
 - **Session Security:** `SESSION_SECRET` environment variable mandatory.
 - **Webhook Validation:** Twilio and BulkVS webhook signature validation.

@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, parseISO } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import type { BulkvsThread, BulkvsMessage } from "@shared/schema";
 
@@ -105,10 +105,11 @@ export function MessagePanel({
     return phone;
   };
 
-  const renderDateDivider = (date: Date) => {
-    // Convert UTC date to user's timezone
+  const renderDateDivider = (date: Date | string) => {
+    // CRITICAL: Parse ISO string explicitly as UTC before converting to user's timezone
+    // This prevents double timezone shifts that cause "Yesterday" for today's messages
     const tz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const utcDate = new Date(date);
+    const utcDate = typeof date === 'string' ? parseISO(date) : date;
     const zonedDate = toZonedTime(utcDate, tz);
     const now = toZonedTime(currentTime, tz); // Use currentTime state instead of new Date()
     
@@ -138,8 +139,14 @@ export function MessagePanel({
   };
 
   const groupedMessages = messages.reduce((groups, message) => {
-    const date = new Date(message.createdAt);
-    const dateKey = format(date, "yyyy-MM-dd");
+    // CRITICAL: Parse ISO timestamp explicitly as UTC, THEN convert to user's timezone
+    // This prevents double timezone conversion that causes "Yesterday" for today's messages
+    const tz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Parse as ISO UTC string explicitly to avoid browser local time interpretation
+    const utcDate = parseISO(new Date(message.createdAt).toISOString());
+    const zonedDate = toZonedTime(utcDate, tz);
+    const dateKey = format(zonedDate, "yyyy-MM-dd");
     
     if (!groups[dateKey]) {
       groups[dateKey] = [];
