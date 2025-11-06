@@ -95,6 +95,15 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **Image Upload System:** Direct file upload from user's computer with live preview; images converted to base64 data URLs.
     -   **Interactive Google Maps:** Map blocks use Google Maps JavaScript API for interactive maps with markers, integrated with Google Places API.
     -   **Public Pages:** Accessible at `/:slug` and `/l/:slug` without authentication, featuring identical SmartBio layout, theme customization, SEO meta tags, and analytics tracking.
+-   **Unified Contacts Directory:** Comprehensive contact management system aggregating all contacts across the platform from multiple data sources.
+    -   **Data Sources:** Automatically aggregates contacts from Quote Members, Policy Members, System Users, and BulkVS SMS Threads into a single unified view.
+    -   **Intelligent Deduplication:** Hierarchical merge algorithm (SSN → phone+DOB → email → name+company) prevents duplicate contacts while preserving all statuses and product types from multiple sources.
+    -   **Contact Information:** Full name, email, phone number, date of birth, SSN, status (multiple if from different sources), product type (health, dental, vision, etc.), origin (quote/policy/user/sms), and company association.
+    -   **Advanced Filtering:** Filter contacts by status, product type, origin source, and company with real-time client-side filtering.
+    -   **Search Functionality:** Full-text search across name, email, and phone number fields.
+    -   **CSV Export:** Export filtered contact list to CSV with automatic SSN masking for non-superadmins.
+    -   **Access Control:** Admins can access contacts from their company; superadmins can access all contacts system-wide.
+    -   **Security:** SSN displayed only to superadmins, masked (***-**-XXXX) for admins, phone numbers normalized using E.164 format.
 
 ### System Design Choices
 Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications.
