@@ -19457,8 +19457,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
       
       // ===== STEP 1: VERIFY OR CREATE WEBHOOK =====
+      // Hoist all webhook variables to ensure they're accessible throughout the function
       let webhookName = phoneNumber.webhookName;
       let webhookToken = phoneNumber.webhookToken;
+      let webhookUrl: string;
+      
       const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
       const baseDomain = getBaseDomain();
       
@@ -19482,7 +19485,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Use shorter name without timestamp to avoid BulkVS truncation (50 char limit)
         webhookName = `wh-${user.id}`;
         webhookToken = generateSecureToken(32);
-        const webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
+        webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
         
         try {
           await bulkVSClient.createOrUpdateWebhook({
@@ -19504,6 +19507,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       } else {
         console.log(`[REACTIVATION] ✓ Reusing existing webhook: ${webhookName}`);
+        // Reconstruct webhookUrl from existing token
+        webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
         // Wait 1 second before activating
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
