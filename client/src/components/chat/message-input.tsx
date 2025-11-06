@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Paperclip, Send, X } from "lucide-react";
@@ -9,14 +9,26 @@ interface MessageInputProps {
   onSendMessage: (message: string, mediaFile?: File) => void;
   disabled?: boolean;
   onMarkAsRead?: () => void;
+  initialMessage?: string;
 }
 
-export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead }: MessageInputProps) {
-  const [message, setMessage] = useState("");
+export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, initialMessage }: MessageInputProps) {
+  const [message, setMessage] = useState(initialMessage || "");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update message when initialMessage changes
+  useEffect(() => {
+    if (initialMessage) {
+      setMessage(initialMessage);
+      // Focus the textarea after a short delay
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, [initialMessage]);
 
   const handleSend = () => {
     if ((!message.trim() && !mediaFile) || disabled) return;

@@ -37,6 +37,7 @@ interface MessagePanelProps {
   isLoading?: boolean;
   userTimezone?: string;
   onMarkAsRead?: () => void;
+  initialMessage?: string;
 }
 
 export function MessagePanel({
@@ -50,6 +51,7 @@ export function MessagePanel({
   isLoading = false,
   userTimezone,
   onMarkAsRead,
+  initialMessage,
 }: MessagePanelProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -306,7 +308,7 @@ export function MessagePanel({
         )}
       </ScrollArea>
 
-      <MessageInput onSendMessage={onSendMessage} onMarkAsRead={onMarkAsRead} />
+      <MessageInput onSendMessage={onSendMessage} onMarkAsRead={onMarkAsRead} initialMessage={initialMessage} />
     </Card>
   );
 }

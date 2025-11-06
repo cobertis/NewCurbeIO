@@ -36,6 +36,7 @@ export default function SmsMmsPage() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
   const [newMessageDialogOpen, setNewMessageDialogOpen] = useState(false);
+  const [initialMessage, setInitialMessage] = useState<string>("");
 
   // Get user's timezone
   const { data: userData } = useQuery<{ user: User }>({
@@ -277,44 +278,79 @@ export default function SmsMmsPage() {
 
   const handleSendMessage = (message: string, mediaFile?: File) => {
     sendMessageMutation.mutate({ message, mediaFile });
+    // Limpiar el mensaje inicial después de enviar
+    setInitialMessage("");
   };
 
-  const newMessageMutation = useMutation({
-    mutationFn: async ({ phoneNumber, message }: { phoneNumber: string; message: string }) => {
-      if (activeNumbers.length === 0) {
-        throw new Error("No phone number available");
-      }
-
-      const myPhoneNumber = activeNumbers[0];
-      
-      // Remove formatting from phone number (keep digits only)
-      const cleanPhone = phoneNumber.replace(/\D/g, "");
-      
-      return apiRequest("POST", "/api/bulkvs/messages/send", {
-        from: myPhoneNumber.did,
-        to: cleanPhone,
-        body: message,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
-      setNewMessageDialogOpen(false);
+  const handleNewMessage = (phoneNumber: string, message: string) => {
+    // Limpiar el número
+    const cleanPhone = phoneNumber.replace(/\D/g, "");
+    
+    // Normalizar a formato de 11 dígitos (con "1" al inicio)
+    let normalizedPhone = cleanPhone;
+    if (cleanPhone.length === 10) {
+      normalizedPhone = "1" + cleanPhone;
+    } else if (cleanPhone.length === 11 && cleanPhone.startsWith("1")) {
+      normalizedPhone = cleanPhone;
+    } else {
       toast({
-        title: "Message sent",
-        description: "Your message has been sent successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to send message",
-        description: error.message,
+        title: "Invalid phone number",
+        description: "Please enter a valid 10-digit US phone number",
         variant: "destructive",
       });
-    },
-  });
-
-  const handleNewMessage = (phoneNumber: string, message: string) => {
-    newMessageMutation.mutate({ phoneNumber, message });
+      return;
+    }
+    
+    // Buscar si ya existe un thread con este número
+    const existingThread = threads.find(
+      (t) => t.externalPhone === normalizedPhone
+    );
+    
+    if (existingThread) {
+      // Si existe, seleccionar ese thread y poner el mensaje en el input
+      setSelectedThreadId(existingThread.id);
+      setInitialMessage(message);
+      setMobileView("messages");
+    } else {
+      // Si no existe, crear un nuevo thread vacío y poner el mensaje en el input
+      // El thread se creará cuando se envíe el primer mensaje
+      toast({
+        title: "New conversation",
+        description: `Starting conversation with ${formatForDisplay(normalizedPhone)}`,
+      });
+      
+      // Crear un thread temporal para mostrar en la UI
+      const tempThread: BulkvsThread = {
+        id: `temp-${Date.now()}`,
+        userId: String(userData?.user?.id || ""),
+        companyId: Number(userData?.user?.companyId || 0),
+        phoneNumberId: activeNumbers[0]?.id || "",
+        externalPhone: normalizedPhone,
+        displayName: formatForDisplay(normalizedPhone),
+        lastMessageAt: new Date(),
+        lastMessagePreview: "",
+        unreadCount: 0,
+        isPinned: false,
+        isMuted: false,
+        isArchived: false,
+        labels: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      // Agregar el thread temporal a la lista (esto se sincronizará cuando se envíe el mensaje)
+      queryClient.setQueryData<BulkvsThread[]>(
+        ["/api/bulkvs/threads"],
+        (old) => old ? [tempThread, ...old] : [tempThread]
+      );
+      
+      setSelectedThreadId(tempThread.id);
+      setInitialMessage(message);
+      setMobileView("messages");
+    }
+    
+    // Cerrar el diálogo
+    setNewMessageDialogOpen(false);
   };
 
   const handleUpdateThread = (updates: Partial<BulkvsThread>) => {
@@ -461,6 +497,7 @@ export default function SmsMmsPage() {
           isLoading={loadingMessages}
           userTimezone={userTimezone}
           onMarkAsRead={handleMarkAsRead}
+          initialMessage={initialMessage}
         />
 
         <ContactDetails
@@ -497,6 +534,7 @@ export default function SmsMmsPage() {
               isLoading={loadingMessages}
               userTimezone={userTimezone}
               onMarkAsRead={handleMarkAsRead}
+              initialMessage={initialMessage}
             />
           </div>
         )}
@@ -526,7 +564,6 @@ export default function SmsMmsPage() {
         open={newMessageDialogOpen}
         onOpenChange={setNewMessageDialogOpen}
         onSendMessage={handleNewMessage}
-        isLoading={newMessageMutation.isPending}
       />
     </>
   );
