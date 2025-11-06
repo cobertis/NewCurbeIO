@@ -19455,24 +19455,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
       
-      // ===== STEP 1: REUSE EXISTING WEBHOOK (NO NEW WEBHOOK CREATION) =====
-      // The webhook already exists in the database and in BulkVS from previous activation
-      const webhookName = phoneNumber.webhookName;
-      const webhookToken = phoneNumber.webhookToken;
+      // ===== STEP 1: VERIFY OR CREATE WEBHOOK =====
+      let webhookName = phoneNumber.webhookName;
+      let webhookToken = phoneNumber.webhookToken;
+      const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
+      const baseDomain = getBaseDomain();
       
-      if (!webhookName || !webhookToken) {
-        console.error(`[REACTIVATION] Missing webhook data in database`);
-        return res.status(500).json({ 
-          message: "Invalid phone number data. Missing webhook information.", 
-        });
+      // Check if webhook exists in BulkVS
+      let webhookExists = false;
+      if (webhookName) {
+        try {
+          console.log(`[REACTIVATION] Checking if webhook "${webhookName}" exists in BulkVS...`);
+          const webhooks = await bulkVSClient.listWebhooks();
+          webhookExists = Array.isArray(webhooks) && webhooks.some((wh: any) => wh.Webhook === webhookName || wh["Trunk Group"] === webhookName);
+          console.log(`[REACTIVATION] Webhook exists in BulkVS: ${webhookExists}`);
+        } catch (error: any) {
+          console.error(`[REACTIVATION] Error checking webhooks:`, error.message);
+          webhookExists = false;
+        }
       }
       
-      console.log(`[REACTIVATION] Reusing existing webhook: ${webhookName}`);
-      console.log(`[REACTIVATION] Webhook token: ${webhookToken}`);
-      console.log(`[REACTIVATION] No need to create new webhook - using existing one from BulkVS`);
-      
-      // Wait 1 second before activating
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // If webhook doesn't exist, create a new one
+      if (!webhookExists || !webhookName || !webhookToken) {
+        console.log(`[REACTIVATION] Creating new webhook...`);
+        webhookName = `webhook-${user.id}-${Date.now()}`;
+        webhookToken = generateSecureToken(32);
+        const webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
+        
+        try {
+          await bulkVSClient.createOrUpdateWebhook({
+            webhookName,
+            webhookUrl,
+            description: `${user.firstName} ${user.lastName} - ${company.name}`,
+          });
+          console.log(`[REACTIVATION] ✓ Webhook created: ${webhookName}`);
+          
+          // Wait 2 seconds for propagation
+          console.log(`[REACTIVATION] Waiting 2s for webhook propagation...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (webhookError: any) {
+          console.error(`[REACTIVATION] Webhook creation failed:`, webhookError.message);
+          return res.status(500).json({ 
+            message: "Failed to create webhook in BulkVS. No charge made.", 
+            error: webhookError.message 
+          });
+        }
+      } else {
+        console.log(`[REACTIVATION] ✓ Reusing existing webhook: ${webhookName}`);
+        // Wait 1 second before activating
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
 
       // ===== STEP 2: ACTIVATE NUMBER IN BULKVS (NO CHARGE YET) =====
       console.log(`[REACTIVATION] Activating number ${phoneNumber.did} in BulkVS...`);
