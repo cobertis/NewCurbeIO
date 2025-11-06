@@ -19713,12 +19713,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Handle incoming message
       // BulkVS sends: { From, To, Message, RefId, FragmentCount }
       if (payload.From || payload.from) {
-        const from = payload.From || payload.from;
-        const to = (payload.To || payload.to)?.[0] || phoneNumber.did;
+        const rawFrom = payload.From || payload.from;
+        const rawTo = (payload.To || payload.to)?.[0] || phoneNumber.did;
         const body = payload.Message || payload.body;
         const mediaUrl = payload.MediaUrl || payload.mediaUrl || null;
         const mediaType = payload.MediaType || payload.mediaType || null;
         const providerMsgId = payload.RefId || payload.id || null;
+        
+        // Normalize phone numbers to 11-digit format for consistency
+        const from = formatForStorage(rawFrom);
+        const to = formatForStorage(rawTo);
         
         // Find or create thread
         let thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, from);
@@ -20003,15 +20007,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         phoneNumber = userPhones[0]; // Use first available number
         
+        // Normalize phone number to 11-digit format for consistency
+        const normalizedTo = formatForStorage(to);
+        
         // Check if thread exists
-        thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, to);
+        thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, normalizedTo);
         if (!thread) {
           thread = await storage.createBulkvsThread({
             phoneNumberId: phoneNumber.id,
             userId: user.id,
             companyId: user.companyId,
-            externalPhone: to,
-            displayName: to,
+            externalPhone: normalizedTo,
+            displayName: normalizedTo,
             lastMessageAt: new Date(),
             lastMessagePreview: body?.substring(0, 100) || "[Media]",
           });
