@@ -450,6 +450,7 @@ export default function SmsMmsPage() {
           onUpdateThread={handleUpdateThread}
           onDeleteThread={handleDeleteThread}
           isLoading={loadingMessages}
+          userTimezone={userTimezone}
         />
 
         <ContactDetails
@@ -484,6 +485,7 @@ export default function SmsMmsPage() {
               onBack={handleBackToThreads}
               onShowDetails={handleShowDetails}
               isLoading={loadingMessages}
+              userTimezone={userTimezone}
             />
           </div>
         )}

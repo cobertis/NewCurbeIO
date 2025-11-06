@@ -22,7 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import { format, isSameDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import type { BulkvsThread, BulkvsMessage } from "@shared/schema";
 
 interface MessagePanelProps {
@@ -34,6 +35,7 @@ interface MessagePanelProps {
   onBack?: () => void;
   onShowDetails?: () => void;
   isLoading?: boolean;
+  userTimezone?: string;
 }
 
 export function MessagePanel({
@@ -45,6 +47,7 @@ export function MessagePanel({
   onBack,
   onShowDetails,
   isLoading = false,
+  userTimezone,
 }: MessagePanelProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -83,12 +86,24 @@ export function MessagePanel({
   };
 
   const renderDateDivider = (date: Date) => {
-    let label = format(date, "MMMM d, yyyy");
+    // Convert UTC date to user's timezone
+    const tz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const utcDate = new Date(date);
+    const zonedDate = toZonedTime(utcDate, tz);
+    const now = toZonedTime(new Date(), tz);
     
-    if (isToday(date)) {
+    let label = format(zonedDate, "MMMM d, yyyy");
+    
+    // Check if same day (in user's timezone)
+    if (isSameDay(zonedDate, now)) {
       label = "Today";
-    } else if (isYesterday(date)) {
-      label = "Yesterday";
+    } else {
+      // Check if yesterday (in user's timezone)
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (isSameDay(zonedDate, yesterday)) {
+        label = "Yesterday";
+      }
     }
 
     return (
