@@ -117,11 +117,57 @@ export default function SmsMmsPage() {
         mediaUrl,
       });
     },
+    onMutate: async ({ message, mediaFile }) => {
+      // OPTIMISTIC UPDATE: Add message IMMEDIATELY like WhatsApp
+      if (!selectedThread || !activeNumbers[0]) return;
+
+      await queryClient.cancelQueries({ queryKey: ["/api/bulkvs/threads", selectedThreadId, "messages"] });
+
+      const previousMessages = queryClient.getQueryData<BulkvsMessage[]>([
+        "/api/bulkvs/threads",
+        selectedThreadId,
+        "messages",
+      ]);
+
+      const optimisticMessage: BulkvsMessage = {
+        id: `temp-${Date.now()}`,
+        threadId: selectedThread.id,
+        direction: "outbound",
+        status: "sending",
+        from: activeNumbers[0].did,
+        to: selectedThread.externalPhone,
+        body: message || null,
+        mediaUrl: mediaFile ? URL.createObjectURL(mediaFile) : null,
+        mediaType: mediaFile?.type || null,
+        providerMsgId: null,
+        errorCode: null,
+        errorMessage: null,
+        deliveredAt: null,
+        readAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      queryClient.setQueryData<BulkvsMessage[]>(
+        ["/api/bulkvs/threads", selectedThreadId, "messages"],
+        (old) => [...(old || []), optimisticMessage]
+      );
+
+      return { previousMessages };
+    },
     onSuccess: () => {
+      // Refresh to get the real message from server
       queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads", selectedThreadId, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousMessages) {
+        queryClient.setQueryData(
+          ["/api/bulkvs/threads", selectedThreadId, "messages"],
+          context.previousMessages
+        );
+      }
       toast({
         title: "Failed to send message",
         description: error.message,
