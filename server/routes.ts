@@ -19480,6 +19480,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
 
+      // Wait 2 seconds for BulkVS to propagate the webhook
+      console.log(`[REACTIVATION] Waiting 2s for webhook propagation...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       // ===== STEP 3: ACTIVATE NUMBER IN BULKVS (NO CHARGE YET) =====
       console.log(`[REACTIVATION] Activating number ${phoneNumber.did} in BulkVS...`);
       let activationResult;
