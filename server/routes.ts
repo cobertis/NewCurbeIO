@@ -19080,7 +19080,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await bulkVSClient.createOrUpdateWebhook({
           webhookName,
           webhookUrl,
-          description: `Incoming messages for ${user.firstName} ${user.lastName} (${company.name})`,
+          description: `${user.firstName} ${user.lastName} - ${company.name}`,
         });
         console.log(`[Webhook] ✓ Webhook created in BulkVS`);
       } catch (webhookError: any) {
@@ -19475,7 +19475,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await bulkVSClient.createOrUpdateWebhook({
           webhookName,
           webhookUrl,
-          description: `Incoming messages for ${user.firstName} ${user.lastName} (${company.name})`,
+          description: `${user.firstName} ${user.lastName} - ${company.name}`,
         });
         console.log(`[REACTIVATION] ✓ Webhook created successfully`);
       } catch (webhookError: any) {
