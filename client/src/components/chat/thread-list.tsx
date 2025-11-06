@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, MessageSquarePlus, Pin, BellOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
+import { formatForDisplay } from "@shared/phone";
 import type { BulkvsThread } from "@shared/schema";
 
 interface ThreadListProps {
@@ -160,7 +161,7 @@ export function ThreadList({
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <span className="font-medium truncate" data-testid={`thread-name-${thread.id}`}>
-                        {thread.displayName || thread.externalPhone}
+                        {thread.displayName || formatForDisplay(thread.externalPhone)}
                       </span>
                       {thread.isPinned && (
                         <Pin className="h-3 w-3 text-muted-foreground flex-shrink-0" data-testid="icon-pinned" />
