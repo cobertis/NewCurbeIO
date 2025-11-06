@@ -11,8 +11,9 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { formatForDisplay } from "@shared/phone";
-import type { BulkvsThread } from "@shared/schema";
+import type { BulkvsThread, UnifiedContact } from "@shared/schema";
 import defaultAvatar from "@assets/generated_images/Generic_user_avatar_icon_55b842ef.png";
+import { NewMessageSheet } from "./new-message-sheet";
 
 interface ThreadListProps {
   threads: BulkvsThread[];
@@ -21,6 +22,10 @@ interface ThreadListProps {
   onNewMessage?: () => void;
   onSettings?: () => void;
   userTimezone?: string;
+  showNewMessageView?: boolean;
+  contacts?: UnifiedContact[];
+  onCreateNewThread?: (phoneNumber: string) => void;
+  onCloseNewMessage?: () => void;
 }
 
 type FilterType = "all" | "unread" | "archived";
@@ -31,7 +36,11 @@ export function ThreadList({
   onSelectThread,
   onNewMessage,
   onSettings,
-  userTimezone 
+  userTimezone,
+  showNewMessageView = false,
+  contacts = [],
+  onCreateNewThread,
+  onCloseNewMessage,
 }: ThreadListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
@@ -108,6 +117,21 @@ export function ThreadList({
       return format(zonedDate, "M/d/yy");
     }
   };
+
+  // Si está en modo "New Message", mostrar ese componente en su lugar
+  if (showNewMessageView && onCreateNewThread && onCloseNewMessage) {
+    return (
+      <Card className="h-full flex flex-col border-r overflow-hidden" data-testid="thread-list">
+        <NewMessageSheet
+          threads={threads}
+          contacts={contacts}
+          onSelectThread={onSelectThread}
+          onCreateNewThread={onCreateNewThread}
+          onClose={onCloseNewMessage}
+        />
+      </Card>
+    );
+  }
 
   return (
     <Card className="h-full flex flex-col border-r overflow-hidden" data-testid="thread-list">

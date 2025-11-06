@@ -2,36 +2,28 @@ import { useState, useMemo } from "react";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Search, UserPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, UserPlus, ArrowLeft } from "lucide-react";
 import { formatForDisplay } from "@shared/phone";
-import type { BulkvsThread } from "@shared/schema";
+import type { BulkvsThread, UnifiedContact } from "@shared/schema";
 import defaultAvatar from "@assets/generated_images/Generic_user_avatar_icon_55b842ef.png";
 
 interface NewMessageSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   threads: BulkvsThread[];
+  contacts: UnifiedContact[];
   onSelectThread: (threadId: string) => void;
   onCreateNewThread: (phoneNumber: string) => void;
+  onClose: () => void;
 }
 
 export function NewMessageSheet({
-  open,
-  onOpenChange,
   threads,
+  contacts,
   onSelectThread,
   onCreateNewThread,
+  onClose,
 }: NewMessageSheetProps) {
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Limpiar búsqueda al cerrar
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      setSearchQuery("");
-    }
-    onOpenChange(newOpen);
-  };
 
   // Normalizar número de teléfono
   const normalizePhone = (phone: string): string => {
@@ -50,19 +42,65 @@ export function NewMessageSheet({
     return digits.length === 10 || (digits.length === 11 && digits.startsWith("1"));
   };
 
-  // Filtrar threads por búsqueda
-  const filteredThreads = useMemo(() => {
+  // Combinar threads y contactos en una sola lista
+  const allContacts = useMemo(() => {
+    const contactMap = new Map();
+
+    // Primero agregar todos los contactos de la base de datos
+    contacts.forEach((contact) => {
+      if (contact.phone) {
+        const normalizedPhone = normalizePhone(contact.phone);
+        if (!contactMap.has(normalizedPhone)) {
+          const fullName = [contact.firstName, contact.lastName]
+            .filter(Boolean)
+            .join(" ");
+          contactMap.set(normalizedPhone, {
+            phone: normalizedPhone,
+            displayName: fullName || "",
+            hasThread: false,
+            threadId: null,
+          });
+        }
+      }
+    });
+
+    // Luego agregar threads (pueden sobrescribir si tienen displayName)
+    threads.forEach((thread) => {
+      const existing = contactMap.get(thread.externalPhone);
+      if (existing) {
+        existing.hasThread = true;
+        existing.threadId = thread.id;
+        if (thread.displayName) {
+          existing.displayName = thread.displayName;
+        }
+      } else {
+        contactMap.set(thread.externalPhone, {
+          phone: thread.externalPhone,
+          displayName: thread.displayName || "",
+          hasThread: true,
+          threadId: thread.id,
+        });
+      }
+    });
+
+    return Array.from(contactMap.values());
+  }, [contacts, threads]);
+
+  // Filtrar contactos por búsqueda
+  const filteredContacts = useMemo(() => {
     if (!searchQuery.trim()) {
-      return threads;
+      return allContacts;
     }
 
     const query = searchQuery.toLowerCase();
-    return threads.filter(
-      (t) =>
-        t.displayName?.toLowerCase().includes(query) ||
-        t.externalPhone.includes(searchQuery.replace(/\D/g, ""))
+    const searchDigits = searchQuery.replace(/\D/g, "");
+    
+    return allContacts.filter(
+      (c) =>
+        c.displayName?.toLowerCase().includes(query) ||
+        c.phone.includes(searchDigits)
     );
-  }, [threads, searchQuery]);
+  }, [allContacts, searchQuery]);
 
   // Verificar si el número buscado ya existe
   const searchedPhoneNormalized = useMemo(() => {
@@ -77,39 +115,52 @@ export function NewMessageSheet({
     return threads.some((t) => t.externalPhone === searchedPhoneNormalized);
   }, [searchedPhoneNormalized, threads]);
 
-  const handleSelectExisting = (threadId: string) => {
-    onSelectThread(threadId);
-    handleOpenChange(false);
+  const handleSelectContact = (contact: { phone: string; hasThread: boolean; threadId: string | null }) => {
+    if (contact.hasThread && contact.threadId) {
+      // Ya tiene thread, abrirlo
+      onSelectThread(contact.threadId);
+    } else {
+      // No tiene thread, crear uno nuevo
+      onCreateNewThread(contact.phone);
+    }
+    onClose();
   };
 
   const handleCreateNew = () => {
     if (searchedPhoneNormalized) {
       onCreateNewThread(searchedPhoneNormalized);
-      handleOpenChange(false);
+      onClose();
     }
   };
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="left" className="w-full sm:max-w-md p-0">
-        <SheetHeader className="p-4 border-b">
-          <SheetTitle>New Message</SheetTitle>
-        </SheetHeader>
-
-        <div className="p-4 border-b">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search name or enter phone number"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-              data-testid="input-search-contacts"
-            />
-          </div>
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b space-y-3 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onClose}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h2 className="text-xl font-semibold">New Message</h2>
         </div>
 
-        <ScrollArea className="h-[calc(100vh-140px)]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search name or enter phone number"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-search-contacts"
+          />
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
           <div className="p-2">
             {/* Mostrar "Nuevo contacto" si es un número válido que no existe */}
             {searchedPhoneNormalized && !phoneAlreadyExists && (
@@ -138,28 +189,28 @@ export function NewMessageSheet({
               </>
             )}
 
-            {/* Lista de contactos existentes */}
-            {filteredThreads.length > 0 && (
+            {/* Lista de todos los contactos */}
+            {filteredContacts.length > 0 && (
               <>
                 <div className="px-3 py-2 text-xs text-muted-foreground">
-                  Contacts in Chat
+                  All Contacts
                 </div>
-                {filteredThreads.map((thread) => (
+                {filteredContacts.map((contact, index) => (
                   <button
-                    key={thread.id}
-                    onClick={() => handleSelectExisting(thread.id)}
+                    key={`${contact.phone}-${index}`}
+                    onClick={() => handleSelectContact(contact)}
                     className="w-full p-3 rounded-lg flex items-center gap-3 hover:bg-accent transition-colors text-left"
-                    data-testid={`contact-${thread.id}`}
+                    data-testid={`contact-${contact.phone}`}
                   >
                     <Avatar className="h-12 w-12 flex-shrink-0">
                       <AvatarImage src={defaultAvatar} alt="Contact" />
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">
-                        {thread.displayName || formatForDisplay(thread.externalPhone)}
+                        {contact.displayName || formatForDisplay(contact.phone)}
                       </p>
                       <p className="text-sm text-muted-foreground truncate">
-                        {thread.lastMessagePreview || "No messages yet"}
+                        {formatForDisplay(contact.phone)}
                       </p>
                     </div>
                   </button>
@@ -168,7 +219,7 @@ export function NewMessageSheet({
             )}
 
             {/* Estado vacío */}
-            {filteredThreads.length === 0 && !searchedPhoneNormalized && (
+            {filteredContacts.length === 0 && !searchedPhoneNormalized && (
               <div className="text-center py-12 text-sm text-muted-foreground">
                 {searchQuery
                   ? "No contacts found"
@@ -177,14 +228,13 @@ export function NewMessageSheet({
             )}
 
             {/* Número inválido */}
-            {searchQuery && !searchedPhoneNormalized && filteredThreads.length === 0 && (
+            {searchQuery && !searchedPhoneNormalized && filteredContacts.length === 0 && (
               <div className="text-center py-12 text-sm text-muted-foreground">
                 Enter a valid phone number to start a new conversation
               </div>
             )}
           </div>
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+    </div>
   );
 }

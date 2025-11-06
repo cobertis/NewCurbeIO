@@ -13,7 +13,7 @@ import { PhoneSettingsModal } from "@/components/chat/phone-settings-modal";
 import { NewMessageSheet } from "@/components/chat/new-message-sheet";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Phone, Settings, RefreshCw, Plus } from "lucide-react";
-import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber, User } from "@shared/schema";
+import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber, User, UnifiedContact } from "@shared/schema";
 import { formatForDisplay } from "@shared/phone";
 import {
   AlertDialog,
@@ -35,7 +35,7 @@ export default function SmsMmsPage() {
   const [provisionModalOpen, setProvisionModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
-  const [newMessageSheetOpen, setNewMessageSheetOpen] = useState(false);
+  const [showNewMessageView, setShowNewMessageView] = useState(false);
   const [initialMessage, setInitialMessage] = useState<string>("");
 
   // Get user's timezone
@@ -43,6 +43,12 @@ export default function SmsMmsPage() {
     queryKey: ["/api/session"],
   });
   const userTimezone = userData?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // Get unified contacts
+  const { data: contactsData } = useQuery<{ contacts: UnifiedContact[] }>({
+    queryKey: ["/api/contacts/unified"],
+  });
+  const contacts = contactsData?.contacts || [];
 
   useWebSocket((message) => {
     const msg = message as any; // BulkVS-specific message types
@@ -459,8 +465,12 @@ export default function SmsMmsPage() {
             selectedThreadId={selectedThreadId}
             onSelectThread={handleSelectThread}
             onSettings={() => setSettingsModalOpen(true)}
-            onNewMessage={() => setNewMessageSheetOpen(true)}
+            onNewMessage={() => setShowNewMessageView(true)}
             userTimezone={userTimezone}
+            showNewMessageView={showNewMessageView}
+            contacts={contacts}
+            onCreateNewThread={handleCreateNewThread}
+            onCloseNewMessage={() => setShowNewMessageView(false)}
           />
 
         <MessagePanel
@@ -490,8 +500,12 @@ export default function SmsMmsPage() {
               selectedThreadId={selectedThreadId}
               onSelectThread={handleSelectThread}
               onSettings={() => setSettingsModalOpen(true)}
-              onNewMessage={() => setNewMessageSheetOpen(true)}
+              onNewMessage={() => setShowNewMessageView(true)}
               userTimezone={userTimezone}
+              showNewMessageView={showNewMessageView}
+              contacts={contacts}
+              onCreateNewThread={handleCreateNewThread}
+              onCloseNewMessage={() => setShowNewMessageView(false)}
             />
           </div>
         )}
@@ -535,13 +549,6 @@ export default function SmsMmsPage() {
       />
     )}
 
-      <NewMessageSheet
-        open={newMessageSheetOpen}
-        onOpenChange={setNewMessageSheetOpen}
-        threads={threads}
-        onSelectThread={handleSelectThread}
-        onCreateNewThread={handleCreateNewThread}
-      />
     </>
   );
 }
