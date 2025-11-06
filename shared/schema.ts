@@ -3198,6 +3198,7 @@ export type UnifiedContact = {
   id: string;
   firstName: string | null;
   lastName: string | null;
+  displayName: string | null;
   email: string | null;
   phone: string | null;
   ssn: string | null;

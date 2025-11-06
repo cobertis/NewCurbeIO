@@ -51,12 +51,19 @@ export function NewMessageSheet({
       if (contact.phone) {
         const normalizedPhone = normalizePhone(contact.phone);
         if (!contactMap.has(normalizedPhone)) {
-          const fullName = [contact.firstName, contact.lastName]
+          // PRIORITY ORDER: displayName > companyName > firstName+lastName > formatted phone
+          const constructedName = [contact.firstName, contact.lastName]
             .filter(Boolean)
             .join(" ");
+          const displayName = 
+            contact.displayName || 
+            contact.companyName || 
+            constructedName || 
+            formatForDisplay(normalizedPhone);
+          
           contactMap.set(normalizedPhone, {
             phone: normalizedPhone,
-            displayName: fullName || "",
+            displayName: displayName,
             hasThread: false,
             threadId: null,
           });

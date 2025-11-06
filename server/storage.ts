@@ -6870,15 +6870,46 @@ export class DbStorage implements IStorage {
       return formatForStorage(phone);
     };
     
+    // Helper function to generate consistent displayName
+    // PRIORITY: firstName+lastName > companyName > null
+    // Always treat empty strings as absent
+    const generateDisplayName = (
+      firstName: string | null | undefined,
+      lastName: string | null | undefined,
+      companyName: string | null | undefined
+    ): string | null => {
+      // Treat empty strings as null
+      const cleanFirst = firstName?.trim() || null;
+      const cleanLast = lastName?.trim() || null;
+      const cleanCompany = companyName?.trim() || null;
+      
+      // Build name from first+last
+      const parts = [cleanFirst, cleanLast].filter(Boolean);
+      if (parts.length > 0) {
+        return parts.join(" ");
+      }
+      
+      // Fallback to company name
+      if (cleanCompany) {
+        return cleanCompany;
+      }
+      
+      // No meaningful name available
+      return null;
+    };
+    
     // Helper function to map sources to UnifiedContact
     const rawContacts: UnifiedContact[] = [];
     
     // Map quote members
     quoteMembersData.forEach(({ member, quote }) => {
+      const companyName = companyMap.get(member.companyId)?.name || null;
+      
       rawContacts.push({
         id: member.id,
         firstName: member.firstName,
         lastName: member.lastName,
+        displayName: generateDisplayName(member.firstName, member.lastName, companyName),
         email: member.email || null,
         phone: normalizePhone(member.phone),
         ssn: member.ssn || null,
@@ -6887,7 +6918,7 @@ export class DbStorage implements IStorage {
         productType: [quote.productType],
         origin: ['quote'],
         companyId: member.companyId,
-        companyName: companyMap.get(member.companyId)?.name || null,
+        companyName,
         sourceMetadata: [{
           type: 'quote',
           id: quote.id,
@@ -6903,10 +6934,13 @@ export class DbStorage implements IStorage {
     
     // Map policy members
     policyMembersData.forEach(({ member, policy }) => {
+      const companyName = companyMap.get(member.companyId)?.name || null;
+      
       rawContacts.push({
         id: member.id,
         firstName: member.firstName,
         lastName: member.lastName,
+        displayName: generateDisplayName(member.firstName, member.lastName, companyName),
         email: member.email || null,
         phone: normalizePhone(member.phone),
         ssn: member.ssn || null,
@@ -6915,7 +6949,7 @@ export class DbStorage implements IStorage {
         productType: [policy.productType],
         origin: ['policy'],
         companyId: member.companyId,
-        companyName: companyMap.get(member.companyId)?.name || null,
+        companyName,
         sourceMetadata: [{
           type: 'policy',
           id: policy.id,
@@ -6930,11 +6964,16 @@ export class DbStorage implements IStorage {
     });
     
     // Map BulkVS threads (SMS contacts)
+    // For SMS-only contacts, thread.displayName is often just a phone number or caller ID
+    // We store it as firstName so the helper can process it consistently
     bulkvsThreadsData.forEach(thread => {
+      const companyName = companyMap.get(thread.companyId)?.name || null;
+      
       rawContacts.push({
         id: thread.id,
         firstName: thread.displayName || null,
         lastName: null,
+        displayName: generateDisplayName(thread.displayName, null, companyName),
         email: null,
         phone: normalizePhone(thread.externalPhone),
         ssn: null,
@@ -6943,7 +6982,7 @@ export class DbStorage implements IStorage {
         productType: [],
         origin: ['sms'],
         companyId: thread.companyId,
-        companyName: companyMap.get(thread.companyId)?.name || null,
+        companyName,
         sourceMetadata: [{
           type: 'sms',
           id: thread.id,
@@ -7002,14 +7041,23 @@ export class DbStorage implements IStorage {
         existing.sourceMetadata = [...existing.sourceMetadata, ...contact.sourceMetadata];
         
         // Fill in missing fields from new contact if existing has nulls
-        if (!existing.firstName && contact.firstName) existing.firstName = contact.firstName;
-        if (!existing.lastName && contact.lastName) existing.lastName = contact.lastName;
-        if (!existing.email && contact.email) existing.email = contact.email;
+        // Treat empty strings as null when merging
+        if (!existing.firstName?.trim() && contact.firstName?.trim()) existing.firstName = contact.firstName.trim();
+        if (!existing.lastName?.trim() && contact.lastName?.trim()) existing.lastName = contact.lastName.trim();
+        if (!existing.email?.trim() && contact.email?.trim()) existing.email = contact.email.trim();
         if (!existing.phone && contact.phone) existing.phone = contact.phone;
         if (!existing.ssn && contact.ssn) existing.ssn = contact.ssn;
         if (!existing.dateOfBirth && contact.dateOfBirth) existing.dateOfBirth = contact.dateOfBirth;
         if (!existing.companyId && contact.companyId) existing.companyId = contact.companyId;
-        if (!existing.companyName && contact.companyName) existing.companyName = contact.companyName;
+        if (!existing.companyName?.trim() && contact.companyName?.trim()) existing.companyName = contact.companyName.trim();
+        
+        // CRITICAL: Recalculate displayName AFTER merging all fields
+        // This ensures we always have the best displayName based on the merged data
+        existing.displayName = generateDisplayName(
+          existing.firstName,
+          existing.lastName,
+          existing.companyName
+        );
       } else {
         deduplicationMap.set(key, contact);
       }

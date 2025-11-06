@@ -298,40 +298,47 @@ export default function SmsMmsPage() {
       if (!currentThread) return;
       
       try {
-        // Send message to create thread
-        const formData = new FormData();
-        formData.append("to", currentThread.externalPhone);
-        formData.append("body", message);
+        // Upload media if provided
+        let mediaUrl: string | undefined;
         if (mediaFile) {
-          formData.append("media", mediaFile);
+          const formData = new FormData();
+          formData.append("file", mediaFile);
+          const uploadResponse = await fetch("/api/bulkvs/media/upload", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload media");
+          }
+          const uploadData = await uploadResponse.json();
+          mediaUrl = uploadData.url;
         }
 
-        const result = (await apiRequest(
+        // Send message - backend will create thread if needed
+        const sentMessage = (await apiRequest(
           "POST",
-          "/api/bulkvs/messages",
-          formData
-        )) as { thread: BulkvsThread; message: BulkvsMessage };
+          "/api/bulkvs/messages/send",
+          {
+            to: currentThread.externalPhone,
+            body: message || undefined,
+            mediaUrl,
+          }
+        )) as BulkvsMessage;
         
         // Clear initial message immediately
         setInitialMessage("");
         
-        // CRITICAL FIX: Update cache SYNCHRONOUSLY before changing selectedThreadId
-        // This prevents React from rendering with undefined thread
-        queryClient.setQueryData<BulkvsThread[]>(
-          ["/api/bulkvs/threads"],
-          (old) => {
-            if (!old) return [result.thread];
-            // Remove ALL temporary threads and add the real one
-            return [result.thread, ...old.filter(t => !t?.id?.startsWith('temp-'))];
-          }
-        );
+        // CRITICAL: Switch to the real thread ID immediately from the response
+        // This prevents UI from getting stuck on the temporary thread
+        const realThreadId = sentMessage.threadId;
         
-        // THEN immediately switch to the real thread ID
-        // Cache already has it, so selectedThread will NOT be undefined
-        setSelectedThreadId(result.thread.id);
-        
-        // FINALLY invalidate queries for freshness (non-blocking)
+        // Invalidate queries to fetch the full thread details (non-blocking)
         queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads", realThreadId, "messages"] });
+        
+        // Switch to real thread NOW (deterministic, no waiting)
+        setSelectedThreadId(realThreadId);
         
         toast({
           title: "Message sent",
