@@ -211,20 +211,19 @@ class BulkVSClient {
       console.log(`[BulkVS] Updating CNAM (Lid) for ${normalizedDid} to "${sanitizedCnam}"...`);
       
       // Use /tnRecord endpoint with "Lid" field (Listed ID = Caller ID Name)
-      // BulkVS requires at least one change parameter, and we're updating the Lid
-      const requestBody: any = {
+      // According to BulkVS docs, the request format is:
+      // { "TN": "phone_number", "Lid": "caller_id_name", ... }
+      const requestBody = {
         TN: normalizedDid,
         Lid: sanitizedCnam,
       };
       
-      // Add accountId if available (may be required for some operations)
-      if (this.accountId) {
-        requestBody.accountId = this.accountId;
-      }
-      
       console.log(`[BulkVS] Request body:`, JSON.stringify(requestBody));
+      console.log(`[BulkVS] Making POST request to /tnRecord...`);
       
       const response = await this.client.post("/tnRecord", requestBody);
+      
+      console.log("[BulkVS] Response status:", response.status);
       
       console.log("[BulkVS] updateCNAM response:", JSON.stringify(response.data));
       return { success: true, cnam: sanitizedCnam };
