@@ -19716,12 +19716,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Send via BulkVS
+      // Note: Campaign ID is already configured on the phone number via /tnRecord
+      // during provisioning, so it doesn't need to be sent with each message
       const sendResult = await bulkVSClient.messageSend({
         from: phoneNumber.did,
         to: thread!.externalPhone,
         body: body || undefined,
         mediaUrl: mediaUrl || undefined,
-        campaignId: phoneNumber.campaignId || undefined,
       });
       
       console.log("[BulkVS] Message sent:", sendResult);

@@ -189,7 +189,6 @@ class BulkVSClient {
     to: string;
     body?: string;
     mediaUrl?: string;
-    campaignId?: string;
   }) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
@@ -200,12 +199,14 @@ class BulkVSClient {
       
       console.log(`[BulkVS] Sending message from ${normalizedFrom} to ${normalizedTo}`);
       
-      // BulkVS API format (case-sensitive):
+      // BulkVS API format (official documentation):
       // - From: 11-digit number (e.g., "13109060901")
-      // - To: ARRAY of 11-digit numbers (e.g., ["13105551212", "13125551213"])
+      // - To: ARRAY of 11-digit numbers (e.g., ["13105551212"])
       // - Message: text content
-      // - MediaURLs: optional array of media URLs
-      // - Tcr: Campaign ID (required for A2P messaging)
+      // - delivery_status_webhook_url: optional webhook URL
+      // 
+      // NOTE: Campaign ID (Tcr) is configured once on the phone number via /tnRecord,
+      // NOT sent with each message. MediaURLs support is not in official docs.
       const bulkvsPayload: any = {
         From: normalizedFrom,
         To: [normalizedTo], // Must be an array
@@ -216,15 +217,11 @@ class BulkVSClient {
         bulkvsPayload.Message = payload.body;
       }
       
-      // Add MediaURLs if mediaUrl is provided
+      // Add Media if mediaUrl is provided (MMS)
+      // Note: BulkVS API docs don't explicitly document this field,
+      // but it's supported for MMS messages
       if (payload.mediaUrl) {
         bulkvsPayload.MediaURLs = [payload.mediaUrl];
-      }
-      
-      // Add Campaign ID if provided (required for compliance)
-      if (payload.campaignId) {
-        bulkvsPayload.Tcr = payload.campaignId;
-        console.log(`[BulkVS] Using campaign ID: ${payload.campaignId}`);
       }
       
       const response = await this.client.post("/messageSend", bulkvsPayload);

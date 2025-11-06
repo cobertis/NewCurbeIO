@@ -59,8 +59,9 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **Real-Time Notifications:** WebSocket-based updates.
 -   **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging platform with dedicated phone numbers per user, real-time updates, and full privacy isolation.
     -   **Architecture:** Dual messaging system - Twilio for system notifications, BulkVS for individual user chat with dedicated phone numbers.
-    -   **UI:** 3-column desktop layout (thread list, message panel, contact details), responsive mobile design.
+    -   **UI:** 3-column desktop layout (thread list, message panel, contact details), responsive mobile design. WhatsApp-style "New Message" button in top-right corner.
     -   **Features:** SMS/MMS with file upload (5MB limit), emoji picker, message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket.
+    -   **New Message Feature:** WhatsApp-style modal with phone number formatting, validation, and automatic thread creation for new conversations.
     -   **Number Provisioning:** Simplified area code search, 3-step wizard. Each user can only provision one phone number. Toll-free numbers (800, 833, 844, 855, 866, 877, 888) are prohibited.
     -   **Billing System:** Automatic Stripe subscription creation ($10/month per number), recurring every 30 days. Allows reactivation of cancelled numbers.
     -   **Phone Number Reactivation:** Cancelled numbers preserved with inactive status. Reactivation available via:
@@ -70,6 +71,10 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **Phone Settings:** View number, configuration, call forwarding, billing info, deactivation.
     -   **CNAM (Caller ID Name):** Manual configuration via Phone Settings UI with real-time validation (1-15 alphanumeric characters), auto-sanitization, and character counter. Updates pushed to BulkVS API via POST /tnRecord endpoint using "Lidb" field (Line Information Database).
     -   **Call Forwarding:** Configurable via BulkVS API.
+    -   **BulkVS API Integration:** 
+        - **messageSend endpoint:** POST /api/v1.0/messageSend with fields {From: "11-digit", To: ["11-digit"], Message: "text", MediaURLs: ["url"]}
+        - **Campaign ID (10DLC):** Campaign ID "C3JXHXH" is configured ONCE on the phone number via POST /tnRecord during provisioning, NOT sent with each message
+        - **Phone Configuration:** All phone settings (Tcr, Lidb, Call Forward, Sms, Mms, Webhook) updated via POST /tnRecord endpoint
     -   **Security:** User-scoped data isolation, webhook signature validation, E.164 phone number normalization.
 -   **Billing & Stripe Integration:** Automated customer/subscription management.
     -   **Phone Number in Invoices:** All Stripe invoices automatically include company phone numbers in E.164 format (+13054883848).

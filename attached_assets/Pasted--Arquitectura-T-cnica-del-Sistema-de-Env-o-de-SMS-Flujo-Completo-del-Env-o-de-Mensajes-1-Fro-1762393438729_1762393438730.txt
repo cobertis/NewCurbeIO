@@ -1,0 +1,346 @@
+📱 Arquitectura Técnica del Sistema de Envío de SMS
+🏗️ Flujo Completo del Envío de Mensajes
+1️⃣ Frontend (React + TypeScript)
+Ubicación: client/src/pages/send-sms.tsx
+
+Entrada del Usuario:
+// El usuario ingresa:
+- Número de teléfono (ej: +13053936666)
+- Mensaje de texto (hasta 1600 caracteres)
+
+Validación Frontend:
+if (!singlePhone || !singleMessage) {
+  toast({ title: "Error", description: "Completa todos los campos" });
+  return;
+}
+
+Envío mediante React Query:
+const sendSingleMutation = useMutation({
+  mutationFn: async (data: { to: string; message: string }) =>
+    apiRequest("POST", "/api/messages/send", data),
+});
+// Ejecuta:
+sendSingleMutation.mutate({ 
+  to: "+13053936666", 
+  message: "Hola mundo" 
+});
+
+Request HTTP:
+
+POST /api/messages/send
+Content-Type: application/json
+{
+  "to": "+13053936666",
+  "message": "Hola mundo"
+}
+
+2️⃣ Backend - API Route (Express.js)
+Ubicación: server/routes.ts líneas 66-109
+
+Recepción y Validación:
+app.post("/api/messages/send", async (req, res) => {
+  const { to, message } = req.body;
+  
+  // Validación
+  if (!to || !message) {
+    return res.status(400).json({ 
+      message: "Campos requeridos: to, message" 
+    });
+  }
+
+Configuración Automática:
+// Campaign ID desde variable de entorno
+const campaignId = process.env.BULKVS_CAMPAIGN_ID; // "C3JXHXH"
+// Número remitente desde variable de entorno
+const fromDisplay = campaignId || process.env.BULKVS_FROM_DID; // "13058458282"
+
+Llamada al Cliente BulkVS:
+const result = await bulkVSClient.sendSMS({
+  to: "+13053936666",
+  from: "C3JXHXH",
+  message: "Hola mundo",
+  campaignId: "C3JXHXH"
+});
+
+3️⃣ BulkVS Client (Capa de Integración)
+Ubicación: server/bulkvs.ts líneas 43-69
+
+Inicialización (Singleton):
+export class BulkVSClient {
+  private client: AxiosInstance;
+  private username: string;     // BULKVS_API_USERNAME
+  private password: string;     // BULKVS_API_PASSWORD
+  private defaultFromDid: string; // "13058458282"
+  
+  constructor() {
+    // Autenticación Basic Auth
+    const authHeader = Buffer.from(
+      `${this.username}:${this.password}`
+    ).toString("base64");
+    
+    this.client = axios.create({
+      baseURL: "https://portal.bulkvs.com/api/v1.0",
+      headers: {
+        "Authorization": `Basic ${authHeader}`,
+        "Content-Type": "application/json"
+      }
+    });
+  }
+}
+
+Transformación de Datos:
+async sendSMS(params: BulkVSMessage) {
+  // BulkVS requiere formato específico
+  const payload = {
+    From: "13058458282",              // Solo dígitos, sin +
+    To: ["13053936666"],              // Array, solo dígitos
+    Message: "Hola mundo"             // Texto sin modificar
+  };
+  
+  // Envío a BulkVS
+  const response = await this.client.post("/messageSend", payload);
+}
+
+Reglas de Transformación:
+
+Campos capitalizados: From, To, Message (no from, to, message)
+Números limpios: Remover + y caracteres no numéricos
+To como array: ["13053936666"] no "13053936666"
+From desde env: Siempre usar BULKVS_FROM_DID (13058458282)
+4️⃣ BulkVS API (Servicio Externo)
+Endpoint: https://portal.bulkvs.com/api/v1.0/messageSend
+
+Request HTTP Real:
+POST /api/v1.0/messageSend HTTP/1.1
+Host: portal.bulkvs.com
+Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+Content-Type: application/json
+{
+  "From": "13058458282",
+  "To": ["13053936666"],
+  "Message": "Hola mundo"
+}
+
+Response Exitosa:
+{
+  "Results": [
+    {
+      "Status": "SUCCESS",
+      "RefId": "A1B2C3D4",
+      "To": "13053936666"
+    }
+  ]
+}
+
+Response con Error:
+{
+  "error": "Invalid phone number",
+  "code": 400
+}
+
+5️⃣ Procesamiento de Respuesta (Backend)
+Ubicación: server/bulkvs.ts líneas 55-68
+
+Extracción de Datos:
+const response = await this.client.post("/messageSend", payload);
+return {
+  success: true,
+  messageId: response.data?.RefId,           // "A1B2C3D4"
+  status: response.data?.Results?.[0]?.Status === "SUCCESS" 
+    ? "delivered" 
+    : "sent"
+};
+
+Manejo de Errores:
+catch (error: any) {
+  console.error("Error sending SMS:", error.response?.data);
+  return {
+    success: false,
+    error: error.response?.data || error.message
+  };
+}
+
+6️⃣ Persistencia en Storage (In-Memory)
+Ubicación: server/routes.ts líneas 96-103
+
+Guardado Exitoso:
+const savedMessage = await storage.createMessage({
+  to: "+13053936666",
+  from: "C3JXHXH",
+  message: "Hola mundo",
+  status: "delivered",        // De BulkVS
+  direction: "outbound",      // Mensaje saliente
+  campaignId: null
+});
+
+Guardado con Fallo:
+if (!result.success) {
+  await storage.createMessage({
+    to: "+13053936666",
+    from: "C3JXHXH",
+    message: "Hola mundo",
+    status: "failed",         // Marcado como fallido
+    direction: "outbound",
+    campaignId: null
+  });
+  return res.status(400).json({ message: result.error });
+}
+
+Estructura del Mensaje Guardado:
+
+{
+  id: "uuid-v4",              // Generado automáticamente
+  to: "+13053936666",
+  from: "C3JXHXH",
+  message: "Hola mundo",
+  status: "delivered",
+  direction: "outbound",
+  campaignId: null,
+  sentAt: "2025-11-05T17:23:38.531Z"
+}
+
+7️⃣ Response al Frontend
+Ubicación: server/routes.ts línea 105
+
+res.json(savedMessage);
+
+HTTP Response:
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+{
+  "id": "uuid-123",
+  "to": "+13053936666",
+  "from": "C3JXHXH",
+  "message": "Hola mundo",
+  "status": "delivered",
+  "direction": "outbound",
+  "campaignId": null,
+  "sentAt": "2025-11-05T17:23:38.531Z"
+}
+
+8️⃣ Actualización de UI (React Query)
+Ubicación: client/src/pages/send-sms.tsx líneas 29-38
+
+onSuccess: () => {
+  // Notificación al usuario
+  toast({
+    title: "SMS enviado",
+    description: "El mensaje ha sido enviado exitosamente"
+  });
+  
+  // Limpiar formulario
+  setSinglePhone("");
+  setSingleMessage("");
+  
+  // Invalidar cachés para refrescar datos
+  queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+  queryClient.invalidateQueries({ queryKey: ["/api/messages/recent"] });
+}
+
+📊 Envío Masivo (Bulk)
+Diferencias técnicas:
+
+Backend Loop:
+app.post("/api/messages/send-bulk", async (req, res) => {
+  const { contacts, message } = req.body; // contacts = ["+1...", "+1..."]
+  const results = [];
+  
+  // Envío secuencial (uno por uno)
+  for (const phoneNumber of contacts) {
+    const result = await bulkVSClient.sendSMS({
+      to: phoneNumber,
+      from: fromDisplay,
+      message,
+      campaignId
+    });
+    
+    const savedMessage = await storage.createMessage({
+      to: phoneNumber,
+      from: fromDisplay,
+      message,
+      status: result.success ? result.status : "failed",
+      direction: "outbound",
+      campaignId: null
+    });
+    
+    results.push(savedMessage);
+  }
+  
+  res.json({ sent: results.length, results });
+});
+
+Características:
+
+⚠️ Sincrónico: Envía uno por uno (no paralelo)
+✅ Trazabilidad: Cada mensaje tiene su propio registro
+✅ Tolerante a fallos: Si uno falla, continúa con los demás
+⏱️ Latencia: ~300ms por mensaje
+🔄 Recepción de Respuestas (Webhooks)
+Configuración del Webhook en BulkVS:
+URL: https://[tu-app].replit.app/api/webhooks/receiver
+Events: inbound_message, message_received
+Method: POST
+
+Formato de Webhook de BulkVS:
+POST /api/webhooks/receiver HTTP/1.1
+Host: tu-app.replit.app
+Content-Type: application/json
+{
+  "RefId": "32C1BD67",
+  "From": "17866302522",
+  "To": ["13058458282"],
+  "FragmentCount": 1,
+  "Message": "No+me+digas+que+me+has+dejado+sin+dinero+"
+}
+
+Procesamiento del Webhook:
+Ubicación: server/routes.ts líneas 389-426
+
+app.post("/api/webhooks/receiver", async (req, res) => {
+  const { From, To, Message, RefId } = req.body;
+  
+  // To es array, obtener primer elemento
+  const toNumber = Array.isArray(To) ? To[0] : To;
+  
+  // Decodificar mensaje URL-encoded
+  const decodedMessage = decodeURIComponent(
+    Message.replace(/\+/g, ' ')
+  );
+  // "No me digas que me has dejado sin dinero "
+  
+  // Guardar como mensaje entrante
+  await storage.createMessage({
+    to: toNumber,           // "13058458282"
+    from: From,             // "17866302522"
+    message: decodedMessage,
+    status: "delivered",
+    direction: "inbound",   // ← CLAVE: Mensaje entrante
+    campaignId: null
+  });
+  
+  res.json({ success: true });
+});
+
+🔐 Variables de Entorno (Secrets)
+BULKVS_API_USERNAME=tu_usuario
+BULKVS_API_PASSWORD=tu_password
+BULKVS_FROM_DID=13058458282
+BULKVS_CAMPAIGN_ID=C3JXHXH
+BULKVS_API_URL=https://portal.bulkvs.com/api/v1.0
+SESSION_SECRET=random_secret_key
+
+⚡ Rendimiento y Limitaciones
+Métrica	Valor
+Latencia promedio (single)	~300ms
+Latencia promedio (bulk 10 msgs)	~3s
+Throughput máximo	~3-4 msg/s
+Timeout por request	120s
+Almacenamiento	In-memory (volátil)
+Persistencia	❌ Se pierde al reiniciar
+🎯 Puntos Críticos de Configuración
+✅ Número remitente debe tener servicio outbound habilitado
+✅ Campaign ID debe estar aprobado en BulkVS
+✅ Campos capitalizados en payload a BulkVS
+✅ Números sin + en comunicación con BulkVS
+✅ Webhook URL pública para recibir respuestas
