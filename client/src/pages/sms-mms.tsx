@@ -89,7 +89,30 @@ export default function SmsMmsPage() {
   });
 
   // Filter out any undefined or invalid threads
-  const threads = threadsData.filter((t) => t && t.id);
+  const rawThreads = threadsData.filter((t) => t && t.id);
+  
+  // CRITICAL: Enrich threads with contact names for threads with null displayName
+  // This fixes the issue where existing threads don't have names
+  const threads = useMemo(() => {
+    return rawThreads.map(thread => {
+      // If thread already has displayName, use it
+      if (thread.displayName) {
+        return thread;
+      }
+      
+      // Otherwise, search for contact name in unified contacts
+      const matchingContact = contacts.find(c => c.phone === thread.externalPhone);
+      if (matchingContact && matchingContact.displayName) {
+        return {
+          ...thread,
+          displayName: matchingContact.displayName
+        };
+      }
+      
+      // No match, return original thread (will show phone number)
+      return thread;
+    });
+  }, [rawThreads, contacts]);
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery<BulkvsMessage[]>({
     queryKey: ["/api/bulkvs/threads", selectedThreadId, "messages"],
