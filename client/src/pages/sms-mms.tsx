@@ -10,7 +10,7 @@ import { MessagePanel } from "@/components/chat/message-panel";
 import { ContactDetails } from "@/components/chat/contact-details";
 import { NumberProvisionModal } from "@/components/chat/number-provision-modal";
 import { PhoneSettingsModal } from "@/components/chat/phone-settings-modal";
-import { NewMessageDialog } from "@/components/chat/new-message-dialog";
+import { NewMessageSheet } from "@/components/chat/new-message-sheet";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Phone, Settings, RefreshCw, Plus } from "lucide-react";
 import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber, User } from "@shared/schema";
@@ -35,7 +35,7 @@ export default function SmsMmsPage() {
   const [provisionModalOpen, setProvisionModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
-  const [newMessageDialogOpen, setNewMessageDialogOpen] = useState(false);
+  const [newMessageSheetOpen, setNewMessageSheetOpen] = useState(false);
   const [initialMessage, setInitialMessage] = useState<string>("");
 
   // Get user's timezone
@@ -282,51 +282,30 @@ export default function SmsMmsPage() {
     setInitialMessage("");
   };
 
-  const handleNewMessage = (phoneNumber: string, message: string) => {
-    // Limpiar el número
-    const cleanPhone = phoneNumber.replace(/\D/g, "");
-    
-    // Normalizar a formato de 11 dígitos (con "1" al inicio)
-    let normalizedPhone = cleanPhone;
-    if (cleanPhone.length === 10) {
-      normalizedPhone = "1" + cleanPhone;
-    } else if (cleanPhone.length === 11 && cleanPhone.startsWith("1")) {
-      normalizedPhone = cleanPhone;
-    } else {
-      toast({
-        title: "Invalid phone number",
-        description: "Please enter a valid 10-digit US phone number",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+  const handleCreateNewThread = (phoneNumber: string) => {
     // Buscar si ya existe un thread con este número
     const existingThread = threads.find(
-      (t) => t.externalPhone === normalizedPhone
+      (t) => t.externalPhone === phoneNumber
     );
     
     if (existingThread) {
-      // Si existe, seleccionar ese thread y poner el mensaje en el input
+      // Si existe, simplemente seleccionarlo
       setSelectedThreadId(existingThread.id);
-      setInitialMessage(message);
       setMobileView("messages");
     } else {
-      // Si no existe, crear un nuevo thread vacío y poner el mensaje en el input
-      // El thread se creará cuando se envíe el primer mensaje
+      // Si no existe, crear un thread temporal
       toast({
         title: "New conversation",
-        description: `Starting conversation with ${formatForDisplay(normalizedPhone)}`,
+        description: `Starting conversation with ${formatForDisplay(phoneNumber)}`,
       });
       
-      // Crear un thread temporal para mostrar en la UI
       const tempThread: BulkvsThread = {
         id: `temp-${Date.now()}`,
         userId: String(userData?.user?.id || ""),
         companyId: Number(userData?.user?.companyId || 0),
         phoneNumberId: activeNumbers[0]?.id || "",
-        externalPhone: normalizedPhone,
-        displayName: formatForDisplay(normalizedPhone),
+        externalPhone: phoneNumber,
+        displayName: formatForDisplay(phoneNumber),
         lastMessageAt: new Date(),
         lastMessagePreview: "",
         unreadCount: 0,
@@ -338,19 +317,15 @@ export default function SmsMmsPage() {
         updatedAt: new Date(),
       };
       
-      // Agregar el thread temporal a la lista (esto se sincronizará cuando se envíe el mensaje)
+      // Agregar el thread temporal a la lista
       queryClient.setQueryData<BulkvsThread[]>(
         ["/api/bulkvs/threads"],
         (old) => old ? [tempThread, ...old] : [tempThread]
       );
       
       setSelectedThreadId(tempThread.id);
-      setInitialMessage(message);
       setMobileView("messages");
     }
-    
-    // Cerrar el diálogo
-    setNewMessageDialogOpen(false);
   };
 
   const handleUpdateThread = (updates: Partial<BulkvsThread>) => {
@@ -484,7 +459,7 @@ export default function SmsMmsPage() {
             selectedThreadId={selectedThreadId}
             onSelectThread={handleSelectThread}
             onSettings={() => setSettingsModalOpen(true)}
-            onNewMessage={() => setNewMessageDialogOpen(true)}
+            onNewMessage={() => setNewMessageSheetOpen(true)}
             userTimezone={userTimezone}
           />
 
@@ -515,7 +490,7 @@ export default function SmsMmsPage() {
               selectedThreadId={selectedThreadId}
               onSelectThread={handleSelectThread}
               onSettings={() => setSettingsModalOpen(true)}
-              onNewMessage={() => setNewMessageDialogOpen(true)}
+              onNewMessage={() => setNewMessageSheetOpen(true)}
               userTimezone={userTimezone}
             />
           </div>
@@ -560,10 +535,12 @@ export default function SmsMmsPage() {
       />
     )}
 
-      <NewMessageDialog
-        open={newMessageDialogOpen}
-        onOpenChange={setNewMessageDialogOpen}
-        onSendMessage={handleNewMessage}
+      <NewMessageSheet
+        open={newMessageSheetOpen}
+        onOpenChange={setNewMessageSheetOpen}
+        threads={threads}
+        onSelectThread={handleSelectThread}
+        onCreateNewThread={handleCreateNewThread}
       />
     </>
   );
