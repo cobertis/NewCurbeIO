@@ -7372,6 +7372,57 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Get unified contacts from all sources (superadmin and admin)
+  app.get("/api/contacts/unified", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Only superadmins and admins can access unified contacts
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admins and Superadmins only" });
+    }
+
+    try {
+      const { origin, status, productType } = req.query;
+      
+      // Prepare filter parameters
+      const params: { companyId?: string; origin?: string; status?: string; productType?: string } = {};
+      
+      // Superadmins see all contacts, admins see only their company's contacts
+      if (currentUser.role === "admin" && currentUser.companyId) {
+        params.companyId = currentUser.companyId;
+      }
+      
+      // Apply query filters
+      if (origin && typeof origin === 'string') {
+        params.origin = origin;
+      }
+      if (status && typeof status === 'string') {
+        params.status = status;
+      }
+      if (productType && typeof productType === 'string') {
+        params.productType = productType;
+      }
+      
+      const contacts = await storage.getUnifiedContacts(params);
+      
+      // Mask SSN for non-superadmins
+      const sanitizedContacts = contacts.map(contact => {
+        if (currentUser.role !== "superadmin" && contact.ssn) {
+          return {
+            ...contact,
+            ssn: contact.ssn ? `***-**-${contact.ssn.slice(-4)}` : null
+          };
+        }
+        return contact;
+      });
+      
+      res.json({ contacts: sanitizedContacts });
+    } catch (error) {
+      console.error("Error fetching unified contacts:", error);
+      res.status(500).json({ message: "Failed to fetch unified contacts" });
+    }
+  });
+
   // Import contacts from CSV (superadmin only)
   app.post("/api/contacts/import", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;

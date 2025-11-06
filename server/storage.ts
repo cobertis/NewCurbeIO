@@ -148,7 +148,8 @@ import {
   type BulkvsThread,
   type InsertBulkvsThread,
   type BulkvsMessage,
-  type InsertBulkvsMessage
+  type InsertBulkvsMessage,
+  type UnifiedContact
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -823,6 +824,9 @@ export interface IStorage {
   createBulkvsMessage(data: InsertBulkvsMessage): Promise<BulkvsMessage>;
   updateBulkvsMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void>;
   searchBulkvsMessages(userId: string, query: string): Promise<BulkvsMessage[]>;
+  
+  // Unified Contacts
+  getUnifiedContacts(params?: { companyId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -6771,6 +6775,250 @@ export class DbStorage implements IStorage {
       )
       .orderBy(desc(bulkvsMessages.createdAt))
       .then(results => results.map(r => r.message));
+  }
+  
+  // ==================== UNIFIED CONTACTS ====================
+  
+  async getUnifiedContacts(params?: { companyId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]> {
+    // Load data in parallel from all sources
+    const [quoteMembersData, policyMembersData, usersData, bulkvsThreadsData, companiesData] = await Promise.all([
+      // Quote members with quote info
+      db.select({
+        member: quoteMembers,
+        quote: quotes,
+      })
+        .from(quoteMembers)
+        .innerJoin(quotes, eq(quoteMembers.quoteId, quotes.id))
+        .where(params?.companyId ? eq(quoteMembers.companyId, params.companyId) : sql`1=1`),
+      
+      // Policy members with policy info
+      db.select({
+        member: policyMembers,
+        policy: policies,
+      })
+        .from(policyMembers)
+        .innerJoin(policies, eq(policyMembers.policyId, policies.id))
+        .where(params?.companyId ? eq(policyMembers.companyId, params.companyId) : sql`1=1`),
+      
+      // Users
+      db.select()
+        .from(users)
+        .where(params?.companyId ? eq(users.companyId, params.companyId) : sql`1=1`),
+      
+      // BulkVS threads
+      db.select()
+        .from(bulkvsThreads)
+        .where(params?.companyId ? eq(bulkvsThreads.companyId, params.companyId) : sql`1=1`),
+      
+      // Load all companies for mapping
+      db.select().from(companies)
+    ]);
+    
+    // Create a company map for quick lookups
+    const companyMap = new Map<string, Company>();
+    companiesData.forEach(company => companyMap.set(company.id, company));
+    
+    // Helper function to normalize phone numbers
+    const normalizePhone = (phone: string | null | undefined): string | null => {
+      if (!phone) return null;
+      return formatForStorage(phone);
+    };
+    
+    // Helper function to map sources to UnifiedContact
+    const rawContacts: UnifiedContact[] = [];
+    
+    // Map quote members
+    quoteMembersData.forEach(({ member, quote }) => {
+      rawContacts.push({
+        id: member.id,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        email: member.email || null,
+        phone: normalizePhone(member.phone),
+        ssn: member.ssn || null,
+        dateOfBirth: member.dateOfBirth || null,
+        status: [quote.status],
+        productType: [quote.productType],
+        origin: ['quote'],
+        companyId: member.companyId,
+        companyName: companyMap.get(member.companyId)?.name || null,
+        sourceMetadata: [{
+          type: 'quote',
+          id: quote.id,
+          details: {
+            quoteId: quote.id,
+            memberId: member.id,
+            role: member.role,
+            effectiveDate: quote.effectiveDate,
+          }
+        }]
+      });
+    });
+    
+    // Map policy members
+    policyMembersData.forEach(({ member, policy }) => {
+      rawContacts.push({
+        id: member.id,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        email: member.email || null,
+        phone: normalizePhone(member.phone),
+        ssn: member.ssn || null,
+        dateOfBirth: member.dateOfBirth || null,
+        status: [policy.status],
+        productType: [policy.productType],
+        origin: ['policy'],
+        companyId: member.companyId,
+        companyName: companyMap.get(member.companyId)?.name || null,
+        sourceMetadata: [{
+          type: 'policy',
+          id: policy.id,
+          details: {
+            policyId: policy.id,
+            memberId: member.id,
+            role: member.role,
+            effectiveDate: policy.effectiveDate,
+          }
+        }]
+      });
+    });
+    
+    // Map users
+    usersData.forEach(user => {
+      rawContacts.push({
+        id: user.id,
+        firstName: user.firstName || null,
+        lastName: user.lastName || null,
+        email: user.email,
+        phone: normalizePhone(user.phone),
+        ssn: null, // Users don't have SSN
+        dateOfBirth: user.dateOfBirth || null,
+        status: [user.status],
+        productType: [],
+        origin: ['user'],
+        companyId: user.companyId || null,
+        companyName: user.companyId ? companyMap.get(user.companyId)?.name || null : null,
+        sourceMetadata: [{
+          type: 'user',
+          id: user.id,
+          details: {
+            userId: user.id,
+            role: user.role,
+            emailSubscribed: user.emailSubscribed,
+            smsSubscribed: user.smsSubscribed,
+          }
+        }]
+      });
+    });
+    
+    // Map BulkVS threads
+    bulkvsThreadsData.forEach(thread => {
+      rawContacts.push({
+        id: thread.id,
+        firstName: thread.displayName || null,
+        lastName: null,
+        email: null,
+        phone: normalizePhone(thread.externalPhone),
+        ssn: null,
+        dateOfBirth: null,
+        status: thread.isArchived ? ['archived'] : ['active'],
+        productType: [],
+        origin: ['sms'],
+        companyId: thread.companyId,
+        companyName: companyMap.get(thread.companyId)?.name || null,
+        sourceMetadata: [{
+          type: 'sms',
+          id: thread.id,
+          details: {
+            threadId: thread.id,
+            labels: thread.labels,
+            isPinned: thread.isPinned,
+            unreadCount: thread.unreadCount,
+          }
+        }]
+      });
+    });
+    
+    // Deduplicate contacts by priority: ssn → phone+dob → email → name+company
+    const deduplicationMap = new Map<string, UnifiedContact>();
+    
+    rawContacts.forEach(contact => {
+      let key: string | null = null;
+      
+      // Priority 1: SSN (if exists)
+      if (contact.ssn) {
+        key = `ssn:${contact.ssn}`;
+      }
+      // Priority 2: Phone + DOB (if both exist)
+      else if (contact.phone && contact.dateOfBirth) {
+        key = `phone_dob:${contact.phone}:${contact.dateOfBirth}`;
+      }
+      // Priority 3: Email (if exists)
+      else if (contact.email) {
+        key = `email:${contact.email.toLowerCase()}`;
+      }
+      // Priority 4: Name + Company (if both exist)
+      else if (contact.firstName && contact.lastName && contact.companyId) {
+        key = `name_company:${contact.firstName.toLowerCase()}:${contact.lastName.toLowerCase()}:${contact.companyId}`;
+      }
+      // Fallback: Use ID if no other key can be generated
+      else {
+        key = `id:${contact.id}`;
+      }
+      
+      // Merge if key exists, otherwise add new
+      if (deduplicationMap.has(key)) {
+        const existing = deduplicationMap.get(key)!;
+        
+        // Merge status arrays (unique values only)
+        existing.status = [...new Set([...existing.status, ...contact.status])];
+        
+        // Merge productType arrays (unique values only)
+        existing.productType = [...new Set([...existing.productType, ...contact.productType])];
+        
+        // Merge origin arrays (unique values only)
+        existing.origin = [...new Set([...existing.origin, ...contact.origin])];
+        
+        // Merge sourceMetadata
+        existing.sourceMetadata = [...existing.sourceMetadata, ...contact.sourceMetadata];
+        
+        // Fill in missing fields from new contact if existing has nulls
+        if (!existing.firstName && contact.firstName) existing.firstName = contact.firstName;
+        if (!existing.lastName && contact.lastName) existing.lastName = contact.lastName;
+        if (!existing.email && contact.email) existing.email = contact.email;
+        if (!existing.phone && contact.phone) existing.phone = contact.phone;
+        if (!existing.ssn && contact.ssn) existing.ssn = contact.ssn;
+        if (!existing.dateOfBirth && contact.dateOfBirth) existing.dateOfBirth = contact.dateOfBirth;
+        if (!existing.companyId && contact.companyId) existing.companyId = contact.companyId;
+        if (!existing.companyName && contact.companyName) existing.companyName = contact.companyName;
+      } else {
+        deduplicationMap.set(key, contact);
+      }
+    });
+    
+    // Convert map to array
+    let unifiedContacts = Array.from(deduplicationMap.values());
+    
+    // Apply filters if provided
+    if (params?.origin) {
+      unifiedContacts = unifiedContacts.filter(contact => 
+        contact.origin.includes(params.origin as any)
+      );
+    }
+    
+    if (params?.status) {
+      unifiedContacts = unifiedContacts.filter(contact => 
+        contact.status.includes(params.status!)
+      );
+    }
+    
+    if (params?.productType) {
+      unifiedContacts = unifiedContacts.filter(contact => 
+        contact.productType.includes(params.productType!)
+      );
+    }
+    
+    return unifiedContacts;
   }
 }
 

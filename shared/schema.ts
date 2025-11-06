@@ -3184,3 +3184,27 @@ export type InsertBulkvsThread = z.infer<typeof insertBulkvsThreadSchema>;
 
 export type BulkvsMessage = typeof bulkvsMessages.$inferSelect;
 export type InsertBulkvsMessage = z.infer<typeof insertBulkvsMessageSchema>;
+
+// =====================================================
+// UNIFIED CONTACT (Aggregated contact view)
+// =====================================================
+
+export type UnifiedContact = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  ssn: string | null;
+  dateOfBirth: string | null;
+  status: string[];
+  productType: (string | null)[];
+  origin: ('quote' | 'policy' | 'user' | 'sms')[];
+  companyId: string | null;
+  companyName: string | null;
+  sourceMetadata: {
+    type: 'quote' | 'policy' | 'user' | 'sms';
+    id: string;
+    details: any;
+  }[];
+};
