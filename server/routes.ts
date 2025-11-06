@@ -19711,8 +19711,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log("[BulkVS Webhook] Payload:", JSON.stringify(payload, null, 2));
       
       // Handle incoming message
-      if (payload.direction === "inbound" || payload.type === "message.received") {
-        const { from, to, body, mediaUrl, mediaType, id: providerMsgId } = payload;
+      // BulkVS sends: { From, To, Message, RefId, FragmentCount }
+      if (payload.From || payload.from) {
+        const from = payload.From || payload.from;
+        const to = (payload.To || payload.to)?.[0] || phoneNumber.did;
+        const body = payload.Message || payload.body;
+        const mediaUrl = payload.MediaUrl || payload.mediaUrl || null;
+        const mediaType = payload.MediaType || payload.mediaType || null;
+        const providerMsgId = payload.RefId || payload.id || null;
         
         // Find or create thread
         let thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, from);
