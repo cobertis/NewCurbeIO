@@ -152,6 +152,28 @@ export default function SmsMmsPage() {
     },
   });
 
+  const deleteThreadMutation = useMutation({
+    mutationFn: async (threadId: string) => {
+      return apiRequest("DELETE", `/api/bulkvs/threads/${threadId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
+      setSelectedThreadId(null);
+      setMobileView("threads");
+      toast({
+        title: "Thread deleted",
+        description: "Conversation deleted successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete thread",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const markAsReadMutation = useMutation({
     mutationFn: async (threadId: string) => {
       return apiRequest("POST", `/api/bulkvs/threads/${threadId}/read`);
@@ -236,6 +258,12 @@ export default function SmsMmsPage() {
 
   const handleUpdateThread = (updates: Partial<BulkvsThread>) => {
     updateThreadMutation.mutate(updates);
+  };
+
+  const handleDeleteThread = () => {
+    if (selectedThreadId) {
+      deleteThreadMutation.mutate(selectedThreadId);
+    }
   };
 
   const handleBackToThreads = () => {
@@ -367,6 +395,7 @@ export default function SmsMmsPage() {
           messages={messages}
           onSendMessage={handleSendMessage}
           onUpdateThread={handleUpdateThread}
+          onDeleteThread={handleDeleteThread}
           isLoading={loadingMessages}
         />
 
@@ -397,6 +426,7 @@ export default function SmsMmsPage() {
               messages={messages}
               onSendMessage={handleSendMessage}
               onUpdateThread={handleUpdateThread}
+              onDeleteThread={handleDeleteThread}
               onBack={handleBackToThreads}
               onShowDetails={handleShowDetails}
               isLoading={loadingMessages}

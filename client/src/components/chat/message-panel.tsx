@@ -8,10 +8,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Archive, BellOff, BellRing, MoreVertical, Pin, PinOff, ChevronLeft, Info } from "lucide-react";
+import { Archive, BellOff, BellRing, MoreVertical, Pin, PinOff, ChevronLeft, Info, Trash2 } from "lucide-react";
 import { MessageBubble } from "./message-bubble";
 import { MessageInput } from "./message-input";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import type { BulkvsThread, BulkvsMessage } from "@shared/schema";
 
@@ -20,6 +30,7 @@ interface MessagePanelProps {
   messages: BulkvsMessage[];
   onSendMessage: (message: string, mediaFile?: File) => void;
   onUpdateThread?: (updates: Partial<BulkvsThread>) => void;
+  onDeleteThread?: () => void;
   onBack?: () => void;
   onShowDetails?: () => void;
   isLoading?: boolean;
@@ -30,12 +41,14 @@ export function MessagePanel({
   messages,
   onSendMessage,
   onUpdateThread,
+  onDeleteThread,
   onBack,
   onShowDetails,
   isLoading = false,
 }: MessagePanelProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     if (autoScroll && scrollAreaRef.current) {
@@ -116,6 +129,17 @@ export function MessagePanel({
     onUpdateThread({ isArchived: !thread.isArchived });
   };
 
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    setShowDeleteDialog(false);
+    if (onDeleteThread) {
+      onDeleteThread();
+    }
+  };
+
   return (
     <Card className="h-full flex flex-col overflow-hidden" data-testid="message-panel">
       <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
@@ -193,11 +217,42 @@ export function MessagePanel({
                   <Archive className="h-4 w-4 mr-2" />
                   {thread.isArchived ? "Unarchive" : "Archive"}
                 </DropdownMenuItem>
+                {onDeleteThread && (
+                  <DropdownMenuItem 
+                    onClick={handleDeleteClick} 
+                    data-testid="menu-delete"
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
         </div>
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent data-testid="delete-thread-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this conversation? This will permanently delete all messages in this thread. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm} 
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         {isLoading ? (

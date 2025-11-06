@@ -20110,7 +20110,44 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // 9. POST /api/bulkvs/threads/:id/read - Mark thread as read
+  // 9. DELETE /api/bulkvs/threads/:id - Delete a thread and its messages
+  app.delete("/api/bulkvs/threads/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify thread belongs to user before deleting
+      const thread = await storage.getBulkvsThread(id);
+      if (!thread) {
+        return res.status(404).json({ message: "Thread not found" });
+      }
+      
+      if (thread.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Delete the thread (this will also delete all messages)
+      const deleted = await storage.deleteBulkvsThread(id, user.id);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete thread" });
+      }
+      
+      // Broadcast thread deletion via WebSocket
+      broadcastBulkvsThreadUpdate(user.id, null);
+      
+      res.json({ success: true, message: "Thread deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting thread:", error);
+      res.status(500).json({ message: "Failed to delete thread" });
+    }
+  });
+
+  // 10. POST /api/bulkvs/threads/:id/read - Mark thread as read
   app.post("/api/bulkvs/threads/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;

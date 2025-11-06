@@ -816,6 +816,7 @@ export interface IStorage {
   getBulkvsThreadByPhoneAndExternal(phoneNumberId: string, externalPhone: string): Promise<BulkvsThread | undefined>;
   createBulkvsThread(data: InsertBulkvsThread): Promise<BulkvsThread>;
   updateBulkvsThread(id: string, data: Partial<InsertBulkvsThread>): Promise<BulkvsThread | undefined>;
+  deleteBulkvsThread(id: string, userId: string): Promise<boolean>;
   incrementThreadUnread(threadId: string): Promise<void>;
   markThreadAsRead(threadId: string): Promise<void>;
   
@@ -6712,6 +6713,28 @@ export class DbStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(bulkvsThreads.id, threadId));
+  }
+  
+  async deleteBulkvsThread(id: string, userId: string): Promise<boolean> {
+    // First verify the thread belongs to this user
+    const thread = await this.getBulkvsThread(id);
+    if (!thread || thread.userId !== userId) {
+      return false;
+    }
+    
+    // Delete all messages in the thread first (if CASCADE is not set up)
+    await db.delete(bulkvsMessages).where(eq(bulkvsMessages.threadId, id));
+    
+    // Delete the thread
+    const result = await db
+      .delete(bulkvsThreads)
+      .where(and(
+        eq(bulkvsThreads.id, id),
+        eq(bulkvsThreads.userId, userId)
+      ))
+      .returning();
+    
+    return result.length > 0;
   }
   
   // ==================== BULKVS MESSAGES ====================
