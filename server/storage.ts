@@ -828,7 +828,7 @@ export interface IStorage {
   searchBulkvsMessages(userId: string, query: string): Promise<BulkvsMessage[]>;
   
   // Unified Contacts
-  getUnifiedContacts(params?: { companyId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]>;
+  getUnifiedContacts(params?: { companyId?: string; userId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -6812,7 +6812,25 @@ export class DbStorage implements IStorage {
   
   // ==================== UNIFIED CONTACTS ====================
   
-  async getUnifiedContacts(params?: { companyId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]> {
+  async getUnifiedContacts(params?: { companyId?: string; userId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]> {
+    // Build where conditions for quotes
+    const quoteConditions = [];
+    if (params?.companyId) quoteConditions.push(eq(quoteMembers.companyId, params.companyId));
+    if (params?.userId) quoteConditions.push(eq(quotes.agentId, params.userId));
+    const quoteWhere = quoteConditions.length > 0 ? and(...quoteConditions) : sql`1=1`;
+
+    // Build where conditions for policies
+    const policyConditions = [];
+    if (params?.companyId) policyConditions.push(eq(policyMembers.companyId, params.companyId));
+    if (params?.userId) policyConditions.push(eq(policies.agentId, params.userId));
+    const policyWhere = policyConditions.length > 0 ? and(...policyConditions) : sql`1=1`;
+
+    // Build where conditions for threads
+    const threadConditions = [];
+    if (params?.companyId) threadConditions.push(eq(bulkvsThreads.companyId, params.companyId));
+    if (params?.userId) threadConditions.push(eq(bulkvsThreads.userId, params.userId));
+    const threadWhere = threadConditions.length > 0 ? and(...threadConditions) : sql`1=1`;
+
     // Load data in parallel from all sources (EXCLUDING users/employees)
     const [quoteMembersData, policyMembersData, bulkvsThreadsData, companiesData] = await Promise.all([
       // Quote members with quote info
@@ -6822,7 +6840,7 @@ export class DbStorage implements IStorage {
       })
         .from(quoteMembers)
         .innerJoin(quotes, eq(quoteMembers.quoteId, quotes.id))
-        .where(params?.companyId ? eq(quoteMembers.companyId, params.companyId) : sql`1=1`),
+        .where(quoteWhere),
       
       // Policy members with policy info
       db.select({
@@ -6831,12 +6849,12 @@ export class DbStorage implements IStorage {
       })
         .from(policyMembers)
         .innerJoin(policies, eq(policyMembers.policyId, policies.id))
-        .where(params?.companyId ? eq(policyMembers.companyId, params.companyId) : sql`1=1`),
+        .where(policyWhere),
       
       // BulkVS threads (SMS contacts only)
       db.select()
         .from(bulkvsThreads)
-        .where(params?.companyId ? eq(bulkvsThreads.companyId, params.companyId) : sql`1=1`),
+        .where(threadWhere),
       
       // Load all companies for mapping
       db.select().from(companies)

@@ -7426,11 +7426,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { origin, status, productType } = req.query;
       
       // Prepare filter parameters
-      const params: { companyId?: string; origin?: string; status?: string; productType?: string } = {};
+      const params: { companyId?: string; userId?: string; origin?: string; status?: string; productType?: string } = {};
       
-      // Superadmins see all contacts, admins see only their company's contacts
-      if (currentUser.role === "admin" && currentUser.companyId) {
-        params.companyId = currentUser.companyId;
+      // Filter contacts by user:
+      // - Superadmins: See all contacts (no filters)
+      // - Admins: See only their own contacts (userId filter)
+      if (currentUser.role === "admin") {
+        params.userId = currentUser.id; // Filter by current user's contacts only
+        if (currentUser.companyId) {
+          params.companyId = currentUser.companyId;
+        }
       }
       
       // Apply query filters
@@ -7445,7 +7450,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const contacts = await storage.getUnifiedContacts(params);
-      console.log(`[CONTACTS UNIFICADOS] Usuario: ${currentUser.email}, Rol: ${currentUser.role}, CompañíaID: ${params.companyId || 'TODAS'}, Total contactos: ${contacts.length}`);
+      console.log(`[CONTACTS UNIFICADOS] Usuario: ${currentUser.email}, Rol: ${currentUser.role}, UserID: ${params.userId || 'TODOS'}, CompañíaID: ${params.companyId || 'TODAS'}, Total contactos: ${contacts.length}`);
       
       // Mask SSN for non-superadmins
       const sanitizedContacts = contacts.map(contact => {
