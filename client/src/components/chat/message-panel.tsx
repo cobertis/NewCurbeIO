@@ -148,12 +148,12 @@ export function MessagePanel({
     const dateKey = format(zonedDate, "yyyy-MM-dd");
     
     if (!groups[dateKey]) {
-      groups[dateKey] = [];
+      groups[dateKey] = { messages: [], timestamp: message.createdAt };
     }
-    groups[dateKey].push(message);
+    groups[dateKey].messages.push(message);
     
     return groups;
-  }, {} as Record<string, BulkvsMessage[]>);
+  }, {} as Record<string, { messages: BulkvsMessage[], timestamp: Date | string }>);
 
   const handleTogglePinned = () => {
     if (!onUpdateThread) return;
@@ -307,10 +307,10 @@ export function MessagePanel({
         ) : (
           Object.entries(groupedMessages)
             .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-            .map(([dateKey, dayMessages]) => (
+            .map(([dateKey, groupData]) => (
               <div key={dateKey}>
-                {renderDateDivider(new Date(dateKey))}
-                {dayMessages.map((message) => (
+                {renderDateDivider(groupData.timestamp)}
+                {groupData.messages.map((message) => (
                   <MessageBubble
                     key={message.id}
                     message={message}

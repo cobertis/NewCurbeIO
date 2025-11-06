@@ -97,7 +97,8 @@ export function ThreadList({
     
     // Parse timestamptz (from database) and convert to user's timezone
     const tz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const zonedDate = toZonedTime(parseISO(date.toString()), tz);
+    const dateStr = date instanceof Date ? date.toISOString() : date;
+    const zonedDate = toZonedTime(parseISO(dateStr), tz);
     const now = toZonedTime(new Date(), tz);
     
     // Check if same day (in user's timezone)
