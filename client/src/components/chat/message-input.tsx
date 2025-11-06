@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 interface MessageInputProps {
   onSendMessage: (message: string, mediaFile?: File) => void;
   disabled?: boolean;
+  onMarkAsRead?: () => void;
 }
 
-export function MessageInput({ onSendMessage, disabled = false }: MessageInputProps) {
+export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
@@ -133,6 +134,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => onMarkAsRead?.()}
             placeholder="Type a message..."
             className="flex-1 min-h-[24px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm placeholder:text-muted-foreground"
             disabled={disabled}

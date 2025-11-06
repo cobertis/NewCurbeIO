@@ -266,6 +266,15 @@ export default function SmsMmsPage() {
     }
   };
 
+  const handleMarkAsRead = () => {
+    if (!selectedThreadId) return;
+    
+    const thread = threads.find((t) => t.id === selectedThreadId);
+    if (thread && thread.unreadCount > 0) {
+      markAsReadMutation.mutate(selectedThreadId);
+    }
+  };
+
   const handleSendMessage = (message: string, mediaFile?: File) => {
     sendMessageMutation.mutate({ message, mediaFile });
   };
@@ -451,6 +460,7 @@ export default function SmsMmsPage() {
           onDeleteThread={handleDeleteThread}
           isLoading={loadingMessages}
           userTimezone={userTimezone}
+          onMarkAsRead={handleMarkAsRead}
         />
 
         <ContactDetails
@@ -486,6 +496,7 @@ export default function SmsMmsPage() {
               onShowDetails={handleShowDetails}
               isLoading={loadingMessages}
               userTimezone={userTimezone}
+              onMarkAsRead={handleMarkAsRead}
             />
           </div>
         )}

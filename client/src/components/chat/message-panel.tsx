@@ -36,6 +36,7 @@ interface MessagePanelProps {
   onShowDetails?: () => void;
   isLoading?: boolean;
   userTimezone?: string;
+  onMarkAsRead?: () => void;
 }
 
 export function MessagePanel({
@@ -48,6 +49,7 @@ export function MessagePanel({
   onShowDetails,
   isLoading = false,
   userTimezone,
+  onMarkAsRead,
 }: MessagePanelProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -61,6 +63,13 @@ export function MessagePanel({
       }
     }
   }, [messages, autoScroll]);
+
+  // Mark as read when thread is opened or new messages arrive
+  useEffect(() => {
+    if (thread && thread.unreadCount > 0 && onMarkAsRead) {
+      onMarkAsRead();
+    }
+  }, [thread?.id, messages.length, onMarkAsRead]);
 
   if (!thread) {
     return (
@@ -297,7 +306,7 @@ export function MessagePanel({
         )}
       </ScrollArea>
 
-      <MessageInput onSendMessage={onSendMessage} />
+      <MessageInput onSendMessage={onSendMessage} onMarkAsRead={onMarkAsRead} />
     </Card>
   );
 }
