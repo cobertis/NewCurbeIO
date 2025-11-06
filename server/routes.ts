@@ -7404,6 +7404,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const contacts = await storage.getUnifiedContacts(params);
+      console.log(`[CONTACTS UNIFICADOS] Usuario: ${currentUser.email}, Rol: ${currentUser.role}, CompañíaID: ${params.companyId || 'TODAS'}, Total contactos: ${contacts.length}`);
       
       // Mask SSN for non-superadmins
       const sanitizedContacts = contacts.map(contact => {
@@ -7416,6 +7417,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return contact;
       });
       
+      console.log(`[CONTACTS UNIFICADOS] Contactos sanitizados y retornando: ${sanitizedContacts.length}`);
       res.json({ contacts: sanitizedContacts });
     } catch (error) {
       console.error("Error fetching unified contacts:", error);
