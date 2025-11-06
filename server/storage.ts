@@ -7066,6 +7066,17 @@ export class DbStorage implements IStorage {
     // Convert map to array
     let unifiedContacts = Array.from(deduplicationMap.values());
     
+    // CRITICAL: Recalculate displayName for ALL contacts after deduplication
+    // This ensures person names always take priority over company names
+    unifiedContacts = unifiedContacts.map(contact => ({
+      ...contact,
+      displayName: generateDisplayName(
+        contact.firstName,
+        contact.lastName,
+        contact.companyName
+      )
+    }));
+    
     // Apply filters if provided
     if (params?.origin) {
       unifiedContacts = unifiedContacts.filter(contact => 
