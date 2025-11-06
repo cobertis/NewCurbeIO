@@ -10,6 +10,7 @@ import { MessagePanel } from "@/components/chat/message-panel";
 import { ContactDetails } from "@/components/chat/contact-details";
 import { NumberProvisionModal } from "@/components/chat/number-provision-modal";
 import { PhoneSettingsModal } from "@/components/chat/phone-settings-modal";
+import { NewMessageDialog } from "@/components/chat/new-message-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Phone, Settings, RefreshCw, Plus } from "lucide-react";
 import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber } from "@shared/schema";
@@ -34,6 +35,7 @@ export default function SmsMmsPage() {
   const [provisionModalOpen, setProvisionModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
+  const [newMessageDialogOpen, setNewMessageDialogOpen] = useState(false);
 
   useWebSocket((message) => {
     const msg = message as any; // BulkVS-specific message types
@@ -194,6 +196,44 @@ export default function SmsMmsPage() {
     sendMessageMutation.mutate({ message, mediaFile });
   };
 
+  const newMessageMutation = useMutation({
+    mutationFn: async ({ phoneNumber, message }: { phoneNumber: string; message: string }) => {
+      if (activeNumbers.length === 0) {
+        throw new Error("No phone number available");
+      }
+
+      const myPhoneNumber = activeNumbers[0];
+      
+      // Remove formatting from phone number (keep digits only)
+      const cleanPhone = phoneNumber.replace(/\D/g, "");
+      
+      return apiRequest("POST", "/api/bulkvs/messages/send", {
+        from: myPhoneNumber.did,
+        to: cleanPhone,
+        body: message,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
+      setNewMessageDialogOpen(false);
+      toast({
+        title: "Message sent",
+        description: "Your message has been sent successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send message",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleNewMessage = (phoneNumber: string, message: string) => {
+    newMessageMutation.mutate({ phoneNumber, message });
+  };
+
   const handleUpdateThread = (updates: Partial<BulkvsThread>) => {
     updateThreadMutation.mutate(updates);
   };
@@ -229,7 +269,7 @@ export default function SmsMmsPage() {
                 You previously had the number:
               </p>
               <p className="text-lg font-semibold mb-6">
-                {cancelledNumber.didDisplay || formatForDisplay(cancelledNumber.did)}
+                {formatForDisplay(cancelledNumber.did)}
               </p>
               <p className="text-sm text-muted-foreground mb-6">
                 You can reactivate this number or get a new one to start messaging
@@ -241,7 +281,7 @@ export default function SmsMmsPage() {
                   className="w-full"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Reactivate {cancelledNumber.didDisplay || formatForDisplay(cancelledNumber.did)}
+                  Reactivate {formatForDisplay(cancelledNumber.did)}
                 </Button>
                 <Button 
                   onClick={() => setProvisionModalOpen(true)} 
@@ -264,7 +304,7 @@ export default function SmsMmsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Reactivate Phone Number?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will reactivate your phone number <strong>{cancelledNumber.didDisplay || formatForDisplay(cancelledNumber.did)}</strong> and create a new subscription at ${cancelledNumber.monthlyPrice}/month. Billing will start immediately.
+                  This will reactivate your phone number <strong>{formatForDisplay(cancelledNumber.did)}</strong> and create a new subscription at ${cancelledNumber.monthlyPrice}/month. Billing will start immediately.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -319,6 +359,7 @@ export default function SmsMmsPage() {
             selectedThreadId={selectedThreadId}
             onSelectThread={handleSelectThread}
             onSettings={() => setSettingsModalOpen(true)}
+            onNewMessage={() => setNewMessageDialogOpen(true)}
           />
 
         <MessagePanel
@@ -344,6 +385,7 @@ export default function SmsMmsPage() {
               selectedThreadId={selectedThreadId}
               onSelectThread={handleSelectThread}
               onSettings={() => setSettingsModalOpen(true)}
+              onNewMessage={() => setNewMessageDialogOpen(true)}
             />
           </div>
         )}
@@ -382,6 +424,13 @@ export default function SmsMmsPage() {
         phoneNumber={activeNumbers[0]}
       />
     )}
+
+      <NewMessageDialog
+        open={newMessageDialogOpen}
+        onOpenChange={setNewMessageDialogOpen}
+        onSendMessage={handleNewMessage}
+        isLoading={newMessageMutation.isPending}
+      />
     </>
   );
 }
