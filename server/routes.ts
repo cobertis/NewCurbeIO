@@ -19720,6 +19720,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const mediaType = payload.MediaType || payload.mediaType || null;
         const providerMsgId = payload.RefId || payload.id || null;
         
+        // Filter out delivery receipts - these should NOT be saved as messages
+        // Delivery receipts have format like: "id:xxx sub:xxx dlvrd:xxx submit date:xxx done date:xxx stat:DELIVRD err:xxx text:xxx"
+        const isDeliveryReceipt = body && (
+          body.includes('stat:DELIVRD') ||
+          body.includes('stat:UNDELIV') ||
+          (body.includes('submit date:') && body.includes('done date:')) ||
+          body.includes('dlvrd:')
+        );
+        
+        if (isDeliveryReceipt) {
+          console.log('[BulkVS Webhook] Ignoring delivery receipt:', body.substring(0, 100));
+          return res.status(200).json({ message: "Delivery receipt acknowledged" });
+        }
+        
         // Normalize phone numbers to 11-digit format for consistency
         const from = formatForStorage(rawFrom);
         const to = formatForStorage(rawTo);
