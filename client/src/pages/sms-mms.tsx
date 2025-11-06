@@ -282,10 +282,59 @@ export default function SmsMmsPage() {
     }
   };
 
-  const handleSendMessage = (message: string, mediaFile?: File) => {
-    sendMessageMutation.mutate({ message, mediaFile });
-    // Limpiar el mensaje inicial después de enviar
-    setInitialMessage("");
+  const handleSendMessage = async (message: string, mediaFile?: File) => {
+    // Check if this is a temporary thread
+    if (selectedThreadId?.startsWith('temp-')) {
+      // For temporary threads, create the thread first by sending the message
+      const currentThread = threads.find(t => t.id === selectedThreadId);
+      if (!currentThread) return;
+      
+      try {
+        // Send message to create thread
+        const formData = new FormData();
+        formData.append("to", currentThread.externalPhone);
+        formData.append("body", message);
+        if (mediaFile) {
+          formData.append("media", mediaFile);
+        }
+
+        const result = (await apiRequest(
+          "POST",
+          "/api/bulkvs/messages",
+          formData
+        )) as { thread: BulkvsThread; message: BulkvsMessage };
+        
+        // Remove temporary thread and add real thread
+        queryClient.setQueryData<BulkvsThread[]>(
+          ["/api/bulkvs/threads"],
+          (old) => {
+            if (!old) return [result.thread];
+            return [result.thread, ...old.filter(t => t.id !== selectedThreadId)];
+          }
+        );
+        
+        // Switch to real thread
+        setSelectedThreadId(result.thread.id);
+        setInitialMessage("");
+        
+        toast({
+          title: "Message sent",
+          description: "Conversation created successfully.",
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
+      } catch (error) {
+        toast({
+          title: "Failed to send message",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
+      }
+    } else {
+      // Normal thread, use existing mutation
+      sendMessageMutation.mutate({ message, mediaFile });
+      setInitialMessage("");
+    }
   };
 
   const handleCreateNewThread = (phoneNumber: string) => {
@@ -299,19 +348,27 @@ export default function SmsMmsPage() {
       setSelectedThreadId(existingThread.id);
       setMobileView("messages");
     } else {
+      // Buscar el nombre del contacto en la lista de contactos unificados
+      const contact = contacts.find(c => c.phone === phoneNumber);
+      const displayName = contact 
+        ? (contact.firstName && contact.lastName 
+            ? `${contact.firstName} ${contact.lastName}`
+            : contact.firstName || formatForDisplay(phoneNumber))
+        : formatForDisplay(phoneNumber);
+      
       // Si no existe, crear un thread temporal
       toast({
         title: "New conversation",
-        description: `Starting conversation with ${formatForDisplay(phoneNumber)}`,
+        description: `Starting conversation with ${displayName}`,
       });
       
       const tempThread: BulkvsThread = {
         id: `temp-${Date.now()}`,
         userId: String(userData?.user?.id || ""),
-        companyId: Number(userData?.user?.companyId || 0),
+        companyId: String(userData?.user?.companyId || ""),
         phoneNumberId: activeNumbers[0]?.id || "",
         externalPhone: phoneNumber,
-        displayName: formatForDisplay(phoneNumber),
+        displayName: displayName, // Usar el nombre del contacto si existe
         lastMessageAt: new Date(),
         lastMessagePreview: "",
         unreadCount: 0,

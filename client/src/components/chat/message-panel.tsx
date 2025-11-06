@@ -56,6 +56,15 @@ export function MessagePanel({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute to refresh date dividers
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (autoScroll && scrollAreaRef.current) {
@@ -101,7 +110,7 @@ export function MessagePanel({
     const tz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const utcDate = new Date(date);
     const zonedDate = toZonedTime(utcDate, tz);
-    const now = toZonedTime(new Date(), tz);
+    const now = toZonedTime(currentTime, tz); // Use currentTime state instead of new Date()
     
     let label = format(zonedDate, "MMMM d, yyyy");
     
