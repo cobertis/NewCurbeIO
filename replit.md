@@ -57,7 +57,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 -   **Audit Logging:** Centralized action tracking.
 -   **Campaign System:** Unified Email/SMS Campaign and Contact List management.
 -   **Real-Time Notifications:** WebSocket-based updates.
--   **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging platform with dedicated phone numbers per user, real-time updates, and full privacy isolation.
+-   **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging platform with dedicated phone numbers per user, real-time updates, full privacy isolation, and automated webhook management.
     -   **Architecture:** Dual messaging system - Twilio for system notifications, BulkVS for individual user chat with dedicated phone numbers.
     -   **UI:** 3-column desktop layout (thread list, message panel, contact details), responsive mobile design. WhatsApp-style "New Message" button in top-right corner.
     -   **Features:** SMS/MMS with file upload (5MB limit), emoji picker, message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket.
@@ -69,6 +69,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
         - **Chat Page:** Special empty state when user has no active number but has cancelled number, showing previously cancelled number with "Reactivate" (primary) and "Get a New Number" (secondary) buttons
         - Both methods create new Stripe subscription and restore service. One-number-per-user limit enforced.
     -   **Phone Settings:** View number, configuration, call forwarding, billing info, deactivation.
+    -   **Webhook System:** Automated webhook creation and assignment during number provisioning. Individual URLs per user: `{domain}/{company-slug}/{user-slug}/{webhook-token}`. Auto-generated secure tokens (32 chars). Domain auto-detection (dev: REPLIT_DOMAINS, prod: app.curbe.io). Webhooks created via BulkVS API (PUT /webHooks) and assigned to numbers (POST /tnRecord with Webhook field).
     -   **CNAM (Caller ID Name):** Manual configuration via Phone Settings UI with real-time validation (1-15 alphanumeric characters), auto-sanitization, and character counter. Updates pushed to BulkVS API via POST /tnRecord endpoint using "Lidb" field (Line Information Database).
     -   **Call Forwarding:** Configurable via BulkVS API.
     -   **BulkVS API Integration:** 
@@ -115,7 +116,7 @@ Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security inclu
 -   **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 -   **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 -   **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
--   **Phone Number Standardization:** Centralized phone utilities in `shared/phone.ts` for consistent formatting across storage (10 digits: 3054883848), BulkVS API (11 digits: 13054883848), display (+1 (305) 488-3848), and E.164 (+13054883848).
+-   **Phone Number Standardization:** Centralized phone utilities in `shared/phone.ts` for consistent formatting across storage (10 digits: 3054883848), BulkVS API (11 digits: 13054883848), display (+1 (305) 488-3848), and E.164 (+13054883848). Includes slug generation and secure token utilities for webhooks.
 
 ## External Dependencies
 
