@@ -60,8 +60,17 @@ export function NewMessageDialog({
     setPhoneNumber(formatted);
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    // Limpiar el formulario cuando se cierra
+    if (!newOpen) {
+      setPhoneNumber("");
+      setMessage("");
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]" data-testid="new-message-dialog">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
