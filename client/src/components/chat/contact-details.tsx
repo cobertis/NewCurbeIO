@@ -80,7 +80,7 @@ export function ContactDetails({
 
   return (
     <Card className="h-full flex flex-col border-l overflow-hidden" data-testid="contact-details">
-      <div className="p-4 border-b flex items-center justify-between">
+      <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
         <h3 className="font-semibold">Contact Info</h3>
         {onClose && (
           <Button

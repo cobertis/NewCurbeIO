@@ -85,8 +85,8 @@ export function ThreadList({
   };
 
   return (
-    <Card className="h-full flex flex-col border-r" data-testid="thread-list">
-      <div className="p-4 border-b space-y-3">
+    <Card className="h-full flex flex-col border-r overflow-hidden" data-testid="thread-list">
+      <div className="p-4 border-b space-y-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Chat</h2>
           <div className="flex gap-1">

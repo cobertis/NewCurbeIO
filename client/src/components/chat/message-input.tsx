@@ -84,7 +84,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
   };
 
   return (
-    <div className="border-t bg-background p-4" data-testid="message-input-container">
+    <div className="border-t bg-background p-4 flex-shrink-0" data-testid="message-input-container">
       {mediaPreview && (
         <div className="mb-3 relative inline-block" data-testid="media-preview">
           <img

@@ -117,8 +117,8 @@ export function MessagePanel({
   };
 
   return (
-    <Card className="h-full flex flex-col" data-testid="message-panel">
-      <div className="p-4 border-b flex items-center justify-between">
+    <Card className="h-full flex flex-col overflow-hidden" data-testid="message-panel">
+      <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {onBack && (
             <Button
