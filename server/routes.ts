@@ -19535,10 +19535,58 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         console.log(`[BulkVS] Phone number ${phoneNumber.did} billing reactivated, starting full activation...`);
 
+        // ===== WEBHOOK SETUP (same as provisioning) =====
+        // Ensure user has a slug (URL-friendly identifier)
+        let userSlug = user.slug;
+        if (!userSlug) {
+          const { generateSlug } = await import("@shared/phone");
+          userSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
+          
+          // Ensure uniqueness by appending number if needed
+          let counter = 1;
+          let finalSlug = userSlug;
+          while (true) {
+            const users = await storage.getCompanyUsers(user.companyId);
+            const slugExists = users.some(u => u.slug === finalSlug && u.id !== user.id);
+            if (!slugExists) break;
+            finalSlug = `${userSlug}-${counter}`;
+            counter++;
+          }
+          
+          // Update user with slug
+          await storage.updateUser(user.id, { slug: finalSlug });
+          userSlug = finalSlug;
+          console.log(`[Webhook] Generated user slug: ${userSlug}`);
+        }
+        
+        // Generate new webhook token and name (fresh for reactivation)
+        const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
+        const webhookToken = generateSecureToken(32);
+        
+        // Build webhook URL: {domain}/{company-slug}/{user-slug}/{webhook-token}
+        const baseDomain = getBaseDomain();
+        const webhookUrl = `${baseDomain}/${company.slug}/${userSlug}/${webhookToken}`;
+        const webhookName = `webhook-${userSlug}-${Date.now()}`; // Unique webhook name
+        
+        console.log(`[Webhook] Creating webhook for ${userSlug}`);
+        console.log(`[Webhook] URL: ${webhookUrl}`);
+        console.log(`[Webhook] Name: ${webhookName}`);
+        
+        // Create webhook in BulkVS
+        try {
+          await bulkVSClient.createOrUpdateWebhook({
+            webhookName,
+            webhookUrl,
+            description: `Incoming messages for ${user.firstName} ${user.lastName} (${company.name})`,
+          });
+          console.log(`[Webhook] ✓ Webhook created in BulkVS`);
+        } catch (webhookError: any) {
+          console.error(`[Webhook] Failed to create webhook:`, webhookError.message);
+          throw new Error(`Failed to create webhook in BulkVS: ${webhookError.message}`);
+        }
+
         // Activate number: SMS/MMS, webhook, CNAM, campaign, call forwarding
         try {
-          const webhookUrl = phoneNumber.webhookUrl || `${req.protocol}://${req.get('host')}/api/webhooks/bulkvs?secret=${process.env.WEBHOOK_SECRET || 'default-secret'}`;
-          
           const activationResult = await bulkVSClient.activateNumber({
             did: phoneNumber.did,
             companyName: company.name,
@@ -19546,11 +19594,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             callForwardNumber: phoneNumber.callForwardEnabled ? phoneNumber.callForwardNumber : null,
           });
 
+          // Assign webhook to the phone number
+          console.log(`[Webhook] Assigning webhook "${webhookName}" to phone number ${phoneNumber.did}...`);
+          try {
+            await bulkVSClient.assignWebhookToNumber(phoneNumber.did, webhookName);
+            console.log(`[Webhook] ✓ Webhook assigned to phone number successfully`);
+          } catch (assignError: any) {
+            console.error(`[Webhook] Failed to assign webhook to number:`, assignError.message);
+            // Log warning but don't fail the whole process
+            activationResult.warnings.push(`Webhook assignment failed: ${assignError.message}`);
+          }
+
           // Update database with activation results
           updatedPhoneNumber = await storage.updateBulkvsPhoneNumber(id, {
             smsEnabled: activationResult.smsEnabled,
             mmsEnabled: activationResult.smsEnabled, // MMS enabled with SMS
             cnam: company.name.substring(0, 15), // Store sanitized CNAM
+            webhookName,
+            webhookToken,
             webhookUrl,
           }) || updatedPhoneNumber;
 
