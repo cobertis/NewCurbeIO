@@ -208,14 +208,14 @@ class BulkVSClient {
       // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
       const normalizedDid = formatForBulkVS(did);
       
-      console.log(`[BulkVS] Updating CNAM (Lid) for ${normalizedDid} to "${sanitizedCnam}"...`);
+      console.log(`[BulkVS] Updating CNAM (Lidb) for ${normalizedDid} to "${sanitizedCnam}"...`);
       
-      // Use /tnRecord endpoint with "Lid" field (Listed ID = Caller ID Name)
-      // According to BulkVS docs, the request format is:
-      // { "TN": "phone_number", "Lid": "caller_id_name", ... }
+      // Use /tnRecord endpoint with "Lidb" field (Line Information Database = Caller ID Name)
+      // According to BulkVS API docs, the request format is:
+      // { "TN": "phone_number", "Lidb": "caller_id_name", ... }
       const requestBody = {
         TN: normalizedDid,
-        Lid: sanitizedCnam,
+        Lidb: sanitizedCnam,
       };
       
       console.log(`[BulkVS] Request body:`, JSON.stringify(requestBody));

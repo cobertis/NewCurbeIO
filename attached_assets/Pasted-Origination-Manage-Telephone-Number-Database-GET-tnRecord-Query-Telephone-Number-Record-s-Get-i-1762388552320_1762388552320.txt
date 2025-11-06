@@ -1,0 +1,222 @@
+Origination
+Manage Telephone Number Database
+
+
+GET
+​/tnRecord
+Query Telephone Number Record(s)
+Get information on specific telephone number entry using Number parameter. Leave out Number parameter to display all telephone number entries.
+
+Parameters
+Try it out
+Name	Description
+Number
+(query)
+Example : 13109060901
+
+13109060901
+Status
+(query)
+Example : Active
+
+Active
+Tier
+(query)
+Example : 0
+
+0
+Trunk Group
+(query)
+Example : TG1
+
+TG1
+Portout Pin
+(query)
+Example : 3591344
+
+3591344
+Lidb
+(query)
+Example : Bulk Solutions
+
+Bulk Solutions
+Class
+(query)
+Example : A2PLC
+
+A2PLC
+Sms
+(query)
+Example : true
+
+true
+Mms
+(query)
+Example : true
+
+true
+Webhook
+(query)
+Example : Default
+
+Default
+Tcr
+(query)
+Example : CW1549
+
+CW1549
+Activation Date
+(query)
+Example : 2022-01-01
+
+2022-01-01
+Limit
+(query)
+Example : 100
+
+100
+Responses
+Code	Description	Links
+200	
+Success
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "TN": "13109060901",
+    "Status": "Active",
+    "Lidb": "Bulk Solutions LLC",
+    "Portout Pin": "3591344",
+    "ReferenceID": "Customer A",
+    "Routing": {
+      "Trunk Group": "Primary",
+      "Custom URI": "9999+13109060901",
+      "Call Forward": "13105551212",
+      "PSTN Failover": "13105551212"
+    },
+    "Messaging": {
+      "Class": "A2PLC",
+      "Sms": true,
+      "Mms": false,
+      "Webhook": "Default",
+      "Tcr": "CW1549"
+    },
+    "TN Details": {
+      "Rate Center": "Los Angeles",
+      "State": "CA",
+      "Tier": 0,
+      "Cnam": true,
+      "Activation Date": "2010-07-28 00:00:00"
+    }
+  }
+]
+No links
+400	
+Telephone number or other property missing, invalid or malformed
+
+No links
+403	
+Insufficient funds or service not enabled
+
+No links
+404	
+Telephone number not found
+
+No links
+POST
+​/tnRecord
+Update a record in a telephone number database
+Update a record in a telephone number database
+
+Parameters
+Try it out
+No parameters
+
+Request body
+
+application/json
+Record
+
+Example Value
+Schema
+{
+  "TN": "13109060901",
+  "Lidb": "Bulk Solutions, LLC",
+  "Portout Pin": "3591344",
+  "ReferenceID": "Customer A",
+  "Trunk Group": "Primary",
+  "Custom URI": "9999+13109060901",
+  "Call Forward": "13105551212",
+  "PSTN Failover": "13105551212",
+  "Sms": true,
+  "Mms": false,
+  "Tcr": "CW1549",
+  "Webhook": "Default"
+}
+Responses
+Code	Description	Links
+200	
+Success
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "TN": "13109060901",
+  "Status": "Active",
+  "Lidb": "Bulk Solutions LLC",
+  "Portout Pin": "3591344",
+  "Routing": {
+    "Trunk Group": "Primary",
+    "Custom URI": "9999+13109060901",
+    "Call Forward": "13105551212",
+    "PSTN Failover": "13105551212"
+  },
+  "Messaging": {
+    "Class": "A2P",
+    "Sms": true,
+    "Mms": false,
+    "Webhook": "Default",
+    "Tcr": "CW1549"
+  },
+  "TN Details": {
+    "Rate Center": "Los Angeles",
+    "State": "CA",
+    "Tier": 0,
+    "Cnam": true,
+    "Activation Date": "2010-07-28 00:00:00"
+  }
+}
+No links
+400	
+Telephone number or other property missing, invalid or malformed
+
+No links
+403	
+Insufficient funds or service not enabled
+
+No links
+404	
+Telephone number not found
+
+No links
+409	
+Conflict, see body; a support ticket may be required to resolve
+
+No links
+412	
+Applicable agreement lacks consent, see body for details
+
+No links
+503	
+An error occurred, please try again; a support ticket may be required to resolve
+
+No links
