@@ -19427,124 +19427,213 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
       
-      // ===== STEP 1: PREPARE WEBHOOK (BulkVS) - NO CHARGE YET ======
-      // Ensure user has a slug (URL-friendly identifier)
+      // ===== STEP 1: ENSURE USER HAS SLUG =====
       let userSlug = user.slug;
-        if (!userSlug) {
-          const { generateSlug } = await import("@shared/phone");
-          const baseSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
-          
-          // Ensure uniqueness by appending number if needed
-          let counter = 1;
-          let finalSlug = baseSlug;
-          const companyUsers = await storage.getUsersByCompany(user.companyId);
-          while (companyUsers.some(u => u.slug === finalSlug && u.id !== user.id)) {
-            finalSlug = `${baseSlug}-${counter}`;
-            counter++;
-          }
-          
-          // Update user with unique slug
-          if (finalSlug) {
-            await storage.updateUser(user.id, { slug: finalSlug });
-            userSlug = finalSlug;
-            console.log(`[Webhook] Generated user slug: ${userSlug}`);
-          } else {
-            throw new Error("Failed to generate valid user slug");
-          }
+      if (!userSlug) {
+        const { generateSlug } = await import("@shared/phone");
+        const baseSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
+        
+        // Ensure uniqueness by appending number if needed
+        let counter = 1;
+        let finalSlug = baseSlug;
+        const companyUsers = await storage.getUsersByCompany(user.companyId);
+        while (companyUsers.some(u => u.slug === finalSlug && u.id !== user.id)) {
+          finalSlug = `${baseSlug}-${counter}`;
+          counter++;
         }
         
-        // Generate new webhook token and name (fresh for reactivation)
-        const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
-        const webhookToken = generateSecureToken(32);
-        
-        // Build webhook URL: {domain}/{company-slug}/{user-slug}/{webhook-token}
-        const baseDomain = getBaseDomain();
-        const webhookUrl = `${baseDomain}/${company.slug}/${userSlug}/${webhookToken}`;
-        const webhookName = `webhook-${userSlug}-${Date.now()}`; // Unique webhook name
-        
-        console.log(`[Webhook] Creating webhook for ${userSlug}`);
-        console.log(`[Webhook] URL: ${webhookUrl}`);
-        console.log(`[Webhook] Name: ${webhookName}`);
-        
-        // Create webhook in BulkVS
-        try {
-          await bulkVSClient.createOrUpdateWebhook({
-            webhookName,
-            webhookUrl,
-            description: `Incoming messages for ${user.firstName} ${user.lastName} (${company.name})`,
-          });
-          console.log(`[Webhook] ✓ Webhook created in BulkVS`);
-        } catch (webhookError: any) {
-          console.error(`[Webhook] Failed to create webhook:`, webhookError.message);
-          throw new Error(`Failed to create webhook in BulkVS: ${webhookError.message}`);
-        }
-
-        // Activate number: Single API call configures SMS/MMS, webhook, CNAM, campaign, call forwarding
-        try {
-          const activationResult = await bulkVSClient.activateNumber({
-            did: phoneNumber.did,
-            companyName: company.name,
-            webhookName, // Webhook name (webhook already created above)
-            callForwardNumber: phoneNumber.callForwardEnabled ? phoneNumber.callForwardNumber : null,
-          });
-
-          // Update database with activation results
-          updatedPhoneNumber = await storage.updateBulkvsPhoneNumber(id, {
-            smsEnabled: activationResult.smsEnabled,
-            mmsEnabled: activationResult.smsEnabled, // MMS enabled with SMS
-            cnam: company.name.substring(0, 15), // Store sanitized CNAM
-            webhookName,
-            webhookToken,
-            webhookUrl,
-          }) || updatedPhoneNumber;
-
-          console.log(`[BulkVS] Phone number ${phoneNumber.did} fully reactivated. Subscription: ${subscription.id}`);
-
-          // Include activation warnings in response if any
-          if (activationResult.warnings.length > 0) {
-            return res.json({
-              message: "Phone number reactivated successfully with some warnings",
-              phoneNumber: updatedPhoneNumber,
-              activationWarnings: activationResult.warnings,
-            });
-          }
-
-          res.json({
-            message: "Phone number reactivated successfully",
-            phoneNumber: updatedPhoneNumber,
-          });
-        } catch (activationError: any) {
-          // Activation failed critically (SMS/MMS or webhook setup)
-          console.error(`[BulkVS] Critical activation error for ${phoneNumber.did}:`, activationError.message);
-
-          // Mark number as inactive
-          await storage.updateBulkvsPhoneNumber(id, {
-            status: "inactive",
-            billingStatus: "cancelled",
-            smsEnabled: false,
-            mmsEnabled: false,
-          });
-
-          // Cancel the just-created Stripe subscription
-          try {
-            await stripe.subscriptions.cancel(subscription.id);
-            console.log(`[BulkVS] Cancelled subscription ${subscription.id} due to activation failure`);
-          } catch (cancelError: any) {
-            console.error(`[BulkVS] Failed to cancel subscription:`, cancelError.message);
-          }
-
-          return res.status(500).json({
-            message: "Phone number could not be fully reactivated. Billing not started.",
-            error: activationError.message,
-          });
-        }
-      } catch (stripeError: any) {
-        console.error(`[STRIPE] Error creating subscription:`, stripeError);
-        return res.status(500).json({ message: `Failed to create subscription: ${stripeError.message}` });
+        // Update user with unique slug
+        await storage.updateUser(user.id, { slug: finalSlug });
+        userSlug = finalSlug;
+        console.log(`[REACTIVATION] Generated user slug: ${userSlug}`);
       }
+      
+      // ===== STEP 2: CREATE WEBHOOK IN BULKVS (NO CHARGE YET) =====
+      const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
+      const webhookToken = generateSecureToken(32);
+      const baseDomain = getBaseDomain();
+      const webhookUrl = `${baseDomain}/${company.slug}/${userSlug}/${webhookToken}`;
+      const webhookName = `webhook-${userSlug}-${Date.now()}`;
+      
+      console.log(`[REACTIVATION] Creating webhook: ${webhookName}`);
+      console.log(`[REACTIVATION] Webhook URL: ${webhookUrl}`);
+      
+      try {
+        await bulkVSClient.createOrUpdateWebhook({
+          webhookName,
+          webhookUrl,
+          description: `Incoming messages for ${user.firstName} ${user.lastName} (${company.name})`,
+        });
+        console.log(`[REACTIVATION] ✓ Webhook created successfully`);
+      } catch (webhookError: any) {
+        console.error(`[REACTIVATION] Webhook creation failed:`, webhookError.message);
+        return res.status(500).json({ 
+          message: "Failed to create webhook in BulkVS. No charge made.", 
+          error: webhookError.message 
+        });
+      }
+
+      // ===== STEP 3: ACTIVATE NUMBER IN BULKVS (NO CHARGE YET) =====
+      console.log(`[REACTIVATION] Activating number ${phoneNumber.did} in BulkVS...`);
+      let activationResult;
+      
+      try {
+        activationResult = await bulkVSClient.activateNumber({
+          did: phoneNumber.did,
+          companyName: company.name,
+          webhookName,
+          callForwardNumber: phoneNumber.callForwardEnabled ? phoneNumber.callForwardNumber : null,
+        });
+        console.log(`[REACTIVATION] ✓ Number activated in BulkVS successfully`);
+      } catch (activationError: any) {
+        console.error(`[REACTIVATION] BulkVS activation failed:`, activationError.message);
+        return res.status(500).json({
+          message: "Failed to activate number in BulkVS. No charge made.",
+          error: activationError.message,
+        });
+      }
+
+      // ===== STEP 4: ONLY NOW CREATE STRIPE SUBSCRIPTION (CHARGE CUSTOMER) =====
+      console.log(`[REACTIVATION] BulkVS activation successful. Now charging customer via Stripe...`);
+      const monthlyPrice = parseFloat(phoneNumber.monthlyPrice || "10.00");
+      let subscription;
+
+      try {
+        const { stripe } = await import("./stripe");
+        if (!stripe) {
+          throw new Error("Stripe is not initialized");
+        }
+
+        // Get or create Stripe customer
+        let stripeCustomerId = company.stripeCustomerId;
+        if (!stripeCustomerId) {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: company.name,
+            metadata: {
+              companyId: company.id,
+              userId: user.id,
+            },
+          });
+          stripeCustomerId = customer.id;
+          await storage.updateCompany(company.id, { stripeCustomerId });
+        }
+
+        // Get or create product
+        const products = await stripe.products.search({
+          query: `name:"BulkVS Phone Number" AND metadata["companyId"]:"${company.id}"`,
+        });
+
+        let product;
+        if (products.data.length > 0) {
+          product = products.data[0];
+        } else {
+          product = await stripe.products.create({
+            name: "BulkVS Phone Number",
+            description: "Dedicated phone number for SMS/MMS messaging",
+            metadata: {
+              companyId: company.id,
+              feature: "bulkvs_phone_number",
+            },
+          });
+        }
+
+        // Get or create price
+        const prices = await stripe.prices.list({
+          product: product.id,
+          active: true,
+          type: "recurring",
+        });
+
+        let price;
+        if (prices.data.length > 0) {
+          price = prices.data[0];
+        } else {
+          price = await stripe.prices.create({
+            product: product.id,
+            unit_amount: Math.round(monthlyPrice * 100),
+            currency: "usd",
+            recurring: {
+              interval: "month",
+              interval_count: 1,
+            },
+          });
+        }
+
+        // Create subscription (CHARGE HAPPENS HERE)
+        subscription = await stripe.subscriptions.create({
+          customer: stripeCustomerId,
+          items: [{ price: price.id }],
+          metadata: {
+            companyId: company.id,
+            userId: user.id,
+            phoneNumberId: phoneNumber.id,
+            phoneNumber: phoneNumber.did,
+          },
+        });
+
+        console.log(`[REACTIVATION] ✓ Stripe subscription created: ${subscription.id}`);
+
+        // ===== STEP 5: UPDATE DATABASE WITH ALL INFO =====
+        const nextBillingDate = new Date();
+        nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+
+        const updatedPhoneNumber = await storage.updateBulkvsPhoneNumber(id, {
+          status: "active",
+          billingStatus: "active",
+          stripeSubscriptionId: subscription.id,
+          stripeProductId: product.id,
+          stripePriceId: price.id,
+          nextBillingDate,
+          smsEnabled: activationResult.smsEnabled,
+          mmsEnabled: activationResult.smsEnabled,
+          cnam: company.name.substring(0, 15),
+          webhookName,
+          webhookToken,
+          webhookUrl,
+        });
+
+        console.log(`[REACTIVATION] ✓ Phone number ${phoneNumber.did} fully reactivated`);
+
+        // Return success with warnings if any
+        if (activationResult.warnings.length > 0) {
+          return res.json({
+            message: "Phone number reactivated successfully with some warnings",
+            phoneNumber: updatedPhoneNumber,
+            activationWarnings: activationResult.warnings,
+          });
+        }
+
+        res.json({
+          message: "Phone number reactivated successfully",
+          phoneNumber: updatedPhoneNumber,
+        });
+
+      } catch (stripeError: any) {
+        // STRIPE FAILED - but BulkVS already activated
+        console.error(`[REACTIVATION] Stripe billing failed AFTER BulkVS activation:`, stripeError.message);
+        
+        // Mark as active in BulkVS but billing issue
+        await storage.updateBulkvsPhoneNumber(id, {
+          status: "active", // Service IS active
+          billingStatus: "pending", // But payment failed
+          smsEnabled: activationResult.smsEnabled,
+          mmsEnabled: activationResult.smsEnabled,
+          cnam: company.name.substring(0, 15),
+          webhookName,
+          webhookToken,
+          webhookUrl,
+        });
+
+        return res.status(500).json({
+          message: "Number activated in BulkVS but billing setup failed. Please contact support.",
+          error: stripeError.message,
+        });
+      }
+
     } catch (error: any) {
-      console.error("Error reactivating phone number:", error);
-      res.status(500).json({ message: "Failed to reactivate phone number" });
+      console.error("[REACTIVATION] Unexpected error:", error);
+      res.status(500).json({ message: "Failed to reactivate phone number", error: error.message });
     }
   });
 
