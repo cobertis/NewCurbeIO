@@ -1,0 +1,40 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+Email service initialized successfully
+Twilio service initialized successfully
+==========================================
+🔑 STRIPE INITIALIZED: TEST MODE
+🔑 Key prefix: sk_test_51Rg...
+==========================================
+[WebSocket] Server initialized on path /ws/chat
+3:29:17 PM [express] serving on port 5000
+[REMINDER SCHEDULER] Starting scheduler...
+[REMINDER SCHEDULER] Scheduler started successfully
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+[BABEL] Note: The code generator has deoptimised the styling of /home/runner/workspace/client/src/pages/quotes.tsx as it exceeds the max of 500KB.
+[BABEL] Note: The code generator has deoptimised the styling of /home/runner/workspace/client/src/pages/policies.tsx as it exceeds the max of 500KB.
+[WebSocket] Accepting authenticated connection
+error: Authentication timed out
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async PGStore._asyncQuery (/home/runner/workspace/node_modules/connect-pg-simple/index.js:322:21)
+error: Authentication timed out
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async PGStore._asyncQuery (/home/runner/workspace/node_modules/connect-pg-simple/index.js:322:21)
+error: Authentication timed out
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async PGStore._asyncQuery (/home/runner/workspace/node_modules/connect-pg-simple/index.js:322:21)
+error: Authentication timed out
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async PGStore._asyncQuery (/home/runner/workspace/node_modules/connect-pg-simple/index.js:322:21)
+[WebSocket] Authenticated: userId=a249b07b-b0f2-4d01-80a8-cedfa1adff3b, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+[WebSocket] Accepting authenticated connection
+[WebSocket] Accepting authenticated connection
+[WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+[WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin

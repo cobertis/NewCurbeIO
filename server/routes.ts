@@ -79,6 +79,9 @@ import fs from "fs";
 import crypto from "crypto";
 import multer from "multer";
 import "./types";
+import { initializeStripe, getStripeClient, type AuditAction } from "./types";
+import type Stripe from "stripe";
+import { stripe } from "./stripe";
 import { fetchMarketplacePlans } from "./cms-marketplace";
 import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
@@ -98,6 +101,9 @@ const ALLOWED_MMS_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/m
 const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
+  // Initialize Stripe for type safety
+  initializeStripe(stripe);
+  
   // Initialize logging service
   const logger = new LoggingService(storage);
   
@@ -4852,11 +4858,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription || !subscription.stripeSubscriptionId || !subscription.stripeCustomerId) {
         return res.status(404).json({ message: "No active subscription found" });
       }
-
-      const { stripe } = await import("./stripe");
       
       // Step 1: Check if customer has a payment method
-      const paymentMethods = await stripe.paymentMethods.list({
+      const paymentMethods = await getStripeClient().paymentMethods.list({
         customer: subscription.stripeCustomerId,
         type: 'card',
       });
@@ -4868,11 +4872,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Get the default payment method
-      const customer = await stripe.customers.retrieve(subscription.stripeCustomerId) as any;
+      const customer = await getStripeClient().customers.retrieve(subscription.stripeCustomerId) as any;
       const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method || paymentMethods.data[0].id;
 
       // Step 2: Get the subscription to find the price
-      const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+      const stripeSubscription = await getStripeClient().subscriptions.retrieve(subscription.stripeSubscriptionId);
       
       if (!stripeSubscription.items.data || stripeSubscription.items.data.length === 0) {
         return res.status(400).json({ message: "Invalid subscription configuration" });
@@ -4885,7 +4889,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log('[SKIP-TRIAL] Creating pre-authorization for subscription amount');
       try {
         // Create a PaymentIntent with manual capture
-        const paymentIntent = await stripe.paymentIntents.create({
+        const paymentIntent = await getStripeClient().paymentIntents.create({
           amount: amount,
           currency: currency,
           customer: subscription.stripeCustomerId,
@@ -4905,12 +4909,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         // CAPTURE the payment immediately (converts pre-auth to actual charge)
         console.log('[SKIP-TRIAL] Capturing payment for subscription');
-        const capturedPayment = await stripe.paymentIntents.capture(paymentIntent.id);
+        const capturedPayment = await getStripeClient().paymentIntents.capture(paymentIntent.id);
         console.log('[SKIP-TRIAL] Payment captured successfully:', capturedPayment.id);
 
         // End trial WITHOUT creating another invoice (prevent double-billing)
         console.log('[SKIP-TRIAL] Ending trial without creating new invoice');
-        const updatedSubscription = await stripe.subscriptions.update(
+        const updatedSubscription = await getStripeClient().subscriptions.update(
           subscription.stripeSubscriptionId,
           {
             trial_end: 'now', // End trial immediately
@@ -4932,11 +4936,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         };
         
         // Only update dates if they have valid values
-        if (updatedSubscription.currentPeriodStart) {
-          updateData.currentPeriodStart = toDate(updatedSubscription.currentPeriodStart);
+        if (updatedSubscription.current_period_start) {
+          updateData.currentPeriodStart = toDate(updatedSubscription.current_period_start);
         }
-        if (updatedSubscription.currentPeriodEnd) {
-          updateData.currentPeriodEnd = toDate(updatedSubscription.currentPeriodEnd);
+        if (updatedSubscription.current_period_end) {
+          updateData.currentPeriodEnd = toDate(updatedSubscription.current_period_end);
         }
         
         // Clear trial dates since trial is skipped
@@ -5041,8 +5045,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Preserve trial dates from local subscription
         trialStart: subscription.trialStart,
         trialEnd: subscription.trialEnd,
-        currentPeriodStart: toDate(updatedStripeSubscription.currentPeriodStart) || new Date(),
-        currentPeriodEnd: toDate(updatedStripeSubscription.currentPeriodEnd) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        currentPeriodStart: toDate(updatedStripeSubscription.current_period_start) || new Date(),
+        currentPeriodEnd: toDate(updatedStripeSubscription.current_period_end) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
 
       const message = immediate 
@@ -5138,11 +5142,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Subscription is not scheduled for cancellation" });
       }
 
-      // Import Stripe
-      const { stripe } = await import("./stripe");
-
       // Reactivate the subscription in Stripe
-      const updatedSubscription = await stripe.subscriptions.update(
+      const updatedSubscription = await getStripeClient().subscriptions.update(
         subscription.stripeSubscriptionId,
         {
           cancel_at_period_end: false,
@@ -5518,11 +5519,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ paymentMethods: [] });
       }
 
-      const { getPaymentMethods, stripe } = await import("./stripe");
+      const { getPaymentMethods } = await import("./stripe");
       const stripePaymentMethods = await getPaymentMethods(subscription.stripeCustomerId);
       
       // Get customer to find default payment method
-      const customer = await stripe.customers.retrieve(subscription.stripeCustomerId) as any;
+      const customer = await getStripeClient().customers.retrieve(subscription.stripeCustomerId) as any;
       const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
 
       // Transform Stripe payment methods to match frontend interface
@@ -5564,11 +5565,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription || !subscription.stripeCustomerId) {
         return res.status(400).json({ message: "No active subscription found" });
       }
-
-      const { stripe } = await import("./stripe");
       
       // Create a SetupIntent for this customer
-      const setupIntent = await stripe.setupIntents.create({
+      const setupIntent = await getStripeClient().setupIntents.create({
         customer: subscription.stripeCustomerId,
         payment_method_types: ['card'],
         usage: 'off_session', // Save for future use
@@ -5616,11 +5615,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription || !subscription.stripeCustomerId) {
         return res.status(400).json({ message: "No active subscription found" });
       }
-
-      const { stripe } = await import("./stripe");
       
       // Set this payment method as the default for the customer
-      await stripe.customers.update(subscription.stripeCustomerId, {
+      await getStripeClient().customers.update(subscription.stripeCustomerId, {
         invoice_settings: {
           default_payment_method: paymentMethodId,
         },
@@ -5628,7 +5625,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // If the subscription exists, update its default payment method
       if (subscription.stripeSubscriptionId) {
-        await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+        await getStripeClient().subscriptions.update(subscription.stripeSubscriptionId, {
           default_payment_method: paymentMethodId,
         });
       }
@@ -5668,11 +5665,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription || !subscription.stripeCustomerId) {
         return res.status(400).json({ message: "No active subscription found" });
       }
-
-      const { stripe } = await import("./stripe");
       
       // Set this payment method as the default for the customer
-      await stripe.customers.update(subscription.stripeCustomerId, {
+      await getStripeClient().customers.update(subscription.stripeCustomerId, {
         invoice_settings: {
           default_payment_method: paymentMethodId,
         },
@@ -5680,7 +5675,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // If the subscription exists, update its default payment method
       if (subscription.stripeSubscriptionId) {
-        await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+        await getStripeClient().subscriptions.update(subscription.stripeSubscriptionId, {
           default_payment_method: paymentMethodId,
         });
       }
@@ -5720,11 +5715,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription || !subscription.stripeCustomerId) {
         return res.status(400).json({ message: "No active subscription found" });
       }
-
-      const { stripe } = await import("./stripe");
       
       // First, check if this is the default payment method
-      const customer = await stripe.customers.retrieve(subscription.stripeCustomerId) as any;
+      const customer = await getStripeClient().customers.retrieve(subscription.stripeCustomerId) as any;
       const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
       
       if (defaultPaymentMethodId === paymentMethodId) {
@@ -5732,7 +5725,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Detach the payment method from the customer
-      await stripe.paymentMethods.detach(paymentMethodId);
+      await getStripeClient().paymentMethods.detach(paymentMethodId);
 
       res.json({ success: true, message: "Payment method deleted successfully" });
     } catch (error: any) {
