@@ -100,6 +100,46 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MMS_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime'];
 const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 
+async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
+  const user = await storage.getUser(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (user.slug) {
+    console.log(`[ensureUserSlug] User already has slug: ${user.slug}`);
+    return user.slug;
+  }
+
+  const { generateSlug } = await import("@shared/phone");
+  const nameForSlug = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0] || generateShortId();
+  const baseSlug = generateSlug(nameForSlug);
+
+  console.log(`[ensureUserSlug] Generating slug from: "${nameForSlug}" -> "${baseSlug}"`);
+
+  if (!baseSlug || baseSlug.trim() === '') {
+    throw new Error("Failed to generate user slug");
+  }
+
+  let counter = 1;
+  let finalSlug = baseSlug;
+  const companyUsers = await storage.getUsersByCompany(companyId);
+
+  while (companyUsers.some(u => u.slug === finalSlug && u.id !== userId)) {
+    finalSlug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  console.log(`[ensureUserSlug] Final slug to save: "${finalSlug}"`);
+
+  if (finalSlug !== user.slug) {
+    await storage.updateUser(userId, { slug: finalSlug });
+    console.log(`[ensureUserSlug] ✓ User slug saved: ${finalSlug}`);
+  }
+
+  return finalSlug;
+}
+
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize Stripe for type safety
   initializeStripe(stripe);
@@ -19015,29 +19055,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // ===== WEBHOOK SETUP =====
       // Ensure user has a slug (URL-friendly identifier)
-      let userSlug = user.slug;
-      if (!userSlug) {
-        const { generateSlug } = await import("@shared/phone");
-        const baseSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
-        
-        // Ensure uniqueness by appending number if needed
-        let counter = 1;
-        let finalSlug = baseSlug;
-        const companyUsers = await storage.getUsersByCompany(user.companyId);
-        while (companyUsers.some(u => u.slug === finalSlug && u.id !== user.id)) {
-          finalSlug = `${baseSlug}-${counter}`;
-          counter++;
-        }
-        
-        // Update user with unique slug
-        if (finalSlug) {
-          await storage.updateUser(user.id, { slug: finalSlug });
-          userSlug = finalSlug;
-          console.log(`[Webhook] Generated user slug: ${userSlug}`);
-        } else {
-          throw new Error("Failed to generate valid user slug");
-        }
-      }
+      const userSlug = await ensureUserSlug(user.id, user.companyId);
+      console.log(`[Webhook] User slug ready: ${userSlug}`);
       
       // Generate secure webhook token
       const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
@@ -19420,14 +19439,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
       
-      // ===== STEP 1: GET USER SLUG (must exist from provisioning) =====
-      const userSlug = user.slug;
-      if (!userSlug) {
-        return res.status(500).json({ 
-          message: "User does not have a slug. This should have been created during initial number provisioning." 
-        });
-      }
-      console.log(`[REACTIVATION] Using existing user slug: ${userSlug}`);
+      // ===== STEP 1: ENSURE USER HAS SLUG =====
+      const userSlug = await ensureUserSlug(user.id, user.companyId);
+      console.log(`[REACTIVATION] User slug ready: ${userSlug}`);
       
       // ===== STEP 2: CREATE WEBHOOK IN BULKVS (NO CHARGE YET) =====
       const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
