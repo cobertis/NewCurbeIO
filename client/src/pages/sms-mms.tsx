@@ -94,6 +94,9 @@ export default function SmsMmsPage() {
   // CRITICAL: Enrich threads with contact names for threads with null displayName
   // This fixes the issue where existing threads don't have names
   const threads = useMemo(() => {
+    console.log('[SMS ENRICH] Total contacts:', contacts.length);
+    console.log('[SMS ENRICH] Total threads:', rawThreads.length);
+    
     return rawThreads.map(thread => {
       // If thread already has displayName, use it
       if (thread.displayName) {
@@ -101,7 +104,11 @@ export default function SmsMmsPage() {
       }
       
       // Otherwise, search for contact name in unified contacts
+      // Both should already be normalized to 11-digit format by the backend
       const matchingContact = contacts.find(c => c.phone === thread.externalPhone);
+      
+      console.log('[SMS ENRICH] Thread:', thread.externalPhone, 'Match:', matchingContact?.displayName || 'NONE');
+      
       if (matchingContact && matchingContact.displayName) {
         return {
           ...thread,
