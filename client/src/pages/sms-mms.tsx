@@ -90,7 +90,7 @@ export default function SmsMmsPage() {
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery<BulkvsMessage[]>({
     queryKey: ["/api/bulkvs/threads", selectedThreadId, "messages"],
-    enabled: !!selectedThreadId,
+    enabled: !!selectedThreadId && !selectedThreadId.startsWith('temp-'),
   });
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId) || null;
@@ -309,6 +309,9 @@ export default function SmsMmsPage() {
           formData
         )) as { thread: BulkvsThread; message: BulkvsMessage };
         
+        // Clear initial message immediately
+        setInitialMessage("");
+        
         // Remove temporary thread and add real thread
         queryClient.setQueryData<BulkvsThread[]>(
           ["/api/bulkvs/threads"],
@@ -318,17 +321,18 @@ export default function SmsMmsPage() {
           }
         );
         
-        // Switch to real thread and clear initial message
-        setSelectedThreadId(result.thread.id);
-        setInitialMessage("");
+        // Invalidate queries FIRST to ensure data is fresh
+        await queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
+        
+        // THEN switch to real thread - this ensures threads list is updated
+        setTimeout(() => {
+          setSelectedThreadId(result.thread.id);
+        }, 100);
         
         toast({
           title: "Message sent",
           description: "Conversation created successfully.",
         });
-        
-        // Invalidate queries to refresh data
-        await queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
       } catch (error) {
         toast({
           title: "Failed to send message",
