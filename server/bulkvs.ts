@@ -138,6 +138,30 @@ class BulkVSClient {
     }
   }
 
+  async clearWebhook(did: string) {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    try {
+      // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
+      const normalizedDid = formatForBulkVS(did);
+      
+      console.log(`[BulkVS] Clearing webhook and call forwarding from ${normalizedDid}...`);
+      
+      // Use /tnRecord endpoint to remove webhook and call forwarding (set to default)
+      const response = await this.client.post("/tnRecord", {
+        TN: normalizedDid,
+        Webhook: "default", // Set to default webhook to disassociate
+        "Call Forward": "", // Clear call forwarding
+      });
+      
+      console.log("[BulkVS] ✓ Webhook and call forwarding cleared from number");
+      return response.data;
+    } catch (error: any) {
+      console.error("[BulkVS] clearWebhook error:", error.response?.data || error.message);
+      throw error;
+    }
+  }
+
   async deleteWebhook(webhookName: string) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     

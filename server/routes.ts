@@ -19390,16 +19390,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      // Delete webhook from BulkVS if exists
-      if (phoneNumber.webhookName) {
-        try {
+      // Disassociate webhook and clear call forwarding from BulkVS
+      try {
+        // Step 1: Disassociate webhook and clear call forwarding from number
+        console.log(`[BulkVS] Clearing webhook and call forwarding from ${phoneNumber.did}`);
+        await bulkVSClient.clearWebhook(phoneNumber.did);
+        console.log(`[BulkVS] ✓ Webhook and call forwarding cleared from number`);
+        
+        // Step 2: Delete the webhook if exists
+        if (phoneNumber.webhookName) {
           console.log(`[BulkVS] Deleting webhook ${phoneNumber.webhookName}`);
           await bulkVSClient.deleteWebhook(phoneNumber.webhookName);
           console.log(`[BulkVS] ✓ Webhook deleted successfully`);
-        } catch (webhookError: any) {
-          console.error(`[BulkVS] Error deleting webhook:`, webhookError.message);
-          // Continue with deactivation even if webhook deletion fails
         }
+      } catch (webhookError: any) {
+        console.error(`[BulkVS] Error managing webhook:`, webhookError.message);
+        // Continue with deactivation even if webhook management fails
       }
 
       // Update status to inactive
