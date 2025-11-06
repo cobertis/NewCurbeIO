@@ -84,7 +84,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
   };
 
   return (
-    <div className="border-t bg-background p-4 flex-shrink-0" data-testid="message-input-container">
+    <div className="bg-background p-3 flex-shrink-0" data-testid="message-input-container">
       {mediaPreview && (
         <div className="mb-3 relative inline-block" data-testid="media-preview">
           <img
@@ -119,7 +119,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
           type="button"
           variant="ghost"
           size="icon"
-          className="h-9 w-9 flex-shrink-0"
+          className="h-10 w-10 flex-shrink-0 rounded-full hover:bg-muted"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
           data-testid="button-attach"
@@ -127,24 +127,26 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
           <Paperclip className="h-5 w-5 text-muted-foreground" />
         </Button>
 
-        <Textarea
-          ref={textareaRef}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
-          className="min-h-[40px] max-h-[120px] resize-none"
-          disabled={disabled}
-          data-testid="input-message"
-        />
+        <div className="flex-1 flex items-end gap-2 bg-muted/50 dark:bg-muted/30 rounded-3xl px-4 py-2">
+          <Textarea
+            ref={textareaRef}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message..."
+            className="flex-1 min-h-[24px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm placeholder:text-muted-foreground"
+            disabled={disabled}
+            data-testid="input-message"
+          />
 
-        <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+          <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+        </div>
 
         <Button
           type="button"
           size="icon"
           className={cn(
-            "h-9 w-9 flex-shrink-0",
+            "h-10 w-10 flex-shrink-0 rounded-full",
             (!message.trim() && !mediaFile) && "opacity-50"
           )}
           onClick={handleSend}
