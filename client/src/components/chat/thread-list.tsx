@@ -8,7 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, MessageSquarePlus, Pin, BellOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
+import { format } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { formatForDisplay } from "@shared/phone";
 import type { BulkvsThread } from "@shared/schema";
 import defaultAvatar from "@assets/generated_images/Generic_user_avatar_icon_55b842ef.png";
@@ -19,6 +20,7 @@ interface ThreadListProps {
   onSelectThread: (threadId: string) => void;
   onNewMessage?: () => void;
   onSettings?: () => void;
+  userTimezone?: string;
 }
 
 type FilterType = "all" | "unread" | "archived";
@@ -28,7 +30,8 @@ export function ThreadList({
   selectedThreadId, 
   onSelectThread,
   onNewMessage,
-  onSettings 
+  onSettings,
+  userTimezone 
 }: ThreadListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
@@ -82,14 +85,27 @@ export function ThreadList({
 
   const formatTimestamp = (date: Date | string | null | undefined) => {
     if (!date) return "";
-    const d = new Date(date);
     
-    if (isToday(d)) {
-      return format(d, "h:mm a");
-    } else if (isYesterday(d)) {
+    // Convert UTC date to user's timezone
+    const tz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const utcDate = new Date(date);
+    const zonedDate = toZonedTime(utcDate, tz);
+    const now = toZonedTime(new Date(), tz);
+    
+    // Check if same day (in user's timezone)
+    const isSameDay = format(zonedDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
+    
+    // Check if yesterday (in user's timezone)
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYest = format(zonedDate, "yyyy-MM-dd") === format(yesterday, "yyyy-MM-dd");
+    
+    if (isSameDay) {
+      return format(zonedDate, "h:mm a");
+    } else if (isYest) {
       return "Yesterday";
     } else {
-      return format(d, "M/d/yy");
+      return format(zonedDate, "M/d/yy");
     }
   };
 

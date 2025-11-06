@@ -13,7 +13,7 @@ import { PhoneSettingsModal } from "@/components/chat/phone-settings-modal";
 import { NewMessageDialog } from "@/components/chat/new-message-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Phone, Settings, RefreshCw, Plus } from "lucide-react";
-import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber } from "@shared/schema";
+import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber, User } from "@shared/schema";
 import { formatForDisplay } from "@shared/phone";
 import {
   AlertDialog,
@@ -36,6 +36,12 @@ export default function SmsMmsPage() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
   const [newMessageDialogOpen, setNewMessageDialogOpen] = useState(false);
+
+  // Get user's timezone
+  const { data: userData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+  const userTimezone = userData?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useWebSocket((message) => {
     const msg = message as any; // BulkVS-specific message types
@@ -434,6 +440,7 @@ export default function SmsMmsPage() {
             onSelectThread={handleSelectThread}
             onSettings={() => setSettingsModalOpen(true)}
             onNewMessage={() => setNewMessageDialogOpen(true)}
+            userTimezone={userTimezone}
           />
 
         <MessagePanel
@@ -461,6 +468,7 @@ export default function SmsMmsPage() {
               onSelectThread={handleSelectThread}
               onSettings={() => setSettingsModalOpen(true)}
               onNewMessage={() => setNewMessageDialogOpen(true)}
+              userTimezone={userTimezone}
             />
           </div>
         )}
