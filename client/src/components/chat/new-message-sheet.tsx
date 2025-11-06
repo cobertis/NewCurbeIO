@@ -104,7 +104,9 @@ export function NewMessageSheet({
     
     return allContacts.filter((c) => {
       const nameMatch = c.displayName?.toLowerCase().includes(query);
-      const phoneMatch = c.phone.includes(searchDigits);
+      // CRITICAL: Only match phone numbers if there are actual digits in the search
+      // Otherwise "".includes("") returns true for ALL contacts
+      const phoneMatch = searchDigits.length > 0 && c.phone.includes(searchDigits);
       return nameMatch || phoneMatch;
     });
   }, [allContacts, searchQuery]);
