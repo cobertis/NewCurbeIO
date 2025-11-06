@@ -116,23 +116,44 @@ class BulkVSClient {
     }
   }
 
-  async setMessagingWebhook(did: string, webhookUrl: string) {
+  async createOrUpdateWebhook(webhookName: string, webhookUrl: string) {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    try {
+      console.log(`[BulkVS] Creating/updating webhook "${webhookName}" with URL: ${webhookUrl}`);
+      
+      // Use PUT /webHooks endpoint to create or update webhook
+      const response = await this.client.put("/webHooks", {
+        "Trunk Group": webhookName, // Webhook identifier (company slug)
+        "Message URL": webhookUrl,   // URL to receive webhook POST requests
+        "Method": "POST",             // HTTP method
+        "Delivery Receipt": true,     // Enable delivery receipts
+      });
+      
+      console.log("[BulkVS] ✓ Webhook created/updated successfully");
+      return response.data;
+    } catch (error: any) {
+      console.error("[BulkVS] createOrUpdateWebhook error:", error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  async setMessagingWebhook(did: string, webhookName: string) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
       // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
       const normalizedDid = formatForBulkVS(did);
       
-      console.log(`[BulkVS] Setting messaging webhook for ${normalizedDid}...`);
+      console.log(`[BulkVS] Assigning webhook "${webhookName}" to ${normalizedDid}...`);
       
-      // Use /tnRecord endpoint to set webhook
-      // For now, we use "Default" webhook which should be pre-configured in BulkVS portal
+      // Use /tnRecord endpoint to assign webhook to number
       const response = await this.client.post("/tnRecord", {
         TN: normalizedDid,
-        Webhook: "Default",
+        Webhook: webhookName, // Name of the webhook (company slug)
       });
       
-      console.log("[BulkVS] ✓ Webhook set successfully");
+      console.log("[BulkVS] ✓ Webhook assigned successfully");
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] setMessagingWebhook error:", error.response?.data || error.message);
