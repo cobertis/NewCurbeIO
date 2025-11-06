@@ -315,22 +315,23 @@ export default function SmsMmsPage() {
         // Clear initial message immediately
         setInitialMessage("");
         
-        // Remove temporary thread and add real thread
+        // CRITICAL FIX: Update cache SYNCHRONOUSLY before changing selectedThreadId
+        // This prevents React from rendering with undefined thread
         queryClient.setQueryData<BulkvsThread[]>(
           ["/api/bulkvs/threads"],
           (old) => {
             if (!old) return [result.thread];
-            return [result.thread, ...old.filter(t => !t.id.startsWith('temp-'))];
+            // Remove ALL temporary threads and add the real one
+            return [result.thread, ...old.filter(t => !t?.id?.startsWith('temp-'))];
           }
         );
         
-        // Invalidate queries FIRST to ensure data is fresh
-        await queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
+        // THEN immediately switch to the real thread ID
+        // Cache already has it, so selectedThread will NOT be undefined
+        setSelectedThreadId(result.thread.id);
         
-        // THEN switch to real thread - this ensures threads list is updated
-        setTimeout(() => {
-          setSelectedThreadId(result.thread.id);
-        }, 100);
+        // FINALLY invalidate queries for freshness (non-blocking)
+        queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
         
         toast({
           title: "Message sent",
