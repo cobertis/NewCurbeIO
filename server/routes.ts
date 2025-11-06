@@ -19544,7 +19544,124 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // 4. POST /api/webhooks/bulkvs - Webhook for incoming messages and DLRs
+  // 4a. POST /:companySlug/:userSlug/:webhookToken - Dynamic webhook endpoint for incoming messages
+  // This endpoint receives BulkVS webhooks for each individual user
+  app.post("/:companySlug/:userSlug/:webhookToken", async (req: Request, res: Response) => {
+    try {
+      const { companySlug, userSlug, webhookToken } = req.params;
+      
+      console.log(`[BulkVS Webhook] Received webhook for ${companySlug}/${userSlug}`);
+      
+      // Find company by slug
+      const company = await storage.getCompanyBySlug(companySlug);
+      if (!company) {
+        console.error(`[BulkVS Webhook] Company not found: ${companySlug}`);
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Find user by slug and companyId
+      const users = await storage.getCompanyUsers(company.id);
+      const user = users.find(u => u.slug === userSlug);
+      if (!user) {
+        console.error(`[BulkVS Webhook] User not found: ${userSlug}`);
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Find phone number by userId and validate webhook token
+      const phoneNumbers = await storage.getBulkvsPhoneNumbersByUser(user.id);
+      const phoneNumber = phoneNumbers.find(pn => pn.webhookToken === webhookToken);
+      
+      if (!phoneNumber) {
+        console.error(`[BulkVS Webhook] Invalid webhook token for user ${userSlug}`);
+        return res.status(401).json({ message: "Unauthorized - Invalid webhook token" });
+      }
+      
+      const payload = req.body;
+      console.log("[BulkVS Webhook] Payload:", JSON.stringify(payload, null, 2));
+      
+      // Handle incoming message
+      if (payload.direction === "inbound" || payload.type === "message.received") {
+        const { from, to, body, mediaUrl, mediaType, id: providerMsgId } = payload;
+        
+        // Find or create thread
+        let thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, from);
+        if (!thread) {
+          thread = await storage.createBulkvsThread({
+            phoneNumberId: phoneNumber.id,
+            userId: phoneNumber.userId,
+            companyId: phoneNumber.companyId,
+            externalPhone: from,
+            displayName: from,
+            lastMessageAt: new Date(),
+            lastMessagePreview: body?.substring(0, 100) || "[Media]",
+          });
+        } else {
+          // Update thread with latest message info
+          await storage.updateBulkvsThread(thread.id, {
+            lastMessageAt: new Date(),
+            lastMessagePreview: body?.substring(0, 100) || "[Media]",
+          });
+        }
+        
+        // Create message
+        const message = await storage.createBulkvsMessage({
+          threadId: thread.id,
+          direction: "inbound",
+          status: "delivered",
+          from,
+          to,
+          body: body || null,
+          mediaUrl: mediaUrl || null,
+          mediaType: mediaType || null,
+          providerMsgId: providerMsgId || null,
+          deliveredAt: new Date(),
+        });
+        
+        // Increment unread count
+        await storage.incrementThreadUnread(thread.id);
+        
+        // Get updated thread
+        const updatedThread = await storage.getBulkvsThread(thread.id);
+        
+        // Broadcast via WebSocket for real-time updates
+        broadcastBulkvsMessage(thread.id, message, thread.userId);
+        broadcastBulkvsThreadUpdate(thread.userId, updatedThread);
+        console.log(`[BulkVS Webhook] Message saved: ${message.id}`);
+      }
+      
+      // Handle DLR (Delivery Receipt)
+      if (payload.type === "message.status" || payload.status) {
+        const { id: providerMsgId, status, deliveredAt, readAt } = payload;
+        
+        if (providerMsgId) {
+          // Find message by provider ID (search within user's messages only)
+          const threads = await storage.getBulkvsThreadsByUser(user.id, {});
+          for (const thread of threads) {
+            const messages = await storage.getBulkvsMessagesByThread(thread.id, {});
+            const message = messages.find(m => m.providerMsgId === providerMsgId);
+            
+            if (message) {
+              await storage.updateBulkvsMessageStatus(
+                message.id,
+                status,
+                deliveredAt ? new Date(deliveredAt) : undefined,
+                readAt ? new Date(readAt) : undefined
+              );
+              console.log(`[BulkVS Webhook] DLR updated for message ${message.id}: ${status}`);
+              break;
+            }
+          }
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[BulkVS Webhook] Error:", error);
+      res.status(500).json({ message: "Webhook processing failed", error: error.message });
+    }
+  });
+
+  // 4b. POST /api/webhooks/bulkvs - Legacy webhook endpoint (kept for backward compatibility)
   app.post("/api/webhooks/bulkvs", async (req: Request, res: Response) => {
     try {
       // Validate webhook secret

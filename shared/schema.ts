@@ -145,6 +145,7 @@ export const users = pgTable("users", {
   password: text("password"), // Nullable - set during account activation
   firstName: text("first_name"),
   lastName: text("last_name"),
+  slug: text("slug").unique(), // URL-friendly identifier for webhook URLs
   avatar: text("avatar"),
   phone: text("phone"),
   dateOfBirth: date("date_of_birth"), // Date of birth (yyyy-MM-dd)
@@ -3033,7 +3034,11 @@ export const bulkvsPhoneNumbers = pgTable("bulkvs_phone_numbers", {
   mmsEnabled: boolean("mms_enabled").notNull().default(false),
   
   campaignId: text("campaign_id"), // 10DLC campaign ID
-  webhookUrl: text("webhook_url"),
+  
+  // Webhook Configuration (for incoming messages)
+  webhookName: text("webhook_name"), // BulkVS webhook name/identifier
+  webhookToken: text("webhook_token"), // Secure token for webhook URL validation
+  webhookUrl: text("webhook_url"), // Full webhook URL
   
   // Call Forward Configuration
   callForwardEnabled: boolean("call_forward_enabled").notNull().default(false),

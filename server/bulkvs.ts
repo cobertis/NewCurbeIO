@@ -503,6 +503,61 @@ class BulkVSClient {
       throw error;
     }
   }
+
+  /**
+   * Create or update a webhook in BulkVS
+   * Uses PUT /webHooks endpoint
+   */
+  async createOrUpdateWebhook(params: {
+    webhookName: string;
+    webhookUrl: string;
+    description?: string;
+  }) {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    try {
+      console.log(`[BulkVS] Creating/updating webhook "${params.webhookName}"...`);
+      
+      const response = await this.client.put("/webHooks", {
+        Webhook: params.webhookName,
+        Description: params.description || `Inbound messages for ${params.webhookName}`,
+        Url: params.webhookUrl,
+        Dlr: true, // Enable delivery receipts
+        Method: "POST", // POST method for webhook
+      });
+      
+      console.log(`[BulkVS] ✓ Webhook created/updated successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[BulkVS] createOrUpdateWebhook error:", error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Assign webhook to a phone number
+   * Uses POST /tnRecord endpoint with Webhook field
+   */
+  async assignWebhookToNumber(did: string, webhookName: string) {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    try {
+      const normalizedDid = formatForBulkVS(did);
+      
+      console.log(`[BulkVS] Assigning webhook "${webhookName}" to ${normalizedDid}...`);
+      
+      const response = await this.client.post("/tnRecord", {
+        TN: normalizedDid,
+        Webhook: webhookName,
+      });
+      
+      console.log(`[BulkVS] ✓ Webhook assigned to number successfully`);
+      return response.data;
+    } catch (error: any) {
+      console.error("[BulkVS] assignWebhookToNumber error:", error.response?.data || error.message);
+      throw error;
+    }
+  }
 }
 
 export const bulkVSClient = new BulkVSClient();

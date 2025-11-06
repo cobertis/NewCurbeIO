@@ -289,3 +289,47 @@ export function formatPhoneInput(value: string): string {
     return `+1 (${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3, 6)}-${limitedDigits.slice(6, 10)}`;
   }
 }
+
+/**
+ * Generate a URL-friendly slug from a string
+ * Example: "John Doe" -> "john-doe"
+ */
+export function generateSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+}
+
+/**
+ * Generate a secure random token for webhooks
+ * Example: "a1b2c3d4e5f6g7h8i9j0"
+ */
+export function generateSecureToken(length: number = 32): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let token = '';
+  for (let i = 0; i < length; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+/**
+ * Get the base domain for webhook URLs
+ * Development: uses REPLIT_DOMAINS
+ * Production: uses app.curbe.io
+ */
+export function getBaseDomain(): string {
+  const replitDomain = process.env.REPLIT_DOMAINS;
+  
+  // If REPLIT_DOMAINS exists, we're in development
+  if (replitDomain) {
+    return `https://${replitDomain}`;
+  }
+  
+  // Production domain
+  return 'https://app.curbe.io';
+}
