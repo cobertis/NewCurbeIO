@@ -3095,11 +3095,11 @@ export const bulkvsThreads = pgTable("bulkvs_threads", {
   isBlocked: boolean("is_blocked").notNull().default(false), // Block contact from sending/receiving
   
   unreadCount: integer("unread_count").notNull().default(0),
-  lastMessageAt: timestamp("last_message_at"),
+  lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
   lastMessagePreview: text("last_message_preview"), // First 100 chars of last message
   
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // BulkVS Messages - mensajes SMS/MMS
@@ -3121,11 +3121,11 @@ export const bulkvsMessages = pgTable("bulkvs_messages", {
   errorCode: text("error_code"),
   errorMessage: text("error_message"),
   
-  readAt: timestamp("read_at"),
-  deliveredAt: timestamp("delivered_at"),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
   
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Create unique index for thread lookup
