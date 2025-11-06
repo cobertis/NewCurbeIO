@@ -282,7 +282,7 @@ export function MessagePanel({
         )}
       </ScrollArea>
 
-      <MessageInput onSendMessage={onSendMessage} disabled={isLoading} />
+      <MessageInput onSendMessage={onSendMessage} />
     </Card>
   );
 }
