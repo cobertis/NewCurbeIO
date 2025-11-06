@@ -19388,6 +19388,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // 3c. POST /api/bulkvs/numbers/:id/reactivate - Reactivate a cancelled phone number
+  // SAFE FLOW: Validate BulkVS FIRST, then charge Stripe ONLY if successful
   app.post("/api/bulkvs/numbers/:id/reactivate", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -19419,117 +19420,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "You already have an active phone number. Each user can only have one phone number." });
       }
 
-      // Create new Stripe subscription
       const company = await storage.getCompany(user.companyId);
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
 
-      let subscription;
-      const monthlyPrice = parseFloat(phoneNumber.monthlyPrice || "10.00");
-
-      try {
-        console.log(`[STRIPE] Creating subscription for reactivated phone number ${phoneNumber.did}`);
-
-        // Import Stripe
-        const { stripe } = await import("./stripe");
-        if (!stripe) {
-          throw new Error("Stripe is not initialized");
-        }
-
-        // Get or create Stripe customer
-        let stripeCustomerId = company.stripeCustomerId;
-        if (!stripeCustomerId) {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: company.name,
-            metadata: {
-              companyId: company.id,
-              userId: user.id,
-            },
-          });
-          stripeCustomerId = customer.id;
-          await storage.updateCompany(company.id, { stripeCustomerId });
-        }
-
-        // Get or create product for BulkVS Phone Numbers
-        const products = await stripe.products.search({
-          query: `name:"BulkVS Phone Number" AND metadata["companyId"]:"${company.id}"`,
-        });
-
-        let product;
-        if (products.data.length > 0) {
-          product = products.data[0];
-        } else {
-          product = await stripe.products.create({
-            name: "BulkVS Phone Number",
-            description: "Dedicated phone number for SMS/MMS messaging",
-            metadata: {
-              companyId: company.id,
-              feature: "bulkvs_phone_number",
-            },
-          });
-        }
-
-        // Get or create price
-        const prices = await stripe.prices.list({
-          product: product.id,
-          active: true,
-          type: "recurring",
-        });
-
-        let price;
-        if (prices.data.length > 0) {
-          price = prices.data[0];
-        } else {
-          price = await stripe.prices.create({
-            product: product.id,
-            unit_amount: Math.round(monthlyPrice * 100),
-            currency: "usd",
-            recurring: {
-              interval: "month",
-              interval_count: 1,
-            },
-          });
-        }
-
-        // Create subscription
-        subscription = await stripe.subscriptions.create({
-          customer: stripeCustomerId,
-          items: [{
-            price: price.id,
-          }],
-          metadata: {
-            companyId: company.id,
-            userId: user.id,
-            phoneNumberId: phoneNumber.id,
-            phoneNumber: phoneNumber.did,
-          },
-        });
-
-        console.log(`[STRIPE] Subscription created: ${subscription.id}`);
-
-        // Calculate next billing date (30 days from now)
-        const nextBillingDate = new Date();
-        nextBillingDate.setDate(nextBillingDate.getDate() + 30);
-
-        // Update phone number with active status and new subscription info
-        let updatedPhoneNumber = await storage.updateBulkvsPhoneNumber(id, {
-          status: "active",
-          billingStatus: "active",
-          stripeSubscriptionId: subscription.id,
-          stripeProductId: product.id,
-          stripePriceId: price.id,
-          nextBillingDate,
-          smsEnabled: false, // Will be updated by activateNumber
-          mmsEnabled: false, // Will be updated by activateNumber
-        });
-
-        console.log(`[BulkVS] Phone number ${phoneNumber.did} billing reactivated, starting full activation...`);
-
-        // ===== WEBHOOK SETUP (same as provisioning) =====
-        // Ensure user has a slug (URL-friendly identifier)
-        let userSlug = user.slug;
+      console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
+      
+      // ===== STEP 1: PREPARE WEBHOOK (BulkVS) - NO CHARGE YET ======
+      // Ensure user has a slug (URL-friendly identifier)
+      let userSlug = user.slug;
         if (!userSlug) {
           const { generateSlug } = await import("@shared/phone");
           const baseSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
