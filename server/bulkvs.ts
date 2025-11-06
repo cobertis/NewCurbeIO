@@ -116,6 +116,23 @@ class BulkVSClient {
     }
   }
 
+  async listWebhooks() {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    try {
+      console.log(`[BulkVS] Listing all webhooks...`);
+      
+      // Use GET /webHooks endpoint to list all webhooks
+      const response = await this.client.get("/webHooks");
+      
+      console.log("[BulkVS] Webhooks:", JSON.stringify(response.data, null, 2));
+      return response.data;
+    } catch (error: any) {
+      console.error("[BulkVS] listWebhooks error:", error.response?.data || error.message);
+      throw error;
+    }
+  }
+
   async createOrUpdateWebhook(webhookName: string, webhookUrl: string) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
