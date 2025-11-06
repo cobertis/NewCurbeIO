@@ -19711,14 +19711,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log("[BulkVS Webhook] Payload:", JSON.stringify(payload, null, 2));
       
       // Handle incoming message
-      // BulkVS sends: { From, To, Message, RefId, FragmentCount }
+      // BulkVS sends: { From, To, Message, RefId, FragmentCount, DeliveryReceipt }
       if (payload.From || payload.from) {
         const rawFrom = payload.From || payload.from;
         const rawTo = (payload.To || payload.to)?.[0] || phoneNumber.did;
-        const body = payload.Message || payload.body;
+        let body = payload.Message || payload.body;
         const mediaUrl = payload.MediaUrl || payload.mediaUrl || null;
         const mediaType = payload.MediaType || payload.mediaType || null;
         const providerMsgId = payload.RefId || payload.id || null;
+        
+        // PRIORITY 1: Check if payload explicitly marks this as a delivery receipt
+        if (payload.DeliveryReceipt === true || payload.deliveryReceipt === true) {
+          console.log('[BulkVS Webhook] Ignoring delivery receipt (flagged by payload)');
+          return res.status(200).json({ message: "Delivery receipt acknowledged" });
+        }
+        
+        // PRIORITY 2: Decode URL-encoded body and check for delivery receipt patterns
+        // Messages come URL-encoded: "stat%3ADELIVRD" instead of "stat:DELIVRD"
+        if (body) {
+          try {
+            body = decodeURIComponent(body);
+          } catch (e) {
+            // If decoding fails, use original body
+          }
+        }
         
         // Filter out delivery receipts - these should NOT be saved as messages
         // Delivery receipts have format like: "id:xxx sub:xxx dlvrd:xxx submit date:xxx done date:xxx stat:DELIVRD err:xxx text:xxx"
@@ -19730,7 +19746,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         );
         
         if (isDeliveryReceipt) {
-          console.log('[BulkVS Webhook] Ignoring delivery receipt:', body.substring(0, 100));
+          console.log('[BulkVS Webhook] Ignoring delivery receipt (content pattern):', body.substring(0, 100));
           return res.status(200).json({ message: "Delivery receipt acknowledged" });
         }
         
