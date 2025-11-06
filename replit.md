@@ -57,8 +57,9 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Audit Logging:** Centralized action tracking.
 - **Campaign System:** Unified Email/SMS Campaign and Contact List management.
 - **Real-Time Notifications:** WebSocket-based updates.
-- **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging platform with dedicated phone numbers per user, real-time updates, full privacy isolation, and automated webhook management. Features include SMS/MMS with file upload, emoji picker, message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket, and WhatsApp-style chronological message ordering.
+- **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging platform with dedicated phone numbers per user, real-time updates, full privacy isolation, and automated webhook management. Features include SMS/MMS with file upload, emoji picker, message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket, WhatsApp-style chronological message ordering, and thread deletion with confirmation dialog.
     - **New Message Feature:** WhatsApp-style modal with phone number formatting, validation, and automatic thread creation.
+    - **Delete Thread:** Complete thread deletion removes thread and all associated messages with CASCADE cleanup. Includes confirmation dialog to prevent accidental deletions. Authorization ensures users can only delete their own threads.
     - **Number Provisioning:** Simplified area code search, 3-step wizard. Each user can only provision one phone number (toll-free numbers prohibited).
     - **Billing System:** Automatic Stripe subscription creation ($10/month per number), recurring every 30 days, allows reactivation of cancelled numbers.
     - **Phone Number Reactivation:** Cancelled numbers can be reactivated via Billing or Chat page interfaces.
