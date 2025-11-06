@@ -7452,8 +7452,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const contacts = await storage.getUnifiedContacts(params);
       console.log(`[CONTACTS UNIFICADOS] Usuario: ${currentUser.email}, Rol: ${currentUser.role}, UserID: ${params.userId || 'TODOS'}, CompañíaID: ${params.companyId || 'TODAS'}, Total contactos: ${contacts.length}`);
       
+      // Exclude SMS/BulkVS contacts from the unified contacts page
+      // These contacts are already shown in the Chat page
+      const contactsWithoutSMS = contacts.filter(contact => 
+        !contact.origin.includes('bulkvs_thread')
+      );
+      
+      console.log(`[CONTACTS UNIFICADOS] Contactos después de excluir SMS: ${contactsWithoutSMS.length}`);
+      
       // Mask SSN for non-superadmins
-      const sanitizedContacts = contacts.map(contact => {
+      const sanitizedContacts = contactsWithoutSMS.map(contact => {
         if (currentUser.role !== "superadmin" && contact.ssn) {
           return {
             ...contact,
