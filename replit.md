@@ -68,7 +68,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
         - **Chat Page:** Special empty state when user has no active number but has cancelled number, showing previously cancelled number with "Reactivate" (primary) and "Get a New Number" (secondary) buttons
         - Both methods create new Stripe subscription and restore service. One-number-per-user limit enforced.
     -   **Phone Settings:** View number, configuration, call forwarding, billing info, deactivation.
-    -   **CNAM (Caller ID Name):** Automatically sanitized and updated to max 15 alphanumeric characters.
+    -   **CNAM (Caller ID Name):** Manual configuration via Phone Settings UI with real-time validation (1-15 alphanumeric characters), auto-sanitization, and character counter. Updates pushed to BulkVS API via POST /tnRecord endpoint using "Lidb" field (Line Information Database).
     -   **Call Forwarding:** Configurable via BulkVS API.
     -   **Security:** User-scoped data isolation, webhook signature validation, E.164 phone number normalization.
 -   **Billing & Stripe Integration:** Automated customer/subscription management.
