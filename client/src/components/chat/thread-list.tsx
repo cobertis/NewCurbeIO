@@ -160,13 +160,7 @@ export function ThreadList({
                 data-testid={`thread-${thread.id}`}
               >
                 <Avatar className="h-12 w-12 flex-shrink-0">
-                  {thread.displayName && !isPhoneNumber(thread.displayName) ? (
-                    <AvatarFallback className="bg-muted text-muted-foreground">
-                      {getInitials(thread.displayName)}
-                    </AvatarFallback>
-                  ) : (
-                    <AvatarImage src={defaultAvatar} alt="Contact" />
-                  )}
+                  <AvatarImage src={defaultAvatar} alt="Contact" />
                 </Avatar>
 
                 <div className="flex-1 min-w-0">

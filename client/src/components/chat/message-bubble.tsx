@@ -57,13 +57,7 @@ export function MessageBubble({ message, isOutbound, showAvatar = true, contactN
     >
       {!isOutbound && showAvatar && (
         <Avatar className="h-8 w-8 flex-shrink-0" data-testid="avatar-inbound">
-          {contactName && !isPhoneNumber(contactName) ? (
-            <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-              {getInitials(contactName)}
-            </AvatarFallback>
-          ) : (
-            <AvatarImage src={defaultAvatar} alt="Contact" className="object-cover" />
-          )}
+          <AvatarImage src={defaultAvatar} alt="Contact" className="object-cover" />
         </Avatar>
       )}
 

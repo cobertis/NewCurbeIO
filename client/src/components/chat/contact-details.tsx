@@ -106,13 +106,7 @@ export function ContactDetails({
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 flex flex-col items-center text-center">
           <Avatar className="h-24 w-24 mb-3" data-testid="avatar-contact">
-            {thread.displayName && !isPhoneNumber(thread.displayName) ? (
-              <AvatarFallback className="bg-muted text-muted-foreground text-2xl">
-                {getInitials(thread.displayName)}
-              </AvatarFallback>
-            ) : (
-              <AvatarImage src={defaultAvatar} alt="Contact" className="object-cover" />
-            )}
+            <AvatarImage src={defaultAvatar} alt="Contact" className="object-cover" />
           </Avatar>
           <h3 className="font-semibold text-lg" data-testid="text-contact-name">
             {thread.displayName ?? "Unknown Contact"}
