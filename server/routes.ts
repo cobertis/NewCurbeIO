@@ -19069,7 +19069,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Build webhook URL: {domain}/{company-slug}/{webhook-token}
       const baseDomain = getBaseDomain();
       const webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
-      const webhookName = `webhook-${user.id}-${Date.now()}`; // Unique webhook name
+      // Use shorter webhook name to avoid BulkVS truncation (50 char limit)
+      const webhookName = `wh-${user.id}`;
       
       console.log(`[Webhook] Creating webhook for user ${user.id}`);
       console.log(`[Webhook] URL: ${webhookUrl}`);
@@ -19478,7 +19479,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // If webhook doesn't exist, create a new one
       if (!webhookExists || !webhookName || !webhookToken) {
         console.log(`[REACTIVATION] Creating new webhook...`);
-        webhookName = `webhook-${user.id}-${Date.now()}`;
+        // Use shorter name without timestamp to avoid BulkVS truncation (50 char limit)
+        webhookName = `wh-${user.id}`;
         webhookToken = generateSecureToken(32);
         const webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
         
