@@ -99,12 +99,16 @@ class BulkVSClient {
       // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
       const normalizedDid = formatForBulkVS(did);
       
-      const response = await this.client.post("/smsEnable", {
-        accountId: this.accountId,
-        did: normalizedDid,
-        sms: true,
-        mms: true,
+      console.log(`[BulkVS] Enabling SMS/MMS for ${normalizedDid}...`);
+      
+      // Use /tnRecord endpoint to enable SMS and MMS
+      const response = await this.client.post("/tnRecord", {
+        TN: normalizedDid,
+        Sms: true,
+        Mms: true,
       });
+      
+      console.log("[BulkVS] ✓ SMS/MMS enabled successfully");
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] enableSmsMms error:", error.response?.data || error.message);
@@ -119,11 +123,16 @@ class BulkVSClient {
       // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
       const normalizedDid = formatForBulkVS(did);
       
-      const response = await this.client.post("/smsSetWebhook", {
-        accountId: this.accountId,
-        did: normalizedDid,
-        url: webhookUrl,
+      console.log(`[BulkVS] Setting messaging webhook for ${normalizedDid}...`);
+      
+      // Use /tnRecord endpoint to set webhook
+      // For now, we use "Default" webhook which should be pre-configured in BulkVS portal
+      const response = await this.client.post("/tnRecord", {
+        TN: normalizedDid,
+        Webhook: "Default",
       });
+      
+      console.log("[BulkVS] ✓ Webhook set successfully");
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] setMessagingWebhook error:", error.response?.data || error.message);
@@ -138,11 +147,15 @@ class BulkVSClient {
       // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
       const normalizedDid = formatForBulkVS(did);
       
-      const response = await this.client.post("/smsAssignCampaign", {
-        accountId: this.accountId,
-        did: normalizedDid,
-        campaignId,
+      console.log(`[BulkVS] Assigning ${normalizedDid} to campaign ${campaignId}...`);
+      
+      // Use /tnRecord endpoint to assign campaign (Tcr = The Campaign Registry)
+      const response = await this.client.post("/tnRecord", {
+        TN: normalizedDid,
+        Tcr: campaignId,
       });
+      
+      console.log("[BulkVS] ✓ Campaign assigned successfully");
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] assignToCampaign error:", error.response?.data || error.message);
