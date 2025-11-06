@@ -86,6 +86,11 @@ export default function Contacts() {
   // Filter contacts
   const filteredContacts = useMemo(() => {
     return contacts.filter(contact => {
+      // Excluir contactos sin email ni teléfono
+      if (!contact.email && !contact.phone) {
+        return false;
+      }
+
       // Search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
