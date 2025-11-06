@@ -19420,44 +19420,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
       
-      // ===== STEP 1: ENSURE USER HAS SLUG =====
-      let userSlug = user.slug;
+      // ===== STEP 1: GET USER SLUG (must exist from provisioning) =====
+      const userSlug = user.slug;
       if (!userSlug) {
-        const { generateSlug } = await import("@shared/phone");
-        const nameForSlug = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0];
-        const baseSlug = generateSlug(nameForSlug);
-        
-        console.log(`[REACTIVATION] Generating slug from: "${nameForSlug}" -> "${baseSlug}"`);
-        
-        if (!baseSlug || baseSlug.trim() === '') {
-          return res.status(500).json({ 
-            message: "Failed to generate user slug. Please ensure user has a valid email address." 
-          });
-        }
-        
-        // Ensure uniqueness by appending number if needed
-        let counter = 1;
-        let finalSlug = baseSlug;
-        const companyUsers = await storage.getUsersByCompany(user.companyId);
-        
-        while (companyUsers.some(u => u.slug === finalSlug && u.id !== user.id)) {
-          finalSlug = `${baseSlug}-${counter}`;
-          counter++;
-        }
-        
-        console.log(`[REACTIVATION] Final slug to save: "${finalSlug}"`);
-        
-        // Update user with unique slug (only if different from current)
-        if (finalSlug && finalSlug !== user.slug) {
-          await storage.updateUser(user.id, { slug: finalSlug });
-          userSlug = finalSlug;
-          console.log(`[REACTIVATION] ✓ User slug saved: ${userSlug}`);
-        } else {
-          return res.status(500).json({ message: "Failed to generate valid slug for user" });
-        }
-      } else {
-        console.log(`[REACTIVATION] User already has slug: ${userSlug}`);
+        return res.status(500).json({ 
+          message: "User does not have a slug. This should have been created during initial number provisioning." 
+        });
       }
+      console.log(`[REACTIVATION] Using existing user slug: ${userSlug}`);
       
       // ===== STEP 2: CREATE WEBHOOK IN BULKVS (NO CHARGE YET) =====
       const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
