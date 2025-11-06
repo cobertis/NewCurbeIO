@@ -335,6 +335,7 @@ export default function SmsMmsPage() {
         }
 
         // Send message - backend will create thread if needed
+        // CRITICAL: Pass displayName so backend can save it
         const sentMessage = (await apiRequest(
           "POST",
           "/api/bulkvs/messages/send",
@@ -342,6 +343,7 @@ export default function SmsMmsPage() {
             to: currentThread.externalPhone,
             body: message || undefined,
             mediaUrl,
+            displayName: currentThread.displayName, // Pass contact name to backend
           }
         )) as BulkvsMessage;
         

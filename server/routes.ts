@@ -20024,7 +20024,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(503).json({ message: "BulkVS service is not configured" });
       }
       
-      const { threadId, to, body, mediaUrl } = req.body;
+      const { threadId, to, body, mediaUrl, displayName: providedDisplayName } = req.body;
       
       if (!threadId && !to) {
         return res.status(400).json({ message: "Either threadId or to (phone number) is required" });
@@ -20064,12 +20064,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Check if thread exists
         thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, normalizedTo);
         if (!thread) {
+          // CRITICAL: Find contact name from unified contacts for better UX
+          let contactDisplayName = providedDisplayName || null;
+          
+          if (!contactDisplayName) {
+            // Search in unified contacts by phone number
+            const contacts = await storage.getUnifiedContacts({
+              companyId: user.companyId,
+              userId: user.id
+            });
+            
+            const matchingContact = contacts.find(c => c.phone === normalizedTo);
+            if (matchingContact) {
+              contactDisplayName = matchingContact.displayName;
+            }
+          }
+          
           thread = await storage.createBulkvsThread({
             phoneNumberId: phoneNumber.id,
             userId: user.id,
             companyId: user.companyId,
             externalPhone: normalizedTo,
-            displayName: normalizedTo,
+            displayName: contactDisplayName, // Use contact name if found, null otherwise
             lastMessageAt: new Date(),
             lastMessagePreview: body?.substring(0, 100) || "[Media]",
           });
