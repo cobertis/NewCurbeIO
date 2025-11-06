@@ -138,6 +138,23 @@ class BulkVSClient {
     }
   }
 
+  async deleteWebhook(webhookName: string) {
+    if (!this.isConfigured()) throw new Error("BulkVS not configured");
+    
+    try {
+      console.log(`[BulkVS] Deleting webhook "${webhookName}"...`);
+      
+      // Use DELETE /webHooks endpoint to delete webhook
+      const response = await this.client.delete(`/webHooks/${encodeURIComponent(webhookName)}`);
+      
+      console.log("[BulkVS] ✓ Webhook deleted successfully");
+      return response.data;
+    } catch (error: any) {
+      console.error("[BulkVS] deleteWebhook error:", error.response?.data || error.message);
+      throw error;
+    }
+  }
+
   async setMessagingWebhook(did: string, webhookName: string) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     

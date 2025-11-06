@@ -19062,20 +19062,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       nextBillingDate.setDate(nextBillingDate.getDate() + 30);
       
       // ===== WEBHOOK SETUP =====
-      // Ensure user has a slug (URL-friendly identifier)
-      const userSlug = await ensureUserSlug(user.id, user.companyId);
-      console.log(`[Webhook] User slug ready: ${userSlug}`);
-      
       // Generate secure webhook token
       const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
       const webhookToken = generateSecureToken(32);
       
-      // Build webhook URL: {domain}/{company-slug}/{user-slug}/{webhook-token}
+      // Build webhook URL: {domain}/{company-slug}/{webhook-token}
       const baseDomain = getBaseDomain();
-      const webhookUrl = `${baseDomain}/${company.slug}/${userSlug}/${webhookToken}`;
-      const webhookName = `webhook-${userSlug}-${Date.now()}`; // Unique webhook name
+      const webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
+      const webhookName = `webhook-${user.id}-${Date.now()}`; // Unique webhook name
       
-      console.log(`[Webhook] Creating webhook for ${userSlug}`);
+      console.log(`[Webhook] Creating webhook for user ${user.id}`);
       console.log(`[Webhook] URL: ${webhookUrl}`);
       console.log(`[Webhook] Name: ${webhookName}`);
       
@@ -19394,6 +19390,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
+      // Delete webhook from BulkVS if exists
+      if (phoneNumber.webhookName) {
+        try {
+          console.log(`[BulkVS] Deleting webhook ${phoneNumber.webhookName}`);
+          await bulkVSClient.deleteWebhook(phoneNumber.webhookName);
+          console.log(`[BulkVS] ✓ Webhook deleted successfully`);
+        } catch (webhookError: any) {
+          console.error(`[BulkVS] Error deleting webhook:`, webhookError.message);
+          // Continue with deactivation even if webhook deletion fails
+        }
+      }
+
       // Update status to inactive
       await storage.updateBulkvsPhoneNumber(id, {
         status: "inactive",
@@ -19447,16 +19455,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
       
-      // ===== STEP 1: ENSURE USER HAS SLUG =====
-      const userSlug = await ensureUserSlug(user.id, user.companyId);
-      console.log(`[REACTIVATION] User slug ready: ${userSlug}`);
-      
-      // ===== STEP 2: CREATE WEBHOOK IN BULKVS (NO CHARGE YET) =====
+      // ===== STEP 1: PREPARE WEBHOOK DATA =====
       const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
       const webhookToken = generateSecureToken(32);
       const baseDomain = getBaseDomain();
-      const webhookUrl = `${baseDomain}/${company.slug}/${userSlug}/${webhookToken}`;
-      const webhookName = `webhook-${userSlug}-${Date.now()}`;
+      const webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
+      const webhookName = `webhook-${user.id}-${Date.now()}`;
       
       console.log(`[REACTIVATION] Creating webhook: ${webhookName}`);
       console.log(`[REACTIVATION] Webhook URL: ${webhookUrl}`);
@@ -19640,13 +19644,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // 4a. POST /:companySlug/:userSlug/:webhookToken - Dynamic webhook endpoint for incoming messages
+  // 4a. POST /:companySlug/:webhookToken - Dynamic webhook endpoint for incoming messages
   // This endpoint receives BulkVS webhooks for each individual user
-  app.post("/:companySlug/:userSlug/:webhookToken", async (req: Request, res: Response) => {
+  app.post("/:companySlug/:webhookToken", async (req: Request, res: Response) => {
     try {
-      const { companySlug, userSlug, webhookToken } = req.params;
+      const { companySlug, webhookToken } = req.params;
       
-      console.log(`[BulkVS Webhook] Received webhook for ${companySlug}/${userSlug}`);
+      console.log(`[BulkVS Webhook] Received webhook for ${companySlug}/${webhookToken}`);
       
       // Find company by slug
       const company = await storage.getCompanyBySlug(companySlug);
@@ -19655,21 +19659,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Company not found" });
       }
       
-      // Find user by slug and companyId
-      const users = await storage.getUsersByCompany(company.id);
-      const user = users.find(u => u.slug === userSlug);
-      if (!user) {
-        console.error(`[BulkVS Webhook] User not found: ${userSlug}`);
-        return res.status(404).json({ message: "User not found" });
+      // Find phone number by webhook token
+      const phoneNumbers = await storage.getBulkvsPhoneNumbersByCompany(company.id);
+      const phoneNumber = phoneNumbers.find(pn => pn.webhookToken === webhookToken);
+      if (!phoneNumber) {
+        console.error(`[BulkVS Webhook] Invalid webhook token: ${webhookToken}`);
+        return res.status(403).json({ message: "Invalid webhook token" });
       }
       
-      // Find phone number by userId and validate webhook token
-      const phoneNumbers = await storage.getBulkvsPhoneNumbersByUser(user.id);
-      const phoneNumber = phoneNumbers.find(pn => pn.webhookToken === webhookToken);
-      
-      if (!phoneNumber) {
-        console.error(`[BulkVS Webhook] Invalid webhook token for user ${userSlug}`);
-        return res.status(401).json({ message: "Unauthorized - Invalid webhook token" });
+      // Get user from phone number
+      const user = await storage.getUser(phoneNumber.userId);
+      if (!user) {
+        console.error(`[BulkVS Webhook] User not found: ${phoneNumber.userId}`);
+        return res.status(404).json({ message: "User not found" });
       }
       
       const payload = req.body;
