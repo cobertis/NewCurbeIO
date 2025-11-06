@@ -1,0 +1,48 @@
+cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1762439203393%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252Ft%252Fabc-1%252Frepls%252FNewCurbeIO%2522%252C%2522trackingOnly%2522%253Atrue%257D:10  POST https://ingest.app.coframe.com/ingest/v2/batched_events/68c9ad4d4cddb58cf3a1f93d/ 502 (Bad Gateway)
+M @ cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1762439203393%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252Ft%252Fabc-1%252Frepls%252FNewCurbeIO%2522%252C%2522trackingOnly%2522%253Atrue%257D:10
+O @ cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1762439203393%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252Ft%252Fabc-1%252Frepls%252FNewCurbeIO%2522%252C%2522trackingOnly%2522%253Atrue%257D:10
+(anonymous) @ cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1762439203393%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252Ft%252Fabc-1%252Frepls%252FNewCurbeIO%2522%252C%2522trackingOnly%2522%253Atrue%257D:10Understand this error
+7injected.js:27 WebSocket disconnected
+(index):29  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@react-refresh net::ERR_ABORTED 502 (Bad Gateway)Understand this error
+(index):138  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/main.tsx?v=e6E1gOmFd7yu8gxgmvhI4 net::ERR_ABORTED 502 (Bad Gateway)Understand this error
+(index):34  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@vite/client net::ERR_ABORTED 502 (Bad Gateway)Understand this error
+(index):134  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@replit/vite-plugin-dev-banner/banner-script.js net::ERR_ABORTED 502 (Bad Gateway)Understand this error
+(index):29  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@react-refresh net::ERR_ABORTED 500 (Internal Server Error)Understand this error
+(index):134  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@replit/vite-plugin-dev-banner/banner-script.js net::ERR_ABORTED 500 (Internal Server Error)Understand this error
+(index):138  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/main.tsx?v=hQI6a5WMrKTP4njWAge-x net::ERR_ABORTED 500 (Internal Server Error)Understand this error
+client:536 WebSocket connection to 'wss://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/?token=MAWNhLYKeivv' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=MAWNhLYKeivv' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+(index):29  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@react-refresh net::ERR_ABORTED 500 (Internal Server Error)Understand this error
+(index):29  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@react-refresh net::ERR_ABORTED 500 (Internal Server Error)Understand this error
+client:536 WebSocket connection to 'wss://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/?token=aiaQ1qQFbYU5' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+ WebSocket connection to 'wss://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/?token=aiaQ1qQFbYU5' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=aiaQ1qQFbYU5' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+client:536 WebSocket connection to 'wss://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/?token=aiaQ1qQFbYU5' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=aiaQ1qQFbYU5' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+injected.js:27 [WebSocket] Connected - server will authenticate using session

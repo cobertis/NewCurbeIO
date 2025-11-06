@@ -1,0 +1,51 @@
+2injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 WebSocket disconnected
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 Reconnecting... (attempt 0)
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 WebSocket disconnected
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 Reconnecting... (attempt 0)
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 WebSocket disconnected
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 Reconnecting... (attempt 0)
+injected.js:204  POST https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/bulkvs/numbers/90d7c5be-cbae-4659-a37c-1a74fc025c31/reactivate 500 (Internal Server Error)
+apply @ injected.js:204
+apiRequest @ queryClient.ts:33
+mutationFn @ sms-mms.tsx:166
+fn @ @tanstack_react-query.js?v=2f4d57f9:1189
+run @ @tanstack_react-query.js?v=2f4d57f9:494
+start @ @tanstack_react-query.js?v=2f4d57f9:536
+execute @ @tanstack_react-query.js?v=2f4d57f9:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=2f4d57f9:2630
+(anonymous) @ @tanstack_react-query.js?v=2f4d57f9:3295
+onClick @ sms-mms.tsx:313
+handleEvent @ chunk-5Q5YC75F.js?v=2f4d57f9:4
+callCallback2 @ chunk-RPCDYKBN.js?v=2f4d57f9:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=2f4d57f9:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=2f4d57f9:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=2f4d57f9:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=2f4d57f9:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=2f4d57f9:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=2f4d57f9:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=2f4d57f9:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=2f4d57f9:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=2f4d57f9:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=2f4d57f9:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=2f4d57f9:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=2f4d57f9:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=2f4d57f9:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=2f4d57f9:5449Understand this error
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 WebSocket disconnected
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 Reconnecting... (attempt 0)
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 WebSocket disconnected
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 WebSocket disconnected
+injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 Reconnecting... (attempt 0)
+injected.js:27 [WebSocket] Connected - server will authenticate using session
