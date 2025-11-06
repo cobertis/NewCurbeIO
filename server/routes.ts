@@ -19031,7 +19031,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         let counter = 1;
         let finalSlug = userSlug;
         while (true) {
-          const users = await storage.getCompanyUsers(user.companyId);
+          const users = await storage.getUsersByCompany(user.companyId);
           const slugExists = users.some(u => u.slug === finalSlug && u.id !== user.id);
           if (!slugExists) break;
           finalSlug = `${userSlug}-${counter}`;
@@ -19535,7 +19535,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           let counter = 1;
           let finalSlug = userSlug;
           while (true) {
-            const users = await storage.getCompanyUsers(user.companyId);
+            const users = await storage.getUsersByCompany(user.companyId);
             const slugExists = users.some(u => u.slug === finalSlug && u.id !== user.id);
             if (!slugExists) break;
             finalSlug = `${userSlug}-${counter}`;
@@ -19659,7 +19659,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Find user by slug and companyId
-      const users = await storage.getCompanyUsers(company.id);
+      const users = await storage.getUsersByCompany(company.id);
       const user = users.find(u => u.slug === userSlug);
       if (!user) {
         console.error(`[BulkVS Webhook] User not found: ${userSlug}`);
