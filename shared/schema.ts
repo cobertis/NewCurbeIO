@@ -3092,6 +3092,7 @@ export const bulkvsThreads = pgTable("bulkvs_threads", {
   isPinned: boolean("is_pinned").notNull().default(false),
   isArchived: boolean("is_archived").notNull().default(false),
   isMuted: boolean("is_muted").notNull().default(false),
+  isBlocked: boolean("is_blocked").notNull().default(false), // Block contact from sending/receiving
   
   unreadCount: integer("unread_count").notNull().default(0),
   lastMessageAt: timestamp("last_message_at"),

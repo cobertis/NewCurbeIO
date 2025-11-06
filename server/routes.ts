@@ -20138,7 +20138,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const { id } = req.params;
-      const { labels, isPinned, isArchived, isMuted, displayName } = req.body;
+      const { labels, isPinned, isArchived, isMuted, isBlocked, displayName } = req.body;
       
       // Verify thread belongs to user
       const thread = await storage.getBulkvsThread(id);
@@ -20155,6 +20155,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (isPinned !== undefined) updateData.isPinned = isPinned;
       if (isArchived !== undefined) updateData.isArchived = isArchived;
       if (isMuted !== undefined) updateData.isMuted = isMuted;
+      if (isBlocked !== undefined) updateData.isBlocked = isBlocked;
       if (displayName !== undefined) updateData.displayName = displayName;
       
       const updatedThread = await storage.updateBulkvsThread(id, updateData);

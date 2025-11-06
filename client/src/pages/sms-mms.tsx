@@ -91,23 +91,20 @@ export default function SmsMmsPage() {
   // Filter out any undefined or invalid threads
   const rawThreads = threadsData.filter((t) => t && t.id);
   
-  // CRITICAL: Enrich threads with contact names for threads with null displayName
+  // CRITICAL: Enrich threads with contact names for threads with null or phone-number displayName
   // This fixes the issue where existing threads don't have names
   const threads = useMemo(() => {
-    console.log('[SMS ENRICH] Total contacts:', contacts.length);
-    console.log('[SMS ENRICH] Total threads:', rawThreads.length);
-    
     return rawThreads.map(thread => {
-      // If thread already has displayName, use it
-      if (thread.displayName) {
+      // Check if thread has a meaningful displayName (not null and not just the phone number)
+      const hasRealName = thread.displayName && thread.displayName !== thread.externalPhone;
+      
+      if (hasRealName) {
         return thread;
       }
       
       // Otherwise, search for contact name in unified contacts
       // Both should already be normalized to 11-digit format by the backend
       const matchingContact = contacts.find(c => c.phone === thread.externalPhone);
-      
-      console.log('[SMS ENRICH] Thread:', thread.externalPhone, 'Match:', matchingContact?.displayName || 'NONE');
       
       if (matchingContact && matchingContact.displayName) {
         return {
@@ -137,6 +134,11 @@ export default function SmsMmsPage() {
       
       if (!selectedThread || activeNumbers.length === 0) {
         throw new Error("No phone number available");
+      }
+
+      // CRITICAL: Prevent sending messages to blocked contacts
+      if (selectedThread.isBlocked) {
+        throw new Error("Cannot send messages to blocked contacts. Unblock this contact first.");
       }
 
       const phoneNumber = activeNumbers[0];
@@ -502,8 +504,26 @@ export default function SmsMmsPage() {
     }
   };
 
-  const handleUpdateThread = (updates: Partial<BulkvsThread>) => {
-    updateThreadMutation.mutate(updates);
+  const handleUpdateThread = async (updates: Partial<BulkvsThread>) => {
+    try {
+      await updateThreadMutation.mutateAsync(updates);
+      
+      // Show success toast for blocking/unblocking
+      if (updates.isBlocked !== undefined) {
+        toast({
+          title: updates.isBlocked ? "Contact Blocked" : "Contact Unblocked",
+          description: updates.isBlocked 
+            ? "You won't be able to send or receive messages from this contact"
+            : "You can now send and receive messages from this contact",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to update thread",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteThread = () => {
@@ -624,6 +644,22 @@ export default function SmsMmsPage() {
     return <LoadingSpinner message="Loading conversations..." />;
   }
 
+  // Check if selected thread's contact exists in unified contacts
+  const contactExists = selectedThread 
+    ? contacts.some(c => c.phone === selectedThread.externalPhone)
+    : false;
+
+  // Handle adding SMS contact to contacts (creates a basic quote member)
+  const handleAddToContacts = () => {
+    if (!selectedThread) return;
+    
+    // TODO: Implement dialog to collect basic contact info and create quote member
+    toast({
+      title: "Add to Contacts",
+      description: "This feature will be implemented soon",
+    });
+  };
+
   return (
     <>
       <div className="h-full flex overflow-hidden bg-muted/30" data-testid="sms-mms-page">
@@ -656,7 +692,9 @@ export default function SmsMmsPage() {
         <ContactDetails
           thread={selectedThread}
           messages={messages}
+          contactExists={contactExists}
           onUpdateThread={handleUpdateThread}
+          onAddToContacts={handleAddToContacts}
         />
       </div>
 
@@ -701,7 +739,9 @@ export default function SmsMmsPage() {
             <ContactDetails
               thread={selectedThread}
               messages={messages}
+              contactExists={contactExists}
               onUpdateThread={handleUpdateThread}
+              onAddToContacts={handleAddToContacts}
               onClose={handleCloseDetails}
             />
           </div>

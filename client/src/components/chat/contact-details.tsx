@@ -13,16 +13,20 @@ import defaultAvatar from "@assets/generated_images/Generic_user_avatar_icon_55b
 interface ContactDetailsProps {
   thread: BulkvsThread | null;
   messages: BulkvsMessage[];
+  contactExists: boolean; // Whether this contact exists in unified contacts
   onUpdateThread?: (updates: Partial<BulkvsThread>) => void;
   onDeleteThread?: () => void;
+  onAddToContacts?: () => void;
   onClose?: () => void;
 }
 
 export function ContactDetails({ 
   thread, 
   messages, 
+  contactExists,
   onUpdateThread, 
   onDeleteThread,
+  onAddToContacts,
   onClose 
 }: ContactDetailsProps) {
   const [newLabel, setNewLabel] = useState("");
@@ -73,6 +77,13 @@ export function ContactDetails({
       labels: [...currentLabels, newLabel.trim()],
     });
     setNewLabel("");
+  };
+
+  const handleToggleBlock = () => {
+    if (!onUpdateThread) return;
+    onUpdateThread({
+      isBlocked: !thread.isBlocked,
+    });
   };
 
   const handleRemoveLabel = (label: string) => {
@@ -202,22 +213,28 @@ export function ContactDetails({
         <Separator />
 
         <div className="p-4 space-y-2">
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-2"
-            data-testid="button-add-contact"
-          >
-            <UserPlus className="h-4 w-4" />
-            Add to Contacts
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-2 text-orange-600 hover:text-orange-700"
-            data-testid="button-block"
-          >
-            <Ban className="h-4 w-4" />
-            Block Contact
-          </Button>
+          {!contactExists && onAddToContacts && (
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={onAddToContacts}
+              data-testid="button-add-contact"
+            >
+              <UserPlus className="h-4 w-4" />
+              Add to Contacts
+            </Button>
+          )}
+          {onUpdateThread && (
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 text-orange-600 hover:text-orange-700"
+              onClick={handleToggleBlock}
+              data-testid="button-block"
+            >
+              <Ban className="h-4 w-4" />
+              {thread.isBlocked ? "Unblock Contact" : "Block Contact"}
+            </Button>
+          )}
           {onDeleteThread && (
             <Button
               variant="outline"
