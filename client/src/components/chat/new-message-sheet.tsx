@@ -95,11 +95,29 @@ export function NewMessageSheet({
     const query = searchQuery.toLowerCase();
     const searchDigits = searchQuery.replace(/\D/g, "");
     
-    return allContacts.filter(
-      (c) =>
-        c.displayName?.toLowerCase().includes(query) ||
-        c.phone.includes(searchDigits)
-    );
+    console.log('[FILTER DEBUG] searchQuery:', searchQuery);
+    console.log('[FILTER DEBUG] query (lowercase):', query);
+    console.log('[FILTER DEBUG] searchDigits:', searchDigits);
+    console.log('[FILTER DEBUG] Total contacts:', allContacts.length);
+    
+    const filtered = allContacts.filter((c) => {
+      const nameMatch = c.displayName?.toLowerCase().includes(query);
+      const phoneMatch = c.phone.includes(searchDigits);
+      
+      if (nameMatch || phoneMatch) {
+        console.log('[FILTER DEBUG] MATCH:', {
+          displayName: c.displayName,
+          phone: c.phone,
+          nameMatch,
+          phoneMatch
+        });
+      }
+      
+      return nameMatch || phoneMatch;
+    });
+    
+    console.log('[FILTER DEBUG] Filtered count:', filtered.length);
+    return filtered;
   }, [allContacts, searchQuery]);
 
   // Verificar si el número buscado ya existe

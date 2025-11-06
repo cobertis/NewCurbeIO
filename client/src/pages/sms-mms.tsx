@@ -83,17 +83,20 @@ export default function SmsMmsPage() {
   const activeNumbers = phoneNumbers?.filter(p => p.status === 'active') || [];
   const cancelledNumbers = phoneNumbers?.filter(p => p.status === 'inactive' && p.billingStatus === 'cancelled') || [];
 
-  const { data: threads = [], isLoading: loadingThreads } = useQuery<BulkvsThread[]>({
+  const { data: threadsData = [], isLoading: loadingThreads } = useQuery<BulkvsThread[]>({
     queryKey: ["/api/bulkvs/threads"],
     enabled: activeNumbers.length > 0,
   });
+
+  // Filter out any undefined or invalid threads
+  const threads = threadsData.filter((t) => t && t.id);
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery<BulkvsMessage[]>({
     queryKey: ["/api/bulkvs/threads", selectedThreadId, "messages"],
     enabled: !!selectedThreadId && !selectedThreadId.startsWith('temp-'),
   });
 
-  const selectedThread = threads.find((t) => t.id === selectedThreadId) || null;
+  const selectedThread = threads.find((t) => t?.id === selectedThreadId) || null;
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ message, mediaFile }: { message: string; mediaFile?: File }) => {
@@ -272,7 +275,7 @@ export default function SmsMmsPage() {
     setSelectedThreadId(threadId);
     setMobileView("messages");
     
-    const thread = threads.find((t) => t.id === threadId);
+    const thread = threads.find((t) => t?.id === threadId);
     if (thread && thread.unreadCount > 0) {
       markAsReadMutation.mutate(threadId);
     }
@@ -281,7 +284,7 @@ export default function SmsMmsPage() {
   const handleMarkAsRead = () => {
     if (!selectedThreadId) return;
     
-    const thread = threads.find((t) => t.id === selectedThreadId);
+    const thread = threads.find((t) => t?.id === selectedThreadId);
     if (thread && thread.unreadCount > 0) {
       markAsReadMutation.mutate(selectedThreadId);
     }
@@ -291,7 +294,7 @@ export default function SmsMmsPage() {
     // Check if this is a temporary thread
     if (selectedThreadId?.startsWith('temp-')) {
       // For temporary threads, create the thread first by sending the message
-      const currentThread = threads.find(t => t.id === selectedThreadId);
+      const currentThread = threads.find(t => t?.id === selectedThreadId);
       if (!currentThread) return;
       
       try {
@@ -350,7 +353,7 @@ export default function SmsMmsPage() {
   const handleCreateNewThread = (phoneNumber: string) => {
     // Buscar si ya existe un thread con este número
     const existingThread = threads.find(
-      (t) => t.externalPhone === phoneNumber
+      (t) => t?.externalPhone === phoneNumber
     );
     
     if (existingThread) {
