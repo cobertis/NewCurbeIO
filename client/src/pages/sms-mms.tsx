@@ -223,16 +223,35 @@ export default function SmsMmsPage() {
     mutationFn: async (threadId: string) => {
       return apiRequest("DELETE", `/api/bulkvs/threads/${threadId}`);
     },
+    onMutate: async (threadId: string) => {
+      // OPTIMISTIC UPDATE: Remove thread from list IMMEDIATELY
+      await queryClient.cancelQueries({ queryKey: ["/api/bulkvs/threads"] });
+      
+      const previousThreads = queryClient.getQueryData<BulkvsThread[]>(["/api/bulkvs/threads"]);
+      
+      // Remove the deleted thread from cache instantly
+      queryClient.setQueryData<BulkvsThread[]>(
+        ["/api/bulkvs/threads"],
+        (old) => old?.filter(t => t.id !== threadId) || []
+      );
+      
+      return { previousThreads };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
       setSelectedThreadId(null);
       setMobileView("threads");
       toast({
         title: "Thread deleted",
         description: "Conversation deleted successfully.",
       });
+      // Refresh from server to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousThreads) {
+        queryClient.setQueryData(["/api/bulkvs/threads"], context.previousThreads);
+      }
       toast({
         title: "Failed to delete thread",
         description: error.message,
