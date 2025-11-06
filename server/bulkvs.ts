@@ -194,15 +194,32 @@ class BulkVSClient {
     
     try {
       // Normalize phone numbers to 11-digit format (1NXXNXXXXXX) for BulkVS API
-      const normalizedPayload = {
-        ...payload,
-        from: formatForBulkVS(payload.from),
-        to: formatForBulkVS(payload.to),
+      const normalizedFrom = formatForBulkVS(payload.from);
+      const normalizedTo = formatForBulkVS(payload.to);
+      
+      console.log(`[BulkVS] Sending message from ${normalizedFrom} to ${normalizedTo}`);
+      
+      // BulkVS API format (case-sensitive):
+      // - From: 11-digit number (e.g., "13109060901")
+      // - To: ARRAY of 11-digit numbers (e.g., ["13105551212", "13125551213"])
+      // - Message: text content
+      // - MediaURLs: optional array of media URLs
+      const bulkvsPayload: any = {
+        From: normalizedFrom,
+        To: [normalizedTo], // Must be an array
       };
       
-      console.log(`[BulkVS] Sending message from ${normalizedPayload.from} to ${normalizedPayload.to}`);
+      // Add Message if body is provided
+      if (payload.body) {
+        bulkvsPayload.Message = payload.body;
+      }
       
-      const response = await this.client.post("/messageSend", normalizedPayload);
+      // Add MediaURLs if mediaUrl is provided
+      if (payload.mediaUrl) {
+        bulkvsPayload.MediaURLs = [payload.mediaUrl];
+      }
+      
+      const response = await this.client.post("/messageSend", bulkvsPayload);
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] messageSend error:", error.response?.data || error.message);

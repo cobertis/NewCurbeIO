@@ -1,0 +1,256 @@
+Messaging
+Manage SMS/MMS Settings
+
+
+POST
+​/messageSend
+Send an Outbound SMS or MMS Message
+Use this function for Outbound Messaging
+
+Parameters
+Try it out
+No parameters
+
+Request body
+
+application/json
+Message
+
+Example Value
+Schema
+{
+  "From": "13109060901",
+  "To": [
+    "13105551212",
+    "13125551213"
+  ],
+  "Message": "Content of Message from Sender to Receiver(s)",
+  "MediaURLs": [
+    "https://s3.aws.com/file1.png",
+    "https://s3.aws.com/file2.jpg"
+  ]
+}
+Responses
+Code	Description	Links
+200	
+Success
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "RefId": "5a66dee6-ff7a-40ee-8218-5805c074dc01",
+  "From": "13109060901",
+  "MessageType": "SMS|MMS",
+  "Fragments": 1,
+  "Results": [
+    {
+      "To": "13105551212",
+      "Status": "SUCCESS"
+    },
+    {
+      "To": "13105551213",
+      "Status": "SUCCESS"
+    }
+  ]
+}
+No links
+400	
+Property missing, invalid or malformed
+
+No links
+403	
+Insufficient funds or service not enabled
+
+No links
+404	
+Telephone Number not enabled for Service
+
+No links
+409	
+Conflict, see body; a support ticket may be required to resolve
+
+No links
+503	
+An error occurred, please try again; a support ticket may be required to resolve
+
+No links
+GET
+​/webHooks
+Get List of your Webhook(s) used for Messaging
+Leave the Webhook parameter blank to return list of all Webhooks
+
+Parameters
+Try it out
+Name	Description
+Webhook
+[string]
+(query)
+Webhook
+Responses
+Code	Description	Links
+200	
+Success
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "Webhook": "Default",
+    "Description": "Web Cluster 1",
+    "Url": "https://webhook.domain.com/MsgIn",
+    "Dlr": true,
+    "Method": "POST",
+    "Last Modification": "2021-02-16 16:23:35"
+  }
+]
+No links
+400	
+Property missing, invalid or malformed
+
+No links
+404	
+Webhook not found
+
+No links
+PUT
+​/webHooks
+Create or update a Webhook to use for Messaging
+Create or update a Webhook to use for Messaging
+
+Parameters
+Try it out
+No parameters
+
+Request body
+
+application/json
+webHook
+
+Example Value
+Schema
+{
+  "Webhook": "Webhook1",
+  "Description": "Customer A inbound messages",
+  "Url": "https://10.11.12.13/webHook",
+  "Dlr": true,
+  "Method": "POST|3CX"
+}
+Responses
+Code	Description	Links
+200	
+Success
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "Webhook": "Webhook1",
+  "Description": "Web Cluster 1",
+  "Url": "https://webhook.domain.com/MsgIn",
+  "Last Modification": "2021-02-16 16:23:35"
+}
+No links
+400	
+Property missing, invalid or malformed
+
+No links
+403	
+Insufficient funds or service not enabled
+
+No links
+412	
+Applicable agreement lacks consent, see body for details
+
+No links
+503	
+An error occurred, please try again; a support ticket may be required to resolve
+
+No links
+DELETE
+​/webHooks
+Delete Webhook
+Delete a specific Webhook
+
+Parameters
+Try it out
+Name	Description
+Webhook *
+string[string]
+(query)
+Webhook
+Responses
+Code	Description	Links
+200	
+Success
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "Status": "Success",
+  "Webhook": "Webhook1"
+}
+No links
+400	
+Property missing, invalid or malformed
+
+No links
+404	
+Webhook not found
+
+No links
+GET
+​/campaigns
+Get List of your registered Messaging Campaigns
+Leave the Tcr parameter blank to return list of all Campaigns
+
+Parameters
+Try it out
+Name	Description
+Tcr
+[string]
+(query)
+Tcr
+Responses
+Code	Description	Links
+200	
+Success
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "Tcr": "CW1549",
+    "Brand": "Brand 1",
+    "Count": "49",
+    "Approval": "Y",
+    "Activation Date": "2021-02-16 16:23:35"
+  }
+]
+No links
+400	
+Property missing, invalid or malformed
+
+No links
+404	
+Campaign not found
+
+No links
