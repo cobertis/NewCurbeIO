@@ -326,7 +326,7 @@ export default function SmsMmsPage() {
     // If no cancelled numbers, show regular empty state (get new number)
     return (
       <>
-        <div className="flex items-center justify-center h-screen p-4">
+        <div className="flex items-center justify-center h-full p-4">
           <Card className="max-w-md w-full p-8 text-center" data-testid="empty-phone-state">
             <Phone className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-2xl font-semibold mb-2">You don't have a phone number yet</h2>
@@ -352,7 +352,7 @@ export default function SmsMmsPage() {
 
   return (
     <>
-      <div className="h-screen flex overflow-hidden bg-muted/30" data-testid="sms-mms-page">
+      <div className="h-full flex overflow-hidden bg-muted/30" data-testid="sms-mms-page">
         <div className="hidden md:grid md:grid-cols-[25%_50%_25%] w-full h-full gap-0">
           <ThreadList
             threads={threads}
