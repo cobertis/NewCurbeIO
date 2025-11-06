@@ -99,6 +99,7 @@ const getPageTitle = (path: string): string => {
     '/incoming-sms': 'Incoming SMS',
     '/tickets': 'Support Tickets',
     '/email-configuration': 'Email Configuration',
+    '/sms': 'SMS',
   };
   
   if (path.startsWith('/campaigns/') && path.includes('/stats')) {
@@ -1209,7 +1210,7 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/chat">
+      <Route path="/sms">
         <ProtectedRoute>
           <DashboardLayout>
             <SmsMmsPage />

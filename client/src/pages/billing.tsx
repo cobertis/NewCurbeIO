@@ -1224,7 +1224,7 @@ export default function Billing() {
                     Get a dedicated phone number to start messaging with your clients
                   </p>
                   <Button
-                    onClick={() => window.location.href = '/chat'}
+                    onClick={() => window.location.href = '/sms'}
                     data-testid="button-get-first-phone"
                   >
                     <Plus className="h-4 w-4 mr-2" />
